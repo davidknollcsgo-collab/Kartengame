@@ -1,0 +1,20 @@
+# Android / Gradle
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+android/app/release/
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Editoren / System
+.DS_Store
+*.swp
+.vscode/
