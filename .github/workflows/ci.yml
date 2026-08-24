@@ -5,6 +5,12 @@ on:
     branches: ["**"]
   pull_request:
 
+# Push und pull_request feuern beide auf denselben Commit. Ohne diese Gruppe
+# laeuft jeder Commit auf einem PR-Branch doppelt.
+concurrency:
+  group: ci-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
 env:
   GODOT_VERSION: "4.5-stable"
 
