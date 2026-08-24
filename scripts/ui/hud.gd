@@ -55,7 +55,7 @@ func _draw() -> void:
 
     if Spielstand.protokolle > 0:
         draw_string(schrift, Vector2(breite - 202.0, 46.0),
-            Waehrung.protokolle(Spielstand.protokolle) + " " + Waehrung.PROTOKOLLE,
+            "%d %s" % [Spielstand.protokolle, Waehrung.PROTOKOLLE],
             HORIZONTAL_ALIGNMENT_RIGHT, 180.0, 20, Color(0.72, 0.62, 0.96))
         draw_string(schrift, Vector2(breite - 202.0, 74.0),
             "x%.2f" % Oekonomie.prestige_mult(Spielstand.protokolle),

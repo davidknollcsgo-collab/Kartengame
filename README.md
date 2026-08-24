@@ -64,6 +64,11 @@ scripts/autoload/spielstand.gd Zustand + Signale (Autoload "Spielstand")
 scripts/autoload/speicher.gd  Verschlüsseltes Speichern, dateiebene, testbar
 scripts/ui/leiste.gd          Kaufmenge und Prestige
 scripts/ui/dialog.gd          Modales Fenster
+scripts/ui/ausbau_schirm.gd   Ausbauten gegen Quanten
+scripts/ui/bericht_schirm.gd  Kennzahlen und Errungenschaften
+scripts/data/waehrung.gd      Namen und Zeichen der drei Währungen
+scripts/data/ausbau.gd        Stammdaten der Ausbauten
+scripts/data/errungenschaft.gd Errungenschaften und Belohnungen
 tests/run_tests.gd            Headless-Testlauf
 tools/balance.gd              Balancing-Messung über 48 Spielstunden
 ```

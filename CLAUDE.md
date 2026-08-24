@@ -42,7 +42,7 @@ Schalter (alle nur im Debug-Build, `OS.is_debug_build()`):
 |---|---|
 | `--schuss <datei>` | speichert nach 45 Bildern und beendet |
 | `--vorrat` | baut eine laufende Station auf; der Anfangszustand zeigt nur dunkle Baugruppen |
-| `--zeige prestige\|offline` | öffnet den jeweiligen Dialog |
+| `--zeige prestige\|offline\|ausbau\|bericht` | öffnet den jeweiligen Bildschirm |
 | `--speichern` | erzwingt eine Sicherung vor der Aufnahme |
 
 Speichern und Laden im laufenden Spiel lassen sich damit durchgehend prüfen:

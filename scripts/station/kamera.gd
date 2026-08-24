@@ -16,8 +16,10 @@ var _letzter_abstand := 0.0
 ## Zusaetzlicher Rand, damit die Station nicht am Bildrand klebt.
 const RAND_X := 70.0
 
-## Oben liegt die Kopfzeile, unten spaeter die Bedienleiste - hier mehr Luft.
-const RAND_Y := 200.0
+## Oben die Kopfzeile (104), unten die zweireihige Bedienleiste (150). Der
+## Wert deckt beide samt Abstand ab, damit die aeusseren Baugruppen nicht
+## dauerhaft unter der Leiste liegen.
+const RAND_Y := 300.0
 
 
 ## Waehlt den Anfangszoom so, dass die ganze Station ins Bild passt.

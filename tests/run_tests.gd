@@ -19,7 +19,7 @@ const TESTS: PackedStringArray = [
     "_test_kostenkurve", "_test_massenkauf", "_test_max_kaufbar",
     "_test_meilensteine", "_test_produktion", "_test_prestige", "_test_kaltstart",
     "_test_offline", "_test_speicherstand", "_test_formatter",
-    "_test_ausbauten", "_test_layout", "_test_speicher_platte", "_test_langzeit",
+    "_test_ausbauten", "_test_errungenschaften", "_test_layout", "_test_speicher_platte", "_test_langzeit",
 ]
 
 
@@ -447,6 +447,83 @@ func _test_langzeit() -> bool:
         % [Zahl.kurz(st.lebenszeit_plasma), gekauft,
            Oekonomie.prestige_ertrag(st.lebenszeit_plasma)])
     return true
+
+
+func _test_errungenschaften() -> bool:
+    # Erreichbare Belohnung muss den Verstaerker decken, sonst ist der ohne
+    # Kauf oder Werbung unerreichbar - genau das soll er nicht sein.
+    _ist(Errungenschaft.quanten_gesamt() >= Ausbau.VERSTAERKER_KOSTEN,
+        "Errungenschaften decken den Preis des Verstaerkers")
+
+    var voll: Array[int] = []
+    voll.resize(Modul.ANZAHL)
+    voll.fill(1)
+
+    # "alle_arten" hatte einen Abbruch nach dem ersten Element und meldete
+    # Erfolg, sobald eine einzige Art vorhanden war.
+    var alle := _eintrag("alle_arten")
+    _ist(Errungenschaft.erfuellt(alle, {"bestand": voll}),
+        "alle_arten greift, wenn jede Art vorhanden ist")
+    var fehlt := voll.duplicate()
+    fehlt[Modul.ANZAHL - 1] = 0
+    _ist(not Errungenschaft.erfuellt(alle, {"bestand": fehlt}),
+        "alle_arten greift NICHT, wenn eine Art fehlt")
+    var nur_erste := voll.duplicate()
+    for i in range(1, Modul.ANZAHL):
+        nur_erste[i] = 0
+    _ist(not Errungenschaft.erfuellt(alle, {"bestand": nur_erste}),
+        "alle_arten greift NICHT bei nur einer Art")
+
+    _ist(Errungenschaft.erfuellt(_eintrag("zehn"), {"bestand": [4, 6]}),
+        "bestand zaehlt ueber alle Arten zusammen")
+    _ist(not Errungenschaft.erfuellt(_eintrag("zehn"), {"bestand": [4, 5]}),
+        "bestand knapp darunter greift nicht")
+    _ist(Errungenschaft.erfuellt(_eintrag("segel_zehn"), {"bestand": [10, 0]}),
+        "modul prueft die richtige Art")
+    _ist(not Errungenschaft.erfuellt(_eintrag("segel_zehn"), {"bestand": [0, 99]}),
+        "modul zaehlt nicht die falsche Art")
+    _ist(Errungenschaft.erfuellt(_eintrag("ertrag_m"), {"lebenszeit": 1.0e6}),
+        "lebenszeit greift genau an der Schwelle")
+    _ist(Errungenschaft.erfuellt(_eintrag("rate_k"), {"rate": 1500.0}), "rate greift")
+    _ist(Errungenschaft.erfuellt(_eintrag("reset_eins"), {"prestige": 1}), "prestige greift")
+
+    # --- Im Spielstand ---
+    var st := _neuer_stand()
+    _gleich(st.quanten, 0, "Neuer Stand hat keine Quanten")
+    st.bestand[0] = 1
+    var neu: PackedStringArray = st.pruefe_errungenschaften()
+    _ist(neu.has("start"), "Erste Baugruppe schaltet frei")
+    _gleich(int(st.quanten), 2, "Freischaltung schreibt Quanten gut")
+
+    # Zweiter Durchlauf darf nicht noch einmal zahlen.
+    var wieder: PackedStringArray = st.pruefe_errungenschaften()
+    _ist(not wieder.has("start"), "Bereits Freigeschaltetes wird nicht wiederholt")
+    _gleich(int(st.quanten), 2, "Keine doppelte Belohnung")
+
+    # Zuruecksetzungen werden gezaehlt und schalten frei.
+    var r := _neuer_stand()
+    r.lebenszeit_plasma = 1e9
+    _gleich(int(r.prestige_anzahl), 0, "Anfangs keine Zuruecksetzung")
+    r.prestige()
+    _gleich(int(r.prestige_anzahl), 1, "Zuruecksetzung wird gezaehlt")
+    _ist(r.pruefe_errungenschaften().has("reset_eins"), "Erster Reset schaltet frei")
+
+    # Fortschritt muss den Neustart ueberstehen.
+    var b := _neuer_stand()
+    b.aus_dict(st.als_dict())
+    _ist(b.errungen.has("start"), "Errungenschaften werden gespeichert")
+    _gleich(int(b.pruefe_errungenschaften().size()), 0,
+        "Nach dem Laden wird nichts erneut ausgeschuettet")
+    return true
+
+
+## Sucht einen Tabelleneintrag anhand seiner Kennung.
+func _eintrag(id: String) -> Dictionary:
+    for e in Errungenschaft.TABELLE:
+        if String(e["id"]) == id:
+            return e
+    _fehler.append("Errungenschaft %s fehlt in der Tabelle" % id)
+    return {"art": "", "wert": 0.0}
 
 
 func _test_layout() -> bool:

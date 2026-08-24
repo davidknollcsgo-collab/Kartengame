@@ -15,6 +15,8 @@ var _leiste: Leiste
 var _prestige_dialog: Dialog
 var _offline_dialog: Dialog
 var _ausbau_schirm: AusbauSchirm
+var _bericht_schirm: BerichtSchirm
+var _loesch_dialog: Dialog
 
 var _druck_bei := Vector2.ZERO
 var _druck_aktiv := false
@@ -62,6 +64,7 @@ func _baue_oberflaeche() -> void:
     _leiste.menge_gewaehlt.connect(_bei_menge)
     _leiste.prestige_gewuenscht.connect(_frage_prestige)
     _leiste.ausbau_gewuenscht.connect(func(): _ausbau_schirm.visible = true)
+    _leiste.bericht_gewuenscht.connect(func(): _bericht_schirm.visible = true)
     schicht.add_child(_leiste)
 
     # Dialoge oben auf, damit nichts dahinter bedienbar bleibt.
@@ -81,6 +84,16 @@ func _baue_oberflaeche() -> void:
     _ausbau_schirm = AusbauSchirm.new()
     _ausbau_schirm.visible = false
     oben.add_child(_ausbau_schirm)
+
+    _bericht_schirm = BerichtSchirm.new()
+    _bericht_schirm.visible = false
+    _bericht_schirm.zuruecksetzen_gewuenscht.connect(_frage_loeschen)
+    oben.add_child(_bericht_schirm)
+
+    _loesch_dialog = Dialog.new()
+    _loesch_dialog.visible = false
+    _loesch_dialog.bestaetigt.connect(_fuehre_loeschen_aus)
+    oben.add_child(_loesch_dialog)
 
 
 func _bei_menge(menge: int) -> void:
@@ -108,6 +121,23 @@ func _fuehre_prestige_aus() -> void:
     Spielstand.prestige()
     _station.aktualisiere()
     Spielstand.speichere()
+
+
+func _frage_loeschen() -> void:
+    # Unwiderruflich, deshalb ausdruecklich benennen, was verschwindet - und
+    # den bestaetigenden Knopf nicht harmloser aussehen lassen, als er ist.
+    _loesch_dialog.zeige("Wirklich alles löschen?", PackedStringArray([
+        "Station, Protokolle, Quanten und",
+        "Errungenschaften werden gelöscht.",
+        "",
+        "Das lässt sich nicht rückgängig machen.",
+    ]), "Endgültig löschen", "Abbrechen")
+
+
+func _fuehre_loeschen_aus() -> void:
+    Spielstand.loesche_alles()
+    _bericht_schirm.visible = false
+    _station.aktualisiere()
 
 
 func _zeige_offline(betrag: float) -> void:
@@ -199,6 +229,8 @@ func _zeige_probe(was: String) -> void:
     match was:
         "prestige":
             _frage_prestige()
+        "bericht":
+            _bericht_schirm.visible = true
         "ausbau":
             Spielstand.gutschrift_quanten(64)
             _ausbau_schirm.visible = true
