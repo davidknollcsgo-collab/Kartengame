@@ -65,6 +65,12 @@ var verstaerker := false
 signal ausbau_geaendert
 signal errungen_freigeschaltet(id: String, quanten: int)
 
+## Ein Fund ist aufgetaucht und kann angetippt werden.
+signal fund_erschienen(art: int)
+
+## Ein Fund wurde eingelöst; [param text] beschreibt, was er gebracht hat.
+signal fund_eingeloest(text: String)
+
 ## Unix-Zeit, bis zu der ein Werbe-Boost laeuft (0 = keiner aktiv).
 var boost_bis := 0.0
 
@@ -108,6 +114,9 @@ var _rest := 0.0
 var _seit_speichern := 0.0
 var _seit_pruefung := 0.0
 
+## Unix-Zeit, zu der der nächste Fund auftaucht.
+var _naechster_fund := 0.0
+
 
 func _ready() -> void:
     bestand.resize(Modul.ANZAHL)
@@ -116,6 +125,7 @@ func _ready() -> void:
     modul_stufe.fill(0)
     plasma = START_PLASMA
     zeitstempel = Time.get_unix_time_from_system()
+    _plane_fund()
 
 
 func _process(delta: float) -> void:
@@ -145,6 +155,7 @@ func _tick(dt: float) -> void:
     if _seit_pruefung >= 1.0:
         _seit_pruefung = 0.0
         pruefe_errungenschaften()
+        _pruefe_fund()
 
 
 ## Aktueller Gesamtertrag in Plasma pro Sekunde.
@@ -218,6 +229,46 @@ func kaufe_verstaerker() -> bool:
     quanten_geaendert.emit(quanten)
     ausbau_geaendert.emit()
     return true
+
+
+# --- Funde ------------------------------------------------------------------
+
+## Legt den Zeitpunkt des nächsten Funds fest.
+func _plane_fund() -> void:
+    _naechster_fund = Time.get_unix_time_from_system() + Ereignis.abstand(randf())
+
+
+## Meldet einen Fund, sobald es Zeit dafür ist.
+##
+## Läuft nur, während die App offen ist - Funde während der Abwesenheit
+## nachzuholen wäre sinnlos, weil niemand sie antippen könnte.
+func _pruefe_fund() -> void:
+    if Time.get_unix_time_from_system() < _naechster_fund:
+        return
+    _plane_fund()
+    var eintrag := Ereignis.waehle(randf())
+    fund_erschienen.emit(int(eintrag["art"]))
+
+
+## Löst einen angetippten Fund ein und gibt zurück, was er gebracht hat.
+func loese_fund_ein(art: int) -> String:
+    match art:
+        Ereignis.Art.PLASMA:
+            var betrag := Ereignis.plasma_belohnung(rate())
+            gutschrift(betrag)
+            return "+" + Zahl.kurz(betrag) + " Plasma"
+        Ereignis.Art.QUANTEN:
+            var anzahl := Ereignis.quanten_belohnung(randf())
+            gutschrift_quanten(anzahl)
+            return "+%d Quanten" % anzahl
+        Ereignis.Art.SCHUB:
+            var jetzt := Time.get_unix_time_from_system()
+            boost_bis = maxf(boost_bis, jetzt) + Ereignis.SCHUB_DAUER
+            boost_faktor = Ereignis.SCHUB_FAKTOR
+            ausbau_geaendert.emit()
+            return "x%d für %s" % [int(Ereignis.SCHUB_FAKTOR),
+                Zahl.zeit(Ereignis.SCHUB_DAUER)]
+    return ""
 
 
 # --- Protokoll-Ausbauten ----------------------------------------------------

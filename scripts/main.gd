@@ -202,7 +202,12 @@ func _tippe(bildschirm: Vector2) -> void:
             "+" + Zahl.kurz(ertrag), Color(0.55, 0.90, 1.0))
         return
 
-    # Zuerst die Detailecke: sie liegt innerhalb der Karte, und wer sie trifft,
+    # Funde zuerst: sie treiben ueber die Station hinweg und verschwinden
+    # wieder. Laege eine Baugruppe darunter, kaeme der Kauf dem Fund zuvor.
+    if _station.fund_bei(lokal):
+        return
+
+    # Dann die Detailecke: sie liegt innerhalb der Karte, und wer sie trifft,
     # will das Fenster und nicht den Kauf.
     var detail := _station.detail_bei(lokal)
     if detail >= 0:
@@ -252,6 +257,8 @@ func _zeige_probe(was: String) -> void:
             _frage_prestige()
         "bericht":
             _bericht_schirm.visible = true
+        "fund":
+            _station.zeige_fund(Ereignis.Art.QUANTEN)
         "modul":
             _modul_schirm.zeige(1)
         "ausbau":

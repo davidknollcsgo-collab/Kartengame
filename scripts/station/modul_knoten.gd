@@ -111,9 +111,8 @@ func _draw() -> void:
     var hell := Color(0.92, 0.94, 0.97) if aktiv else Color(0.45, 0.48, 0.53)
 
     draw_string(schrift, Vector2(r.position.x + 24.0, r.position.y + 34.0),
-        # Breite begrenzen, sonst laeuft "Forschungslabor" in den Griff oben rechts.
         Modul.name_von(index), HORIZONTAL_ALIGNMENT_LEFT,
-        GROESSE.x - 24.0 - DETAIL, 21, hell)
+        _platz_fuer_namen(), _namensgroesse(schrift), hell)
 
     draw_string(schrift, Vector2(r.position.x + 24.0, r.position.y + 60.0),
         "x%d" % anzahl, HORIZONTAL_ALIGNMENT_LEFT, -1, 16,
@@ -134,6 +133,25 @@ func _draw() -> void:
     _zeichne_stufe(r, leit)
     _zeichne_griff(r)
     _zeichne_meilenstein(r, leit)
+
+
+## Breite, die dem Namen bis zum Griff oben rechts bleibt.
+func _platz_fuer_namen() -> float:
+    return GROESSE.x - 24.0 - DETAIL
+
+
+## Groesste Schriftgroesse, bei der der Name noch ganz hineinpasst.
+##
+## Abschneiden waere die einfachere Loesung, macht aber aus
+## "Forschungslabor" ein "Forschungslab" - und der Spieler haelt es fuer
+## einen Darstellungsfehler.
+func _namensgroesse(schrift: Font) -> int:
+    var name := Modul.name_von(index)
+    var platz := _platz_fuer_namen()
+    for groesse in [21, 19, 17, 15]:
+        if schrift.get_string_size(name, HORIZONTAL_ALIGNMENT_LEFT, -1, groesse).x <= platz:
+            return groesse
+    return 15
 
 
 ## Ausbaustufe als Abzeichen. Nur sichtbar, wenn ueberhaupt ausgebaut wurde -

@@ -19,7 +19,7 @@ const TESTS: PackedStringArray = [
     "_test_kostenkurve", "_test_massenkauf", "_test_max_kaufbar",
     "_test_meilensteine", "_test_produktion", "_test_prestige", "_test_kaltstart",
     "_test_offline", "_test_speicherstand", "_test_formatter",
-    "_test_ausbauten", "_test_modul_ausbau", "_test_protokoll_ausbau", "_test_errungenschaften", "_test_layout", "_test_speicher_platte", "_test_langzeit",
+    "_test_ausbauten", "_test_modul_ausbau", "_test_protokoll_ausbau", "_test_funde", "_test_errungenschaften", "_test_layout", "_test_speicher_platte", "_test_langzeit",
 ]
 
 
@@ -633,6 +633,57 @@ func _test_protokoll_ausbau() -> bool:
     _gleich(kaputt.stufe_von("hand"), ProtokollAusbau.max_stufe("hand"),
         "Zu hohe Stufe wird gekappt")
     _gleich(kaputt.stufe_von("gibtsnicht"), 0, "Unbekannte Kennung bleibt wirkungslos")
+    return true
+
+
+func _test_funde() -> bool:
+    # --- Auswahl ---
+    # Gewichte: Plasma 60, Quanten 25, Schub 15 - Grenzen bei 0.60 und 0.85.
+    _gleich(Ereignis.gewicht_gesamt(), 100, "Gewichte summieren sich auf 100")
+    _gleich(int(Ereignis.waehle(0.0)["art"]), Ereignis.Art.PLASMA, "Bei 0.00 Plasma")
+    _gleich(int(Ereignis.waehle(0.59)["art"]), Ereignis.Art.PLASMA, "Bei 0.59 noch Plasma")
+    _gleich(int(Ereignis.waehle(0.60)["art"]), Ereignis.Art.QUANTEN, "Bei 0.60 Quanten")
+    _gleich(int(Ereignis.waehle(0.84)["art"]), Ereignis.Art.QUANTEN, "Bei 0.84 noch Quanten")
+    _gleich(int(Ereignis.waehle(0.85)["art"]), Ereignis.Art.SCHUB, "Bei 0.85 Schub")
+    _gleich(int(Ereignis.waehle(0.999)["art"]), Ereignis.Art.SCHUB, "Kurz vor 1 Schub")
+    # Werte ausserhalb duerfen nicht ins Leere laufen.
+    _ist(not Ereignis.waehle(1.7).is_empty(), "Wert ueber 1 wird gekappt")
+    _ist(not Ereignis.waehle(-3.0).is_empty(), "Wert unter 0 wird gekappt")
+
+    # --- Abstand ---
+    _nahe(Ereignis.abstand(0.0), Ereignis.ABSTAND_MIN, "Abstand bei 0 ist das Minimum")
+    _nahe(Ereignis.abstand(1.0), Ereignis.ABSTAND_MAX, "Abstand bei 1 ist das Maximum")
+    _ist(Ereignis.abstand(0.5) > Ereignis.ABSTAND_MIN, "Abstand dazwischen liegt hoeher")
+
+    # --- Belohnungen ---
+    _nahe(Ereignis.plasma_belohnung(100.0), 100.0 * Ereignis.PLASMA_SEKUNDEN,
+        "Plasmafund entspricht der Foerderung mal Dauer")
+    _nahe(Ereignis.plasma_belohnung(0.0), Ereignis.PLASMA_MINDEST,
+        "Ganz frueh greift der Mindestertrag")
+    for z in [0.0, 0.33, 0.66, 0.99]:
+        var n := Ereignis.quanten_belohnung(z)
+        _ist(n >= 1 and n <= 3, "Quantenfund liegt zwischen 1 und 3 (bei %f)" % z)
+
+    # --- Einloesen im Spielstand ---
+    var a := _neuer_stand()
+    a.bestand[1] = 10
+    var vorher: float = a.plasma
+    var text: String = a.loese_fund_ein(Ereignis.Art.PLASMA)
+    _ist(a.plasma > vorher, "Plasmafund schreibt gut")
+    _ist(not text.is_empty(), "Plasmafund meldet einen Text")
+
+    var b := _neuer_stand()
+    b.loese_fund_ein(Ereignis.Art.QUANTEN)
+    _ist(b.quanten >= 1, "Quantenfund schreibt Quanten gut")
+
+    var c := _neuer_stand()
+    _ist(not c.boost_aktiv(), "Anfangs laeuft kein Schub")
+    c.loese_fund_ein(Ereignis.Art.SCHUB)
+    _ist(c.boost_aktiv(), "Schubfund startet einen Schub")
+    _nahe(float(c.boost_faktor), Ereignis.SCHUB_FAKTOR, "Schubfund setzt den Faktor")
+    _ist(c.boost_rest() > Ereignis.SCHUB_DAUER - 5.0, "Schubfund laeuft die volle Dauer")
+
+    _gleich(_neuer_stand().loese_fund_ein(-1), "", "Unbekannte Art bringt nichts")
     return true
 
 

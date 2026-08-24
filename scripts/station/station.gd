@@ -22,6 +22,7 @@ signal kern_angetippt
 
 var _module: Array[ModulKnoten] = []
 var _kern: Kern
+var _fund: Fund
 var _drohnen: Array[Drohne] = []
 
 ## Läuft für die Energiepulse auf den Versorgungsleitungen.
@@ -33,6 +34,7 @@ func _ready() -> void:
     _baue_kern()
     _baue_drohnen()
 
+    Spielstand.fund_erschienen.connect(zeige_fund)
     Spielstand.bestand_geaendert.connect(_bei_bestand)
     Spielstand.plasma_geaendert.connect(_bei_credits)
     aktualisiere()
@@ -137,6 +139,39 @@ func modul_bei(punkt: Vector2) -> int:
         if k.trefferflaeche().has_point(punkt):
             return k.index
     return -1
+
+
+## Laesst einen Fund quer durchs Bild treiben.
+##
+## Immer nur einer gleichzeitig: zwei blinkende Ziele wuerden die Station
+## selbst in den Hintergrund draengen.
+func zeige_fund(art: int) -> void:
+    if is_instance_valid(_fund):
+        return
+    # Knapp ausserhalb der Baugruppenspalten starten und quer hinueber ziehen -
+    # so ist der Fund fast seine gesamte Lebensdauer ueber erreichbar.
+    var breite := Raster.SPALTE_X * 1.35
+    var von_links := randf() < 0.5
+    var y := randf_range(Raster.REIHEN_Y[0], Raster.REIHEN_Y[Raster.REIHEN_Y.size() - 1])
+    var von := Vector2(-breite if von_links else breite, y)
+    var nach := Vector2(breite if von_links else -breite, y)
+
+    _fund = Fund.new()
+    add_child(_fund)
+    _fund.starte(art, von, nach)
+    _fund.angetippt.connect(_bei_fund)
+
+
+func _bei_fund(art: int) -> void:
+    var text := Spielstand.loese_fund_ein(art)
+    var ort: Vector2 = _fund.position if is_instance_valid(_fund) else Vector2.ZERO
+    zeige_gutschrift(ort, text, Color(0.95, 0.92, 0.60))
+    Spielstand.fund_eingeloest.emit(text)
+
+
+## Prueft, ob [param punkt] einen Fund trifft.
+func fund_bei(punkt: Vector2) -> bool:
+    return is_instance_valid(_fund) and _fund.tippe(punkt)
 
 
 ## Index der Baugruppe, deren Detailflaeche unter [param punkt] liegt, sonst -1.
