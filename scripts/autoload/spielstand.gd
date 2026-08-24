@@ -8,7 +8,7 @@ extends Node
 ## Format des Speicherstands. Bei jeder inkompatiblen Aenderung erhoehen und
 ## in [method _migriere] einen Pfad ergaenzen. Von Anfang an mitgefuehrt, weil
 ## eine nachtraeglich eingefuehrte Migration alte Spielstaende bricht.
-const SPEICHER_VERSION := 3
+const SPEICHER_VERSION := 4
 
 ## Logikschritte pro Sekunde, bewusst entkoppelt von der Bildrate.
 const TICKS_PRO_SEKUNDE := 10.0
@@ -37,8 +37,18 @@ var plasma := 0.0
 ## Premiumwaehrung aus Kaeufen und Rewarded Ads.
 var quanten := 0
 
-## Prestige-Waehrung; ueberlebt jeden Reset.
+## Verfuegbare Protokolle, die fuer Ausbauten ausgegeben werden koennen.
 var protokolle := 0
+
+## Jemals verdiente Protokolle.
+##
+## Der passive Multiplikator haengt hieran, nicht am Guthaben: sonst wuerde
+## jeder Ausbaukauf den Multiplikator senken und sich wie eine Strafe
+## anfuehlen. Ausgeben und Belohnung duerfen sich nicht widersprechen.
+var protokolle_gesamt := 0
+
+## Stufe je Protokoll-Ausbau, nach Kennung.
+var p_stufe: Dictionary = {}
 
 ## Summe aller je erwirtschafteten Plasma - Basis der Prestige-Ausbeute.
 var lebenszeit_plasma := 0.0
@@ -144,7 +154,7 @@ func rate() -> float:
 
 ## Produktmultiplikator aus Prestige, Kauf-Verstaerker und laufendem Boost.
 func global_mult() -> float:
-    var m := Oekonomie.prestige_mult(protokolle)
+    var m := Oekonomie.prestige_mult(protokolle_gesamt)
     if verstaerker:
         m *= Ausbau.VERSTAERKER_FAKTOR
     if boost_aktiv():
@@ -210,6 +220,45 @@ func kaufe_verstaerker() -> bool:
     return true
 
 
+# --- Protokoll-Ausbauten ----------------------------------------------------
+
+## Stufe eines Protokoll-Ausbaus.
+func stufe_von(id: String) -> int:
+    return int(p_stufe.get(id, 0))
+
+
+## Rabattfaktor auf Baugruppen-Ausbaustufen.
+func ausbau_rabatt() -> float:
+    return ProtokollAusbau.ausbau_rabatt(stufe_von("feinbau"))
+
+
+## Kauft die naechste Stufe eines Protokoll-Ausbaus.
+func kaufe_protokoll_ausbau(id: String) -> bool:
+    var stufe := stufe_von(id)
+    if ProtokollAusbau.voll(id, stufe):
+        return false
+    var preis := ProtokollAusbau.kosten(id, stufe)
+    if preis <= 0 or protokolle < preis:
+        return false
+    protokolle -= preis
+    p_stufe[id] = stufe + 1
+    protokolle_geaendert.emit(protokolle)
+    ausbau_geaendert.emit()
+    return true
+
+
+## Setzt die Station auf den Zustand nach einem Reset - einschliesslich der
+## Starthilfen aus den Protokoll-Ausbauten.
+func _setze_startzustand() -> void:
+    plasma = START_PLASMA + ProtokollAusbau.startkapital(stufe_von("startkapital"))
+    bestand.fill(0)
+    modul_stufe.fill(0)
+    var arten := ProtokollAusbau.anlauf_arten(stufe_von("anlauf"))
+    var stueck := ProtokollAusbau.anlauf_stueck(stufe_von("anlauf"))
+    for i in mini(arten, Modul.ANZAHL):
+        bestand[i] = stueck
+
+
 # --- Errungenschaften -------------------------------------------------------
 
 ## Messwerte fuer die Bedingungspruefung.
@@ -263,7 +312,8 @@ func gutschrift(betrag: float) -> void:
 ## Gibt dem Spieler in der Anfangsphase etwas zu tun und traegt spaeter nichts
 ## mehr bei, weil die Automatik die Handarbeit um Groessenordnungen ueberholt.
 func manuell_sammeln() -> float:
-    var betrag := maxf(MANUELL_MINDEST, rate() * MANUELL_SEKUNDEN)
+    var betrag := maxf(MANUELL_MINDEST, rate() * MANUELL_SEKUNDEN) \
+        * ProtokollAusbau.hand_faktor(stufe_von("hand"))
     gutschrift(betrag)
     return betrag
 
@@ -277,7 +327,7 @@ func kaufe_modul_ausbau(index: int) -> bool:
         return false
     if ModulAusbau.voll(modul_stufe[index]):
         return false
-    var preis := ModulAusbau.kosten(index, modul_stufe[index])
+    var preis := ModulAusbau.kosten(index, modul_stufe[index], ausbau_rabatt())
     if preis > plasma:
         return false
     plasma -= preis
@@ -309,15 +359,14 @@ func prestige() -> int:
         return 0
     var gewinn := Oekonomie.prestige_ertrag(lebenszeit_plasma)
     protokolle += gewinn
+    protokolle_gesamt += gewinn
     prestige_anzahl += 1
-    # Auf das Startguthaben, nicht auf 0: sonst steht die Station nach jedem
-    # Reset genauso still wie beim allerersten Start.
-    plasma = START_PLASMA
+    # Auf den Startzustand, nicht auf 0: sonst steht die Station nach jedem
+    # Reset genauso still wie beim allerersten Start. Ausbaustufen der
+    # Baugruppen gehen dabei verloren - sonst waere der zweite Durchlauf
+    # trivial und Prestige verloere seinen Sinn.
     lebenszeit_plasma = 0.0
-    bestand.fill(0)
-    # Ausbaustufen gehen beim Reset mit verloren - sonst waere der zweite
-    # Durchlauf trivial und Prestige verloere seinen Sinn.
-    modul_stufe.fill(0)
+    _setze_startzustand()
     boost_bis = 0.0
     plasma_geaendert.emit(plasma)
     protokolle_geaendert.emit(protokolle)
@@ -339,7 +388,8 @@ func verbuche_offline(jetzt: float = -1.0) -> float:
     if verstrichen <= 0.0:
         return 0.0
     letzte_offline_dauer = minf(verstrichen, offline_grenze())
-    var ertrag := Oekonomie.offline_ertrag(rate(), verstrichen, offline_grenze())
+    var ertrag := Oekonomie.offline_ertrag(rate(), verstrichen, offline_grenze(),
+        ProtokollAusbau.offline_anteil(stufe_von("speicher")))
     gutschrift(ertrag)
     return ertrag
 
@@ -385,6 +435,8 @@ func loesche_alles() -> void:
     plasma = START_PLASMA
     quanten = 0
     protokolle = 0
+    protokolle_gesamt = 0
+    p_stufe = {}
     prestige_anzahl = 0
     lebenszeit_plasma = 0.0
     spielzeit = 0.0
@@ -414,6 +466,8 @@ func als_dict() -> Dictionary:
         "plasma": plasma,
         "quanten": quanten,
         "protokolle": protokolle,
+        "protokolle_gesamt": protokolle_gesamt,
+        "p_stufe": p_stufe.duplicate(),
         "lebenszeit_plasma": lebenszeit_plasma,
         "bestand": Array(bestand),
         "modul_stufe": Array(modul_stufe),
@@ -436,6 +490,12 @@ func aus_dict(d: Dictionary) -> void:
     plasma = float(d.get("plasma", START_PLASMA))
     quanten = int(d.get("quanten", 0))
     protokolle = int(d.get("protokolle", 0))
+    # Aeltere Staende kannten nur eine Zahl; dort ist Guthaben gleich Gesamt.
+    protokolle_gesamt = int(d.get("protokolle_gesamt", protokolle))
+    p_stufe = {}
+    for id in d.get("p_stufe", {}):
+        p_stufe[String(id)] = clampi(int(d["p_stufe"][id]), 0,
+            ProtokollAusbau.max_stufe(String(id)))
     lebenszeit_plasma = float(d.get("lebenszeit_plasma", 0.0))
     verstaerker = bool(d.get("verstaerker", false))
     speicher_stufe = clampi(int(d.get("speicher_stufe", 0)), 0, Ausbau.SPEICHER_MAX)
@@ -473,6 +533,10 @@ func _migriere(d: Dictionary) -> Dictionary:
         # Version 0 kannte noch keinen Langzeitspeicher.
         d["speicher_stufe"] = 0
         v = 1
+    if v < 4:
+        # Version 3 kannte weder das Gesamtkonto noch Protokoll-Ausbauten.
+        d["protokolle_gesamt"] = int(d.get("protokolle", 0))
+        d["p_stufe"] = {}
     if v < 3:
         # Version 2 kannte noch keine Ausbaustufen je Baugruppe.
         d["modul_stufe"] = []
@@ -487,6 +551,6 @@ func _migriere(d: Dictionary) -> Dictionary:
         if d.has("kerne"):
             d["quanten"] = d["kerne"]
         v = 2
-    v = 3
+    v = 4
     d["version"] = v
     return d

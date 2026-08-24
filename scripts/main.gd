@@ -257,6 +257,11 @@ func _zeige_probe(was: String) -> void:
         "ausbau":
             Spielstand.gutschrift_quanten(64)
             _ausbau_schirm.visible = true
+        "protokolle":
+            Spielstand.protokolle = 240
+            Spielstand.protokolle_gesamt = 240
+            _ausbau_schirm.reiter = AusbauSchirm.Reiter.PROTOKOLLE
+            _ausbau_schirm.visible = true
         "offline":
             # Plausible Dauer fuer die Aufnahme; im Spiel kommt sie aus
             # verbuche_offline().

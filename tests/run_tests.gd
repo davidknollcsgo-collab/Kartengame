@@ -19,7 +19,7 @@ const TESTS: PackedStringArray = [
     "_test_kostenkurve", "_test_massenkauf", "_test_max_kaufbar",
     "_test_meilensteine", "_test_produktion", "_test_prestige", "_test_kaltstart",
     "_test_offline", "_test_speicherstand", "_test_formatter",
-    "_test_ausbauten", "_test_modul_ausbau", "_test_errungenschaften", "_test_layout", "_test_speicher_platte", "_test_langzeit",
+    "_test_ausbauten", "_test_modul_ausbau", "_test_protokoll_ausbau", "_test_errungenschaften", "_test_layout", "_test_speicher_platte", "_test_langzeit",
 ]
 
 
@@ -527,6 +527,112 @@ func _test_modul_ausbau() -> bool:
     _gleich(int(kaputt.modul_stufe[0]), ModulAusbau.MAX_STUFE,
         "Zu hohe Stufe wird gekappt")
     _gleich(int(kaputt.modul_stufe[1]), 0, "Negative Stufe wird auf 0 gehoben")
+    return true
+
+
+func _test_protokoll_ausbau() -> bool:
+    # --- Tabelle ---
+    for e in ProtokollAusbau.TABELLE:
+        var id := String(e["id"])
+        _ist(ProtokollAusbau.kosten(id, 0) > 0, "%s: erste Stufe kostet etwas" % id)
+        _ist(ProtokollAusbau.kosten(id, 1) > ProtokollAusbau.kosten(id, 0),
+            "%s: jede Stufe kostet mehr" % id)
+        _gleich(ProtokollAusbau.kosten(id, ProtokollAusbau.max_stufe(id)), 0,
+            "%s: voll ausgebaut kostet nichts" % id)
+        _ist(ProtokollAusbau.voll(id, ProtokollAusbau.max_stufe(id)),
+            "%s: Hoechststufe gilt als voll" % id)
+    _gleich(ProtokollAusbau.kosten("gibtsnicht", 0), 0, "Unbekannte Kennung kostet 0")
+
+    # --- Wirkungen ---
+    _gleich(ProtokollAusbau.startkapital(0), 0.0, "Ohne Notreserve kein Zuschuss")
+    _ist(ProtokollAusbau.startkapital(2) > ProtokollAusbau.startkapital(1),
+        "Notreserve steigt je Stufe")
+    _nahe(ProtokollAusbau.hand_faktor(0), 1.0, "Ohne Handfoerderung Faktor 1")
+    _nahe(ProtokollAusbau.hand_faktor(2), 9.0, "Handfoerderung Stufe 2 gibt Faktor 9")
+    _nahe(ProtokollAusbau.offline_anteil(0), Oekonomie.OFFLINE_ANTEIL,
+        "Ohne Pufferzellen bleibt es beim Grundanteil")
+    _ist(ProtokollAusbau.offline_anteil(4) <= 0.90, "Offline-Anteil ist gedeckelt")
+    _nahe(ProtokollAusbau.ausbau_rabatt(0), 1.0, "Ohne Feinbau kein Rabatt")
+    _ist(ProtokollAusbau.ausbau_rabatt(3) < 1.0, "Feinbau verbilligt")
+
+    # --- Kauf ---
+    var st := _neuer_stand()
+    _gleich(st.stufe_von("hand"), 0, "Neuer Stand hat Stufe 0")
+    _ist(not st.kaufe_protokoll_ausbau("hand"), "Ohne Protokolle kein Ausbau")
+
+    st.protokolle = 100
+    st.protokolle_gesamt = 100
+    var preis := ProtokollAusbau.kosten("hand", 0)
+    _ist(st.kaufe_protokoll_ausbau("hand"), "Mit Protokollen kaufbar")
+    _gleich(st.stufe_von("hand"), 1, "Stufe steigt")
+    _gleich(int(st.protokolle), 100 - preis, "Guthaben sinkt um den Preis")
+
+    # Der entscheidende Punkt: Ausgeben darf den Multiplikator nicht senken.
+    _gleich(int(st.protokolle_gesamt), 100, "Gesamtkonto bleibt beim Kauf unberuehrt")
+    _nahe(st.global_mult(), Oekonomie.prestige_mult(100),
+        "Multiplikator haengt am Gesamtkonto, nicht am Guthaben")
+
+    _ist(not st.kaufe_protokoll_ausbau("gibtsnicht"), "Unbekannte Kennung wird abgewiesen")
+
+    # Hoechststufe sperrt.
+    var voll := _neuer_stand()
+    voll.protokolle = 100000
+    var id0 := String(ProtokollAusbau.TABELLE[0]["id"])
+    for i in ProtokollAusbau.max_stufe(id0):
+        _ist(voll.kaufe_protokoll_ausbau(id0), "%s Stufe %d kaufbar" % [id0, i + 1])
+    _ist(not voll.kaufe_protokoll_ausbau(id0), "Voll ausgebaut nicht weiter kaufbar")
+
+    # --- Wirkung im Spielstand ---
+    var h := _neuer_stand()
+    var ohne: float = h.manuell_sammeln()
+    h.p_stufe["hand"] = 1
+    var mit: float = h.manuell_sammeln()
+    _nahe(mit, ohne * ProtokollAusbau.hand_faktor(1), "Handfoerderung wirkt beim Antippen")
+
+    var f := _neuer_stand()
+    f.bestand[0] = 10
+    var voll_preis := ModulAusbau.kosten(0, 0, 1.0)
+    f.p_stufe["feinbau"] = 3
+    _ist(ModulAusbau.kosten(0, 0, f.ausbau_rabatt()) < voll_preis,
+        "Feinbau verbilligt den Baugruppen-Ausbau im Spielstand")
+
+    # --- Startzustand nach einem Reset ---
+    var r := _neuer_stand()
+    r.p_stufe["startkapital"] = 2
+    r.p_stufe["anlauf"] = 2
+    r.lebenszeit_plasma = 1e9
+    r.bestand[0] = 40
+    r.modul_stufe[0] = 3
+    r.prestige()
+    _ist(r.plasma > 15.0, "Notreserve wirkt nach dem Reset")
+    _gleich(int(r.bestand[0]), ProtokollAusbau.anlauf_stueck(2),
+        "Anlaufhilfe stellt Baugruppen bereit")
+    _gleich(int(r.modul_stufe[0]), 0, "Baugruppen-Ausbaustufen gehen trotzdem verloren")
+
+    # --- Speichern und Migration ---
+    var a := _neuer_stand()
+    a.protokolle = 42
+    a.protokolle_gesamt = 77
+    a.p_stufe["speicher"] = 2
+    var b := _neuer_stand()
+    b.aus_dict(a.als_dict())
+    _gleich(int(b.protokolle), 42, "Guthaben wird gespeichert")
+    _gleich(int(b.protokolle_gesamt), 77, "Gesamtkonto wird gespeichert")
+    _gleich(b.stufe_von("speicher"), 2, "Ausbaustufen werden gespeichert")
+
+    # Aeltere Staende kannten nur eine Zahl - dort ist Guthaben gleich Gesamt,
+    # sonst verloere ein bestehender Spieler beim Update seinen Multiplikator.
+    var alt := _neuer_stand()
+    alt.aus_dict({"version": 3, "protokolle": 60})
+    _gleich(int(alt.protokolle_gesamt), 60, "Migration v3 uebernimmt das Gesamtkonto")
+    _nahe(alt.global_mult(), Oekonomie.prestige_mult(60),
+        "Migration erhaelt den Multiplikator")
+
+    var kaputt := _neuer_stand()
+    kaputt.aus_dict({"version": 4, "p_stufe": {"hand": 999, "gibtsnicht": 3}})
+    _gleich(kaputt.stufe_von("hand"), ProtokollAusbau.max_stufe("hand"),
+        "Zu hohe Stufe wird gekappt")
+    _gleich(kaputt.stufe_von("gibtsnicht"), 0, "Unbekannte Kennung bleibt wirkungslos")
     return true
 
 

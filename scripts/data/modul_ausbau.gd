@@ -21,10 +21,11 @@ const STEIGERUNG := 7.5
 
 ## Preis für den Sprung von [param stufe] auf die nächste.
 ## Gibt 0 zurück, wenn bereits voll ausgebaut.
-static func kosten(index: int, stufe: int) -> float:
+## [param rabatt] ist ein Faktor aus dem Protokoll-Ausbau "Feinbau".
+static func kosten(index: int, stufe: int, rabatt: float = 1.0) -> float:
     if stufe >= MAX_STUFE:
         return 0.0
-    return Modul.basiskosten(index) * ERSTE_STUFE * pow(STEIGERUNG, stufe)
+    return Modul.basiskosten(index) * ERSTE_STUFE * pow(STEIGERUNG, stufe) * rabatt
 
 
 ## Förderungsfaktor, den eine Ausbaustufe bewirkt.

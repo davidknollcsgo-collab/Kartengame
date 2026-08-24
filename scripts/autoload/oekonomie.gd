@@ -134,7 +134,8 @@ static func prestige_mult(protokolle: int) -> float:
 ## Ein Rueckwaertssprung der Systemuhr ergibt bewusst 0: sonst liesse sich das
 ## Spiel durch Zeitverstellen beliebig ausbeuten. Der Aufrufer stempelt den
 ## Zeitstempel danach neu.
-static func offline_ertrag(rate: float, verstrichen: float, cap: float = OFFLINE_CAP_BASIS) -> float:
+static func offline_ertrag(rate: float, verstrichen: float,
+        cap: float = OFFLINE_CAP_BASIS, anteil: float = OFFLINE_ANTEIL) -> float:
     if verstrichen <= 0.0 or rate <= 0.0 or is_nan(verstrichen):
         return 0.0
-    return rate * minf(verstrichen, cap) * OFFLINE_ANTEIL
+    return rate * minf(verstrichen, cap) * anteil
