@@ -23,6 +23,7 @@ signal kern_angetippt
 var _module: Array[ModulKnoten] = []
 var _kern: Kern
 var _fund: Fund
+var _hinweis: Hinweis
 var _drohnen: Array[Drohne] = []
 
 ## Läuft für die Energiepulse auf den Versorgungsleitungen.
@@ -33,6 +34,8 @@ func _ready() -> void:
     _baue_module()
     _baue_kern()
     _baue_drohnen()
+    _hinweis = Hinweis.new()
+    add_child(_hinweis)
 
     Spielstand.fund_erschienen.connect(zeige_fund)
     Spielstand.bestand_geaendert.connect(_bei_bestand)
@@ -80,6 +83,7 @@ func zeige_gutschrift(ort: Vector2, text: String, farbe: Color,
 func _bei_bestand(_index: int, _anzahl: int) -> void:
     aktualisiere()
     _verteile_drohnen()
+    _aktualisiere_hinweis()
 
 
 ## Kauft an der gewaehlten Baugruppe die eingestellte Menge.
@@ -102,12 +106,39 @@ func _menge_fuer(index: int) -> int:
         Spielstand.plasma), 1)
 
 
+## Zeigt den Einstiegshinweis an der passenden Stelle oder blendet ihn aus.
+func _aktualisiere_hinweis() -> void:
+    if _hinweis == null:
+        return
+    var summe := 0
+    for n in Spielstand.bestand:
+        summe += n
+    var erstpreis := Oekonomie.kosten(0, Spielstand.bestand[0])
+    var schritt := Einstieg.naechster(summe, Spielstand.plasma, erstpreis,
+        Spielstand.prestige_anzahl)
+
+    match schritt:
+        Einstieg.Schritt.KERN:
+            _hinweis.setze(Einstieg.text(schritt), Vector2.ZERO, Kern.RADIUS + 14.0)
+        Einstieg.Schritt.KAUFEN:
+            # Auf die guenstigste Baugruppe zeigen, die gerade bezahlbar ist.
+            var ziel := 0
+            for k in _module:
+                if Oekonomie.kosten(k.index, Spielstand.bestand[k.index]) <= Spielstand.plasma:
+                    ziel = k.index
+            _hinweis.setze(Einstieg.text(schritt), _module[ziel].position,
+                ModulKnoten.GROESSE.x * 0.56)
+        _:
+            _hinweis.setze("", Vector2.ZERO, 0.0)
+
+
 func aktualisiere() -> void:
     for k in _module:
         var m := _menge_fuer(k.index)
         var preis := Oekonomie.kosten_summe(k.index, Spielstand.bestand[k.index], m)
         k.aktualisiere(Spielstand.bestand[k.index], m, preis,
             preis <= Spielstand.plasma, Spielstand.modul_stufe[k.index])
+    _aktualisiere_hinweis()
     queue_redraw()
 
 

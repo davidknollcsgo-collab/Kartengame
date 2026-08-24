@@ -19,7 +19,7 @@ const TESTS: PackedStringArray = [
     "_test_kostenkurve", "_test_massenkauf", "_test_max_kaufbar",
     "_test_meilensteine", "_test_produktion", "_test_prestige", "_test_kaltstart",
     "_test_offline", "_test_speicherstand", "_test_formatter",
-    "_test_ausbauten", "_test_modul_ausbau", "_test_protokoll_ausbau", "_test_funde", "_test_errungenschaften", "_test_layout", "_test_speicher_platte", "_test_langzeit",
+    "_test_ausbauten", "_test_modul_ausbau", "_test_protokoll_ausbau", "_test_funde", "_test_einstieg", "_test_errungenschaften", "_test_layout", "_test_speicher_platte", "_test_langzeit",
 ]
 
 
@@ -684,6 +684,31 @@ func _test_funde() -> bool:
     _ist(c.boost_rest() > Ereignis.SCHUB_DAUER - 5.0, "Schubfund laeuft die volle Dauer")
 
     _gleich(_neuer_stand().loese_fund_ein(-1), "", "Unbekannte Art bringt nichts")
+    return true
+
+
+func _test_einstieg() -> bool:
+    var K := Einstieg.Schritt
+
+    # Frischer Start: 15 Plasma, erstes Solarsegel kostet genau 15.
+    _gleich(Einstieg.naechster(0, 15.0, 15.0, 0), K.KAUFEN,
+        "Wer sich etwas leisten kann, wird zum Bauen geschickt")
+    _gleich(Einstieg.naechster(0, 14.0, 15.0, 0), K.KERN,
+        "Wer nichts kaufen kann, wird zum Kern geschickt")
+    _gleich(Einstieg.naechster(1, 0.0, 16.8, 0), K.KERN,
+        "Nach dem ersten Kauf wieder zum Kern")
+
+    # Der Hinweis muss von selbst verschwinden.
+    _gleich(Einstieg.naechster(Einstieg.GENUG, 1e9, 15.0, 0), K.KEIN,
+        "Ab genug Baugruppen kein Hinweis mehr")
+    _gleich(Einstieg.naechster(Einstieg.GENUG - 1, 1e9, 15.0, 0), K.KAUFEN,
+        "Eine darunter noch")
+    _gleich(Einstieg.naechster(0, 0.0, 15.0, 1), K.KEIN,
+        "Wer schon zurueckgesetzt hat, braucht keine Anleitung")
+
+    _ist(not Einstieg.text(K.KERN).is_empty(), "Kern-Hinweis hat einen Text")
+    _ist(not Einstieg.text(K.KAUFEN).is_empty(), "Kauf-Hinweis hat einen Text")
+    _gleich(Einstieg.text(K.KEIN), "", "Ohne Schritt kein Text")
     return true
 
 
