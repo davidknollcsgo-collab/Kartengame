@@ -14,9 +14,13 @@ niemand klagt.
 - Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur
 
 Godot bringt eigene Drittanbieter-Komponenten mit. Deren Lizenztexte liefert
-die Engine über `Engine.get_license_text()` und
-`Engine.get_copyright_info()` — der Lizenz-Bildschirm liest sie zur Laufzeit
-aus, statt sie hier zu duplizieren.
+die Engine über `Engine.get_license_text()` — der Lizenz-Bildschirm im Spiel
+liest sie zur Laufzeit aus, statt sie hier zu duplizieren.
+
+**Der Bildschirm ist gebaut** und über *Bericht → Lizenzen* erreichbar. Die
+`OFL.txt`-Dateien werden über `include_filter` in `export_presets.cfg`
+ausdrücklich in den Export aufgenommen — Godot nimmt `.txt` sonst nicht mit,
+und der Bildschirm bliebe im ausgelieferten Spiel leer.
 
 ## Schriften
 

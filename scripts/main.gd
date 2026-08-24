@@ -18,6 +18,7 @@ var _ausbau_schirm: AusbauSchirm
 var _bericht_schirm: BerichtSchirm
 var _loesch_dialog: Dialog
 var _modul_schirm: ModulSchirm
+var _lizenz_schirm: LizenzSchirm
 
 var _druck_bei := Vector2.ZERO
 var _druck_aktiv := false
@@ -89,7 +90,12 @@ func _baue_oberflaeche() -> void:
     _bericht_schirm = BerichtSchirm.new()
     _bericht_schirm.visible = false
     _bericht_schirm.zuruecksetzen_gewuenscht.connect(_frage_loeschen)
+    _bericht_schirm.lizenzen_gewuenscht.connect(func(): _lizenz_schirm.visible = true)
     oben.add_child(_bericht_schirm)
+
+    _lizenz_schirm = LizenzSchirm.new()
+    _lizenz_schirm.visible = false
+    oben.add_child(_lizenz_schirm)
 
     _modul_schirm = ModulSchirm.new()
     _modul_schirm.visible = false
@@ -257,6 +263,8 @@ func _zeige_probe(was: String) -> void:
             _frage_prestige()
         "bericht":
             _bericht_schirm.visible = true
+        "lizenzen":
+            _lizenz_schirm.visible = true
         "fund":
             _station.zeige_fund(Ereignis.Art.QUANTEN)
         "modul":

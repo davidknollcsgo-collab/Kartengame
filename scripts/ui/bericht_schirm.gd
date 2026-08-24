@@ -15,10 +15,12 @@ const ZEILE := 74.0
 
 signal geschlossen
 signal zuruecksetzen_gewuenscht
+signal lizenzen_gewuenscht
 
 var _feld := Rect2()
 var _schliessen := Rect2()
 var _reset := Rect2()
+var _lizenzen := Rect2()
 var _liste: ErrungenschaftListe
 
 
@@ -45,6 +47,8 @@ func _gui_input(ereignis: InputEvent) -> void:
     if _schliessen.has_point(m.position):
         visible = false
         geschlossen.emit()
+    elif _lizenzen.has_point(m.position):
+        lizenzen_gewuenscht.emit()
     elif _reset.has_point(m.position):
         zuruecksetzen_gewuenscht.emit()
     accept_event()
@@ -65,6 +69,16 @@ func _draw() -> void:
     draw_string(titel, Vector2(links, _feld.position.y + 48.0), "BERICHT",
         HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Color(0.94, 0.96, 1.0))
     _zeichne_kreuz()
+
+    # Zugang zu den Lizenzen im Kopf, bewusst weit weg vom Löschknopf.
+    _lizenzen = Rect2(_schliessen.position.x - 116.0, _feld.position.y + 20.0,
+        104.0, Masse.TIPPFLAECHE - 8.0)
+    draw_string(text, Vector2(_lizenzen.position.x, _lizenzen.get_center().y + 6.0),
+        "Lizenzen", HORIZONTAL_ALIGNMENT_CENTER, _lizenzen.size.x, 16,
+        Color(0.54, 0.66, 0.82))
+    draw_line(Vector2(_lizenzen.position.x + 18.0, _lizenzen.get_center().y + 12.0),
+        Vector2(_lizenzen.end.x - 18.0, _lizenzen.get_center().y + 12.0),
+        Color(0.36, 0.46, 0.60), 1.0)
 
     var y := _feld.position.y + 82.0
     for paar in _kennzahlen():
