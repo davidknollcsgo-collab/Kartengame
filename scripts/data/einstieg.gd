@@ -13,7 +13,7 @@ extends RefCounted
 enum Schritt {
     ## Nichts anzeigen.
     KEIN,
-    ## Auf den Stationskern zeigen - es gibt nichts zu kaufen.
+    ## Auf das Mutterschiff zeigen - es gibt nichts zu kaufen.
     KERN,
     ## Auf die erste bezahlbare Baugruppe zeigen.
     KAUFEN,
@@ -39,7 +39,7 @@ static func naechster(bestand_summe: int, plasma: float, erstpreis: float,
 static func text(schritt: Schritt) -> String:
     match schritt:
         Schritt.KERN:
-            return "Kern antippen"
+            return "Mutterschiff antippen"
         Schritt.KAUFEN:
             return "Baugruppe bauen"
     return ""

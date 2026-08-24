@@ -835,11 +835,11 @@ func _test_layout() -> bool:
 
     # Der Kern liegt mittig und muss frei bleiben, sonst laesst er sich nicht
     # antippen.
-    var kern := Rect2(-Vector2(Kern.RADIUS, Kern.RADIUS),
-        Vector2(Kern.RADIUS, Kern.RADIUS) * 2.0)
+    var kern := Rect2(-Vector2(Mutterschiff.RING, Mutterschiff.RING),
+        Vector2(Mutterschiff.RING, Mutterschiff.RING) * 2.0)
     for i in Modul.ANZAHL:
         _ist(not Raster.modul_flaeche(i).intersects(kern),
-            "Layout: Baugruppe %d ueberlappt den Kern nicht" % i)
+            "Layout: Baugruppe %d ueberlappt das Mutterschiff nicht" % i)
 
     _gleich(Formen.kante(Rect2(0, 0, 100, 60), 10.0).size(), 8,
         "Abgeschraegtes Rechteck hat acht Ecken")

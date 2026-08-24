@@ -9,8 +9,9 @@ extends RefCounted
 
 ## Waagerechter Abstand der Spalten von der Mitte.
 ##
-## Eng genug, dass beide Spalten im Hochformat ohne Schieben sichtbar sind.
-const SPALTE_X := 195.0
+## Weit genug, dass der Rumpf des Mutterschiffs dazwischen Platz hat, und eng
+## genug, dass beide Spalten im Hochformat ohne Schieben sichtbar bleiben.
+const SPALTE_X := 238.0
 
 ## Senkrechte Mittelpunkte der vier Reihen.
 ##

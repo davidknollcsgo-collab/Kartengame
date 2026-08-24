@@ -21,7 +21,7 @@ signal modul_angetippt(index: int)
 signal kern_angetippt
 
 var _module: Array[ModulKnoten] = []
-var _kern: Kern
+var _kern: Mutterschiff
 var _fund: Fund
 var _hinweis: Hinweis
 var _drohnen: Array[Drohne] = []
@@ -53,7 +53,7 @@ func _baue_module() -> void:
 
 
 func _baue_kern() -> void:
-    _kern = Kern.new()
+    _kern = Mutterschiff.new()
     _kern.position = Vector2.ZERO
     add_child(_kern)
 
@@ -119,7 +119,7 @@ func _aktualisiere_hinweis() -> void:
 
     match schritt:
         Einstieg.Schritt.KERN:
-            _hinweis.setze(Einstieg.text(schritt), Vector2.ZERO, Kern.RADIUS + 14.0)
+            _hinweis.setze(Einstieg.text(schritt), Vector2.ZERO, Mutterschiff.RING + 14.0)
         Einstieg.Schritt.KAUFEN:
             # Auf die guenstigste Baugruppe zeigen, die gerade bezahlbar ist.
             var ziel := 0
@@ -139,7 +139,21 @@ func aktualisiere() -> void:
         k.aktualisiere(Spielstand.bestand[k.index], m, preis,
             preis <= Spielstand.plasma, Spielstand.modul_stufe[k.index])
     _aktualisiere_hinweis()
+    _setze_schub()
     queue_redraw()
+
+
+## Uebersetzt den Ausbaustand in die Triebwerksleistung des Mutterschiffs.
+##
+## Bewusst ueber die Stueckzahl und nicht ueber die Foerderrate: die waechst
+## exponentiell und waere nach einer Stunde dauerhaft am Anschlag.
+func _setze_schub() -> void:
+    if _kern == null:
+        return
+    var summe := 0
+    for n in Spielstand.bestand:
+        summe += n
+    _kern.last = clampf(float(summe) / 260.0, 0.10, 1.0)
 
 
 ## Verteilt die Drohnen gleichmaessig auf die Baugruppen, die etwas leisten.
@@ -229,7 +243,7 @@ func kern_blitzen() -> void:
 ## Punkt auf dem Kernrand, der [param von] zugewandt ist.
 func kern_andockpunkt(von: Vector2) -> Vector2:
     var richtung := (von - _kern.position).normalized()
-    return _kern.position + richtung * (Kern.RADIUS + 4.0)
+    return _kern.position + richtung * (Mutterschiff.RING + 4.0)
 
 
 ## Umschliessendes Rechteck der Station - die Kamera begrenzt sich daran.
@@ -258,10 +272,10 @@ func _draw() -> void:
 ##
 ## Sie erklären wortlos, dass etwas fließt - anders als die Drohnen, die man
 ## erst nach einer Weile als Transport erkennt.
-func _zeichne_pulse(von: Vector2, farbe: Color) -> void:
+func _zeichne_pulse(von: Vector2, nach: Vector2, farbe: Color) -> void:
     for i in PULSE:
         var t := fmod(_zeit / PULS_DAUER + float(i) / float(PULSE), 1.0)
-        var ort := von.lerp(Vector2.ZERO, t)
+        var ort := von.lerp(nach, t)
         # Am Anfang und Ende ausblenden, damit die Punkte nicht aufploppen.
         var staerke := sin(t * PI)
         var f := farbe
