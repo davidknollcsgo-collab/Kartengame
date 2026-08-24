@@ -5,10 +5,12 @@ on:
     branches: ["**"]
   pull_request:
 
-# Push und pull_request feuern beide auf denselben Commit. Ohne diese Gruppe
-# laeuft jeder Commit auf einem PR-Branch doppelt.
+# Push und pull_request feuern beide auf denselben Commit. Der Schlüssel muss
+# deshalb der Commit selbst sein: github.ref und github.head_ref
+# unterscheiden sich je Ereignistyp und ergaben zwei getrennte Gruppen, sodass
+# weiterhin doppelt gebaut wurde.
 concurrency:
-  group: ci-${{ github.head_ref || github.ref }}
+  group: ci-${{ github.event.pull_request.head.sha || github.sha }}
   cancel-in-progress: true
 
 env:
