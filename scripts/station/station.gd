@@ -195,6 +195,7 @@ func zeige_fund(art: int) -> void:
 
 func _bei_fund(art: int) -> void:
     var text := Spielstand.loese_fund_ein(art)
+    Klang.spiele(Klang.Art.FUND)
     var ort: Vector2 = _fund.position if is_instance_valid(_fund) else Vector2.ZERO
     zeige_gutschrift(ort, text, Color(0.95, 0.92, 0.60))
     Spielstand.fund_eingeloest.emit(text)

@@ -72,13 +72,16 @@ func _gui_input(ereignis: InputEvent) -> void:
 
 
 func _kaufe(i: int) -> void:
+    var gelungen := false
     if reiter == Reiter.QUANTEN:
         match i:
-            0: Spielstand.kaufe_schub()
-            1: Spielstand.kaufe_speicher()
-            2: Spielstand.kaufe_verstaerker()
+            0: gelungen = Spielstand.kaufe_schub()
+            1: gelungen = Spielstand.kaufe_speicher()
+            2: gelungen = Spielstand.kaufe_verstaerker()
     elif i < _kennungen.size():
-        Spielstand.kaufe_protokoll_ausbau(_kennungen[i])
+        gelungen = Spielstand.kaufe_protokoll_ausbau(_kennungen[i])
+    if gelungen:
+        Klang.spiele(Klang.Art.AUSBAU)
 
 
 ## Die Angebote des aktiven Reiters als Anzeigedaten. An einer Stelle

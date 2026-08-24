@@ -89,6 +89,9 @@ var errungen: PackedStringArray = []
 ## Anzahl bisheriger Zuruecksetzungen.
 var prestige_anzahl := 0
 
+## Ob Rueckmeldungstoene ausgegeben werden.
+var ton := true
+
 ## Gewaehlte Kaufmenge; -1 bedeutet "so viele wie bezahlbar".
 var kaufmenge := 1
 
@@ -525,6 +528,7 @@ func als_dict() -> Dictionary:
         "verstaerker": verstaerker,
         "speicher_stufe": speicher_stufe,
         "kaufmenge": kaufmenge,
+        "ton": ton,
         "errungen": Array(errungen),
         "prestige_anzahl": prestige_anzahl,
         "spielzeit": spielzeit,
@@ -551,6 +555,7 @@ func aus_dict(d: Dictionary) -> void:
     verstaerker = bool(d.get("verstaerker", false))
     speicher_stufe = clampi(int(d.get("speicher_stufe", 0)), 0, Ausbau.SPEICHER_MAX)
     kaufmenge = int(d.get("kaufmenge", 1))
+    ton = bool(d.get("ton", true))
     prestige_anzahl = int(d.get("prestige_anzahl", 0))
     spielzeit = float(d.get("spielzeit", 0.0))
     errungen = PackedStringArray()

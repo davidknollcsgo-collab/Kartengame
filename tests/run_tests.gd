@@ -19,7 +19,7 @@ const TESTS: PackedStringArray = [
     "_test_kostenkurve", "_test_massenkauf", "_test_max_kaufbar",
     "_test_meilensteine", "_test_produktion", "_test_prestige", "_test_kaltstart",
     "_test_offline", "_test_speicherstand", "_test_formatter",
-    "_test_ausbauten", "_test_modul_ausbau", "_test_protokoll_ausbau", "_test_funde", "_test_einstieg", "_test_errungenschaften", "_test_layout", "_test_speicher_platte", "_test_langzeit",
+    "_test_ausbauten", "_test_modul_ausbau", "_test_protokoll_ausbau", "_test_funde", "_test_einstieg", "_test_klang", "_test_errungenschaften", "_test_layout", "_test_speicher_platte", "_test_langzeit",
 ]
 
 
@@ -709,6 +709,41 @@ func _test_einstieg() -> bool:
     _ist(not Einstieg.text(K.KERN).is_empty(), "Kern-Hinweis hat einen Text")
     _ist(not Einstieg.text(K.KAUFEN).is_empty(), "Kauf-Hinweis hat einen Text")
     _gleich(Einstieg.text(K.KEIN), "", "Ohne Schritt kein Text")
+    return true
+
+
+func _test_klang() -> bool:
+    # Toene kann der Testlauf nicht hoeren - aber nachrechnen, dass ueberhaupt
+    # ein brauchbarer Puffer entsteht. Ein stiller oder leerer Ton faellt sonst
+    # erst auf dem Geraet auf, wo niemand ihn einer Ursache zuordnet.
+    var k: Node = load("res://scripts/autoload/klang.gd").new()
+
+    for art in [k.Art.KAUF, k.Art.AUSBAU, k.Art.FUND, k.Art.PRESTIGE, k.Art.TIPP]:
+        var s: AudioStreamWAV = k._erzeuge(art)
+        _ist(s != null, "Ton %d wird erzeugt" % art)
+        _gleich(s.format, AudioStreamWAV.FORMAT_16_BITS, "Ton %d ist 16 Bit" % art)
+        _gleich(s.mix_rate, k.ABTASTRATE, "Ton %d hat die richtige Abtastrate" % art)
+        _ist(not s.stereo, "Ton %d ist einkanalig" % art)
+        _ist(s.data.size() > 400, "Ton %d hat einen Puffer" % art)
+        _gleich(s.data.size() % 2, 0, "Ton %d hat vollstaendige Abtastwerte" % art)
+
+        # Nicht still und nicht uebersteuert.
+        var spitze := 0
+        for i in range(0, mini(s.data.size(), 8000), 2):
+            spitze = maxi(spitze, absi(s.data.decode_s16(i)))
+        _ist(spitze > 1000, "Ton %d ist hoerbar laut" % art)
+        _ist(spitze <= 32767, "Ton %d uebersteuert nicht" % art)
+
+    # Der erste Abtastwert muss nahe null liegen, sonst knackt es beim Einsatz.
+    var kauf: AudioStreamWAV = k._erzeuge(k.Art.KAUF)
+    _ist(absi(kauf.data.decode_s16(0)) < 2000, "Ton setzt weich ein statt zu knacken")
+
+    # Abgeschaltet darf nichts passieren - und ohne Stimmen auch nicht.
+    k.an = false
+    k.spiele(k.Art.KAUF)
+    _ist(true, "Abgeschalteter Ton wirft keinen Fehler")
+
+    k.free()
     return true
 
 

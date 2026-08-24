@@ -19,6 +19,7 @@ Erstes Prestige nach rund zwei Stunden (gemessen, siehe `tools/balance.gd`).
 | 1 | Ökonomie, Formeln, Formatter, Tests | ✅ |
 | 2 | Station, Module, Drohnen, Kamera | ✅ |
 | 3 | Prestige-UI, Offline-Dialog, Speichern | ✅ |
+| 3b | Spieltiefe: Ausbauten, Funde, Ton, Einstieg | ✅ |
 | 4 | Android-Export, AAB | offen |
 | 5 | AdMob, Play Billing, Consent | offen |
 | 6 | Datenschutz, Data Safety, Lizenz-Screen | offen |
@@ -70,6 +71,12 @@ scripts/data/waehrung.gd      Namen und Zeichen der drei Währungen
 scripts/data/ausbau.gd        Stammdaten der Ausbauten
 scripts/data/errungenschaft.gd Errungenschaften und Belohnungen
 tests/run_tests.gd            Headless-Testlauf
+scripts/data/modul_ausbau.gd  Ausbaustufen je Baugruppe (Plasma)
+scripts/data/protokoll_ausbau.gd Dauerhafte Ausbauten (Protokolle)
+scripts/data/ereignis.gd      Treibende Funde und Belohnungen
+scripts/data/einstieg.gd      Welcher Einstiegshinweis gerade dran ist
+scripts/autoload/klang.gd     Rechnerisch erzeugte Rückmeldungstöne
+scripts/ui/lizenz_schirm.gd   Lizenzen (rechtlich verpflichtend)
 tools/balance.gd              Balancing-Messung über 48 Spielstunden
 ```
 

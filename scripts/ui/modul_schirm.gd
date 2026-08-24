@@ -47,10 +47,12 @@ func _gui_input(ereignis: InputEvent) -> void:
         visible = false
         geschlossen.emit()
     elif _kaufen.has_point(m.position):
-        Spielstand.kaufe(index, _menge())
+        if Spielstand.kaufe(index, _menge()):
+            Klang.spiele(Klang.Art.KAUF)
         queue_redraw()
     elif _ausbauen.has_point(m.position):
-        Spielstand.kaufe_modul_ausbau(index)
+        if Spielstand.kaufe_modul_ausbau(index):
+            Klang.spiele(Klang.Art.AUSBAU)
         queue_redraw()
     accept_event()
 

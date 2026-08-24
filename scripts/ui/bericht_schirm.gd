@@ -21,6 +21,7 @@ var _feld := Rect2()
 var _schliessen := Rect2()
 var _reset := Rect2()
 var _lizenzen := Rect2()
+var _ton := Rect2()
 var _liste: ErrungenschaftListe
 
 
@@ -47,6 +48,13 @@ func _gui_input(ereignis: InputEvent) -> void:
     if _schliessen.has_point(m.position):
         visible = false
         geschlossen.emit()
+    elif _ton.has_point(m.position):
+        Spielstand.ton = not Spielstand.ton
+        Klang.an = Spielstand.ton
+        # Beim Einschalten gleich hoerbar machen, was man eingeschaltet hat.
+        if Spielstand.ton:
+            Klang.spiele(Klang.Art.TIPP)
+        queue_redraw()
     elif _lizenzen.has_point(m.position):
         lizenzen_gewuenscht.emit()
     elif _reset.has_point(m.position):
@@ -70,7 +78,17 @@ func _draw() -> void:
         HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Color(0.94, 0.96, 1.0))
     _zeichne_kreuz()
 
-    # Zugang zu den Lizenzen im Kopf, bewusst weit weg vom Löschknopf.
+    # Tonschalter und Lizenzen im Kopf, bewusst weit weg vom Löschknopf.
+    _ton = Rect2(_schliessen.position.x - 214.0, _feld.position.y + 20.0,
+        90.0, Masse.TIPPFLAECHE - 8.0)
+    draw_string(text, Vector2(_ton.position.x, _ton.get_center().y + 6.0),
+        "Ton: " + ("an" if Spielstand.ton else "aus"),
+        HORIZONTAL_ALIGNMENT_CENTER, _ton.size.x, 16,
+        Color(0.54, 0.78, 0.66) if Spielstand.ton else Color(0.50, 0.54, 0.60))
+    draw_line(Vector2(_ton.position.x + 12.0, _ton.get_center().y + 12.0),
+        Vector2(_ton.end.x - 12.0, _ton.get_center().y + 12.0),
+        Color(0.36, 0.46, 0.60), 1.0)
+
     _lizenzen = Rect2(_schliessen.position.x - 116.0, _feld.position.y + 20.0,
         104.0, Masse.TIPPFLAECHE - 8.0)
     draw_string(text, Vector2(_lizenzen.position.x, _lizenzen.get_center().y + 6.0),
@@ -112,7 +130,9 @@ func _draw() -> void:
     # Eintrag, der wie ein Darstellungsfehler aussieht.
     var zeilen := maxi(int(frei / ZEILE), 1)
     _liste.position = Vector2(links, y)
-    _liste.size = Vector2(innen, float(zeilen) * ZEILE)
+    # Der Abstand hinter der letzten Zeile faellt weg, sonst lugt die naechste
+    # mit einem Pixel Hoehe darunter hervor und sieht wie ein Fehler aus.
+    _liste.size = Vector2(innen, float(zeilen) * ZEILE - 10.0)
 
     _reset = Rect2(_feld.get_center().x - 110.0, _feld.end.y - 74.0, 220.0, 52.0)
     draw_colored_polygon(Formen.kante(_reset, 12.0), Color(0.82, 0.30, 0.28, 0.14))

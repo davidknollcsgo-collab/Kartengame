@@ -30,6 +30,7 @@ var _schuss_zaehler := 0
 func _ready() -> void:
     # Vor allem anderen: erst laden, dann Offline verrechnen, dann anzeigen.
     Spielstand.lade_von_platte()
+    Klang.an = Spielstand.ton
 
     _baue_hintergrund()
 
@@ -131,6 +132,7 @@ func _frage_prestige() -> void:
 
 func _fuehre_prestige_aus() -> void:
     Spielstand.prestige()
+    Klang.spiele(Klang.Art.PRESTIGE)
     _station.aktualisiere()
     Spielstand.speichere()
 
@@ -204,6 +206,7 @@ func _tippe(bildschirm: Vector2) -> void:
     if _station.kern_bei(lokal):
         var ertrag: float = Spielstand.manuell_sammeln()
         _station.kern_blitzen()
+        Klang.spiele(Klang.Art.TIPP)
         _station.zeige_gutschrift(lokal + Vector2(0.0, -20.0),
             "+" + Zahl.kurz(ertrag), Color(0.55, 0.90, 1.0))
         return
@@ -224,6 +227,7 @@ func _tippe(bildschirm: Vector2) -> void:
     if index >= 0:
         var vorher := Spielstand.rate()
         if _station.kaufe_an(index):
+            Klang.spiele(Klang.Art.KAUF)
             # Der Zugewinn an Foerderung ist die Zahl, die den Spieler
             # interessiert - nicht der bezahlte Preis.
             var zuwachs := Spielstand.rate() - vorher
