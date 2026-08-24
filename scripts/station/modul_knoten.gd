@@ -87,7 +87,7 @@ func _draw() -> void:
         "x%d" % anzahl, HORIZONTAL_ALIGNMENT_LEFT, -1, 16,
         leit if aktiv else Color(0.40, 0.43, 0.48))
 
-    var preistext := Zahl.kurz(preis) + " ¢"
+    var preistext := Waehrung.plasma(preis)
     if menge > 1:
         preistext = "x%d  %s" % [menge, preistext]
     draw_string(schrift, Vector2(r.position.x + 24.0, r.position.y + 84.0),

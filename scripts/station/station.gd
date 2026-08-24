@@ -25,7 +25,7 @@ func _ready() -> void:
     _baue_drohnen()
 
     Spielstand.bestand_geaendert.connect(_bei_bestand)
-    Spielstand.credits_geaendert.connect(_bei_credits)
+    Spielstand.plasma_geaendert.connect(_bei_credits)
     aktualisiere()
 
 
@@ -74,14 +74,14 @@ func _menge_fuer(index: int) -> int:
     if Spielstand.kaufmenge >= 1:
         return Spielstand.kaufmenge
     return maxi(Oekonomie.max_kaufbar(index, Spielstand.bestand[index],
-        Spielstand.credits), 1)
+        Spielstand.plasma), 1)
 
 
 func aktualisiere() -> void:
     for k in _module:
         var m := _menge_fuer(k.index)
         var preis := Oekonomie.kosten_summe(k.index, Spielstand.bestand[k.index], m)
-        k.aktualisiere(Spielstand.bestand[k.index], m, preis, preis <= Spielstand.credits)
+        k.aktualisiere(Spielstand.bestand[k.index], m, preis, preis <= Spielstand.plasma)
     queue_redraw()
 
 

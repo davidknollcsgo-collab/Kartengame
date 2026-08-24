@@ -37,7 +37,7 @@ func _durchlauf() -> void:
         st.gutschrift(st.rate() * DT)
 
         # In den ersten Minuten tippt ein Spieler noch selbst - ohne das
-        # kaeme die Station bei 0.1 Credits pro Sekunde kaum in Gang.
+        # kaeme die Station bei 0.1 Plasma pro Sekunde kaum in Gang.
         if t < 180.0 and fmod(t, 2.0) < DT:
             st.manuell_sammeln()
 
@@ -46,15 +46,15 @@ func _durchlauf() -> void:
         for i in Modul.ANZAHL:
             if erstkauf[i] < 0.0 and st.bestand[i] > 0:
                 erstkauf[i] = t
-        if erstes_prestige < 0.0 and Oekonomie.prestige_moeglich(st.lebenszeit_credits):
+        if erstes_prestige < 0.0 and Oekonomie.prestige_moeglich(st.lebenszeit_plasma):
             erstes_prestige = t
 
         for marke in [600.0, 3600.0, 4.0 * 3600.0, 24.0 * 3600.0]:
             if not berichtet.has(marke) and t >= marke:
                 berichtet[marke] = true
-                print("   nach %-8s  %10s ¢/s   gesamt %10s ¢   %d Baugruppen"
+                print("   nach %-8s  %10s ◆/s   gesamt %10s ◆   %d Baugruppen"
                     % [Zahl.zeit(marke), Zahl.kurz(st.rate()),
-                       Zahl.kurz(st.lebenszeit_credits), _summe(st)])
+                       Zahl.kurz(st.lebenszeit_plasma), _summe(st)])
 
     print("")
     print("   Erste Baugruppe je Stufe:")
@@ -67,7 +67,7 @@ func _durchlauf() -> void:
         print("   Erstes Prestige: in 48 h NICHT erreicht")
     else:
         print("   Erstes Prestige nach: %s" % Zahl.zeit(erstes_prestige))
-    print("   Protokolle nach 48 h: %d" % Oekonomie.prestige_ertrag(st.lebenszeit_credits))
+    print("   Protokolle nach 48 h: %d" % Oekonomie.prestige_ertrag(st.lebenszeit_plasma))
     st.free()
 
 
@@ -81,7 +81,7 @@ func _kaufe_bestes(st: Node) -> void:
     for i in Modul.ANZAHL:
         var besessen: int = st.bestand[i]
         var preis := Oekonomie.kosten(i, besessen)
-        if preis > st.credits:
+        if preis > st.plasma:
             continue
         var vorher := Oekonomie.modul_rate(i, besessen)
         var nachher := Oekonomie.modul_rate(i, besessen + 1)

@@ -14,6 +14,7 @@ var _sterne: ColorRect
 var _leiste: Leiste
 var _prestige_dialog: Dialog
 var _offline_dialog: Dialog
+var _ausbau_schirm: AusbauSchirm
 
 var _druck_bei := Vector2.ZERO
 var _druck_aktiv := false
@@ -60,6 +61,7 @@ func _baue_oberflaeche() -> void:
     _leiste.menge = Spielstand.kaufmenge
     _leiste.menge_gewaehlt.connect(_bei_menge)
     _leiste.prestige_gewuenscht.connect(_frage_prestige)
+    _leiste.ausbau_gewuenscht.connect(func(): _ausbau_schirm.visible = true)
     schicht.add_child(_leiste)
 
     # Dialoge oben auf, damit nichts dahinter bedienbar bleibt.
@@ -76,6 +78,10 @@ func _baue_oberflaeche() -> void:
     _offline_dialog.visible = false
     oben.add_child(_offline_dialog)
 
+    _ausbau_schirm = AusbauSchirm.new()
+    _ausbau_schirm.visible = false
+    oben.add_child(_ausbau_schirm)
+
 
 func _bei_menge(menge: int) -> void:
     Spielstand.kaufmenge = menge
@@ -83,14 +89,14 @@ func _bei_menge(menge: int) -> void:
 
 
 func _frage_prestige() -> void:
-    var gewinn := Oekonomie.prestige_ertrag(Spielstand.lebenszeit_credits)
+    var gewinn := Oekonomie.prestige_ertrag(Spielstand.lebenszeit_plasma)
     if gewinn <= 0:
         return
     var neu := Spielstand.protokolle + gewinn
     # Ausdruecklich benennen, was verloren geht: ein versehentlicher Reset
     # kostet Stunden und ist nicht rueckgaengig zu machen.
     _prestige_dialog.zeige("Station zurücksetzen?", PackedStringArray([
-        "Alle Baugruppen und Credits gehen verloren.",
+        "Alle Baugruppen und alles Plasma gehen verloren.",
         "",
         "Du erhältst %d Protokolle (insgesamt %d)." % [gewinn, neu],
         "Produktion dann dauerhaft x%.2f statt x%.2f." % [
@@ -108,7 +114,7 @@ func _zeige_offline(betrag: float) -> void:
     _offline_dialog.zeige("Willkommen zurück", PackedStringArray([
         "Die Station lief %s ohne dich weiter." % Zahl.zeit(Spielstand.letzte_offline_dauer),
         "",
-        "Gutschrift: %s ¢" % Zahl.kurz(betrag),
+        "Gutschrift: %s" % Waehrung.plasma(betrag),
     ]), "Übernehmen")
 
 
@@ -193,6 +199,9 @@ func _zeige_probe(was: String) -> void:
     match was:
         "prestige":
             _frage_prestige()
+        "ausbau":
+            Spielstand.gutschrift_quanten(64)
+            _ausbau_schirm.visible = true
         "offline":
             # Plausible Dauer fuer die Aufnahme; im Spiel kommt sie aus
             # verbuche_offline().
@@ -206,16 +215,17 @@ func _zeige_probe(was: String) -> void:
 ## aussieht, laesst sich daran nicht beurteilen.
 func _fuelle_vorrat() -> void:
     Spielstand.protokolle = 12
-    Spielstand.credits = 5.0e7
+    Spielstand.plasma = 5.0e7
     # Ohne Lebenszeitertrag waere Prestige gesperrt und der Knopf nie zu sehen.
     # Auf die aktuelle Prestige-Kurve abgestimmt: entspricht knapp dem ersten
     # erreichbaren Reset. Der alte Wert stammte aus der Kurve vor dem
     # Balancing und liess den Knopf viertausend Protokolle ausweisen.
-    Spielstand.lebenszeit_credits = 6.0e7
+    Spielstand.lebenszeit_plasma = 6.0e7
+    Spielstand.gutschrift_quanten(18)
     for paar in [[0, 27], [1, 14], [2, 11], [3, 6], [4, 3], [5, 1]]:
         Spielstand.bestand[paar[0]] = paar[1]
         Spielstand.bestand_geaendert.emit(paar[0], paar[1])
-    Spielstand.credits_geaendert.emit(Spielstand.credits)
+    Spielstand.plasma_geaendert.emit(Spielstand.plasma)
     Spielstand.protokolle_geaendert.emit(Spielstand.protokolle)
 
 

@@ -12,11 +12,13 @@ const MENGEN: PackedInt32Array = [1, 10, 100, -1]
 
 signal menge_gewaehlt(menge: int)
 signal prestige_gewuenscht
+signal ausbau_gewuenscht
 
 var menge := 1
 
 var _felder: Array[Rect2] = []
 var _prestige := Rect2()
+var _ausbau := Rect2()
 
 
 func _ready() -> void:
@@ -24,8 +26,9 @@ func _ready() -> void:
     # Anker allein nicht (siehe Hud).
     _passe_an()
     get_viewport().size_changed.connect(_passe_an)
-    Spielstand.credits_geaendert.connect(func(_w): queue_redraw())
+    Spielstand.plasma_geaendert.connect(func(_w): queue_redraw())
     Spielstand.protokolle_geaendert.connect(func(_w): queue_redraw())
+    Spielstand.quanten_geaendert.connect(func(_w): queue_redraw())
 
 
 func _passe_an() -> void:
@@ -50,7 +53,12 @@ func _gui_input(ereignis: InputEvent) -> void:
             accept_event()
             return
 
-    if _prestige.has_point(m.position) and Oekonomie.prestige_moeglich(Spielstand.lebenszeit_credits):
+    if _ausbau.has_point(m.position):
+        ausbau_gewuenscht.emit()
+        accept_event()
+        return
+
+    if _prestige.has_point(m.position) and Oekonomie.prestige_moeglich(Spielstand.lebenszeit_plasma):
         prestige_gewuenscht.emit()
         accept_event()
 
@@ -67,7 +75,7 @@ func _draw() -> void:
 
     # Mengenwahl links.
     _felder.clear()
-    var b := 74.0
+    var b := 62.0
     var h := 52.0
     var x := 18.0
     for i in MENGEN.size():
@@ -81,13 +89,27 @@ func _draw() -> void:
         draw_string(schrift, Vector2(r.position.x, r.get_center().y + 7.0),
             menge_text(MENGEN[i]), HORIZONTAL_ALIGNMENT_CENTER, r.size.x, 19,
             Color(0.95, 0.97, 1.0) if gewaehlt else Color(0.62, 0.66, 0.72))
-        x += b + 10.0
+        x += b + 8.0
 
     draw_string(schrift, Vector2(20.0, 90.0), "Kaufmenge",
         HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.42, 0.46, 0.53))
 
+    # Ausbau-Knopf zwischen Mengenwahl und Prestige.
+    _ausbau = Rect2(x + 8.0, 16.0, 132.0, 52.0)
+    var offen := Spielstand.quanten > 0
+    var ton := Color(0.42, 0.78, 0.96) if offen else Color(0.36, 0.40, 0.48)
+    draw_colored_polygon(Formen.kante(_ausbau, 10.0),
+        Color(ton.r, ton.g, ton.b, 0.18 if offen else 0.08))
+    draw_polyline(Formen.kante_umriss(_ausbau, 10.0), ton, 2.0, true)
+    draw_string(schrift, Vector2(_ausbau.position.x, _ausbau.get_center().y + 7.0),
+        "AUSBAU", HORIZONTAL_ALIGNMENT_CENTER, _ausbau.size.x, 18,
+        Color(0.93, 0.96, 1.0) if offen else Color(0.60, 0.64, 0.70))
+    draw_string(schrift, Vector2(_ausbau.position.x, 90.0),
+        Waehrung.quanten(Spielstand.quanten), HORIZONTAL_ALIGNMENT_CENTER,
+        _ausbau.size.x, 14, Color(0.52, 0.72, 0.86))
+
     # Prestige rechts.
-    var gewinn := Oekonomie.prestige_ertrag(Spielstand.lebenszeit_credits)
+    var gewinn := Oekonomie.prestige_ertrag(Spielstand.lebenszeit_plasma)
     var moeglich := gewinn > 0
     _prestige = Rect2(size.x - 214.0, 16.0, 196.0, 68.0)
     var farbe := Color(0.68, 0.52, 0.95) if moeglich else Color(0.30, 0.32, 0.38)

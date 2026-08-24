@@ -19,7 +19,7 @@ const TESTS: PackedStringArray = [
     "_test_kostenkurve", "_test_massenkauf", "_test_max_kaufbar",
     "_test_meilensteine", "_test_produktion", "_test_prestige", "_test_kaltstart",
     "_test_offline", "_test_speicherstand", "_test_formatter",
-    "_test_layout", "_test_speicher_platte", "_test_langzeit",
+    "_test_ausbauten", "_test_layout", "_test_speicher_platte", "_test_langzeit",
 ]
 
 
@@ -177,7 +177,7 @@ func _test_prestige() -> bool:
 
     # Der Spielstand muss die Sperre ebenfalls achten, nicht nur die Leiste.
     var zu_frueh := _neuer_stand()
-    zu_frueh.lebenszeit_credits = 1e7
+    zu_frueh.lebenszeit_plasma = 1e7
     zu_frueh.bestand[0] = 5
     _gleich(zu_frueh.prestige(), 0, "Spielstand verweigert zu fruehen Reset")
     _gleich(zu_frueh.bestand[0], 5, "Bei verweigertem Reset bleibt die Station stehen")
@@ -190,18 +190,18 @@ func _test_prestige() -> bool:
 
 func _test_kaltstart() -> bool:
     var st := _neuer_stand()
-    _nahe(float(st.credits), 15.0, "Neuer Stand hat Startguthaben")
+    _nahe(float(st.plasma), 15.0, "Neuer Stand hat Startguthaben")
     _ist(st.kaufe(0, 1), "Startguthaben deckt exakt das erste Solarsegel")
-    _nahe(float(st.credits), 0.0, "Danach ist das Guthaben aufgebraucht")
+    _nahe(float(st.plasma), 0.0, "Danach ist das Guthaben aufgebraucht")
     _ist(st.rate() > 0.0, "Nach dem ersten Kauf laeuft die Produktion")
 
     # Ohne manuelles Sammeln kaeme ein Stand ohne Module nie in Gang.
     var leer := _neuer_stand()
-    leer.credits = 0.0
+    leer.plasma = 0.0
     _nahe(leer.rate(), 0.0, "Ohne Module ist die Rate 0")
     var ertrag: float = leer.manuell_sammeln()
     _ist(ertrag >= 1.0, "Antippen liefert auch ohne Module mindestens 1")
-    _ist(leer.credits > 0.0, "Antippen bringt den Kaltstart in Gang")
+    _ist(leer.plasma > 0.0, "Antippen bringt den Kaltstart in Gang")
     return true
 
 
@@ -231,10 +231,9 @@ func _test_offline() -> bool:
     var lang := _neuer_stand()
     lang.bestand[1] = 10
     lang.zeitstempel = 0.0
-    lang.offline_cap = 3600.0
     lang.verbuche_offline(99999.0)
-    _nahe(float(lang.letzte_offline_dauer), 3600.0,
-        "Spielstand: festgehaltene Dauer wird auf den Cap begrenzt")
+    _nahe(float(lang.letzte_offline_dauer), Ausbau.offline_grenze(0),
+        "Spielstand: festgehaltene Dauer wird auf die Grenze begrenzt")
 
     var rueck := _neuer_stand()
     rueck.bestand[1] = 10
@@ -245,12 +244,67 @@ func _test_offline() -> bool:
     return true
 
 
+func _test_ausbauten() -> bool:
+    # --- Schub ---
+    var a := _neuer_stand()
+    _ist(not a.kaufe_schub(), "Schub ohne Quanten nicht kaufbar")
+    a.gutschrift_quanten(10)
+    _gleich(int(a.quanten), 10, "Gutschrift schreibt Quanten")
+    _ist(a.kaufe_schub(), "Schub mit Quanten kaufbar")
+    _gleich(int(a.quanten), 10 - Ausbau.SCHUB_KOSTEN, "Schub kostet Quanten")
+    _ist(a.boost_aktiv(), "Schub laeuft nach dem Kauf")
+    _nahe(float(a.boost_faktor), Ausbau.SCHUB_FAKTOR, "Schubfaktor gesetzt")
+    _ist(a.boost_rest() > Ausbau.SCHUB_DAUER - 5.0, "Schub laeuft nahezu die volle Dauer")
+    _nahe(a.global_mult(), Ausbau.SCHUB_FAKTOR, "Schub wirkt auf den Multiplikator")
+
+    # Ein zweiter Kauf muss verlaengern, nicht ersetzen - sonst verschenkt ein
+    # zu frueher Kauf die gesamte Restzeit.
+    var vorher: float = a.boost_rest()
+    a.kaufe_schub()
+    _ist(a.boost_rest() > vorher + Ausbau.SCHUB_DAUER - 5.0,
+        "Zweiter Schub verlaengert statt zu ersetzen")
+
+    # --- Langzeitspeicher ---
+    var b := _neuer_stand()
+    _nahe(b.offline_grenze(), Ausbau.SPEICHER_GRENZEN[0], "Grundzustand: 4 Stunden")
+    _ist(not b.kaufe_speicher(), "Speicherausbau ohne Quanten nicht moeglich")
+    b.gutschrift_quanten(200)
+    for stufe in Ausbau.SPEICHER_MAX:
+        _ist(b.kaufe_speicher(), "Speicherstufe %d kaufbar" % (stufe + 1))
+        _gleich(int(b.speicher_stufe), stufe + 1, "Speicherstufe steigt auf %d" % (stufe + 1))
+        _nahe(b.offline_grenze(), Ausbau.SPEICHER_GRENZEN[stufe + 1],
+            "Offline-Grenze folgt der Stufe %d" % (stufe + 1))
+    _ist(Ausbau.speicher_voll(b.speicher_stufe), "Speicher ist voll ausgebaut")
+    _ist(not b.kaufe_speicher(), "Voll ausgebauter Speicher nicht weiter kaufbar")
+    _gleich(Ausbau.speicher_preis(Ausbau.SPEICHER_MAX), 0, "Voll ausgebaut kostet nichts mehr")
+
+    # --- Orbital-Verstaerker ---
+    var c := _neuer_stand()
+    c.gutschrift_quanten(Ausbau.VERSTAERKER_KOSTEN)
+    _nahe(c.global_mult(), 1.0, "Ohne Verstaerker Multiplikator 1")
+    _ist(c.kaufe_verstaerker(), "Verstaerker kaufbar")
+    _nahe(c.global_mult(), Ausbau.VERSTAERKER_FAKTOR, "Verstaerker verdoppelt")
+    _gleich(int(c.quanten), 0, "Verstaerker kostet alle Quanten")
+    c.gutschrift_quanten(500)
+    _ist(not c.kaufe_verstaerker(), "Verstaerker nur einmal kaufbar")
+    _gleich(int(c.quanten), 500, "Abgelehnter Kauf kostet nichts")
+
+    # Ausbauten muessen den Neustart ueberstehen.
+    var d := _neuer_stand()
+    d.aus_dict(b.als_dict())
+    _gleich(int(d.speicher_stufe), Ausbau.SPEICHER_MAX, "Speicherstufe wird gespeichert")
+    var e := _neuer_stand()
+    e.aus_dict(c.als_dict())
+    _gleich(bool(e.verstaerker), true, "Verstaerker wird gespeichert")
+    return true
+
+
 func _test_speicherstand() -> bool:
     var a := _neuer_stand()
-    a.credits = 12345.678
-    a.kerne = 42
+    a.plasma = 12345.678
+    a.quanten = 42
     a.protokolle = 7
-    a.lebenszeit_credits = 9.87e15
+    a.lebenszeit_plasma = 9.87e15
     a.verstaerker = true
     a.bestand[0] = 13
     a.bestand[5] = 2
@@ -258,10 +312,10 @@ func _test_speicherstand() -> bool:
     var b := _neuer_stand()
     b.aus_dict(a.als_dict())
 
-    _nahe(b.credits, a.credits, "Speicherstand: Credits")
-    _gleich(b.kerne, a.kerne, "Speicherstand: Kerne")
+    _nahe(b.plasma, a.plasma, "Speicherstand: Plasma")
+    _gleich(b.quanten, a.quanten, "Speicherstand: Quanten")
     _gleich(b.protokolle, a.protokolle, "Speicherstand: Protokolle")
-    _nahe(b.lebenszeit_credits, a.lebenszeit_credits, "Speicherstand: Lebenszeit")
+    _nahe(b.lebenszeit_plasma, a.lebenszeit_plasma, "Speicherstand: Lebenszeit")
     _gleich(b.verstaerker, true, "Speicherstand: Verstaerker")
     _gleich(b.bestand[0], 13, "Speicherstand: Bestand 0")
     _gleich(b.bestand[5], 2, "Speicherstand: Bestand 5")
@@ -269,13 +323,25 @@ func _test_speicherstand() -> bool:
     # Beschaedigter Stand darf nicht blockieren.
     var c := _neuer_stand()
     c.aus_dict({})
-    _nahe(float(c.credits), 15.0, "Leeres Dict faellt auf Startguthaben, nicht auf 0")
+    _nahe(float(c.plasma), 15.0, "Leeres Dict faellt auf Startguthaben, nicht auf 0")
     _gleich(c.bestand.size(), Modul.ANZAHL, "Bestand hat immer volle Laenge")
+
+    # Migration von Version 1: alte Waehrungsnamen muessen uebernommen werden,
+    # sonst verliert jeder bestehende Spieler beim Update seinen Fortschritt.
+    var alt := _neuer_stand()
+    alt.aus_dict({
+        "version": 1, "credits": 777.0, "lebenszeit_credits": 5.5e9,
+        "quanten": 0, "kerne": 23, "bestand": [4, 9],
+    })
+    _nahe(float(alt.plasma), 777.0, "Migration v1: credits werden zu plasma")
+    _nahe(float(alt.lebenszeit_plasma), 5.5e9, "Migration v1: Lebenszeit uebernommen")
+    _gleich(int(alt.quanten), 23, "Migration v1: kerne werden zu quanten")
+    _gleich(int(alt.bestand[1]), 9, "Migration v1: Bestand bleibt erhalten")
 
     # Migration von Version 0.
     var d := _neuer_stand()
-    d.aus_dict({"credits": 500.0, "bestand": [1, 2]})
-    _nahe(d.offline_cap, Oekonomie.OFFLINE_CAP_BASIS, "Migration v0 setzt Offline-Cap")
+    d.aus_dict({"plasma": 500.0, "bestand": [1, 2]})
+    _gleich(int(d.speicher_stufe), 0, "Migration v0 setzt die Speicherstufe")
     _gleich(d.bestand[1], 2, "Migration uebernimmt Teilbestand")
     _gleich(d.bestand[7], 0, "Fehlende Bestandsplaetze werden 0")
     return true
@@ -289,15 +355,15 @@ func _test_speicher_platte() -> bool:
     _ist(not Speicher.existiert(pfad), "Speicher: vorher keine Datei da")
     _ist(Speicher.lies(pfad).is_empty(), "Speicher: fehlende Datei ergibt leeres Dict")
 
-    var daten := {"version": 1, "credits": 1234.5, "bestand": [3, 0, 7], "kerne": 9}
+    var daten := {"version": 1, "plasma": 1234.5, "bestand": [3, 0, 7], "quanten": 9}
     _ist(Speicher.schreibe(daten, pfad), "Speicher: schreiben gelingt")
     _ist(Speicher.existiert(pfad), "Speicher: Datei liegt danach vor")
     _ist(not FileAccess.file_exists(pfad + ".neu"),
         "Speicher: Nebendatei wird nach dem Umbenennen nicht zurueckgelassen")
 
     var zurueck := Speicher.lies(pfad)
-    _nahe(float(zurueck.get("credits", 0.0)), 1234.5, "Speicher: Credits kommen zurueck")
-    _gleich(int(zurueck.get("kerne", 0)), 9, "Speicher: Kerne kommen zurueck")
+    _nahe(float(zurueck.get("plasma", 0.0)), 1234.5, "Speicher: Plasma kommen zurueck")
+    _gleich(int(zurueck.get("quanten", 0)), 9, "Speicher: Quanten kommen zurueck")
     _gleich((zurueck.get("bestand", []) as Array).size(), 3, "Speicher: Bestand kommt zurueck")
 
     # Unverschluesselter Muell an derselben Stelle darf das Spiel nicht aufhalten.
@@ -309,8 +375,8 @@ func _test_speicher_platte() -> bool:
 
     # Ein voller Spielstand muss den Weg ueber die Platte unveraendert ueberstehen.
     var a := _neuer_stand()
-    a.credits = 8.75e14
-    a.kerne = 31
+    a.plasma = 8.75e14
+    a.quanten = 31
     a.protokolle = 6
     a.bestand[2] = 44
     a.verstaerker = true
@@ -318,8 +384,8 @@ func _test_speicher_platte() -> bool:
 
     var b := _neuer_stand()
     b.aus_dict(Speicher.lies(pfad))
-    _nahe(float(b.credits), float(a.credits), "Speicher: Credits ueber Platte")
-    _gleich(int(b.kerne), 31, "Speicher: Kerne ueber Platte")
+    _nahe(float(b.plasma), float(a.plasma), "Speicher: Plasma ueber Platte")
+    _gleich(int(b.quanten), 31, "Speicher: Quanten ueber Platte")
     _gleich(int(b.protokolle), 6, "Speicher: Protokolle ueber Platte")
     _gleich(int(b.bestand[2]), 44, "Speicher: Bestand ueber Platte")
     _gleich(bool(b.verstaerker), true, "Speicher: Verstaerker ueber Platte")
@@ -355,7 +421,7 @@ func _test_langzeit() -> bool:
     # 100 Spielstunden mit gieriger Kaufstrategie: teuerstes bezahlbares Modul.
     var st := _neuer_stand()
     var dt := 1.0
-    var start_guthaben: float = st.credits
+    var start_guthaben: float = st.plasma
     var schritte := int(100.0 * 3600.0 / dt)
 
     for schritt in schritte:
@@ -366,20 +432,20 @@ func _test_langzeit() -> bool:
                 if st.kaufe(i, 1):
                     break
 
-    _ist(is_finite(st.credits), "Langzeit: Credits bleiben endlich")
-    _ist(is_finite(st.lebenszeit_credits), "Langzeit: Lebenszeit bleibt endlich")
-    _ist(st.lebenszeit_credits > start_guthaben, "Langzeit: es wurde etwas erwirtschaftet")
+    _ist(is_finite(st.plasma), "Langzeit: Plasma bleiben endlich")
+    _ist(is_finite(st.lebenszeit_plasma), "Langzeit: Lebenszeit bleibt endlich")
+    _ist(st.lebenszeit_plasma > start_guthaben, "Langzeit: es wurde etwas erwirtschaftet")
 
     var gekauft := 0
     for n in st.bestand:
         gekauft += n
     _ist(gekauft > 0, "Langzeit: Module wurden gekauft")
-    _ist(Oekonomie.prestige_moeglich(st.lebenszeit_credits),
+    _ist(Oekonomie.prestige_moeglich(st.lebenszeit_plasma),
         "Langzeit: nach 100 h ist Prestige erreichbar")
 
-    print("   100 h Simulation: %s Credits gesamt, %d Module, %d Protokolle moeglich"
-        % [Zahl.kurz(st.lebenszeit_credits), gekauft,
-           Oekonomie.prestige_ertrag(st.lebenszeit_credits)])
+    print("   100 h Simulation: %s Plasma gesamt, %d Module, %d Protokolle moeglich"
+        % [Zahl.kurz(st.lebenszeit_plasma), gekauft,
+           Oekonomie.prestige_ertrag(st.lebenszeit_plasma)])
     return true
 
 

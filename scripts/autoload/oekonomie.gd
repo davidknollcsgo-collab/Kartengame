@@ -87,14 +87,14 @@ static func meilenstein_mult(besessen: int) -> float:
     return pow(2.0, erreicht)
 
 
-## Produktion eines Modultyps in Credits pro Sekunde.
+## Produktion eines Modultyps in Plasma pro Sekunde.
 static func modul_rate(index: int, besessen: int, global_mult: float = 1.0) -> float:
     if besessen <= 0:
         return 0.0
     return Modul.basisrate(index) * besessen * meilenstein_mult(besessen) * global_mult
 
 
-## Produktion aller Module zusammen in Credits pro Sekunde.
+## Produktion aller Module zusammen in Plasma pro Sekunde.
 static func gesamt_rate(bestand: Array, global_mult: float = 1.0) -> float:
     var summe := 0.0
     for i in mini(bestand.size(), Modul.ANZAHL):
@@ -105,15 +105,15 @@ static func gesamt_rate(bestand: Array, global_mult: float = 1.0) -> float:
 # --- Prestige ---------------------------------------------------------------
 
 ## Protokolle, die ein Reset beim aktuellen Lebenszeit-Ertrag einbringt.
-static func prestige_ertrag(lebenszeit_credits: float) -> int:
-    if lebenszeit_credits <= 0.0 or is_nan(lebenszeit_credits):
+static func prestige_ertrag(lebenszeit_plasma: float) -> int:
+    if lebenszeit_plasma <= 0.0 or is_nan(lebenszeit_plasma):
         return 0
-    return int(floor(PRESTIGE_FAKTOR * sqrt(lebenszeit_credits / PRESTIGE_SKALA)))
+    return int(floor(PRESTIGE_FAKTOR * sqrt(lebenszeit_plasma / PRESTIGE_SKALA)))
 
 
 ## Ob sich ein Reset lohnt - siehe [constant MIN_PROTOKOLLE].
-static func prestige_moeglich(lebenszeit_credits: float) -> bool:
-    return prestige_ertrag(lebenszeit_credits) >= MIN_PROTOKOLLE
+static func prestige_moeglich(lebenszeit_plasma: float) -> bool:
+    return prestige_ertrag(lebenszeit_plasma) >= MIN_PROTOKOLLE
 
 
 ## Dauerhafter Produktionsmultiplikator aus gesammelten Protokollen.
