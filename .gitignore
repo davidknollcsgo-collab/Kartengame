@@ -1,20 +1,24 @@
-# Android / Gradle
-android/.gradle/
-android/build/
-android/app/build/
-android/local.properties
-android/.idea/
-android/app/release/
+# Godot
+.godot/
+.import/
+export.cfg
+export_presets.cfg
+*.translation
+
+# Android / Build
+android/
+build/
 *.apk
 *.aab
 *.keystore
 *.jks
+local.properties
 
-# Node
-node_modules/
-npm-debug.log*
+# Secrets
+*.env
+service_account.json
 
-# Editoren / System
+# Editor / OS
 .DS_Store
-*.swp
 .vscode/
+*~
