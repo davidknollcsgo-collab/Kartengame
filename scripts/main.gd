@@ -190,13 +190,21 @@ func _tippe(bildschirm: Vector2) -> void:
     var lokal := _station.to_local(welt)
 
     if _station.kern_bei(lokal):
-        Spielstand.manuell_sammeln()
+        var ertrag: float = Spielstand.manuell_sammeln()
         _station.kern_blitzen()
+        _station.zeige_gutschrift(lokal + Vector2(0.0, -20.0),
+            "+" + Zahl.kurz(ertrag), Color(0.55, 0.90, 1.0))
         return
 
     var index := _station.modul_bei(lokal)
     if index >= 0:
-        _station.kaufe_an(index)
+        var vorher := Spielstand.rate()
+        if _station.kaufe_an(index):
+            # Der Zugewinn an Foerderung ist die Zahl, die den Spieler
+            # interessiert - nicht der bezahlte Preis.
+            var zuwachs := Spielstand.rate() - vorher
+            _station.zeige_gutschrift(lokal + Vector2(0.0, -30.0),
+                "+" + Zahl.kurz(zuwachs) + "/s", Modul.farbe(index))
 
 
 # --- Entwicklerwerkzeug -----------------------------------------------------

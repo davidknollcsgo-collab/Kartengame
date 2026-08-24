@@ -57,6 +57,19 @@ func _draw() -> void:
     var leit := Modul.farbe(index)
     var aktiv := anzahl > 0
 
+    # Schein nach aussen: mehrere Umrisse mit wachsendem Abstand und
+    # fallender Deckkraft. Godots Nachleuchten braucht die Forward+-Anzeige;
+    # im Kompatibilitaetsmodus, den Handys und der Web-Export verwenden, gibt
+    # es das nicht - von Hand gezeichnet sieht es fast gleich aus und laeuft
+    # ueberall.
+    if aktiv:
+        for i in range(3, 0, -1):
+            var weite := float(i) * 3.0
+            var schein := leit
+            schein.a = 0.05 + 0.03 * float(4 - i)
+            draw_polyline(Formen.kante_umriss(r.grow(weite), SCHRAEGE + weite),
+                schein, 2.0 + weite * 0.5, true)
+
     # Rumpf: dunkel, damit die Leitfarbe traegt.
     var rumpf := Color(0.11, 0.13, 0.17) if aktiv else Color(0.08, 0.09, 0.11)
     draw_colored_polygon(Formen.kante(r, SCHRAEGE), rumpf)

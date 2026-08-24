@@ -7,6 +7,12 @@
 class_name Station
 extends Node2D
 
+## Anzahl Energiepulse je Leitung.
+const PULSE := 3
+
+## Wie lange ein Puls von der Baugruppe bis zum Kern braucht, in Sekunden.
+const PULS_DAUER := 2.4
+
 ## Mehr Drohnen als das gleichzeitig sind Zierrat ohne Mehrwert und kosten
 ## auf schwachen Geraeten Bildrate.
 const MAX_DROHNEN := 10
@@ -17,6 +23,9 @@ signal kern_angetippt
 var _module: Array[ModulKnoten] = []
 var _kern: Kern
 var _drohnen: Array[Drohne] = []
+
+## Läuft für die Energiepulse auf den Versorgungsleitungen.
+var _zeit := 0.0
 
 
 func _ready() -> void:
@@ -50,6 +59,20 @@ func _baue_drohnen() -> void:
         d.visible = false
         add_child(d)
         _drohnen.append(d)
+
+
+func _process(delta: float) -> void:
+    _zeit += delta
+    queue_redraw()
+
+
+## Lässt eine aufsteigende Zahl an [param ort] erscheinen.
+func zeige_gutschrift(ort: Vector2, text: String, farbe: Color,
+        art: Waehrung.Art = Waehrung.Art.PLASMA) -> void:
+    var z := SchwebeZahl.new()
+    z.position = ort
+    add_child(z)
+    z.starte(text, farbe, art)
 
 
 func _bei_bestand(_index: int, _anzahl: int) -> void:
@@ -150,3 +173,18 @@ func _draw() -> void:
         # Am Rand des Kerns enden, nicht im Mittelpunkt: sonst treffen sich alle
         # acht Leitungen in einem Punkt und der Kern verschwindet im Geknaeuel.
         draw_line(ansatz, kern_andockpunkt(k.position), farbe, 3.0 if aktiv else 2.0, true)
+
+
+## Wandernde Lichtpunkte auf einer Versorgungsleitung.
+##
+## Sie erklären wortlos, dass etwas fließt - anders als die Drohnen, die man
+## erst nach einer Weile als Transport erkennt.
+func _zeichne_pulse(von: Vector2, farbe: Color) -> void:
+    for i in PULSE:
+        var t := fmod(_zeit / PULS_DAUER + float(i) / float(PULSE), 1.0)
+        var ort := von.lerp(Vector2.ZERO, t)
+        # Am Anfang und Ende ausblenden, damit die Punkte nicht aufploppen.
+        var staerke := sin(t * PI)
+        var f := farbe
+        f.a = 0.85 * staerke
+        draw_circle(ort, 2.6 + 1.4 * staerke, f)
