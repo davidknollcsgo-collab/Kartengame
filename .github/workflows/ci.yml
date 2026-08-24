@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+env:
+  GODOT_VERSION: "4.5-stable"
+
+jobs:
+  tests:
+    name: Headless-Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Godot aus dem Cache holen
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/bin/godot
+          key: godot-${{ env.GODOT_VERSION }}
+
+      - name: Godot installieren
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          V="${GODOT_VERSION}"
+          curl -sSL --retry 3 -o godot.zip \
+            "https://github.com/godotengine/godot-builds/releases/download/${V}/Godot_v${V}_linux.x86_64.zip"
+          unzip -q godot.zip
+          sudo mv "Godot_v${V}_linux.x86_64" /usr/local/bin/godot
+          sudo chmod +x /usr/local/bin/godot
+
+      - name: Version
+        run: godot --headless --version
+
+      # Baut die class_name-Registry auf. Ohne diesen Schritt findet der
+      # Testlauf die globalen Klassen nicht.
+      - name: Projekt importieren
+        run: godot --headless --import
+
+      - name: Tests
+        run: godot --headless --path . --script tests/run_tests.gd

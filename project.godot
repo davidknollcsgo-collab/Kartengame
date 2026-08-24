@@ -1,0 +1,26 @@
+; STERNWERFT - Godot Projektkonfiguration
+config_version=5
+
+[application]
+
+config/name="Sternwerft"
+config/description="Idle-Aufbauspiel auf einer treibenden Werft-Station."
+config/version="0.1.0"
+config/features=PackedStringArray("4.5", "GL Compatibility")
+
+[autoload]
+
+Spielstand="*res://scripts/autoload/spielstand.gd"
+
+[display]
+
+window/size/viewport_width=720
+window/size/viewport_height=1280
+window/handheld/orientation=1
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
