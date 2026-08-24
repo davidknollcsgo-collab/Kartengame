@@ -63,6 +63,12 @@ func _durchlauf() -> void:
         print("     %-16s %s" % [Modul.name_von(i), wann])
 
     print("")
+    var stufen := ""
+    for i in Modul.ANZAHL:
+        stufen += "%d " % int(st.modul_stufe[i])
+    print("   Ausbaustufen nach 48 h: %s" % stufen)
+
+    print("")
     if erstes_prestige < 0.0:
         print("   Erstes Prestige: in 48 h NICHT erreicht")
     else:
@@ -78,18 +84,41 @@ func _durchlauf() -> void:
 func _kaufe_bestes(st: Node) -> void:
     var bester := -1
     var beste_guete := 0.0
+    var ist_ausbau := false
+
     for i in Modul.ANZAHL:
         var besessen: int = st.bestand[i]
+        var stufe: int = st.modul_stufe[i]
+
+        # Ein weiteres Stueck.
         var preis := Oekonomie.kosten(i, besessen)
-        if preis > st.plasma:
-            continue
-        var vorher := Oekonomie.modul_rate(i, besessen)
-        var nachher := Oekonomie.modul_rate(i, besessen + 1)
-        var guete := (nachher - vorher) / preis
-        if guete > beste_guete:
-            beste_guete = guete
-            bester = i
-    if bester >= 0:
+        if preis <= st.plasma:
+            var zuwachs := Oekonomie.modul_rate(i, besessen + 1, 1.0, stufe) \
+                - Oekonomie.modul_rate(i, besessen, 1.0, stufe)
+            var guete := zuwachs / preis
+            if guete > beste_guete:
+                beste_guete = guete
+                bester = i
+                ist_ausbau = false
+
+        # Eine Ausbaustufe. Sie verdoppelt alle vorhandenen Stuecke auf einmal
+        # und lohnt deshalb umso mehr, je mehr davon schon stehen.
+        if besessen > 0 and not ModulAusbau.voll(stufe):
+            var apreis := ModulAusbau.kosten(i, stufe)
+            if apreis <= st.plasma:
+                var azuwachs := Oekonomie.modul_rate(i, besessen, 1.0, stufe + 1) \
+                    - Oekonomie.modul_rate(i, besessen, 1.0, stufe)
+                var aguete := azuwachs / apreis
+                if aguete > beste_guete:
+                    beste_guete = aguete
+                    bester = i
+                    ist_ausbau = true
+
+    if bester < 0:
+        return
+    if ist_ausbau:
+        st.kaufe_modul_ausbau(bester)
+    else:
         st.kaufe(bester, 1)
 
 

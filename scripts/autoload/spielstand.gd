@@ -8,7 +8,7 @@ extends Node
 ## Format des Speicherstands. Bei jeder inkompatiblen Aenderung erhoehen und
 ## in [method _migriere] einen Pfad ergaenzen. Von Anfang an mitgefuehrt, weil
 ## eine nachtraeglich eingefuehrte Migration alte Spielstaende bricht.
-const SPEICHER_VERSION := 2
+const SPEICHER_VERSION := 3
 
 ## Logikschritte pro Sekunde, bewusst entkoppelt von der Bildrate.
 const TICKS_PRO_SEKUNDE := 10.0
@@ -45,6 +45,9 @@ var lebenszeit_plasma := 0.0
 
 ## Stueckzahl je Modultyp.
 var bestand: Array[int] = []
+
+## Ausbaustufe je Modultyp.
+var modul_stufe: Array[int] = []
 
 ## Dauerhafter Multiplikator aus dem Kauf "Orbital-Verstaerker".
 var verstaerker := false
@@ -99,6 +102,8 @@ var _seit_pruefung := 0.0
 func _ready() -> void:
     bestand.resize(Modul.ANZAHL)
     bestand.fill(0)
+    modul_stufe.resize(Modul.ANZAHL)
+    modul_stufe.fill(0)
     plasma = START_PLASMA
     zeitstempel = Time.get_unix_time_from_system()
 
@@ -134,7 +139,7 @@ func _tick(dt: float) -> void:
 
 ## Aktueller Gesamtertrag in Plasma pro Sekunde.
 func rate() -> float:
-    return Oekonomie.gesamt_rate(bestand, global_mult())
+    return Oekonomie.gesamt_rate(bestand, global_mult(), modul_stufe)
 
 
 ## Produktmultiplikator aus Prestige, Kauf-Verstaerker und laufendem Boost.
@@ -211,6 +216,7 @@ func kaufe_verstaerker() -> bool:
 func _messwerte() -> Dictionary:
     return {
         "bestand": Array(bestand),
+        "modul_stufe": Array(modul_stufe),
         "lebenszeit": lebenszeit_plasma,
         "rate": rate(),
         "prestige": prestige_anzahl,
@@ -262,6 +268,25 @@ func manuell_sammeln() -> float:
     return betrag
 
 
+## Kauft die naechste Ausbaustufe einer Baugruppe.
+##
+## Anders als beim Stueckkauf gibt es hier keine Menge: eine Stufe auf einmal
+## haelt die Entscheidung ueberschaubar.
+func kaufe_modul_ausbau(index: int) -> bool:
+    if index < 0 or index >= Modul.ANZAHL:
+        return false
+    if ModulAusbau.voll(modul_stufe[index]):
+        return false
+    var preis := ModulAusbau.kosten(index, modul_stufe[index])
+    if preis > plasma:
+        return false
+    plasma -= preis
+    modul_stufe[index] += 1
+    plasma_geaendert.emit(plasma)
+    bestand_geaendert.emit(index, bestand[index])
+    return true
+
+
 ## Kauft [param menge] Exemplare eines Modultyps, sofern bezahlbar.
 ## Gibt zurueck, ob der Kauf zustande kam.
 func kaufe(index: int, menge: int = 1) -> bool:
@@ -290,6 +315,9 @@ func prestige() -> int:
     plasma = START_PLASMA
     lebenszeit_plasma = 0.0
     bestand.fill(0)
+    # Ausbaustufen gehen beim Reset mit verloren - sonst waere der zweite
+    # Durchlauf trivial und Prestige verloere seinen Sinn.
+    modul_stufe.fill(0)
     boost_bis = 0.0
     plasma_geaendert.emit(plasma)
     protokolle_geaendert.emit(protokolle)
@@ -361,6 +389,7 @@ func loesche_alles() -> void:
     lebenszeit_plasma = 0.0
     spielzeit = 0.0
     bestand.fill(0)
+    modul_stufe.fill(0)
     errungen = PackedStringArray()
     verstaerker = false
     speicher_stufe = 0
@@ -387,6 +416,7 @@ func als_dict() -> Dictionary:
         "protokolle": protokolle,
         "lebenszeit_plasma": lebenszeit_plasma,
         "bestand": Array(bestand),
+        "modul_stufe": Array(modul_stufe),
         "verstaerker": verstaerker,
         "speicher_stufe": speicher_stufe,
         "kaufmenge": kaufmenge,
@@ -423,6 +453,12 @@ func aus_dict(d: Dictionary) -> void:
     for i in mini(geladen.size(), Modul.ANZAHL):
         bestand[i] = maxi(int(geladen[i]), 0)
 
+    modul_stufe.resize(Modul.ANZAHL)
+    modul_stufe.fill(0)
+    var stufen: Array = d.get("modul_stufe", [])
+    for i in mini(stufen.size(), Modul.ANZAHL):
+        modul_stufe[i] = clampi(int(stufen[i]), 0, ModulAusbau.MAX_STUFE)
+
     plasma_geaendert.emit(plasma)
     protokolle_geaendert.emit(protokolle)
     quanten_geaendert.emit(quanten)
@@ -437,6 +473,9 @@ func _migriere(d: Dictionary) -> Dictionary:
         # Version 0 kannte noch keinen Langzeitspeicher.
         d["speicher_stufe"] = 0
         v = 1
+    if v < 3:
+        # Version 2 kannte noch keine Ausbaustufen je Baugruppe.
+        d["modul_stufe"] = []
     if v < 2:
         # Version 1 hiess die Grundwaehrung "credits" und die Premiumwaehrung
         # "kerne". Umbenannt, weil das Cent-Zeichen eine echte Waehrung ist und
@@ -448,5 +487,6 @@ func _migriere(d: Dictionary) -> Dictionary:
         if d.has("kerne"):
             d["quanten"] = d["kerne"]
         v = 2
+    v = 3
     d["version"] = v
     return d

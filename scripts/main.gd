@@ -17,6 +17,7 @@ var _offline_dialog: Dialog
 var _ausbau_schirm: AusbauSchirm
 var _bericht_schirm: BerichtSchirm
 var _loesch_dialog: Dialog
+var _modul_schirm: ModulSchirm
 
 var _druck_bei := Vector2.ZERO
 var _druck_aktiv := false
@@ -89,6 +90,11 @@ func _baue_oberflaeche() -> void:
     _bericht_schirm.visible = false
     _bericht_schirm.zuruecksetzen_gewuenscht.connect(_frage_loeschen)
     oben.add_child(_bericht_schirm)
+
+    _modul_schirm = ModulSchirm.new()
+    _modul_schirm.visible = false
+    _modul_schirm.geschlossen.connect(func(): _station.aktualisiere())
+    oben.add_child(_modul_schirm)
 
     _loesch_dialog = Dialog.new()
     _loesch_dialog.visible = false
@@ -196,6 +202,13 @@ func _tippe(bildschirm: Vector2) -> void:
             "+" + Zahl.kurz(ertrag), Color(0.55, 0.90, 1.0))
         return
 
+    # Zuerst die Detailecke: sie liegt innerhalb der Karte, und wer sie trifft,
+    # will das Fenster und nicht den Kauf.
+    var detail := _station.detail_bei(lokal)
+    if detail >= 0:
+        _modul_schirm.zeige(detail)
+        return
+
     var index := _station.modul_bei(lokal)
     if index >= 0:
         var vorher := Spielstand.rate()
@@ -239,6 +252,8 @@ func _zeige_probe(was: String) -> void:
             _frage_prestige()
         "bericht":
             _bericht_schirm.visible = true
+        "modul":
+            _modul_schirm.zeige(1)
         "ausbau":
             Spielstand.gutschrift_quanten(64)
             _ausbau_schirm.visible = true

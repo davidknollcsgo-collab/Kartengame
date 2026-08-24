@@ -9,8 +9,14 @@ extends Node2D
 const GROESSE := Vector2(196, 132)
 const SCHRAEGE := 14.0
 
+## Kantenlaenge der Flaeche, die das Detailfenster oeffnet.
+const DETAIL := 44.0
+
 var index := 0
 var anzahl := 0
+
+## Ausbaustufe, nur zur Anzeige.
+var stufe := 0
 var bezahlbar := false
 
 ## Tatsaechlich zu kaufende Stueckzahl - bei "MAX" bereits aufgeloest.
@@ -38,13 +44,24 @@ func trefferflaeche() -> Rect2:
     return Rect2(position - GROESSE * 0.5, GROESSE)
 
 
+## Ecke oben rechts, die das Detailfenster oeffnet.
+##
+## Bewusst getrennt vom Rest der Karte: Antippen kauft, und das muss schnell
+## gehen. Waere die ganze Karte ein Fenster-Oeffner, braeuchte jeder Kauf zwei
+## Griffe - bei einem Idle-Spiel der sichere Weg zu wunden Daumen.
+func detail_flaeche() -> Rect2:
+    var r := trefferflaeche()
+    return Rect2(r.end.x - DETAIL, r.position.y, DETAIL, DETAIL)
+
+
 ## Bewusst ohne Zugriff auf den Autoload: die Werte kommen von aussen herein,
 ## damit diese Datei im headless Testlauf ladbar bleibt.
 func aktualisiere(neue_anzahl: int, neue_menge: int, neuer_preis: float,
-        ist_bezahlbar: bool) -> void:
-    if neue_anzahl == anzahl and neue_menge == menge \
+        ist_bezahlbar: bool, neue_stufe: int = 0) -> void:
+    if neue_anzahl == anzahl and neue_menge == menge and neue_stufe == stufe \
             and is_equal_approx(neuer_preis, preis) and ist_bezahlbar == bezahlbar:
         return
+    stufe = neue_stufe
     anzahl = neue_anzahl
     menge = neue_menge
     preis = neuer_preis
@@ -94,7 +111,9 @@ func _draw() -> void:
     var hell := Color(0.92, 0.94, 0.97) if aktiv else Color(0.45, 0.48, 0.53)
 
     draw_string(schrift, Vector2(r.position.x + 24.0, r.position.y + 34.0),
-        Modul.name_von(index), HORIZONTAL_ALIGNMENT_LEFT, -1, 21, hell)
+        # Breite begrenzen, sonst laeuft "Forschungslabor" in den Griff oben rechts.
+        Modul.name_von(index), HORIZONTAL_ALIGNMENT_LEFT,
+        GROESSE.x - 24.0 - DETAIL, 21, hell)
 
     draw_string(schrift, Vector2(r.position.x + 24.0, r.position.y + 60.0),
         "x%d" % anzahl, HORIZONTAL_ALIGNMENT_LEFT, -1, 16,
@@ -112,7 +131,29 @@ func _draw() -> void:
     Waehrung.zeichne(self, schrift, Vector2(px, py), Zahl.kurz(preis),
         Waehrung.Art.PLASMA, 16, preisfarbe)
 
+    _zeichne_stufe(r, leit)
+    _zeichne_griff(r)
     _zeichne_meilenstein(r, leit)
+
+
+## Ausbaustufe als Abzeichen. Nur sichtbar, wenn ueberhaupt ausgebaut wurde -
+## eine Null bei jeder Baugruppe waere nur Rauschen.
+func _zeichne_stufe(r: Rect2, leit: Color) -> void:
+    if stufe <= 0:
+        return
+    var mitte := Vector2(r.end.x - 34.0, r.end.y - 34.0)
+    draw_circle(mitte, 15.0, Color(leit.r, leit.g, leit.b, 0.20))
+    draw_arc(mitte, 15.0, 0.0, TAU, 20, leit, 1.6, true)
+    draw_string(Schrift.titel(), Vector2(mitte.x - 15.0, mitte.y + 6.0),
+        "+%d" % stufe, HORIZONTAL_ALIGNMENT_CENTER, 30.0, 14, leit.lightened(0.3))
+
+
+## Drei Punkte oben rechts als Hinweis auf das Detailfenster.
+func _zeichne_griff(r: Rect2) -> void:
+    var m := Vector2(r.end.x - DETAIL * 0.5, r.position.y + DETAIL * 0.5)
+    var f := Color(0.55, 0.60, 0.68)
+    for i in 3:
+        draw_circle(m + Vector2(float(i - 1) * 7.0, 0.0), 2.0, f)
 
 
 ## Fortschrittsleiste bis zum naechsten Stueckzahl-Meilenstein.

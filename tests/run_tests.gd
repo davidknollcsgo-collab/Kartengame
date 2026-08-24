@@ -19,7 +19,7 @@ const TESTS: PackedStringArray = [
     "_test_kostenkurve", "_test_massenkauf", "_test_max_kaufbar",
     "_test_meilensteine", "_test_produktion", "_test_prestige", "_test_kaltstart",
     "_test_offline", "_test_speicherstand", "_test_formatter",
-    "_test_ausbauten", "_test_errungenschaften", "_test_layout", "_test_speicher_platte", "_test_langzeit",
+    "_test_ausbauten", "_test_modul_ausbau", "_test_errungenschaften", "_test_layout", "_test_speicher_platte", "_test_langzeit",
 ]
 
 
@@ -446,6 +446,87 @@ func _test_langzeit() -> bool:
     print("   100 h Simulation: %s Plasma gesamt, %d Module, %d Protokolle moeglich"
         % [Zahl.kurz(st.lebenszeit_plasma), gekauft,
            Oekonomie.prestige_ertrag(st.lebenszeit_plasma)])
+    return true
+
+
+func _test_modul_ausbau() -> bool:
+    _nahe(ModulAusbau.faktor(0), 1.0, "Stufe 0 aendert nichts")
+    _nahe(ModulAusbau.faktor(1), 2.0, "Eine Stufe verdoppelt")
+    _nahe(ModulAusbau.faktor(5), 32.0, "Fuenf Stufen verzweiunddreissigfachen")
+    _nahe(ModulAusbau.faktor(-3), 1.0, "Negative Stufe wirkt nicht")
+
+    _nahe(ModulAusbau.kosten(0, 0), Modul.basiskosten(0) * ModulAusbau.ERSTE_STUFE,
+        "Erste Stufe kostet das Vielfache der Basiskosten")
+    _ist(ModulAusbau.kosten(0, 1) > ModulAusbau.kosten(0, 0),
+        "Jede weitere Stufe kostet mehr")
+    _gleich(ModulAusbau.kosten(0, ModulAusbau.MAX_STUFE), 0.0,
+        "Voll ausgebaut kostet nichts mehr")
+    _ist(ModulAusbau.voll(ModulAusbau.MAX_STUFE), "Hoechststufe gilt als voll")
+    _ist(not ModulAusbau.voll(ModulAusbau.MAX_STUFE - 1), "Eine darunter noch nicht")
+
+    # Die Stufe muss in die Foerderung eingehen.
+    _nahe(Oekonomie.modul_rate(1, 10, 1.0, 0), Oekonomie.modul_rate(1, 10, 1.0, 1) * 0.5,
+        "Eine Stufe verdoppelt die Foerderung der Baugruppe")
+    _nahe(Oekonomie.gesamt_rate([0, 10], 1.0, [0, 2]),
+        Oekonomie.gesamt_rate([0, 10], 1.0, []) * 4.0,
+        "Gesamtrate rechnet die Stufen mit")
+    _nahe(Oekonomie.gesamt_rate([0, 10], 1.0), Oekonomie.gesamt_rate([0, 10], 1.0, []),
+        "Ohne Stufenangabe bleibt es beim alten Ergebnis")
+
+    # --- Im Spielstand ---
+    var st := _neuer_stand()
+    st.bestand[0] = 20
+    _gleich(int(st.modul_stufe[0]), 0, "Neuer Stand hat Stufe 0")
+    _ist(not st.kaufe_modul_ausbau(0), "Ohne Plasma kein Ausbau")
+
+    var preis := ModulAusbau.kosten(0, 0)
+    st.plasma = preis
+    var vorher: float = st.rate()
+    _ist(st.kaufe_modul_ausbau(0), "Mit genug Plasma ist der Ausbau kaufbar")
+    _gleich(int(st.modul_stufe[0]), 1, "Stufe steigt auf 1")
+    _nahe(float(st.plasma), 0.0, "Ausbau kostet Plasma")
+    _nahe(st.rate(), vorher * 2.0, "Foerderung verdoppelt sich")
+
+    _ist(not st.kaufe_modul_ausbau(-1), "Ungueltiger Index wird abgewiesen")
+    _ist(not st.kaufe_modul_ausbau(Modul.ANZAHL), "Index ausserhalb wird abgewiesen")
+
+    # Hoechststufe sperrt weitere Kaeufe.
+    var voll := _neuer_stand()
+    voll.modul_stufe[3] = ModulAusbau.MAX_STUFE
+    voll.plasma = 1e300
+    _ist(not voll.kaufe_modul_ausbau(3), "Voll ausgebaut nicht weiter kaufbar")
+    _nahe(float(voll.plasma), 1e300, "Abgelehnter Ausbau kostet nichts")
+
+    # Ein Reset muss die Stufen mitnehmen - sonst waere der zweite Durchlauf
+    # trivial und Prestige verloere seinen Sinn.
+    var r := _neuer_stand()
+    r.modul_stufe[2] = 4
+    r.bestand[2] = 30
+    r.lebenszeit_plasma = 1e9
+    r.prestige()
+    _gleich(int(r.modul_stufe[2]), 0, "Prestige setzt die Ausbaustufen zurueck")
+
+    # Speichern und Migration.
+    var a := _neuer_stand()
+    a.modul_stufe[1] = 3
+    a.modul_stufe[6] = 1
+    var b := _neuer_stand()
+    b.aus_dict(a.als_dict())
+    _gleich(int(b.modul_stufe[1]), 3, "Ausbaustufen werden gespeichert")
+    _gleich(int(b.modul_stufe[6]), 1, "auch fuer spaetere Baugruppen")
+
+    var alt := _neuer_stand()
+    alt.aus_dict({"version": 2, "plasma": 100.0, "bestand": [5]})
+    _gleich(int(alt.modul_stufe[0]), 0, "Migration v2 setzt Stufe 0")
+    _gleich(int(alt.modul_stufe.size()), Modul.ANZAHL,
+        "Stufenfeld hat immer volle Laenge")
+
+    # Beschaedigte Werte duerfen nicht durchschlagen.
+    var kaputt := _neuer_stand()
+    kaputt.aus_dict({"version": 3, "modul_stufe": [99, -5]})
+    _gleich(int(kaputt.modul_stufe[0]), ModulAusbau.MAX_STUFE,
+        "Zu hohe Stufe wird gekappt")
+    _gleich(int(kaputt.modul_stufe[1]), 0, "Negative Stufe wird auf 0 gehoben")
     return true
 
 

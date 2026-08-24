@@ -88,17 +88,23 @@ static func meilenstein_mult(besessen: int) -> float:
 
 
 ## Produktion eines Modultyps in Plasma pro Sekunde.
-static func modul_rate(index: int, besessen: int, global_mult: float = 1.0) -> float:
+## [param stufe] ist die Ausbaustufe der Baugruppe; sie verdoppelt je Stufe.
+static func modul_rate(index: int, besessen: int, global_mult: float = 1.0,
+        stufe: int = 0) -> float:
     if besessen <= 0:
         return 0.0
-    return Modul.basisrate(index) * besessen * meilenstein_mult(besessen) * global_mult
+    return Modul.basisrate(index) * besessen * meilenstein_mult(besessen) \
+        * ModulAusbau.faktor(stufe) * global_mult
 
 
 ## Produktion aller Module zusammen in Plasma pro Sekunde.
-static func gesamt_rate(bestand: Array, global_mult: float = 1.0) -> float:
+## [param stufen] darf leer bleiben; fehlende Eintraege zaehlen als Stufe 0.
+static func gesamt_rate(bestand: Array, global_mult: float = 1.0,
+        stufen: Array = []) -> float:
     var summe := 0.0
     for i in mini(bestand.size(), Modul.ANZAHL):
-        summe += modul_rate(i, int(bestand[i]), global_mult)
+        var stufe := int(stufen[i]) if i < stufen.size() else 0
+        summe += modul_rate(i, int(bestand[i]), global_mult, stufe)
     return summe
 
 

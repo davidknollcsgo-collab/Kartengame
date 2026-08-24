@@ -104,7 +104,8 @@ func aktualisiere() -> void:
     for k in _module:
         var m := _menge_fuer(k.index)
         var preis := Oekonomie.kosten_summe(k.index, Spielstand.bestand[k.index], m)
-        k.aktualisiere(Spielstand.bestand[k.index], m, preis, preis <= Spielstand.plasma)
+        k.aktualisiere(Spielstand.bestand[k.index], m, preis,
+            preis <= Spielstand.plasma, Spielstand.modul_stufe[k.index])
     queue_redraw()
 
 
@@ -134,6 +135,17 @@ func _verteile_drohnen() -> void:
 func modul_bei(punkt: Vector2) -> int:
     for k in _module:
         if k.trefferflaeche().has_point(punkt):
+            return k.index
+    return -1
+
+
+## Index der Baugruppe, deren Detailflaeche unter [param punkt] liegt, sonst -1.
+##
+## Wird vor [method modul_bei] geprueft, weil die Detailflaeche innerhalb der
+## Karte liegt.
+func detail_bei(punkt: Vector2) -> int:
+    for k in _module:
+        if k.detail_flaeche().has_point(punkt):
             return k.index
     return -1
 
