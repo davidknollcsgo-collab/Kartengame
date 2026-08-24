@@ -53,6 +53,6 @@ func _draw() -> void:
 
     # Deutlich unterhalb des Rings: auf Kernhoehe ueberlagert die Schrift die
     # Ringe und beide werden unleserlich.
-    draw_string(ThemeDB.fallback_font, Vector2(-RADIUS, RADIUS + 40.0),
+    draw_string(Schrift.text(), Vector2(-RADIUS, RADIUS + 40.0),
         "ANZAPFEN", HORIZONTAL_ALIGNMENT_CENTER, RADIUS * 2.0, 15,
         Color(0.62, 0.78, 0.90))

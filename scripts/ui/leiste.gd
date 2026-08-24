@@ -70,16 +70,21 @@ static func menge_text(m: int) -> String:
 
 
 func _draw() -> void:
-    var schrift := ThemeDB.fallback_font
+    var schrift := Schrift.text()
 
     draw_rect(Rect2(Vector2.ZERO, size), Color(0.05, 0.06, 0.09, 0.94))
     draw_line(Vector2.ZERO, Vector2(size.x, 0.0), Color(0.16, 0.20, 0.26), 2.0)
 
     # --- Reihe 1: Kaufmenge ---
     _felder.clear()
-    var x := 18.0
+    # Plaettchenbreite aus der Bildschirmbreite: auf 360 Punkten passen vier
+    # Plaettchen zu 70 plus Beschriftung nicht mehr nebeneinander.
+    var rand := 18.0
+    var platz := size.x - rand * 2.0
+    var chip := clampf((platz - 3.0 * 8.0) * 0.52 / 4.0, Masse.TIPPFLAECHE, 74.0)
+    var x := rand
     for i in MENGEN.size():
-        var r := Rect2(x, 14.0, 70.0, 48.0)
+        var r := Rect2(x, 14.0, chip, 48.0)
         _felder.append(r)
         var gewaehlt := MENGEN[i] == menge
         var ton := Color(0.30, 0.72, 0.90) if gewaehlt else Color(0.34, 0.38, 0.45)
@@ -87,23 +92,29 @@ func _draw() -> void:
         draw_string(schrift, Vector2(r.position.x, r.get_center().y + 7.0),
             menge_text(MENGEN[i]), HORIZONTAL_ALIGNMENT_CENTER, r.size.x, 19,
             Color(0.95, 0.97, 1.0) if gewaehlt else Color(0.62, 0.66, 0.72))
-        x += 78.0
+        x += chip + 8.0
     draw_string(schrift, Vector2(x + 6.0, 44.0), "Kaufmenge",
         HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(0.42, 0.46, 0.53))
 
     # --- Reihe 2: Bildschirme ---
-    _ausbau = Rect2(18.0, 76.0, 150.0, 58.0)
+    # Reihe 2 proportional aufteilen, damit auf schmalen Geraeten nichts
+    # ueberlappt und auf breiten nichts verloren steht.
+    var prestige_b := clampf(platz * 0.30, 150.0, 200.0)
+    var rest := platz - prestige_b - 24.0
+    var knopf_b := maxf(rest * 0.5 - 6.0, 108.0)
+    _ausbau = Rect2(rand, 76.0, knopf_b, 58.0)
     var quanten_da := Spielstand.quanten > 0
     var ausbau_ton := Color(0.42, 0.78, 0.96) if quanten_da else Color(0.36, 0.40, 0.48)
     _rahmen(_ausbau, ausbau_ton, 0.18 if quanten_da else 0.07, 12.0)
     draw_string(schrift, Vector2(_ausbau.position.x, _ausbau.position.y + 26.0),
         "AUSBAU", HORIZONTAL_ALIGNMENT_CENTER, _ausbau.size.x, 18,
         Color(0.93, 0.96, 1.0) if quanten_da else Color(0.62, 0.66, 0.72))
-    draw_string(schrift, Vector2(_ausbau.position.x, _ausbau.position.y + 47.0),
-        Waehrung.quanten(Spielstand.quanten), HORIZONTAL_ALIGNMENT_CENTER,
-        _ausbau.size.x, 15, Color(0.52, 0.76, 0.90))
+    Waehrung.zeichne(self, schrift,
+        Vector2(_ausbau.get_center().x, _ausbau.position.y + 47.0),
+        str(Spielstand.quanten), Waehrung.Art.QUANTEN, 15,
+        Color(0.52, 0.76, 0.90), Waehrung.Lage.MITTE)
 
-    _bericht = Rect2(176.0, 76.0, 150.0, 58.0)
+    _bericht = Rect2(rand + knopf_b + 12.0, 76.0, knopf_b, 58.0)
     _rahmen(_bericht, Color(0.46, 0.52, 0.62), 0.10, 12.0)
     draw_string(schrift, Vector2(_bericht.position.x, _bericht.position.y + 26.0),
         "BERICHT", HORIZONTAL_ALIGNMENT_CENTER, _bericht.size.x, 18,
@@ -115,7 +126,7 @@ func _draw() -> void:
     # --- Prestige rechts ---
     var gewinn := Oekonomie.prestige_ertrag(Spielstand.lebenszeit_plasma)
     var moeglich := Oekonomie.prestige_moeglich(Spielstand.lebenszeit_plasma)
-    _prestige = Rect2(size.x - 214.0, 76.0, 196.0, 58.0)
+    _prestige = Rect2(size.x - rand - prestige_b, 76.0, prestige_b, 58.0)
     var farbe := Color(0.68, 0.52, 0.95) if moeglich else Color(0.30, 0.32, 0.38)
     _rahmen(_prestige, farbe, 0.20 if moeglich else 0.07, 12.0)
     draw_string(schrift, Vector2(_prestige.position.x, _prestige.position.y + 26.0),
@@ -123,11 +134,18 @@ func _draw() -> void:
         Color(0.95, 0.93, 1.0) if moeglich else Color(0.45, 0.47, 0.53))
     # Unterhalb der Mindestausbeute steht der Fortschritt statt einer Zahl, die
     # noch zu nichts berechtigt.
-    var unterzeile := ("+%d %s" % [gewinn, Waehrung.PROTOKOLL_ZEICHEN]) if moeglich \
-        else "%d von %d" % [gewinn, Oekonomie.MIN_PROTOKOLLE]
-    draw_string(schrift, Vector2(_prestige.position.x, _prestige.position.y + 47.0),
-        unterzeile, HORIZONTAL_ALIGNMENT_CENTER, _prestige.size.x, 15,
-        Color(0.76, 0.66, 0.98) if moeglich else Color(0.40, 0.42, 0.48))
+    var unterfarbe := Color(0.76, 0.66, 0.98) if moeglich else Color(0.40, 0.42, 0.48)
+    var untery := _prestige.position.y + 47.0
+    if moeglich:
+        Waehrung.zeichne(self, schrift, Vector2(_prestige.get_center().x, untery),
+            "+%d" % gewinn, Waehrung.Art.PROTOKOLL, 15, unterfarbe,
+            Waehrung.Lage.MITTE)
+    else:
+        # Unterhalb der Mindestausbeute zaehlt der Fortschritt, nicht ein Betrag,
+        # der noch zu nichts berechtigt.
+        draw_string(schrift, Vector2(_prestige.position.x, untery),
+            "%d von %d" % [gewinn, Oekonomie.MIN_PROTOKOLLE],
+            HORIZONTAL_ALIGNMENT_CENTER, _prestige.size.x, 15, unterfarbe)
 
 
 func _rahmen(r: Rect2, ton: Color, fuellung: float, schraege: float) -> void:

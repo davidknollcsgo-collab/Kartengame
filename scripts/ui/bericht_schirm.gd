@@ -1,11 +1,16 @@
 ## Bericht: Kennzahlen und Errungenschaften.
 ##
 ## Beides auf einem Bildschirm, weil beides dieselbe Frage beantwortet - wie
-## weit bin ich? Die Liste ist länger als der Schirm und lässt sich schieben.
+## weit bin ich?
+##
+## Das Löschen steht bewusst allein am unteren Rand, mit nichts daneben und
+## nichts darunter. Es ist der einzige unwiderrufliche Griff im ganzen Spiel;
+## direkt neben einem harmlosen "Schließen" wäre es eine Falle. Geschlossen
+## wird deshalb über das Kreuz oben rechts.
 class_name BerichtSchirm
 extends Control
 
-const BREITE := 640.0
+## Höhe einer Errungenschaftszeile.
 const ZEILE := 74.0
 
 signal geschlossen
@@ -32,79 +37,99 @@ func _passe_an() -> void:
 
 
 func _gui_input(ereignis: InputEvent) -> void:
-    if not visible:
+    if not visible or not (ereignis is InputEventMouseButton):
         return
-
-    if ereignis is InputEventMouseButton:
-        var m := ereignis as InputEventMouseButton
-        if m.button_index == MOUSE_BUTTON_LEFT and not m.pressed:
-            if _schliessen.has_point(m.position):
-                visible = false
-                geschlossen.emit()
-            elif _reset.has_point(m.position):
-                zuruecksetzen_gewuenscht.emit()
-        accept_event()
+    var m := ereignis as InputEventMouseButton
+    if m.button_index != MOUSE_BUTTON_LEFT or m.pressed:
+        return
+    if _schliessen.has_point(m.position):
+        visible = false
+        geschlossen.emit()
+    elif _reset.has_point(m.position):
+        zuruecksetzen_gewuenscht.emit()
+    accept_event()
 
 
 func _draw() -> void:
-    var schrift := ThemeDB.fallback_font
+    var titel := Schrift.titel()
+    var text := Schrift.text()
     draw_rect(Rect2(Vector2.ZERO, size), Color(0.0, 0.0, 0.0, 0.80))
 
-    var hoehe := minf(size.y - 120.0, 980.0)
-    _feld = Rect2((size.x - BREITE) * 0.5, (size.y - hoehe) * 0.5, BREITE, hoehe)
+    _feld = Masse.fenster(size, size.y - Masse.RAND * 2.0)
     draw_colored_polygon(Formen.kante(_feld, 20.0), Color(0.08, 0.10, 0.14, 0.98))
     draw_polyline(Formen.kante_umriss(_feld, 20.0), Color(0.46, 0.58, 0.76), 2.0, true)
 
-    draw_string(schrift, Vector2(_feld.position.x + 32.0, _feld.position.y + 50.0),
-        "BERICHT", HORIZONTAL_ALIGNMENT_LEFT, -1, 26, Color(0.94, 0.96, 1.0))
+    var links := _feld.position.x + 26.0
+    var innen := _feld.size.x - 52.0
 
-    var y := _feld.position.y + 84.0
+    draw_string(titel, Vector2(links, _feld.position.y + 48.0), "BERICHT",
+        HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Color(0.94, 0.96, 1.0))
+    _zeichne_kreuz()
+
+    var y := _feld.position.y + 82.0
     for paar in _kennzahlen():
-        draw_string(schrift, Vector2(_feld.position.x + 32.0, y), paar[0],
-            HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.56, 0.62, 0.70))
-        draw_string(schrift, Vector2(_feld.position.x, y), paar[1],
-            HORIZONTAL_ALIGNMENT_RIGHT, BREITE - 32.0, 16, Color(0.90, 0.93, 0.98))
-        y += 28.0
+        draw_string(text, Vector2(links, y), paar[0],
+            HORIZONTAL_ALIGNMENT_LEFT, -1, 17, Color(0.56, 0.62, 0.70))
+        var wert := Color(0.90, 0.93, 0.98)
+        # -1 heisst: reine Zahl ohne Waehrungszeichen.
+        if int(paar[2]) < 0:
+            draw_string(titel, Vector2(links, y), paar[1],
+                HORIZONTAL_ALIGNMENT_RIGHT, innen, 16, wert)
+        else:
+            Waehrung.zeichne(self, titel, Vector2(_feld.end.x - 26.0, y),
+                paar[1], paar[2] as Waehrung.Art, 16, wert, Waehrung.Lage.RECHTS)
+        y += 30.0
 
-    y += 12.0
-    draw_line(Vector2(_feld.position.x + 32.0, y), Vector2(_feld.end.x - 32.0, y),
+    y += 10.0
+    draw_line(Vector2(links, y), Vector2(_feld.end.x - 26.0, y),
         Color(0.20, 0.24, 0.30), 1.0)
-    y += 24.0
-    draw_string(schrift, Vector2(_feld.position.x + 32.0, y),
+    y += 26.0
+    draw_string(titel, Vector2(links, y),
         "ERRUNGENSCHAFTEN  %d/%d" % [Spielstand.errungen.size(),
             Errungenschaft.TABELLE.size()],
-        HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(0.72, 0.80, 0.90))
-    y += 16.0
+        HORIZONTAL_ALIGNMENT_LEFT, -1, 17, Color(0.72, 0.80, 0.90))
+    y += 14.0
 
-    # Die Liste ist ein eigenes Control mit clip_contents; hier wird ihr nur
-    # der verbleibende Platz zugewiesen.
-    var listen_hoehe := _feld.end.y - y - 96.0
-    _liste.position = Vector2(_feld.position.x + 24.0, y)
-    _liste.size = Vector2(BREITE - 48.0, maxf(listen_hoehe, 0.0))
+    # Der Löschknopf bekommt seinen eigenen Streifen am Fuß, deutlich abgesetzt.
+    var fuss := 108.0
+    var frei := _feld.end.y - y - fuss
 
-    _schliessen = Rect2(_feld.get_center().x + 10.0, _feld.end.y - 76.0, 190.0, 54.0)
-    _rahmen(_schliessen, Color(0.52, 0.58, 0.68), 0.12)
-    draw_string(schrift, Vector2(_schliessen.position.x, _schliessen.get_center().y + 8.0),
-        "Schließen", HORIZONTAL_ALIGNMENT_CENTER, _schliessen.size.x, 20,
-        Color(0.88, 0.91, 0.96))
+    # Auf ganze Zeilen abrunden: sonst steht am unteren Rand ein angeschnittener
+    # Eintrag, der wie ein Darstellungsfehler aussieht.
+    var zeilen := maxi(int(frei / ZEILE), 1)
+    _liste.position = Vector2(links, y)
+    _liste.size = Vector2(innen, float(zeilen) * ZEILE)
 
-    _reset = Rect2(_feld.get_center().x - 200.0, _feld.end.y - 76.0, 190.0, 54.0)
-    _rahmen(_reset, Color(0.82, 0.38, 0.36), 0.12)
-    draw_string(schrift, Vector2(_reset.position.x, _reset.get_center().y + 8.0),
-        "Alles löschen", HORIZONTAL_ALIGNMENT_CENTER, _reset.size.x, 19,
-        Color(0.95, 0.72, 0.70))
+    _reset = Rect2(_feld.get_center().x - 110.0, _feld.end.y - 74.0, 220.0, 52.0)
+    draw_colored_polygon(Formen.kante(_reset, 12.0), Color(0.82, 0.30, 0.28, 0.14))
+    draw_polyline(Formen.kante_umriss(_reset, 12.0), Color(0.80, 0.36, 0.34), 2.0, true)
+    draw_string(titel, Vector2(_reset.position.x, _reset.get_center().y + 7.0),
+        "ALLES LÖSCHEN", HORIZONTAL_ALIGNMENT_CENTER, _reset.size.x, 16,
+        Color(0.96, 0.74, 0.72))
+
+
+## Kreuz oben rechts. Die Trefferfläche ist größer als das gezeichnete Zeichen -
+## ein 20 Punkte großes Kreuz trifft niemand mit dem Daumen.
+func _zeichne_kreuz() -> void:
+    _schliessen = Rect2(_feld.end.x - Masse.TIPPFLAECHE - 14.0,
+        _feld.position.y + 16.0, Masse.TIPPFLAECHE, Masse.TIPPFLAECHE)
+    var m := _schliessen.get_center()
+    var a := 11.0
+    var farbe := Color(0.72, 0.78, 0.86)
+    draw_line(m + Vector2(-a, -a), m + Vector2(a, a), farbe, 2.5, true)
+    draw_line(m + Vector2(a, -a), m + Vector2(-a, a), farbe, 2.5, true)
 
 
 func _kennzahlen() -> Array:
     var s := Spielstand
     return [
-        ["Spielzeit", Zahl.zeit(s.spielzeit)],
-        ["Gefördert insgesamt", Waehrung.plasma(s.lebenszeit_plasma)],
-        ["Förderung je Sekunde", Waehrung.plasma(s.rate())],
-        ["Baugruppen", str(_bestand_summe())],
-        ["Zurücksetzungen", str(s.prestige_anzahl)],
-        ["Protokolle", "%s  (x%.2f)" % [Waehrung.protokolle(s.protokolle),
-            Oekonomie.prestige_mult(s.protokolle)]],
+        ["Spielzeit", Zahl.zeit(s.spielzeit), -1],
+        ["Gefördert insgesamt", Zahl.kurz(s.lebenszeit_plasma), Waehrung.Art.PLASMA],
+        ["Förderung je Sekunde", Zahl.kurz(s.rate()), Waehrung.Art.PLASMA],
+        ["Baugruppen", str(_bestand_summe()), -1],
+        ["Zurücksetzungen", str(s.prestige_anzahl), -1],
+        ["Protokolle", "%d  (x%.2f)" % [s.protokolle,
+            Oekonomie.prestige_mult(s.protokolle)], -1],
     ]
 
 
@@ -113,9 +138,3 @@ func _bestand_summe() -> int:
     for k in Spielstand.bestand:
         n += k
     return n
-
-
-
-func _rahmen(r: Rect2, ton: Color, fuellung: float) -> void:
-    draw_colored_polygon(Formen.kante(r, 12.0), Color(ton.r, ton.g, ton.b, fuellung))
-    draw_polyline(Formen.kante_umriss(r, 12.0), ton, 2.0, true)

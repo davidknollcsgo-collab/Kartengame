@@ -6,8 +6,7 @@
 class_name Dialog
 extends Control
 
-const BREITE := 560.0
-const KNOPF := Vector2(210.0, 66.0)
+const KNOPF_HOEHE := 64.0
 
 signal bestaetigt
 signal abgebrochen
@@ -63,13 +62,17 @@ func _gui_input(ereignis: InputEvent) -> void:
 
 
 func _draw() -> void:
-    var schrift := ThemeDB.fallback_font
+    var schrift := Schrift.text()
 
     # Abdunkeln, damit klar ist, dass dahinter nichts bedienbar ist.
     draw_rect(Rect2(Vector2.ZERO, size), Color(0.0, 0.0, 0.0, 0.72))
 
     var hoehe := 200.0 + float(zeilen.size()) * 38.0
-    _feld = Rect2((size.x - BREITE) * 0.5, (size.y - hoehe) * 0.5, BREITE, hoehe)
+    _feld = Masse.fenster(size, hoehe)
+    var BREITE := _feld.size.x
+    # Knopfbreite aus dem Fenster ableiten: bei zwei Knöpfen je knapp die
+    # Hälfte, sonst ragen sie auf schmalen Geräten über den Rahmen hinaus.
+    var KNOPF := Vector2((BREITE - 96.0) * 0.5 if not _nur_ja else 220.0, KNOPF_HOEHE)
     draw_colored_polygon(Formen.kante(_feld, 20.0), Color(0.09, 0.11, 0.15, 0.98))
     draw_polyline(Formen.kante_umriss(_feld, 20.0), Color(0.30, 0.62, 0.78), 2.0, true)
 
@@ -82,7 +85,7 @@ func _draw() -> void:
             HORIZONTAL_ALIGNMENT_CENTER, BREITE - 80.0, 19, Color(0.72, 0.78, 0.86))
         y += 38.0
 
-    var unten := _feld.end.y - KNOPF.y - 28.0
+    var unten := _feld.end.y - KNOPF.y - 26.0
     if _nur_ja:
         _ja = Rect2(_feld.get_center().x - KNOPF.x * 0.5, unten, KNOPF.x, KNOPF.y)
         _nein = Rect2()
@@ -97,7 +100,7 @@ func _knopf(r: Rect2, text: String, ton: Color, moeglich: bool) -> void:
     var farbe := ton if moeglich else ton.darkened(0.55)
     draw_colored_polygon(Formen.kante(r, 12.0), Color(farbe.r, farbe.g, farbe.b, 0.20))
     draw_polyline(Formen.kante_umriss(r, 12.0), farbe, 2.0, true)
-    draw_string(ThemeDB.fallback_font,
+    draw_string(Schrift.text(),
         Vector2(r.position.x, r.get_center().y + 8.0), text,
         HORIZONTAL_ALIGNMENT_CENTER, r.size.x, 21,
         Color(0.95, 0.97, 1.0) if moeglich else Color(0.45, 0.48, 0.54))

@@ -144,7 +144,7 @@ func _zeige_offline(betrag: float) -> void:
     _offline_dialog.zeige("Willkommen zurück", PackedStringArray([
         "Die Station lief %s ohne dich weiter." % Zahl.zeit(Spielstand.letzte_offline_dauer),
         "",
-        "Gutschrift: %s" % Waehrung.plasma(betrag),
+        "Gutschrift: %s %s" % [Zahl.kurz(betrag), Waehrung.PLASMA],
     ]), "Übernehmen")
 
 

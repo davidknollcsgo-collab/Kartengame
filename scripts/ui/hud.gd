@@ -32,17 +32,23 @@ func _process(_delta: float) -> void:
 
 
 func _draw() -> void:
-    var schrift := ThemeDB.fallback_font
+    var schrift := Schrift.text()
+    var titel := Schrift.titel()
     var breite := size.x
 
     draw_rect(Rect2(0.0, 0.0, breite, 104.0), Color(0.04, 0.05, 0.07, 0.88))
     draw_line(Vector2(0.0, 104.0), Vector2(breite, 104.0), Color(0.16, 0.20, 0.26), 2.0)
 
-    draw_string(schrift, Vector2(22.0, 46.0), Waehrung.plasma(Spielstand.plasma),
-        HORIZONTAL_ALIGNMENT_LEFT, -1, 34, Color(0.95, 0.97, 1.0))
+    Waehrung.zeichne(self, titel, Vector2(22.0, 46.0),
+        Zahl.kurz(Spielstand.plasma), Waehrung.Art.PLASMA, 34,
+        Color(0.95, 0.97, 1.0))
 
-    draw_string(schrift, Vector2(24.0, 76.0), Waehrung.plasma_rate(Spielstand.rate()),
-        HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(0.45, 0.85, 0.60))
+    # Breite des Betrags zurueckgeben lassen, damit "/s" buendig dahinter steht.
+    var gruen := Color(0.45, 0.85, 0.60)
+    var breite_rate := Waehrung.zeichne(self, schrift, Vector2(24.0, 76.0),
+        Waehrung.rate_zahl(Spielstand.rate()), Waehrung.Art.PLASMA, 18, gruen)
+    draw_string(schrift, Vector2(24.0 + breite_rate + 3.0, 76.0), "/s",
+        HORIZONTAL_ALIGNMENT_LEFT, -1, 18, gruen)
 
     # Ein laufender Schub muss sichtbar sein - sonst wundert sich der Spieler
     # ueber die eingebrochene Foerderung, wenn er ablaeuft.

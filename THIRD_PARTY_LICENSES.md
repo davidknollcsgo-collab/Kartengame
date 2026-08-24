@@ -18,6 +18,13 @@ die Engine über `Engine.get_license_text()` und
 `Engine.get_copyright_info()` — der Lizenz-Bildschirm liest sie zur Laufzeit
 aus, statt sie hier zu duplizieren.
 
+## Schriften
+
+- **Orbitron** — SIL Open Font License 1.1 — Copyright 2018 The Orbitron
+  Project Authors. Lizenztext: `schriften/orbitron/OFL.txt`
+- **Rajdhani** — SIL Open Font License 1.1 — Indian Type Foundry.
+  Lizenztext: `schriften/rajdhani/OFL.txt`
+
 ## Noch nicht eingebunden
 
 Kommen in Phase 5 dazu und werden dann hier ergänzt:

@@ -43,9 +43,13 @@ Noch keiner. Geplant ist Synthese über `AudioStreamGenerator`, ersatzweise CC0.
 
 ## Schriften
 
-Noch keine. Zulässig ausschließlich SIL OFL, etwa Orbitron, Rajdhani oder Exo 2.
-Systemschriften werden nicht vorausgesetzt — sie unterscheiden sich je Gerät.
+Beide unter SIL Open Font License 1.1, die das Einbetten in kommerzielle
+Anwendungen ausdrücklich erlaubt. Unverändert übernommen — der Dateiname wurde
+lediglich von `Orbitron[wght].ttf` gekürzt, was die Reserved-Font-Name-Klausel
+nicht berührt, weil die Schrift selbst nicht verändert wurde. Die Lizenztexte
+liegen als `OFL.txt` neben den Dateien und müssen mit ausgeliefert werden.
 
 | Datei | Herkunft | Autor | Lizenz | Quelle | Datum |
 |---|---|---|---|---|---|
-| _(keine)_ | | | | | |
+| `schriften/orbitron/Orbitron.ttf` | Google Fonts | The Orbitron Project Authors | OFL 1.1 | https://github.com/google/fonts/tree/main/ofl/orbitron | 2026-08-24 |
+| `schriften/rajdhani/Rajdhani-Medium.ttf` | Google Fonts | Indian Type Foundry | OFL 1.1 | https://github.com/google/fonts/tree/main/ofl/rajdhani | 2026-08-24 |

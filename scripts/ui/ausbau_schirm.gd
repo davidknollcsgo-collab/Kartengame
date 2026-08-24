@@ -5,7 +5,6 @@
 class_name AusbauSchirm
 extends Control
 
-const BREITE := 620.0
 const ZEILE := 118.0
 
 signal geschlossen
@@ -91,25 +90,26 @@ func _process(_delta: float) -> void:
 
 
 func _draw() -> void:
-    var schrift := ThemeDB.fallback_font
+    var schrift := Schrift.text()
     draw_rect(Rect2(Vector2.ZERO, size), Color(0.0, 0.0, 0.0, 0.78))
 
     var angebote := _angebote()
     var hoehe := 200.0 + float(angebote.size()) * ZEILE
-    _feld = Rect2((size.x - BREITE) * 0.5, (size.y - hoehe) * 0.5, BREITE, hoehe)
+    _feld = Masse.fenster(size, hoehe)
+    var BREITE := _feld.size.x
     draw_colored_polygon(Formen.kante(_feld, 20.0), Color(0.08, 0.10, 0.14, 0.98))
     draw_polyline(Formen.kante_umriss(_feld, 20.0), Color(0.42, 0.62, 0.86), 2.0, true)
 
     draw_string(schrift, Vector2(_feld.position.x + 34.0, _feld.position.y + 52.0),
         "AUSBAUTEN", HORIZONTAL_ALIGNMENT_LEFT, -1, 26, Color(0.94, 0.96, 1.0))
-    draw_string(schrift, Vector2(_feld.position.x, _feld.position.y + 52.0),
-        Waehrung.quanten(Spielstand.quanten), HORIZONTAL_ALIGNMENT_RIGHT,
-        BREITE - 34.0, 24, Color(0.62, 0.86, 0.98))
+    Waehrung.zeichne(self, schrift, Vector2(_feld.end.x - 30.0, _feld.position.y + 52.0),
+        str(Spielstand.quanten), Waehrung.Art.QUANTEN, 24,
+        Color(0.62, 0.86, 0.98), Waehrung.Lage.RECHTS)
 
     _zeilen.clear()
     var y := _feld.position.y + 88.0
     for eintrag in angebote:
-        _zeichne_zeile(Rect2(_feld.position.x + 24.0, y, BREITE - 48.0, ZEILE - 12.0),
+        _zeichne_zeile(Rect2(_feld.position.x + 22.0, y, _feld.size.x - 44.0, ZEILE - 12.0),
             eintrag, schrift)
         y += ZEILE
 
@@ -134,7 +134,7 @@ func _zeichne_zeile(r: Rect2, eintrag: Dictionary, schrift: Font) -> void:
         eintrag["name"], HORIZONTAL_ALIGNMENT_LEFT, -1, 21,
         Color(0.94, 0.96, 1.0) if moeglich else Color(0.60, 0.64, 0.70))
     draw_string(schrift, Vector2(r.position.x + 20.0, r.position.y + 60.0),
-        eintrag["text"], HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(0.60, 0.66, 0.74))
+        eintrag["text"], HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.60, 0.66, 0.74))
 
     var stand: String = eintrag["stand"]
     if not stand.is_empty():
@@ -143,7 +143,13 @@ func _zeichne_zeile(r: Rect2, eintrag: Dictionary, schrift: Font) -> void:
 
     # Preis rechts; bei erschöpften Angeboten steht dort ein Strich statt einer
     # Zahl, die man ohnehin nicht mehr bezahlen kann.
-    var text := "—" if preis <= 0 else Waehrung.quanten(preis)
-    draw_string(schrift, Vector2(r.position.x, r.get_center().y + 8.0), text,
-        HORIZONTAL_ALIGNMENT_RIGHT, r.size.x - 20.0, 22,
-        Color(0.62, 0.90, 0.72) if moeglich else Color(0.45, 0.48, 0.55))
+    var preisfarbe := Color(0.62, 0.90, 0.72) if moeglich else Color(0.45, 0.48, 0.55)
+    var rechts := Vector2(r.end.x - 20.0, r.get_center().y + 8.0)
+    if preis <= 0:
+        # Erschoepfte Angebote zeigen einen Strich statt einer Zahl, die man
+        # ohnehin nicht mehr bezahlen kann.
+        draw_string(schrift, Vector2(r.position.x, rechts.y), "—",
+            HORIZONTAL_ALIGNMENT_RIGHT, r.size.x - 20.0, 22, preisfarbe)
+    else:
+        Waehrung.zeichne(self, schrift, rechts, str(preis),
+            Waehrung.Art.QUANTEN, 22, preisfarbe, Waehrung.Lage.RECHTS)

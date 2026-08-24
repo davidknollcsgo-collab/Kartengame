@@ -39,21 +39,26 @@ func _schiebe(um: float) -> void:
 
 
 func _draw() -> void:
-    var schrift := ThemeDB.fallback_font
+    var schrift := Schrift.text()
     var y := -_versatz
     for eintrag in Errungenschaft.TABELLE:
         # Zeilen weit ausserhalb gar nicht erst zeichnen.
         if y + ZEILE >= 0.0 and y <= size.y:
-            _zeichne(Rect2(0.0, y, size.x, ZEILE - 10.0), eintrag, schrift)
+            _zeichne(Rect2(0.0, y, size.x - 14.0, ZEILE - 10.0), eintrag, schrift)
         y += ZEILE
 
-    # Andeutung, dass es weitergeht.
+    # Scrollbalken mit sichtbarer Bahn. Der erste Entwurf war drei Punkte breit
+    # und halbdurchsichtig - auf einem Handydisplay schlicht nicht zu erkennen,
+    # sodass nicht ersichtlich war, dass die Liste überhaupt weitergeht.
     var gesamt := float(Errungenschaft.TABELLE.size()) * ZEILE
-    if gesamt > size.y:
-        var anteil := size.y / gesamt
-        var lauf := (_versatz / gesamt) * size.y
-        draw_rect(Rect2(size.x - 4.0, lauf, 3.0, size.y * anteil),
-            Color(0.45, 0.55, 0.68, 0.55))
+    if gesamt <= size.y:
+        return
+    var bahn := Rect2(size.x - 8.0, 0.0, 6.0, size.y)
+    draw_rect(bahn, Color(0.18, 0.21, 0.27))
+    var anteil := size.y / gesamt
+    var lauf := (_versatz / gesamt) * size.y
+    draw_rect(Rect2(bahn.position.x, lauf, bahn.size.x,
+        maxf(size.y * anteil, 34.0)), Color(0.52, 0.68, 0.86))
 
 
 func _zeichne(r: Rect2, eintrag: Dictionary, schrift: Font) -> void:
@@ -66,9 +71,9 @@ func _zeichne(r: Rect2, eintrag: Dictionary, schrift: Font) -> void:
         eintrag["name"], HORIZONTAL_ALIGNMENT_LEFT, -1, 18,
         Color(0.92, 0.96, 0.94) if offen else Color(0.55, 0.59, 0.66))
     draw_string(schrift, Vector2(r.position.x + 18.0, r.position.y + 50.0),
-        eintrag["text"], HORIZONTAL_ALIGNMENT_LEFT, -1, 14,
+        eintrag["text"], HORIZONTAL_ALIGNMENT_LEFT, -1, 15,
         Color(0.60, 0.68, 0.66) if offen else Color(0.42, 0.45, 0.52))
-    draw_string(schrift, Vector2(r.position.x, r.get_center().y + 7.0),
-        Waehrung.quanten(int(eintrag["quanten"])), HORIZONTAL_ALIGNMENT_RIGHT,
-        r.size.x - 24.0, 18,
-        Color(0.52, 0.86, 0.66) if offen else Color(0.42, 0.46, 0.54))
+    Waehrung.zeichne(self, schrift, Vector2(r.end.x - 24.0, r.get_center().y + 7.0),
+        str(int(eintrag["quanten"])), Waehrung.Art.QUANTEN, 18,
+        Color(0.52, 0.86, 0.66) if offen else Color(0.42, 0.46, 0.54),
+        Waehrung.Lage.RECHTS)

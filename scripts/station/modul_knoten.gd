@@ -77,22 +77,27 @@ func _draw() -> void:
         glut = leit.darkened(0.65)
     draw_rect(Rect2(r.position.x + 8.0, r.position.y + 16.0, 6.0, r.size.y - 32.0), glut)
 
-    var schrift := ThemeDB.fallback_font
+    var schrift := Schrift.text()
     var hell := Color(0.92, 0.94, 0.97) if aktiv else Color(0.45, 0.48, 0.53)
 
     draw_string(schrift, Vector2(r.position.x + 24.0, r.position.y + 34.0),
-        Modul.name_von(index), HORIZONTAL_ALIGNMENT_LEFT, -1, 19, hell)
+        Modul.name_von(index), HORIZONTAL_ALIGNMENT_LEFT, -1, 21, hell)
 
     draw_string(schrift, Vector2(r.position.x + 24.0, r.position.y + 60.0),
         "x%d" % anzahl, HORIZONTAL_ALIGNMENT_LEFT, -1, 16,
         leit if aktiv else Color(0.40, 0.43, 0.48))
 
-    var preistext := Waehrung.plasma(preis)
+    var preisfarbe := Color(0.55, 0.95, 0.65) if bezahlbar else Color(0.48, 0.51, 0.56)
+    var px := r.position.x + 24.0
+    var py := r.position.y + 84.0
     if menge > 1:
-        preistext = "x%d  %s" % [menge, preistext]
-    draw_string(schrift, Vector2(r.position.x + 24.0, r.position.y + 84.0),
-        preistext, HORIZONTAL_ALIGNMENT_LEFT, -1, 15,
-        Color(0.55, 0.95, 0.65) if bezahlbar else Color(0.48, 0.51, 0.56))
+        # Die Menge steht vor dem Betrag, damit klar ist, wofuer der Preis gilt.
+        var vorsatz := "x%d  " % menge
+        draw_string(schrift, Vector2(px, py), vorsatz,
+            HORIZONTAL_ALIGNMENT_LEFT, -1, 16, preisfarbe)
+        px += schrift.get_string_size(vorsatz, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x
+    Waehrung.zeichne(self, schrift, Vector2(px, py), Zahl.kurz(preis),
+        Waehrung.Art.PLASMA, 16, preisfarbe)
 
     _zeichne_meilenstein(r, leit)
 
