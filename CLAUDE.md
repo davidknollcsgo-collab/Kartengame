@@ -61,6 +61,21 @@ welcher Abschnitt erreicht wird. **Balancing-Änderungen gehören gemessen, nich
 geschätzt** — die erste Fassung brauchte 7,5 Stunden bis zum ersten Prestige,
 was erst dieser Durchlauf zeigte.
 
+## Spielbare Einzeldatei erzeugen
+
+```bash
+godot --headless --path . --export-release "Web" docs/index.html
+python3 tools/einzeldatei.py /pfad/sternwerft.html
+```
+
+Packt den Web-Export in **eine** HTML-Datei: die Teile werden gzip-komprimiert
+und base64 eingebettet, der Browser entpackt sie beim Start über
+`DecompressionStream` und reicht sie als Blob-Adressen an Godots Lader weiter.
+
+Der Grund: roh sind es 38 MB, als Artifact sind höchstens 16 MB erlaubt.
+Komprimiert bleiben 12,3 MB. Damit lässt sich eine spielbare Fassung
+veröffentlichen, ohne dass jemand GitHub Pages einschalten muss.
+
 ## Grenzen der Umgebung
 
 - `dl.google.com` ist blockiert → kein Android SDK → **AAB-Builds nur in CI**
