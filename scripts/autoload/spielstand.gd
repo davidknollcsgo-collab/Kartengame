@@ -58,10 +58,19 @@ var boost_faktor := 1.0
 ## Obergrenze fuer Offline-Ertrag in Sekunden.
 var offline_cap := Oekonomie.OFFLINE_CAP_BASIS
 
+## Gewaehlte Kaufmenge; -1 bedeutet "so viele wie bezahlbar".
+var kaufmenge := 1
+
 ## Unix-Zeit des letzten Speicherns; Grundlage der Offline-Berechnung.
 var zeitstempel := 0.0
 
+## Abstand zwischen zwei automatischen Sicherungen.
+const AUTOSAVE_SEKUNDEN := 30.0
+
+signal gespeichert
+
 var _rest := 0.0
+var _seit_speichern := 0.0
 
 
 func _ready() -> void:
@@ -79,6 +88,11 @@ func _process(delta: float) -> void:
     while _rest >= schritt:
         _rest -= schritt
         _tick(schritt)
+
+    _seit_speichern += delta
+    if _seit_speichern >= AUTOSAVE_SEKUNDEN:
+        _seit_speichern = 0.0
+        speichere()
 
 
 func _tick(dt: float) -> void:
@@ -176,6 +190,38 @@ func verbuche_offline(jetzt: float = -1.0) -> float:
     return ertrag
 
 
+# --- Platte -----------------------------------------------------------------
+
+## Schreibt den Spielstand. Gibt Erfolg zurueck.
+func speichere() -> bool:
+    var ok := Speicher.schreibe(als_dict())
+    if ok:
+        gespeichert.emit()
+    return ok
+
+
+## Laedt einen vorhandenen Spielstand. Gibt zurueck, ob einer gefunden wurde.
+##
+## Bewusst nicht in [method _ready]: der Testlauf erzeugt Spielstaende von Hand
+## und darf dabei nicht die echte Datei des Entwicklers lesen oder ueberschreiben.
+func lade_von_platte() -> bool:
+    var d := Speicher.lies()
+    if d.is_empty():
+        return false
+    aus_dict(d)
+    return true
+
+
+func _notification(was: int) -> void:
+    # Auf Android ist PAUSED der letzte verlaessliche Moment vor dem Abschuss
+    # durch das System - danach kommt oft nichts mehr.
+    if was == NOTIFICATION_APPLICATION_PAUSED \
+            or was == NOTIFICATION_WM_CLOSE_REQUEST \
+            or was == NOTIFICATION_WM_GO_BACK_REQUEST:
+        if is_inside_tree():
+            speichere()
+
+
 # --- Serialisierung ---------------------------------------------------------
 
 ## Zustand als reines Dictionary, bereit zum Speichern.
@@ -189,6 +235,7 @@ func als_dict() -> Dictionary:
         "bestand": Array(bestand),
         "verstaerker": verstaerker,
         "offline_cap": offline_cap,
+        "kaufmenge": kaufmenge,
         "zeitstempel": Time.get_unix_time_from_system(),
     }
 
@@ -205,6 +252,7 @@ func aus_dict(d: Dictionary) -> void:
     lebenszeit_credits = float(d.get("lebenszeit_credits", 0.0))
     verstaerker = bool(d.get("verstaerker", false))
     offline_cap = float(d.get("offline_cap", Oekonomie.OFFLINE_CAP_BASIS))
+    kaufmenge = int(d.get("kaufmenge", 1))
     zeitstempel = float(d.get("zeitstempel", Time.get_unix_time_from_system()))
 
     bestand.resize(Modul.ANZAHL)

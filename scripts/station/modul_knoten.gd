@@ -13,6 +13,12 @@ var index := 0
 var anzahl := 0
 var bezahlbar := false
 
+## Tatsaechlich zu kaufende Stueckzahl - bei "MAX" bereits aufgeloest.
+var menge := 1
+
+## Preis fuer [member menge] Stueck.
+var preis := 0.0
+
 var _puls := 0.0
 
 
@@ -32,10 +38,16 @@ func trefferflaeche() -> Rect2:
     return Rect2(position - GROESSE * 0.5, GROESSE)
 
 
-func aktualisiere(neue_anzahl: int, ist_bezahlbar: bool) -> void:
-    if neue_anzahl == anzahl and ist_bezahlbar == bezahlbar:
+## Bewusst ohne Zugriff auf den Autoload: die Werte kommen von aussen herein,
+## damit diese Datei im headless Testlauf ladbar bleibt.
+func aktualisiere(neue_anzahl: int, neue_menge: int, neuer_preis: float,
+        ist_bezahlbar: bool) -> void:
+    if neue_anzahl == anzahl and neue_menge == menge \
+            and is_equal_approx(neuer_preis, preis) and ist_bezahlbar == bezahlbar:
         return
     anzahl = neue_anzahl
+    menge = neue_menge
+    preis = neuer_preis
     bezahlbar = ist_bezahlbar
     queue_redraw()
 
@@ -75,9 +87,11 @@ func _draw() -> void:
         "x%d" % anzahl, HORIZONTAL_ALIGNMENT_LEFT, -1, 16,
         leit if aktiv else Color(0.40, 0.43, 0.48))
 
-    var preis := Oekonomie.kosten(index, anzahl)
+    var preistext := Zahl.kurz(preis) + " ¢"
+    if menge > 1:
+        preistext = "x%d  %s" % [menge, preistext]
     draw_string(schrift, Vector2(r.position.x + 24.0, r.position.y + 84.0),
-        Zahl.kurz(preis) + " ¢", HORIZONTAL_ALIGNMENT_LEFT, -1, 15,
+        preistext, HORIZONTAL_ALIGNMENT_LEFT, -1, 15,
         Color(0.55, 0.95, 0.65) if bezahlbar else Color(0.48, 0.51, 0.56))
 
     _zeichne_meilenstein(r, leit)

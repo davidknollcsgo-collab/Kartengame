@@ -11,6 +11,9 @@ const TIPP_TOLERANZ := 12.0
 var _station: Station
 var _kamera: Kamera
 var _sterne: ColorRect
+var _leiste: Leiste
+var _prestige_dialog: Dialog
+var _offline_dialog: Dialog
 
 var _druck_bei := Vector2.ZERO
 var _druck_aktiv := false
@@ -20,6 +23,9 @@ var _schuss_zaehler := 0
 
 
 func _ready() -> void:
+    # Vor allem anderen: erst laden, dann Offline verrechnen, dann anzeigen.
+    Spielstand.lade_von_platte()
+
     _baue_hintergrund()
 
     _station = Station.new()
@@ -33,17 +39,79 @@ func _ready() -> void:
     _kamera.make_current()
     _kamera.passe_ein(get_viewport_rect().size)
 
-    var schicht := CanvasLayer.new()
-    schicht.layer = 1
-    add_child(schicht)
-    schicht.add_child(Hud.new())
+    _baue_oberflaeche()
 
     # Abwesenheit gutschreiben, bevor der Spieler das erste Bild sieht.
     var offline := Spielstand.verbuche_offline()
     if offline > 0.0:
-        print("Offline gutgeschrieben: %s ¢" % Zahl.kurz(offline))
+        _zeige_offline(offline)
 
     _pruefe_schussauftrag()
+
+
+func _baue_oberflaeche() -> void:
+    var schicht := CanvasLayer.new()
+    schicht.layer = 1
+    add_child(schicht)
+
+    schicht.add_child(Hud.new())
+
+    _leiste = Leiste.new()
+    _leiste.menge = Spielstand.kaufmenge
+    _leiste.menge_gewaehlt.connect(_bei_menge)
+    _leiste.prestige_gewuenscht.connect(_frage_prestige)
+    schicht.add_child(_leiste)
+
+    # Dialoge oben auf, damit nichts dahinter bedienbar bleibt.
+    var oben := CanvasLayer.new()
+    oben.layer = 2
+    add_child(oben)
+
+    _prestige_dialog = Dialog.new()
+    _prestige_dialog.visible = false
+    _prestige_dialog.bestaetigt.connect(_fuehre_prestige_aus)
+    oben.add_child(_prestige_dialog)
+
+    _offline_dialog = Dialog.new()
+    _offline_dialog.visible = false
+    oben.add_child(_offline_dialog)
+
+
+func _bei_menge(menge: int) -> void:
+    Spielstand.kaufmenge = menge
+    _station.aktualisiere()
+
+
+func _frage_prestige() -> void:
+    var gewinn := Oekonomie.prestige_ertrag(Spielstand.lebenszeit_credits)
+    if gewinn <= 0:
+        return
+    var neu := Spielstand.protokolle + gewinn
+    # Ausdruecklich benennen, was verloren geht: ein versehentlicher Reset
+    # kostet Stunden und ist nicht rueckgaengig zu machen.
+    _prestige_dialog.zeige("Station zurücksetzen?", PackedStringArray([
+        "Alle Baugruppen und Credits gehen verloren.",
+        "",
+        "Du erhältst %d Protokolle (insgesamt %d)." % [gewinn, neu],
+        "Produktion dann dauerhaft x%.2f statt x%.2f." % [
+            Oekonomie.prestige_mult(neu), Oekonomie.prestige_mult(Spielstand.protokolle)],
+    ]), "Zurücksetzen", "Abbrechen")
+
+
+func _fuehre_prestige_aus() -> void:
+    Spielstand.prestige()
+    _station.aktualisiere()
+    Spielstand.speichere()
+
+
+func _zeige_offline(betrag: float) -> void:
+    var dauer := minf(Time.get_unix_time_from_system() - Spielstand.zeitstempel,
+        Spielstand.offline_cap)
+    _offline_dialog.zeige("Willkommen zurück", PackedStringArray([
+        "Die Station lief %s ohne dich weiter." % Zahl.zeit(maxf(dauer, 0.0)),
+        "",
+        "Gutschrift: %s ¢" % Zahl.kurz(betrag),
+    ]), "Übernehmen")
 
 
 func _baue_hintergrund() -> void:
@@ -94,7 +162,7 @@ func _tippe(bildschirm: Vector2) -> void:
 
     var index := _station.modul_bei(lokal)
     if index >= 0:
-        Spielstand.kaufe(index, 1)
+        _station.kaufe_an(index)
 
 
 # --- Entwicklerwerkzeug -----------------------------------------------------
@@ -112,6 +180,18 @@ func _pruefe_schussauftrag() -> void:
         _schuss_pfad = args[i + 1]
     if args.has("--vorrat"):
         _fuelle_vorrat()
+    var d := args.find("--zeige")
+    if d >= 0 and d + 1 < args.size():
+        _zeige_probe(args[d + 1])
+
+
+## Oeffnet einen Dialog fuer die Aufnahme.
+func _zeige_probe(was: String) -> void:
+    match was:
+        "prestige":
+            _frage_prestige()
+        "offline":
+            _zeige_offline(4.2e9)
 
 
 ## Baut fuer Aufnahmen eine laufende Station auf.
@@ -121,6 +201,8 @@ func _pruefe_schussauftrag() -> void:
 func _fuelle_vorrat() -> void:
     Spielstand.protokolle = 12
     Spielstand.credits = 5.0e7
+    # Ohne Lebenszeitertrag waere Prestige gesperrt und der Knopf nie zu sehen.
+    Spielstand.lebenszeit_credits = 9.0e12
     for paar in [[0, 27], [1, 14], [2, 11], [3, 6], [4, 3], [5, 1]]:
         Spielstand.bestand[paar[0]] = paar[1]
         Spielstand.bestand_geaendert.emit(paar[0], paar[1])

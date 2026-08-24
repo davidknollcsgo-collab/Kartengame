@@ -19,7 +19,7 @@ const TESTS: PackedStringArray = [
     "_test_kostenkurve", "_test_massenkauf", "_test_max_kaufbar",
     "_test_meilensteine", "_test_produktion", "_test_kaltstart",
     "_test_offline", "_test_speicherstand", "_test_formatter",
-    "_test_layout", "_test_langzeit",
+    "_test_layout", "_test_speicher_platte", "_test_langzeit",
 ]
 
 
@@ -233,6 +233,54 @@ func _test_speicherstand() -> bool:
     _nahe(d.offline_cap, Oekonomie.OFFLINE_CAP_BASIS, "Migration v0 setzt Offline-Cap")
     _gleich(d.bestand[1], 2, "Migration uebernimmt Teilbestand")
     _gleich(d.bestand[7], 0, "Fehlende Bestandsplaetze werden 0")
+    return true
+
+
+func _test_speicher_platte() -> bool:
+    # Eigener Pfad, damit der Testlauf nie den echten Spielstand anfasst.
+    var pfad := "user://test_sternwerft.sav"
+    Speicher.loesche(pfad)
+
+    _ist(not Speicher.existiert(pfad), "Speicher: vorher keine Datei da")
+    _ist(Speicher.lies(pfad).is_empty(), "Speicher: fehlende Datei ergibt leeres Dict")
+
+    var daten := {"version": 1, "credits": 1234.5, "bestand": [3, 0, 7], "kerne": 9}
+    _ist(Speicher.schreibe(daten, pfad), "Speicher: schreiben gelingt")
+    _ist(Speicher.existiert(pfad), "Speicher: Datei liegt danach vor")
+    _ist(not FileAccess.file_exists(pfad + ".neu"),
+        "Speicher: Nebendatei wird nach dem Umbenennen nicht zurueckgelassen")
+
+    var zurueck := Speicher.lies(pfad)
+    _nahe(float(zurueck.get("credits", 0.0)), 1234.5, "Speicher: Credits kommen zurueck")
+    _gleich(int(zurueck.get("kerne", 0)), 9, "Speicher: Kerne kommen zurueck")
+    _gleich((zurueck.get("bestand", []) as Array).size(), 3, "Speicher: Bestand kommt zurueck")
+
+    # Unverschluesselter Muell an derselben Stelle darf das Spiel nicht aufhalten.
+    print("   (die folgenden Fehlermeldungen sind beabsichtigt: beschaedigte Datei)")
+    var kaputt := FileAccess.open(pfad, FileAccess.WRITE)
+    kaputt.store_string("das ist kein gueltiger Spielstand")
+    kaputt.close()
+    _ist(Speicher.lies(pfad).is_empty(), "Speicher: beschaedigte Datei ergibt leeres Dict")
+
+    # Ein voller Spielstand muss den Weg ueber die Platte unveraendert ueberstehen.
+    var a := _neuer_stand()
+    a.credits = 8.75e14
+    a.kerne = 31
+    a.protokolle = 6
+    a.bestand[2] = 44
+    a.verstaerker = true
+    _ist(Speicher.schreibe(a.als_dict(), pfad), "Speicher: Spielstand schreiben gelingt")
+
+    var b := _neuer_stand()
+    b.aus_dict(Speicher.lies(pfad))
+    _nahe(float(b.credits), float(a.credits), "Speicher: Credits ueber Platte")
+    _gleich(int(b.kerne), 31, "Speicher: Kerne ueber Platte")
+    _gleich(int(b.protokolle), 6, "Speicher: Protokolle ueber Platte")
+    _gleich(int(b.bestand[2]), 44, "Speicher: Bestand ueber Platte")
+    _gleich(bool(b.verstaerker), true, "Speicher: Verstaerker ueber Platte")
+
+    Speicher.loesche(pfad)
+    _ist(not Speicher.existiert(pfad), "Speicher: loeschen raeumt auf")
     return true
 
 

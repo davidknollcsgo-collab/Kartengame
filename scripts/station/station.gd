@@ -57,18 +57,31 @@ func _bei_bestand(_index: int, _anzahl: int) -> void:
     _verteile_drohnen()
 
 
+## Kauft an der gewaehlten Baugruppe die eingestellte Menge.
+func kaufe_an(index: int) -> bool:
+    return Spielstand.kaufe(index, _menge_fuer(index))
+
+
 func _bei_credits(_wert: float) -> void:
-    # Nur die Bezahlbarkeit anpassen; das ist billig und haelt die
-    # Kaufhinweise aktuell.
-    for k in _module:
-        k.aktualisiere(Spielstand.bestand[k.index],
-            Oekonomie.kosten(k.index, Spielstand.bestand[k.index]) <= Spielstand.credits)
+    aktualisiere()
+
+
+## Tatsaechliche Stueckzahl fuer die gewaehlte Kaufmenge.
+##
+## Bei "MAX" und leerer Kasse wird 1 zurueckgegeben: der Spieler soll den
+## Preis des naechsten Stuecks sehen, nicht eine Null.
+func _menge_fuer(index: int) -> int:
+    if Spielstand.kaufmenge >= 1:
+        return Spielstand.kaufmenge
+    return maxi(Oekonomie.max_kaufbar(index, Spielstand.bestand[index],
+        Spielstand.credits), 1)
 
 
 func aktualisiere() -> void:
     for k in _module:
-        k.aktualisiere(Spielstand.bestand[k.index],
-            Oekonomie.kosten(k.index, Spielstand.bestand[k.index]) <= Spielstand.credits)
+        var m := _menge_fuer(k.index)
+        var preis := Oekonomie.kosten_summe(k.index, Spielstand.bestand[k.index], m)
+        k.aktualisiere(Spielstand.bestand[k.index], m, preis, preis <= Spielstand.credits)
     queue_redraw()
 
 
