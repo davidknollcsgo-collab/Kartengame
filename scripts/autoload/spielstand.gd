@@ -64,6 +64,13 @@ var kaufmenge := 1
 ## Unix-Zeit des letzten Speicherns; Grundlage der Offline-Berechnung.
 var zeitstempel := 0.0
 
+## Angerechnete Dauer der letzten Abwesenheit, in Sekunden.
+##
+## Muss festgehalten werden: [method verbuche_offline] stempelt den Zeitpunkt
+## neu, sodass der Abstand danach nicht mehr rekonstruierbar ist. Der Dialog
+## zeigte deshalb "0s" bei vierstelliger Gutschrift.
+var letzte_offline_dauer := 0.0
+
 ## Abstand zwischen zwei automatischen Sicherungen.
 const AUTOSAVE_SEKUNDEN := 30.0
 
@@ -183,8 +190,10 @@ func verbuche_offline(jetzt: float = -1.0) -> float:
         jetzt = Time.get_unix_time_from_system()
     var verstrichen := jetzt - zeitstempel
     zeitstempel = jetzt
+    letzte_offline_dauer = 0.0
     if verstrichen <= 0.0:
         return 0.0
+    letzte_offline_dauer = minf(verstrichen, offline_cap)
     var ertrag := Oekonomie.offline_ertrag(rate(), verstrichen, offline_cap)
     gutschrift(ertrag)
     return ertrag

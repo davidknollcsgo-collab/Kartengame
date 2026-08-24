@@ -36,10 +36,30 @@ xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 720x1280 \
   -- --schuss /pfad/bild.png --vorrat
 ```
 
-`--schuss <datei>` speichert nach 45 Bildern und beendet. `--vorrat` baut eine
-laufende Station auf — der Anfangszustand zeigt nur dunkle Baugruppen und sagt
-über die Optik im Betrieb nichts aus. Beide Schalter greifen nur im
-Debug-Build (`OS.is_debug_build()`).
+Schalter (alle nur im Debug-Build, `OS.is_debug_build()`):
+
+| Schalter | Wirkung |
+|---|---|
+| `--schuss <datei>` | speichert nach 45 Bildern und beendet |
+| `--vorrat` | baut eine laufende Station auf; der Anfangszustand zeigt nur dunkle Baugruppen |
+| `--zeige prestige\|offline` | öffnet den jeweiligen Dialog |
+| `--speichern` | erzwingt eine Sicherung vor der Aufnahme |
+
+Speichern und Laden im laufenden Spiel lassen sich damit durchgehend prüfen:
+einmal mit `--vorrat --speichern`, dann ohne `--vorrat` erneut starten. Kommt
+der Stand zurück, greift die Verdrahtung in `main.gd` — die Unit-Tests decken
+nur die Dateiebene ab.
+
+## Balancing messen
+
+```bash
+godot --headless --path . --script tools/balance.gd
+```
+
+Spielt 48 Stunden mit einer vernünftigen Kaufstrategie durch und meldet, wann
+welcher Abschnitt erreicht wird. **Balancing-Änderungen gehören gemessen, nicht
+geschätzt** — die erste Fassung brauchte 7,5 Stunden bis zum ersten Prestige,
+was erst dieser Durchlauf zeigte.
 
 ## Grenzen der Umgebung
 

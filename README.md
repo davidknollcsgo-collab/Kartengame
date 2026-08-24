@@ -8,15 +8,17 @@ den Modulen — die Station läuft weiter, auch wenn niemand zusieht.
 
 ## Stand
 
-Phase 2 von 7 — die Station ist sichtbar und bedienbar: acht Baugruppen,
-Frachtdrohnen, Kamera mit Ziehen und Zoomen, prozedurales Sternenfeld.
-Die vollständige Bedienoberfläche folgt in Phase 3.
+Phase 3 von 7 — **spielbar**. Aufbau, Kaufmengen, Prestige, Offline-Ertrag und
+Speichern funktionieren; der Fortschritt überlebt den Neustart. Es fehlen
+Android-Export, Werbung und In-App-Käufe.
+
+Erstes Prestige nach rund zwei Stunden (gemessen, siehe `tools/balance.gd`).
 
 | Phase | Inhalt | Status |
 |---|---|---|
 | 1 | Ökonomie, Formeln, Formatter, Tests | ✅ |
 | 2 | Station, Module, Drohnen, Kamera | ✅ |
-| 3 | Prestige-UI, Offline-Dialog, Speichern | offen |
+| 3 | Prestige-UI, Offline-Dialog, Speichern | ✅ |
 | 4 | Android-Export, AAB | offen |
 | 5 | AdMob, Play Billing, Consent | offen |
 | 6 | Datenschutz, Data Safety, Lizenz-Screen | offen |
@@ -59,7 +61,11 @@ shaders/sterne.gdshader       Sternenfeld, gerechnet statt gezeichnet
 scripts/autoload/oekonomie.gd Reine Mathematik, zustandslos, statisch
 scripts/autoload/zahl.gd      Zahlen- und Zeitformatierung
 scripts/autoload/spielstand.gd Zustand + Signale (Autoload "Spielstand")
+scripts/autoload/speicher.gd  Verschlüsseltes Speichern, dateiebene, testbar
+scripts/ui/leiste.gd          Kaufmenge und Prestige
+scripts/ui/dialog.gd          Modales Fenster
 tests/run_tests.gd            Headless-Testlauf
+tools/balance.gd              Balancing-Messung über 48 Spielstunden
 ```
 
 `oekonomie.gd` kennt weder Szenenbaum noch UI. Genau deshalb lässt sich das

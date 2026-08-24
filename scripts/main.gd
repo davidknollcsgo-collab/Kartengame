@@ -105,10 +105,8 @@ func _fuehre_prestige_aus() -> void:
 
 
 func _zeige_offline(betrag: float) -> void:
-    var dauer := minf(Time.get_unix_time_from_system() - Spielstand.zeitstempel,
-        Spielstand.offline_cap)
     _offline_dialog.zeige("Willkommen zurück", PackedStringArray([
-        "Die Station lief %s ohne dich weiter." % Zahl.zeit(maxf(dauer, 0.0)),
+        "Die Station lief %s ohne dich weiter." % Zahl.zeit(Spielstand.letzte_offline_dauer),
         "",
         "Gutschrift: %s ¢" % Zahl.kurz(betrag),
     ]), "Übernehmen")
@@ -180,6 +178,11 @@ func _pruefe_schussauftrag() -> void:
         _schuss_pfad = args[i + 1]
     if args.has("--vorrat"):
         _fuelle_vorrat()
+    if args.has("--speichern"):
+        # Erzwingt eine Sicherung vor der Aufnahme. Dient dem Nachweis, dass
+        # Speichern und Laden im laufenden Spiel zusammenspielen - die
+        # Unit-Tests pruefen nur die Dateiebene, nicht die Verdrahtung hier.
+        Spielstand.speichere()
     var d := args.find("--zeige")
     if d >= 0 and d + 1 < args.size():
         _zeige_probe(args[d + 1])
@@ -191,6 +194,9 @@ func _zeige_probe(was: String) -> void:
         "prestige":
             _frage_prestige()
         "offline":
+            # Plausible Dauer fuer die Aufnahme; im Spiel kommt sie aus
+            # verbuche_offline().
+            Spielstand.letzte_offline_dauer = 3.0 * 3600.0
             _zeige_offline(4.2e9)
 
 
@@ -202,7 +208,10 @@ func _fuelle_vorrat() -> void:
     Spielstand.protokolle = 12
     Spielstand.credits = 5.0e7
     # Ohne Lebenszeitertrag waere Prestige gesperrt und der Knopf nie zu sehen.
-    Spielstand.lebenszeit_credits = 9.0e12
+    # Auf die aktuelle Prestige-Kurve abgestimmt: entspricht knapp dem ersten
+    # erreichbaren Reset. Der alte Wert stammte aus der Kurve vor dem
+    # Balancing und liess den Knopf viertausend Protokolle ausweisen.
+    Spielstand.lebenszeit_credits = 6.0e7
     for paar in [[0, 27], [1, 14], [2, 11], [3, 6], [4, 3], [5, 1]]:
         Spielstand.bestand[paar[0]] = paar[1]
         Spielstand.bestand_geaendert.emit(paar[0], paar[1])

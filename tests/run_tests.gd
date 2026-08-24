@@ -224,6 +224,24 @@ func _test_offline() -> bool:
 
     var ertrag: float = st.verbuche_offline(9000.0 + 3600.0)
     _ist(ertrag > 0.0, "Spielstand: normale Abwesenheit bringt Ertrag")
+    # Die Dauer muss festgehalten werden, weil der Zeitstempel danach neu ist.
+    _nahe(float(st.letzte_offline_dauer), 3600.0,
+        "Spielstand: angerechnete Dauer wird festgehalten")
+
+    var lang := _neuer_stand()
+    lang.bestand[1] = 10
+    lang.zeitstempel = 0.0
+    lang.offline_cap = 3600.0
+    lang.verbuche_offline(99999.0)
+    _nahe(float(lang.letzte_offline_dauer), 3600.0,
+        "Spielstand: festgehaltene Dauer wird auf den Cap begrenzt")
+
+    var rueck := _neuer_stand()
+    rueck.bestand[1] = 10
+    rueck.zeitstempel = 5000.0
+    rueck.verbuche_offline(4000.0)
+    _gleich(rueck.letzte_offline_dauer, 0.0,
+        "Spielstand: Zeitruecksprung ergibt auch keine Dauer")
     return true
 
 
