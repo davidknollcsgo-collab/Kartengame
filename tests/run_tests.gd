@@ -17,7 +17,7 @@ var _staende: Array[Node] = []
 ## Abbruch mitten in einem Test auffaellt.
 const TESTS: PackedStringArray = [
     "_test_kostenkurve", "_test_massenkauf", "_test_max_kaufbar",
-    "_test_meilensteine", "_test_produktion", "_test_kaltstart",
+    "_test_meilensteine", "_test_produktion", "_test_prestige", "_test_kaltstart",
     "_test_offline", "_test_speicherstand", "_test_formatter",
     "_test_layout", "_test_speicher_platte", "_test_langzeit",
 ]
@@ -25,6 +25,7 @@ const TESTS: PackedStringArray = [
 
 func _init() -> void:
     print("── STERNWERFT Testlauf ────────────────────────")
+    _pruefe_vollstaendigkeit()
     for name in TESTS:
         # Ein Laufzeitfehler in GDScript bricht nur die betroffene Funktion ab
         # und liefert null zurueck. Ohne diese Pruefung meldete der Lauf gruen,
@@ -45,6 +46,20 @@ func _init() -> void:
             printerr("✗ " + f)
         printerr("%d Fehler bei %d Zusicherungen" % [_fehler.size(), _bestanden])
         quit(1)
+
+
+## Stellt sicher, dass jede vorhandene Testfunktion auch aufgerufen wird.
+##
+## Entstanden aus einem echten Fehler: beim Umbau des Laeufers fiel
+## _test_prestige aus der Liste und lief mehrere Commits lang nicht mit. Die
+## Abbrucherkennung half nicht - ein Test, der nie aufgerufen wird, kann auch
+## nicht abbrechen. Nur ein Abgleich gegen die tatsaechlich vorhandenen
+## Methoden faellt das auf.
+func _pruefe_vollstaendigkeit() -> void:
+    for eintrag in get_method_list():
+        var name: String = eintrag["name"]
+        if name.begins_with("_test_") and not TESTS.has(name):
+            _fehler.append("%s ist vorhanden, steht aber nicht in TESTS" % name)
 
 
 # --- Zusicherungen ----------------------------------------------------------
@@ -147,13 +162,25 @@ func _test_produktion() -> bool:
 func _test_prestige() -> bool:
     _gleich(Oekonomie.prestige_ertrag(0.0), 0, "Ohne Ertrag keine Protokolle")
     _gleich(Oekonomie.prestige_ertrag(-5.0), 0, "Negativer Ertrag ergibt 0")
-    # Das erste Protokoll faellt bei Skala / Faktor^2 = 1e12/225 ~ 4.44e9.
-    _gleich(Oekonomie.prestige_ertrag(4.4e9), 0, "Knapp vor dem ersten Protokoll noch 0")
-    _gleich(Oekonomie.prestige_ertrag(4.5e9), 1, "Erstes Protokoll bei ~4.44e9")
-    _gleich(Oekonomie.prestige_ertrag(1e12), 15, "Bei der Bezugsgroesse 15 Protokolle")
-    _gleich(Oekonomie.prestige_ertrag(4e12), 30, "Vierfacher Ertrag verdoppelt (Wurzel)")
-    _ist(not Oekonomie.prestige_moeglich(1e9), "Prestige ganz frueh noch gesperrt")
-    _ist(Oekonomie.prestige_moeglich(1e12), "Prestige spaeter moeglich")
+    # Das erste Protokoll faellt bei Skala / Faktor^2.
+    _gleich(Oekonomie.prestige_ertrag(5.3e5), 0, "Knapp vor dem ersten Protokoll noch 0")
+    _gleich(Oekonomie.prestige_ertrag(5.4e5), 1, "Erstes Protokoll bei ~5.33e5")
+    _gleich(Oekonomie.prestige_ertrag(1.2e8), 15, "Bei der Bezugsgroesse 15 Protokolle")
+    _gleich(Oekonomie.prestige_ertrag(4.8e8), 30, "Vierfacher Ertrag verdoppelt (Wurzel)")
+
+    # Unterhalb der Mindestausbeute bleibt der Reset gesperrt, obwohl die
+    # Formel bereits Protokolle ausweisen wuerde.
+    _ist(Oekonomie.prestige_ertrag(1e7) > 0, "Formel liefert frueh schon Protokolle")
+    _ist(not Oekonomie.prestige_moeglich(1e7),
+        "Prestige bleibt unter der Mindestausbeute gesperrt")
+    _ist(Oekonomie.prestige_moeglich(1e8), "Prestige ab zehn Protokollen moeglich")
+
+    # Der Spielstand muss die Sperre ebenfalls achten, nicht nur die Leiste.
+    var zu_frueh := _neuer_stand()
+    zu_frueh.lebenszeit_credits = 1e7
+    zu_frueh.bestand[0] = 5
+    _gleich(zu_frueh.prestige(), 0, "Spielstand verweigert zu fruehen Reset")
+    _gleich(zu_frueh.bestand[0], 5, "Bei verweigertem Reset bleibt die Station stehen")
 
     _nahe(Oekonomie.prestige_mult(0), 1.0, "Ohne Protokolle Multiplikator 1")
     _nahe(Oekonomie.prestige_mult(50), 2.0, "50 Protokolle verdoppeln")

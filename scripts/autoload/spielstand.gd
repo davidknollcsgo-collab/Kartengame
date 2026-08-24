@@ -157,9 +157,9 @@ func kaufe(index: int, menge: int = 1) -> bool:
 ## Setzt die Station zurueck und wandelt den Lebenszeitertrag in Protokolle.
 ## Gibt die gewonnenen Protokolle zurueck; 0 bedeutet, es wurde nichts getan.
 func prestige() -> int:
-    var gewinn := Oekonomie.prestige_ertrag(lebenszeit_credits)
-    if gewinn <= 0:
+    if not Oekonomie.prestige_moeglich(lebenszeit_credits):
         return 0
+    var gewinn := Oekonomie.prestige_ertrag(lebenszeit_credits)
     protokolle += gewinn
     # Auf das Startguthaben, nicht auf 0: sonst steht die Station nach jedem
     # Reset genauso still wie beim allerersten Start.

@@ -15,16 +15,24 @@ const OFFLINE_CAP_BASIS := 4.0 * 3600.0
 ## Hoechstmoegliche Obergrenze nach Vollausbau (24 Stunden).
 const OFFLINE_CAP_MAX := 24.0 * 3600.0
 
-## Bezugsgroesse der Prestige-Kurve - KEINE Mindestschwelle.
+## Bezugsgroesse der Prestige-Kurve.
 ##
-## Zusammen mit [constant PRESTIGE_FAKTOR] faellt das erste Protokoll bereits
-## bei rund 4.4e9 Lebenszeit-Credits an (Skala / Faktor^2). Das ist Absicht:
-## der erste Reset soll frueh erreichbar sein, sonst sieht ein Spieler die
-## Kernmechanik nie.
-const PRESTIGE_SKALA := 1e12
+## Aus dem Balancing-Durchlauf hergeleitet, nicht geraten: mit dem
+## urspruenglichen Wert 1e12 war das erste Prestige erst nach 7,5 Stunden
+## moeglich. Wer so lange spielt, ohne die Kernmechanik zu sehen, hoert
+## vorher auf. Dieser Wert bringt es auf gut zwei Stunden.
+const PRESTIGE_SKALA := 1.2e8
 
 ## Skalierung der Prestige-Ausbeute.
 const PRESTIGE_FAKTOR := 15.0
+
+## Mindestausbeute, ab der ein Reset ueberhaupt angeboten wird.
+##
+## Ohne diese Sperre waere der erste Reset ein Protokoll wert - also plus zwei
+## Prozent fuer den Verlust der gesamten Station. Ein Spieler, der das einmal
+## macht, macht es nie wieder. Erst ab zehn Protokollen lohnt der Schnitt
+## sichtbar.
+const MIN_PROTOKOLLE := 10
 
 ## Dauerhafter Produktionsbonus je Protokoll (2 Prozent).
 const PROTOKOLL_BONUS := 0.02
@@ -103,9 +111,9 @@ static func prestige_ertrag(lebenszeit_credits: float) -> int:
     return int(floor(PRESTIGE_FAKTOR * sqrt(lebenszeit_credits / PRESTIGE_SKALA)))
 
 
-## Ob sich ein Reset ueberhaupt lohnt.
+## Ob sich ein Reset lohnt - siehe [constant MIN_PROTOKOLLE].
 static func prestige_moeglich(lebenszeit_credits: float) -> bool:
-    return prestige_ertrag(lebenszeit_credits) > 0
+    return prestige_ertrag(lebenszeit_credits) >= MIN_PROTOKOLLE
 
 
 ## Dauerhafter Produktionsmultiplikator aus gesammelten Protokollen.
