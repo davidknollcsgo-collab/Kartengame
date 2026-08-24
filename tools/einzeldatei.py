@@ -66,7 +66,7 @@ kopf = '''<title>Sternwerft</title>
 </div>
 '''
 
-fuss = '''
+fuss = r'''
 <script>
 (function () {
   var stand = document.getElementById("stand");
@@ -89,67 +89,111 @@ fuss = '''
     return;
   }
 
-  // Base64 über eine data-Adresse dekodieren statt über atob: das erledigt
-  // der Browser nativ und ist bei zwölf Megabyte um Größenordnungen schneller.
-  async function entpacke(b64, typ) {
-    var gepackt = await (await fetch("data:application/gzip;base64," + b64)).arrayBuffer();
-    var strom = new Blob([gepackt]).stream()
+  // Base64 von Hand dekodieren statt ueber fetch("data:...").
+  //
+  // Die Seite laeuft unter einer strengen Inhaltsrichtlinie, die Anfragen an
+  // data:- und blob:-Adressen abweist - der erste Versuch scheiterte genau
+  // daran mit "Failed to fetch". atob mit einer einfachen Schleife braucht
+  // keine Anfrage und ist bei zwoelf Megabyte trotzdem schnell genug;
+  // entscheidend ist die Schleife statt Uint8Array.from mit Rueckruf, das
+  // waere um Groessenordnungen langsamer.
+  function ausBase64(b64) {
+    var binaer = atob(b64);
+    var feld = new Uint8Array(binaer.length);
+    for (var i = 0; i < binaer.length; i++) {
+      feld[i] = binaer.charCodeAt(i);
+    }
+    return feld;
+  }
+
+  async function entpacke(b64) {
+    var strom = new Blob([ausBase64(b64)]).stream()
       .pipeThrough(new DecompressionStream("gzip"));
-    var roh = await new Response(strom).arrayBuffer();
-    return URL.createObjectURL(new Blob([roh], { type: typ }));
+    return new Uint8Array(await new Response(strom).arrayBuffer());
   }
 
   async function start() {
     var bloecke = document.querySelectorAll('script[type="application/gzip-base64"]');
-    var adressen = {};
+    var teile = {};
+    var typen = {};
     for (var i = 0; i < bloecke.length; i++) {
       var b = bloecke[i];
       var name = b.dataset.name;
       melde("entpacke " + name + " …", i / bloecke.length);
-      // Kurz Luft lassen, damit der Balken sich auch zeichnet.
       await new Promise(function (r) { setTimeout(r, 0); });
-      adressen[name] = await entpacke(b.textContent.trim(), b.dataset.typ);
+      teile[name] = await entpacke(b.textContent.trim());
+      typen[name] = b.dataset.typ;
       b.textContent = "";
     }
     melde("startet …", 1);
 
-    // Godot fordert seine Teile unter den ursprünglichen Namen an; hier
-    // werden sie auf die entpackten Blob-Adressen umgebogen.
-    var echtesFetch = window.fetch.bind(window);
+    function finde(url) {
+      var s = String(url);
+      for (var name in teile) {
+        if (s.indexOf(name) !== -1) return name;
+      }
+      return null;
+    }
+
+    // Godot fordert seine Teile ueber fetch an. Statt sie ueber eine Adresse
+    // auszuliefern - was die Inhaltsrichtlinie abweisen wuerde - wird hier
+    // direkt eine fertige Antwort aus dem Speicher gebaut. Das ist reines
+    // JavaScript ohne jede Anfrage.
+    var echtesFetch = window.fetch ? window.fetch.bind(window) : null;
     window.fetch = function (eingabe, optionen) {
       var url = (typeof eingabe === "string") ? eingabe
         : (eingabe && eingabe.url) ? eingabe.url : "";
-      for (var name in adressen) {
-        if (url.indexOf(name) !== -1 && url.indexOf("blob:") !== 0) {
-          return echtesFetch(adressen[name], optionen);
-        }
+      var name = finde(url);
+      if (name) {
+        return Promise.resolve(new Response(teile[name], {
+          status: 200,
+          headers: { "Content-Type": typen[name] }
+        }));
       }
-      return echtesFetch(eingabe, optionen);
+      if (echtesFetch) return echtesFetch(eingabe, optionen);
+      return Promise.reject(new Error("keine Netzanbindung: " + url));
     };
 
-    var echtesAddModule = null;
-    if (window.AudioWorklet && AudioWorklet.prototype.addModule) {
-      echtesAddModule = AudioWorklet.prototype.addModule;
-      AudioWorklet.prototype.addModule = function (url) {
-        for (var name in adressen) {
-          if (String(url).indexOf(name) !== -1) {
-            return echtesAddModule.call(this, adressen[name]);
-          }
-        }
-        return echtesAddModule.call(this, url);
+    // instantiateStreaming besteht auf dem richtigen MIME-Typ und mag
+    // zusammengebaute Antworten nicht ueberall; der Umweg ueber die Bytes
+    // funktioniert in jedem Browser.
+    if (WebAssembly.instantiateStreaming) {
+      WebAssembly.instantiateStreaming = async function (quelle, einfuhr) {
+        var antwort = await quelle;
+        return WebAssembly.instantiate(await antwort.arrayBuffer(), einfuhr);
+      };
+    }
+    if (WebAssembly.compileStreaming) {
+      WebAssembly.compileStreaming = async function (quelle) {
+        var antwort = await quelle;
+        return WebAssembly.compile(await antwort.arrayBuffer());
       };
     }
 
-    await new Promise(function (aufloesen, ablehnen) {
-      var s = document.createElement("script");
-      s.src = adressen["index.js"];
-      s.onload = aufloesen;
-      s.onerror = function () { ablehnen(new Error("Lader nicht ladbar")); };
-      document.body.appendChild(s);
-    });
+    // Den Lader als eingebettetes Skript einhaengen statt ueber eine Adresse:
+    // auch script-src laesst blob: nicht zwingend zu.
+    var quelltext = new TextDecoder().decode(teile["index.js"]);
+    var s = document.createElement("script");
+    s.textContent = quelltext;
+    document.body.appendChild(s);
 
-    var einstellungen = {
-      args: [],
+    if (typeof Engine === "undefined") {
+      scheitere("Der Lader konnte nicht ausgeführt werden.");
+      return;
+    }
+
+    var fehlend = Engine.getMissingFeatures({ threads: false });
+    if (fehlend.length) {
+      scheitere("Dem Browser fehlt: " + fehlend.join(", "));
+      return;
+    }
+
+    // Ton bleibt in dieser Fassung aus. Tonmodule verlangen zwingend eine
+    // Adresse, und die Inhaltsrichtlinie der Seite weist blob: ab - Godot
+    // wuerde dann beim Erzeugen des Tonknotens einen Fehler werfen. Im
+    // gehosteten Web-Build und auf Android ist der Ton unberuehrt.
+    var motor = new Engine({
+      args: ["--audio-driver", "Dummy"],
       canvasResizePolicy: 2,
       ensureCrossOriginIsolationHeaders: false,
       executable: "index",
@@ -158,14 +202,7 @@ fuss = '''
       focusCanvas: true,
       gdextensionLibs: [],
       serviceWorker: null
-    };
-
-    var motor = new Engine(einstellungen);
-    var fehlend = Engine.getMissingFeatures({ threads: false });
-    if (fehlend.length) {
-      scheitere("Dem Browser fehlt: " + fehlend.join(", "));
-      return;
-    }
+    });
 
     await motor.startGame({
       canvas: document.getElementById("canvas"),
