@@ -13,19 +13,24 @@ var _fehler: Array[String] = []
 var _staende: Array[Node] = []
 
 
+## Alle Testfunktionen. Der Laeufer ruft sie ueber den Namen auf, damit ein
+## Abbruch mitten in einem Test auffaellt.
+const TESTS: PackedStringArray = [
+    "_test_kostenkurve", "_test_massenkauf", "_test_max_kaufbar",
+    "_test_meilensteine", "_test_produktion", "_test_kaltstart",
+    "_test_offline", "_test_speicherstand", "_test_formatter",
+    "_test_layout", "_test_langzeit",
+]
+
+
 func _init() -> void:
     print("── STERNWERFT Testlauf ────────────────────────")
-    _test_kostenkurve()
-    _test_massenkauf()
-    _test_max_kaufbar()
-    _test_meilensteine()
-    _test_produktion()
-    _test_kaltstart()
-    _test_prestige()
-    _test_offline()
-    _test_speicherstand()
-    _test_formatter()
-    _test_langzeit()
+    for name in TESTS:
+        # Ein Laufzeitfehler in GDScript bricht nur die betroffene Funktion ab
+        # und liefert null zurueck. Ohne diese Pruefung meldete der Lauf gruen,
+        # obwohl ein ganzer Test nie zu Ende lief.
+        if call(name) != true:
+            _fehler.append("%s wurde abgebrochen (Laufzeitfehler weiter oben)" % name)
 
     for st in _staende:
         st.free()
@@ -33,12 +38,12 @@ func _init() -> void:
 
     print("───────────────────────────────────────────────")
     if _fehler.is_empty():
-        print("✓ %d Zusicherungen bestanden" % _bestanden)
+        print("✓ %d Zusicherungen in %d Tests bestanden" % [_bestanden, TESTS.size()])
         quit(0)
     else:
         for f in _fehler:
             printerr("✗ " + f)
-        printerr("%d von %d fehlgeschlagen" % [_fehler.size(), _bestanden + _fehler.size()])
+        printerr("%d Fehler bei %d Zusicherungen" % [_fehler.size(), _bestanden])
         quit(1)
 
 
@@ -63,7 +68,7 @@ func _nahe(a: float, b: float, name: String, toleranz := 1e-9) -> void:
 
 # --- Tests ------------------------------------------------------------------
 
-func _test_kostenkurve() -> void:
+func _test_kostenkurve() -> bool:
     _nahe(Oekonomie.kosten(0, 0), 15.0, "Erstkauf Solarsegel kostet Basispreis")
     _nahe(Oekonomie.kosten(0, 10), 15.0 * pow(1.12, 10), "Kosten nach 10 Stueck")
 
@@ -77,9 +82,10 @@ func _test_kostenkurve() -> void:
             break
         vorher = k
     _ist(alles_gut, "Kostenkurve streng steigend und endlich bis n=200")
+    return true
 
 
-func _test_massenkauf() -> void:
+func _test_massenkauf() -> bool:
     # Gegenprobe: geschlossene Formel gegen stumpfe Aufsummierung.
     for index in [0, 3, 7]:
         for besessen in [0, 17, 60]:
@@ -92,9 +98,10 @@ func _test_massenkauf() -> void:
     _gleich(Oekonomie.kosten_summe(0, 0, 0), 0.0, "Menge 0 kostet nichts")
     _gleich(Oekonomie.kosten_summe(0, 0, -5), 0.0, "Negative Menge kostet nichts")
     _nahe(Oekonomie.kosten_summe(0, 0, 1), Oekonomie.kosten(0, 0), "Summe fuer 1 == Einzelpreis")
+    return true
 
 
-func _test_max_kaufbar() -> void:
+func _test_max_kaufbar() -> bool:
     _gleich(Oekonomie.max_kaufbar(0, 0, 0.0), 0, "Ohne Guthaben nichts kaufbar")
     _gleich(Oekonomie.max_kaufbar(0, 0, -100.0), 0, "Negatives Guthaben ergibt 0")
     _gleich(Oekonomie.max_kaufbar(0, 0, 14.0), 0, "Knapp unter Erstpreis ergibt 0")
@@ -107,9 +114,10 @@ func _test_max_kaufbar() -> void:
             "max_kaufbar(%f) ist bezahlbar" % guthaben)
         _ist(Oekonomie.kosten_summe(1, 4, n + 1) > guthaben,
             "max_kaufbar(%f) ist maximal" % guthaben)
+    return true
 
 
-func _test_meilensteine() -> void:
+func _test_meilensteine() -> bool:
     _nahe(Oekonomie.meilenstein_mult(0), 1.0, "Ohne Module kein Meilenstein")
     _nahe(Oekonomie.meilenstein_mult(9), 1.0, "Bei 9 noch kein Meilenstein")
     _nahe(Oekonomie.meilenstein_mult(10), 2.0, "Meilenstein greift exakt bei 10")
@@ -119,9 +127,10 @@ func _test_meilensteine() -> void:
     _nahe(Oekonomie.meilenstein_mult(100), 16.0, "Vierter bei 100")
     _nahe(Oekonomie.meilenstein_mult(200), 32.0, "Fuenfter bei 200")
     _nahe(Oekonomie.meilenstein_mult(5000), 32.0, "Danach keine weiteren")
+    return true
 
 
-func _test_produktion() -> void:
+func _test_produktion() -> bool:
     _nahe(Oekonomie.modul_rate(0, 0), 0.0, "Kein Modul, keine Produktion")
     _nahe(Oekonomie.modul_rate(0, 1), 0.1, "Ein Solarsegel liefert 0.1/s")
     _nahe(Oekonomie.modul_rate(0, 5), 0.5, "Fuenf Solarsegel liefern 0.5/s")
@@ -132,9 +141,10 @@ func _test_produktion() -> void:
     var bestand := [10, 3, 0, 0, 0, 0, 0, 0]
     _nahe(Oekonomie.gesamt_rate(bestand), 2.0 + 3.0, "Gesamtrate summiert alle Module")
     _nahe(Oekonomie.gesamt_rate([]), 0.0, "Leerer Bestand liefert 0")
+    return true
 
 
-func _test_prestige() -> void:
+func _test_prestige() -> bool:
     _gleich(Oekonomie.prestige_ertrag(0.0), 0, "Ohne Ertrag keine Protokolle")
     _gleich(Oekonomie.prestige_ertrag(-5.0), 0, "Negativer Ertrag ergibt 0")
     # Das erste Protokoll faellt bei Skala / Faktor^2 = 1e12/225 ~ 4.44e9.
@@ -148,9 +158,10 @@ func _test_prestige() -> void:
     _nahe(Oekonomie.prestige_mult(0), 1.0, "Ohne Protokolle Multiplikator 1")
     _nahe(Oekonomie.prestige_mult(50), 2.0, "50 Protokolle verdoppeln")
     _nahe(Oekonomie.prestige_mult(-3), 1.0, "Negative Protokolle wirken nicht")
+    return true
 
 
-func _test_kaltstart() -> void:
+func _test_kaltstart() -> bool:
     var st := _neuer_stand()
     _nahe(float(st.credits), 15.0, "Neuer Stand hat Startguthaben")
     _ist(st.kaufe(0, 1), "Startguthaben deckt exakt das erste Solarsegel")
@@ -164,9 +175,10 @@ func _test_kaltstart() -> void:
     var ertrag: float = leer.manuell_sammeln()
     _ist(ertrag >= 1.0, "Antippen liefert auch ohne Module mindestens 1")
     _ist(leer.credits > 0.0, "Antippen bringt den Kaltstart in Gang")
+    return true
 
 
-func _test_offline() -> void:
+func _test_offline() -> bool:
     # 100/s ueber eine Stunde, zu 50 Prozent gutgeschrieben.
     _nahe(Oekonomie.offline_ertrag(100.0, 3600.0), 100.0 * 3600.0 * 0.5, "Offline zu 50 Prozent")
     # Ueber der Obergrenze wird gekappt.
@@ -185,9 +197,10 @@ func _test_offline() -> void:
 
     var ertrag: float = st.verbuche_offline(9000.0 + 3600.0)
     _ist(ertrag > 0.0, "Spielstand: normale Abwesenheit bringt Ertrag")
+    return true
 
 
-func _test_speicherstand() -> void:
+func _test_speicherstand() -> bool:
     var a := _neuer_stand()
     a.credits = 12345.678
     a.kerne = 42
@@ -220,9 +233,10 @@ func _test_speicherstand() -> void:
     _nahe(d.offline_cap, Oekonomie.OFFLINE_CAP_BASIS, "Migration v0 setzt Offline-Cap")
     _gleich(d.bestand[1], 2, "Migration uebernimmt Teilbestand")
     _gleich(d.bestand[7], 0, "Fehlende Bestandsplaetze werden 0")
+    return true
 
 
-func _test_formatter() -> void:
+func _test_formatter() -> bool:
     _gleich(Zahl.kurz(0.0), "0", "Formatter: 0")
     _gleich(Zahl.kurz(999.0), "999", "Formatter: 999")
     _gleich(Zahl.kurz(1000.0), "1.00 K", "Formatter: 1000")
@@ -241,9 +255,10 @@ func _test_formatter() -> void:
     _gleich(Zahl.zeit(725.0), "12m 05s", "Zeit: Minuten")
     _gleich(Zahl.zeit(11520.0), "3h 12m", "Zeit: Stunden")
     _gleich(Zahl.zeit(-5.0), "0s", "Zeit: negativ")
+    return true
 
 
-func _test_langzeit() -> void:
+func _test_langzeit() -> bool:
     # 100 Spielstunden mit gieriger Kaufstrategie: teuerstes bezahlbares Modul.
     var st := _neuer_stand()
     var dt := 1.0
@@ -272,6 +287,34 @@ func _test_langzeit() -> void:
     print("   100 h Simulation: %s Credits gesamt, %d Module, %d Protokolle moeglich"
         % [Zahl.kurz(st.lebenszeit_credits), gekauft,
            Oekonomie.prestige_ertrag(st.lebenszeit_credits)])
+    return true
+
+
+func _test_layout() -> bool:
+    # Ueberlappende Baugruppen wuerden Fehlkaeufe ausloesen: die
+    # Treffererkennung nimmt die erste passende Flaeche und liefert dann die
+    # falsche. Beim Verschieben des Layouts faellt das sonst niemandem auf.
+    for a in Modul.ANZAHL:
+        for b in range(a + 1, Modul.ANZAHL):
+            _ist(not Raster.modul_flaeche(a).intersects(Raster.modul_flaeche(b)),
+                "Layout: Baugruppe %d und %d ueberlappen nicht" % [a, b])
+
+    # Der Kern liegt mittig und muss frei bleiben, sonst laesst er sich nicht
+    # antippen.
+    var kern := Rect2(-Vector2(Kern.RADIUS, Kern.RADIUS),
+        Vector2(Kern.RADIUS, Kern.RADIUS) * 2.0)
+    for i in Modul.ANZAHL:
+        _ist(not Raster.modul_flaeche(i).intersects(kern),
+            "Layout: Baugruppe %d ueberlappt den Kern nicht" % i)
+
+    _gleich(Formen.kante(Rect2(0, 0, 100, 60), 10.0).size(), 8,
+        "Abgeschraegtes Rechteck hat acht Ecken")
+    _gleich(Formen.kante_umriss(Rect2(0, 0, 100, 60), 10.0).size(), 9,
+        "Umriss schliesst sich")
+    # Eine zu grosse Schraege darf die Form nicht umstuelpen.
+    var entartet := Formen.kante(Rect2(0, 0, 40, 20), 999.0)
+    _gleich(entartet.size(), 8, "Uebergrosse Schraege bleibt achteckig")
+    return true
 
 
 # --- Hilfen -----------------------------------------------------------------

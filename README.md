@@ -8,13 +8,14 @@ den Modulen — die Station läuft weiter, auch wenn niemand zusieht.
 
 ## Stand
 
-Phase 1 von 7 — der Rechenkern steht und ist headless getestet.
-Noch ohne Darstellung.
+Phase 2 von 7 — die Station ist sichtbar und bedienbar: acht Baugruppen,
+Frachtdrohnen, Kamera mit Ziehen und Zoomen, prozedurales Sternenfeld.
+Die vollständige Bedienoberfläche folgt in Phase 3.
 
 | Phase | Inhalt | Status |
 |---|---|---|
 | 1 | Ökonomie, Formeln, Formatter, Tests | ✅ |
-| 2 | Station, Module, Drohnen, Kamera | offen |
+| 2 | Station, Module, Drohnen, Kamera | ✅ |
 | 3 | Prestige-UI, Offline-Dialog, Speichern | offen |
 | 4 | Android-Export, AAB | offen |
 | 5 | AdMob, Play Billing, Consent | offen |
@@ -37,12 +38,24 @@ godot --headless --import                          # class_name-Registry bauen
 godot --headless --path . --script tests/run_tests.gd   # Tests
 ```
 
-Der Testlauf endet mit Code 1, sobald eine Zusicherung fehlschlägt.
+Der Testlauf endet mit Code 1, sobald eine Zusicherung fehlschlägt **oder** ein
+Test durch einen Laufzeitfehler abbricht.
+
+Darstellung ansehen (virtueller Bildschirm, Software-Rendering):
+
+```bash
+xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 720x1280 \
+  -- --schuss bild.png --vorrat
+```
 
 ## Aufbau
 
 ```
 scripts/data/module.gd        Stammdaten der 8 Module — hier wird gebalanced
+scripts/station/raster.gd     Layoutgeometrie, szenenfrei und testbar
+scripts/station/*.gd          Station, Baugruppen, Kern, Drohnen, Kamera
+scripts/ui/hud.gd             Kopfzeile
+shaders/sterne.gdshader       Sternenfeld, gerechnet statt gezeichnet
 scripts/autoload/oekonomie.gd Reine Mathematik, zustandslos, statisch
 scripts/autoload/zahl.gd      Zahlen- und Zeitformatierung
 scripts/autoload/spielstand.gd Zustand + Signale (Autoload "Spielstand")

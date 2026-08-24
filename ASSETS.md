@@ -21,8 +21,13 @@ Aussage gegen Aussage, und die App ist in der Zwischenzeit offline.
 ## Grafik
 
 Derzeit **keine Bilddateien im Projekt**. Die gesamte Darstellung entsteht zur
-Laufzeit aus `Polygon2D`, `Line2D`, `_draw()` und eigenen GDShadern. Das ist
-Absicht: prozedural erzeugte Optik hat genau eine Quelle — dieses Repository.
+Laufzeit aus `_draw()`-Aufrufen und eigenen GDShadern. Das ist Absicht:
+prozedural erzeugte Optik hat genau eine Quelle — dieses Repository.
+
+`shaders/sterne.gdshader` ist selbst geschriebener Quelltext, kein
+zugekauftes Asset, und steht deshalb nicht in dieser Tabelle. Schriften kommen
+vorerst aus Godots eingebauter Standardschrift (Teil der Engine, MIT); vor dem
+Release wird sie durch eine OFL-Schrift ersetzt.
 
 | Datei | Herkunft | Autor | Lizenz | Quelle | Datum |
 |---|---|---|---|---|---|

@@ -26,6 +26,21 @@ godot --headless --path . --script tests/run_tests.gd    # Exitcode 1 bei Fehler
 fälschlich als undeklariert. Für echte Prüfung immer `--import` und den
 Testlauf verwenden.
 
+## Optik prüfen (Screenshots)
+
+Godot rendert hier über einen virtuellen Bildschirm mit Mesa-Software-GL. Damit
+lässt sich die Darstellung tatsächlich ansehen statt zu erraten:
+
+```bash
+xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 720x1280 \
+  -- --schuss /pfad/bild.png --vorrat
+```
+
+`--schuss <datei>` speichert nach 45 Bildern und beendet. `--vorrat` baut eine
+laufende Station auf — der Anfangszustand zeigt nur dunkle Baugruppen und sagt
+über die Optik im Betrieb nichts aus. Beide Schalter greifen nur im
+Debug-Build (`OS.is_debug_build()`).
+
 ## Grenzen der Umgebung
 
 - `dl.google.com` ist blockiert → kein Android SDK → **AAB-Builds nur in CI**
@@ -36,6 +51,10 @@ Testlauf verwenden.
 
 - Bezeichner und Kommentare auf Deutsch, passend zum Projekt
 - Einrückung: 4 Leerzeichen (durchgängig, nicht mit Tabs mischen)
-- `oekonomie.gd` bleibt zustandslos und UI-frei — nur so bleibt es testbar
+- `oekonomie.gd` und `raster.gd` bleiben frei von Szenen- und
+  Autoload-Bezügen — nur so lassen sie sich headless testen. Wer `Spielstand`
+  in einer Datei referenziert, macht sie für `--script` unbrauchbar
+- Jede Testfunktion endet mit `return true`; der Läufer wertet einen anderen
+  Rückgabewert als Abbruch. Ohne das meldet ein abgestürzter Test grün
 - Jede Balancing-Änderung gehört in `scripts/data/module.gd`, nirgends sonst
 - Neue Assets **immer** im selben Commit in `ASSETS.md` eintragen
