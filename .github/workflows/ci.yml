@@ -52,7 +52,8 @@ jobs:
       - name: Tests
         run: godot --headless --path . --script tests/run_tests.gd
 
-      # Getrennter Schritt, weil der Sucher je Kammer spürbar Zeit braucht.
-      # Bricht ab, sobald eine Kammer nicht mehr lösbar ist.
-      - name: Lösbarkeit aller Kammern
-        run: godot --headless --path . --script tools/loesbarkeit.gd
+      # Getrennter Schritt, weil der Prüfer je Welle spürbar Zeit braucht.
+      # Bricht ab, sobald eine Sitzung mit dem Sollausbau fällt - also sobald
+      # jemand feststecken würde, der nicht bezahlt hat.
+      - name: Alle 60 Wellen prüfen
+        run: godot --headless --path . --script tools/wellenpruefer.gd

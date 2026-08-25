@@ -1,17 +1,13 @@
-; HYPHA - Godot Projektkonfiguration
+; NEKTON - Godot Projektkonfiguration
 config_version=5
 
 [application]
 
-config/name="Hypha"
-config/description="Ricochet-Puzzle, dessen Schüsse die Bahn für die nächsten bauen."
+config/name="Nekton"
+config/description="Schlundwache: ein Lichtkegel am Finger gegen alles, was aus dem Graben kommt."
 config/version="0.1.0"
-run/main_scene="res://scenes/spiel.tscn"
+run/main_scene="res://scenes/schlund.tscn"
 config/features=PackedStringArray("4.5", "GL Compatibility")
-
-[autoload]
-
-Fortschritt="*res://scripts/daten/fortschritt.gd"
 
 [display]
 
@@ -25,3 +21,4 @@ window/stretch/aspect="expand"
 
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
+environment/defaults/default_clear_color=Color(0.012, 0.024, 0.043, 1)

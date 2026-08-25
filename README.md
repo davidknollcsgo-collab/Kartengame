@@ -1,67 +1,57 @@
-# HYPHA
+# NEKTON
 
-Ein Ricochet-Puzzle mit einem Kniff: **jeder Schuss baut die Bahn für den
-nächsten.** Die Spore zieht eine Wurzelspur hinter sich her, und diese Spur
-bleibt liegen — als Wand, an der der nächste Schuss abprallt.
+Eine biolumineszente Kolonie in einem Tiefseegraben. Ewige Dunkelheit, Druck,
+leuchtende Kreaturen — und ein Lichtkegel am Daumen.
 
-> Arbeitstitel. Der endgültige Name steht erst nach der Markenrecherche fest.
+Godot 4.5 · Hochformat · Android · derzeit im Aufbau
 
-## Stand
+## Die Kernschleife: Schlundwache
 
-Kernschleife läuft und ist headless geprüft. Noch ohne Meta-Progression.
+Am Eingang der Kolonie sitzt ein Wächter. Aus der Dunkelheit sinken Räuber in
+Wellen herab. Du ziehst mit **einem Finger** einen Lichtkegel über den Schlund —
+was darin liegt, wird verbrannt. Zwischen den Wellen tippst du auf freie
+Nischen und setzt dort Wehrpolypen.
 
-| Abschnitt | Inhalt | Status |
-|---|---|---|
-| Ballistik | Abprallrechnung, Vorschau == Flug | ✅ |
-| Kernschleife | Ziehen, Feuern, Spur wird Wand | ✅ |
-| Inhalt | 30 geprüfte Kammern, Biom 1 | ✅ |
-| Juiciness | Partikel, Shake, Tonkette | offen |
-| Meta | Myzel, Stämme, Speichern | offen |
-| Android | Export, Werbung, Käufe | offen |
+Eine Welle dauert 40 bis 70 Sekunden. Der Kegel fasst nur wenige Räuber
+gleichzeitig; ein Schwarm lässt sich nicht wegleuchten, sondern muss sortiert
+werden.
 
-## Entwickeln
+## Was schon steht
 
-Godot 4.5. Ohne lokale Installation:
+| Bereich | Stand |
+|---|---|
+| Rechenkern (`Schlund`) | Lichtkegel, Bahnen, Zielauswahl — 23 Tests grün |
+| Wellen 1–60 | aus der Ausbaukurve abgeleitet, alle 60 geprüft |
+| Schwierigkeitskurve | gemessen, steigt monoton von 0.25 auf 1.00 |
+| Schlundwache | spielbar: Wellen, Bauphase, Polypen, Niederlage, Neustart |
+| Optik | Wasser-Shader, vier gezeichnete Räuberarten, Kolonie, Funken |
+
+## Was noch fehlt
+
+Die Kolonie als eigener Bildschirm, Brutlinien, Speichern, Tagesziel,
+Geisterdaten, Ton, Werbung und Käufe. Der vollständige Bauplan steht im
+Projektplan.
+
+## Bauen und prüfen
 
 ```bash
-V=4.5-stable
-curl -sSL -o godot.zip \
-  "https://github.com/godotengine/godot-builds/releases/download/${V}/Godot_v${V}_linux.x86_64.zip"
-unzip -q godot.zip && sudo mv "Godot_v${V}_linux.x86_64" /usr/local/bin/godot
+godot --headless --import                                  # Registry aufbauen
+godot --headless --path . --script tests/run_tests.gd      # Tests
+godot --headless --path . --script tools/wellenpruefer.gd  # alle 60 Wellen
 ```
 
-```bash
-godot --headless --import                                  # class_name-Registry
-godot --headless --path . --script tests/run_tests.gd      # Tests, ~4 s
-godot --headless --path . --script tools/loesbarkeit.gd    # alle 30 Kammern prüfen
-godot --headless --path . --script tools/kammersuche.gd    # Kammertabelle neu suchen
-```
-
-## Aufbau
-
-```
-scripts/kern/ballistik.gd     Abprallrechnung — reine Mathematik, testbar
-scripts/daten/kammer_daten.gd Kammeraufbau und geprüfte Streuwerte
-scripts/spiel/kammer.gd       Zustand: Wände, Knoten, Spuren
-scripts/spiel/spore.gd        Fliegende Spore
-scripts/spiel/werfer.gd       Werfer und Zielvorschau
-scripts/spiel/spiel.gd        Ablauf und Eingabe
-tools/sucher.gd               Gieriger Löser, von beiden Werkzeugen genutzt
-```
-
-### Zwei Zusicherungen, die das Spiel tragen
-
-**Vorschau und Flug rufen dieselbe Funktion.** Eine Zielhilfe, die etwas
-anderes zeigt als das, was dann passiert, macht ein Puzzlespiel unspielbar.
-
-**Kammersuche und Lösbarkeitsprüfung nutzen denselben Löser.** Der erste Anlauf
-hatte zwei mit verschiedener Winkelauflösung — die Suche meldete Kammern als
-gelöst, die der Prüfer danach für unlösbar hielt.
+Weitere Werkzeuge, Screenshot-Schalter und die Zusicherungen, die nicht
+aufgeweicht werden dürfen, stehen in [`CLAUDE.md`](CLAUDE.md).
 
 ## Rechtliches
 
-Kein fremder Code, keine fremden Assets. Herkunft und Lizenz jeder Datei stehen
-in [ASSETS.md](ASSETS.md), die Lizenzen der Abhängigkeiten in
-[THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
+Vom Vorbild ist ausschließlich die **Struktur** übernommen — casual
+Kernschleife vorn, Aufbauspiel dahinter. Spielmechaniken sind nicht
+urheberrechtlich geschützt.
 
-Das vorherige Projekt (Sternwerft) liegt archiviert unter `sternwerft/`.
+Alles Sichtbare und Lesbare entsteht in diesem Repository: die Grafik
+prozedural im Code, der Ton synthetisiert, Namen und Texte selbst geschrieben.
+Es gibt **keine einzige Bild- oder Audiodatei** im Projekt. Die Herkunft jedes
+Bestandteils ist in [`ASSETS.md`](ASSETS.md) belegt.
+
+Engine: Godot 4 (MIT). Schriften: SIL OFL 1.1.

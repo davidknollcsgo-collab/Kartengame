@@ -1,203 +1,193 @@
-## Kopf- und Fußzeile während einer Kammer, dazu der Abschlussbildschirm.
+extends CanvasLayer
+
+## Anzeige ueber dem Spiel.
 ##
-## Bewusst schmal: das Spielfeld soll die Aufmerksamkeit tragen. Angezeigt wird
-## nur, was für die nächste Entscheidung nötig ist - Kammernummer, übrige
-## Sporen, übrige Knoten.
-class_name Hud
-extends Control
+## **Die wichtigste Zeile dieser Datei steht in `_ready()`.** Ein `Control`
+## hat von Haus aus `MOUSE_FILTER_STOP` und verschluckt damit jede Beruehrung,
+## bevor sie beim Spiel ankommt. Bei HYPHA hat genau das die gesamte Eingabe
+## totgelegt, und kein Screenshot und kein Testschuss aus dem Code hat es
+## gezeigt - nur ein echter Mausklick im Browser.
 
-signal weiter_gewuenscht
-signal wiederholen_gewuenscht
-signal myzel_gewuenscht
+const RAND := 22.0
 
-const KOPF_H := 92.0
-const FUSS_H := 104.0
+@onready var _flaeche: Control = $Flaeche
 
-var kammer := 1
-var sporen := 0
-var knoten := 0
-
-var _ende_sichtbar := false
+var _welle := 1
+var _brut := Graben.BRUT_LEBEN
+var _naehrstoffe := 0
+var _offen := 0
+var _preis := Graben.polyp_kosten(0)
+var _gebaut := 0
+var _bauphase := true
+var _ende := false
 var _gewonnen := false
-var _ertrag := 0.0
-var _knopf := Rect2()
-var _myzel := Rect2()
+var _verdient := 0
 var _zeit := 0.0
+
+var _schrift: Font
+var _ausbeuten: Array[Dictionary] = []
 
 
 func _ready() -> void:
-    # Ohne das schluckt das HUD saemtliche Eingaben: es liegt als Control ueber
-    # dem ganzen Bildschirm, und der Standardwert eines Control ist STOP. Das
-    # Spiel liesse sich dann nicht bedienen - und faellt bei Testschuessen aus
-    # dem Code heraus nicht auf, weil die den Eingabeweg umgehen.
-    mouse_filter = Control.MOUSE_FILTER_IGNORE
-    _passe_an()
-    get_viewport().size_changed.connect(_passe_an)
-    set_process(true)
-
-
-func _passe_an() -> void:
-    set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-    size = get_viewport_rect().size
-    queue_redraw()
+    # Nichts hier oben darf Beruehrungen abfangen - siehe oben.
+    _flaeche.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    _flaeche.set_anchors_preset(Control.PRESET_FULL_RECT)
+    _flaeche.offset_left = 0.0
+    _flaeche.offset_top = 0.0
+    _flaeche.offset_right = 0.0
+    _flaeche.offset_bottom = 0.0
+    _flaeche.draw.connect(_zeichne)
+    _schrift = ThemeDB.fallback_font
 
 
 func _process(delta: float) -> void:
     _zeit += delta
-    if _ende_sichtbar:
-        queue_redraw()
+    for i in range(_ausbeuten.size() - 1, -1, -1):
+        _ausbeuten[i][&"leben"] -= delta
+        if _ausbeuten[i][&"leben"] <= 0.0:
+            _ausbeuten.remove_at(i)
+    _flaeche.queue_redraw()
 
 
-func setze(neue_kammer: int, neue_sporen: int, neue_knoten: int) -> void:
-    kammer = neue_kammer
-    sporen = neue_sporen
-    knoten = neue_knoten
-    queue_redraw()
+func setze_zahlen(brut: int, naehrstoffe: int, offen: int) -> void:
+    _brut = brut
+    _naehrstoffe = naehrstoffe
+    _offen = offen
 
 
-func zeige_ende(gewonnen: bool, ertrag: float = 0.0) -> void:
-    _ende_sichtbar = true
+func zeige_welle(nummer: int, brut: int, naehrstoffe: int, offen: int) -> void:
+    _welle = nummer
+    _bauphase = false
+    _ende = false
+    setze_zahlen(brut, naehrstoffe, offen)
+
+
+func zeige_bauphase(nummer: int, brut: int, naehrstoffe: int, preis: int,
+        gebaut: int) -> void:
+    _welle = nummer
+    _bauphase = true
+    _ende = false
+    _preis = preis
+    _gebaut = gebaut
+    setze_zahlen(brut, naehrstoffe, 0)
+
+
+func zeige_ende(gewonnen: bool, nummer: int, verdient: int) -> void:
+    _ende = true
     _gewonnen = gewonnen
-    _ertrag = ertrag
-    _zeit = 0.0
-    mouse_filter = Control.MOUSE_FILTER_STOP
-    queue_redraw()
+    _welle = nummer
+    _verdient = verdient
 
 
-func verbirg_ende() -> void:
-    _ende_sichtbar = false
-    mouse_filter = Control.MOUSE_FILTER_IGNORE
-    queue_redraw()
-
-
-func _gui_input(ereignis: InputEvent) -> void:
-    if not _ende_sichtbar or not (ereignis is InputEventMouseButton):
+## Eine aufsteigende Zahl am Ort des Treffers. Die einzige Stelle, an der das
+## HUD Spielkoordinaten kennt - deshalb wird hier umgerechnet.
+func zeige_ausbeute(welt: Vector2, wert: int) -> void:
+    if _ausbeuten.size() > 40:
         return
-    var m := ereignis as InputEventMouseButton
-    if m.button_index != MOUSE_BUTTON_LEFT or m.pressed:
-        return
-    if _myzel.has_point(m.position):
-        myzel_gewuenscht.emit()
-        accept_event()
-        return
-    if _knopf.has_point(m.position):
-        if _gewonnen:
-            weiter_gewuenscht.emit()
-        else:
-            wiederholen_gewuenscht.emit()
-    accept_event()
+    _ausbeuten.append({&"ort": welt, &"wert": wert, &"leben": 0.9})
 
 
-func _draw() -> void:
-    _zeichne_kopf()
-    _zeichne_fuss()
-    if _ende_sichtbar:
-        _zeichne_ende()
+func _zeichne() -> void:
+    var breite := _flaeche.size.x
+    var hoehe := _flaeche.size.y
+
+    _kopfzeile(breite)
+    _schwebende_zahlen()
+
+    if _bauphase:
+        _bauhinweis(breite, hoehe)
+    if _ende:
+        _endschirm(breite, hoehe)
 
 
-func _zeichne_kopf() -> void:
-    var display := Schrift.display()
-    var text := Schrift.text()
+func _kopfzeile(breite: float) -> void:
+    var balken := Rect2(0.0, 0.0, breite, 84.0)
+    _flaeche.draw_rect(balken, Color(0.02, 0.05, 0.07, 0.55))
+    _flaeche.draw_line(Vector2(0.0, 84.0), Vector2(breite, 84.0),
+        Color(0.24, 0.56, 0.62, 0.35), 1.5)
 
-    draw_rect(Rect2(0.0, 0.0, size.x, KOPF_H), Color(0.031, 0.043, 0.039, 0.90))
-    draw_line(Vector2(0.0, KOPF_H), Vector2(size.x, KOPF_H),
-        Color(0.13, 0.24, 0.22), 2.0)
+    _text(Vector2(RAND, 36.0), "WELLE %d" % _welle, 20, Color(0.72, 0.94, 0.98))
+    _text(Vector2(RAND, 64.0), "Abschnitt %d" % (Graben.abschnitt(_welle) + 1),
+        14, Color(0.44, 0.66, 0.72))
 
-    draw_string(text, Vector2(22.0, 34.0), "KAMMER",
-        HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.42, 0.60, 0.56))
-    draw_string(display, Vector2(22.0, 68.0), str(kammer),
-        HORIZONTAL_ALIGNMENT_LEFT, -1, 30, Color(0.88, 0.96, 0.93))
+    var mitte := breite * 0.5
+    _text(Vector2(mitte - 40.0, 40.0), "BRUT", 13, Color(0.62, 0.52, 0.38))
+    _text(Vector2(mitte - 40.0, 66.0), "%d / %d" % [_brut, Graben.BRUT_LEBEN],
+        19, Color(0.98, 0.80, 0.42))
 
-    # Biomasse in der Mitte: sie ist der Grund, warum man weiterspielt.
-    draw_string(text, Vector2(0.0, 34.0), "BIOMASSE",
-        HORIZONTAL_ALIGNMENT_CENTER, size.x, 13, Color(0.38, 0.55, 0.52))
-    draw_string(display, Vector2(0.0, 66.0), _kurz(Fortschritt.biomasse),
-        HORIZONTAL_ALIGNMENT_CENTER, size.x, 24, Color(0.50, 0.94, 0.84))
+    _text(Vector2(breite - RAND - 120.0, 40.0), "NAEHRSTOFF", 13,
+        Color(0.40, 0.66, 0.60))
+    _text(Vector2(breite - RAND - 120.0, 66.0), str(_naehrstoffe), 19,
+        Color(0.52, 0.94, 0.80))
 
-    # Übrige Knoten rechts - die Zahl, die zählt.
-    draw_string(text, Vector2(size.x - 172.0, 34.0), "BEFALL",
-        HORIZONTAL_ALIGNMENT_RIGHT, 150.0, 14, Color(0.55, 0.42, 0.68))
-    draw_string(display, Vector2(size.x - 172.0, 68.0), str(knoten),
-        HORIZONTAL_ALIGNMENT_RIGHT, 150.0, 30, Color(0.78, 0.58, 1.0))
-
-
-## Übrige Sporen als Punktreihe.
-##
-## Punkte statt einer Zahl: man erfasst auf einen Blick, wie knapp es wird,
-## ohne zu lesen. Ab zwölf Stück wird es unübersichtlich - dann doch als Zahl.
-func _zeichne_fuss() -> void:
-    var y := size.y - FUSS_H * 0.5
-    draw_rect(Rect2(0.0, size.y - FUSS_H, size.x, FUSS_H),
-        Color(0.031, 0.043, 0.039, 0.90))
-    draw_line(Vector2(0.0, size.y - FUSS_H), Vector2(size.x, size.y - FUSS_H),
-        Color(0.13, 0.24, 0.22), 2.0)
-
-    var grund := Color(0.45, 0.95, 0.86)
-    if sporen > 12:
-        draw_string(Schrift.display(), Vector2(0.0, y + 11.0),
-            "%d Sporen" % sporen, HORIZONTAL_ALIGNMENT_CENTER, size.x, 24, grund)
-        return
-
-    var abstand := 30.0
-    var breite := float(maxi(sporen, 1) - 1) * abstand
-    var x := size.x * 0.5 - breite * 0.5
-    for i in sporen:
-        var p := Vector2(x + float(i) * abstand, y)
-        draw_circle(p, 11.0, Color(grund.r, grund.g, grund.b, 0.14))
-        draw_circle(p, 6.5, grund)
-    if sporen == 0:
-        draw_string(Schrift.text(), Vector2(0.0, y + 7.0), "keine Sporen mehr",
-            HORIZONTAL_ALIGNMENT_CENTER, size.x, 18, Color(0.60, 0.45, 0.42))
+    if not _bauphase and not _ende:
+        _text(Vector2(breite - RAND - 120.0, 108.0), "noch %d" % _offen, 15,
+            Color(0.62, 0.74, 0.80, 0.8))
 
 
-func _zeichne_ende() -> void:
-    var display := Schrift.display()
-    var text := Schrift.text()
-    # Kurz einblenden statt hart aufpoppen.
-    var ein := clampf(_zeit / 0.28, 0.0, 1.0)
-
-    draw_rect(Rect2(Vector2.ZERO, size), Color(0.0, 0.0, 0.0, 0.72 * ein))
-
-    var b := minf(size.x - 56.0, 460.0)
-    var h := 260.0
-    var feld := Rect2((size.x - b) * 0.5, (size.y - h) * 0.5, b, h)
-    var ton := Color(0.36, 0.86, 0.76) if _gewonnen else Color(0.86, 0.52, 0.42)
-
-    draw_rect(feld, Color(0.055, 0.075, 0.068, 0.98 * ein))
-    draw_rect(feld, Color(ton.r, ton.g, ton.b, ein), false, 2.0)
-
-    draw_string(display, Vector2(feld.position.x, feld.position.y + 62.0),
-        "GERÄUMT" if _gewonnen else "SPOREN LEER",
-        HORIZONTAL_ALIGNMENT_CENTER, b, 32, Color(ton.r, ton.g, ton.b, ein))
-
-    var unterzeile := "+%s Biomasse" % _kurz(_ertrag) if _gewonnen \
-        else "%d Knoten stehen noch" % knoten
-    draw_string(text, Vector2(feld.position.x, feld.position.y + 104.0),
-        unterzeile, HORIZONTAL_ALIGNMENT_CENTER, b, 19,
-        Color(0.62, 0.72, 0.70, ein))
-
-    # Myzel links, Weiter rechts: die Belohnung steht neben dem Weitermachen,
-    # damit man sie nicht erst suchen muss.
-    _myzel = Rect2(feld.position.x + 26.0, feld.end.y - 84.0, 150.0, 56.0)
-    draw_rect(_myzel, Color(0.30, 0.62, 0.56, 0.14 * ein))
-    draw_rect(_myzel, Color(0.34, 0.70, 0.62, ein), false, 2.0)
-    draw_string(display, Vector2(_myzel.position.x, _myzel.get_center().y + 8.0),
-        "MYZEL", HORIZONTAL_ALIGNMENT_CENTER, _myzel.size.x, 19,
-        Color(0.80, 0.94, 0.90, ein))
-
-    _knopf = Rect2(feld.end.x - 176.0, feld.end.y - 84.0, 150.0, 56.0)
-    draw_rect(_knopf, Color(ton.r, ton.g, ton.b, 0.16 * ein))
-    draw_rect(_knopf, Color(ton.r, ton.g, ton.b, ein), false, 2.0)
-    draw_string(display, Vector2(_knopf.position.x, _knopf.get_center().y + 9.0),
-        "WEITER" if _gewonnen else "NOCHMAL",
-        HORIZONTAL_ALIGNMENT_CENTER, _knopf.size.x, 19,
-        Color(0.92, 0.97, 0.95, ein))
+func _schwebende_zahlen() -> void:
+    var wandel := _flaeche.get_canvas_transform()
+    for a in _ausbeuten:
+        var f: float = a[&"leben"] / 0.9
+        var ort: Vector2 = wandel * (a[&"ort"] as Vector2)
+        ort.y -= (1.0 - f) * 34.0
+        _text(ort, "+%d" % a[&"wert"], 15,
+            Color(0.52, 0.94, 0.80, f), true)
 
 
-## Kurzform großer Zahlen.
-static func _kurz(wert: float) -> String:
-    if wert < 1000.0:
-        return str(int(wert))
-    if wert < 1000000.0:
-        return "%.1f K" % (wert / 1000.0)
-    return "%.1f M" % (wert / 1000000.0)
+func _bauhinweis(breite: float, hoehe: float) -> void:
+    var puls := 0.5 + 0.5 * sin(_zeit * 2.4)
+    var kasten := Rect2(RAND, hoehe - 168.0, breite - RAND * 2.0, 96.0)
+    _flaeche.draw_rect(kasten, Color(0.03, 0.08, 0.10, 0.72))
+    _flaeche.draw_rect(kasten, Color(0.26, 0.60, 0.66, 0.35), false, 1.4)
+
+    var frei := _gebaut < Graben.NISCHEN.size()
+    var kann := frei and _naehrstoffe >= _preis
+    var zeile := "Nische antippen: Wehrpolyp fuer %d" % _preis
+    if not frei:
+        zeile = "Alle Nischen besetzt"
+    elif not kann:
+        zeile = "Wehrpolyp kostet %d - noch %d fehlen" % [_preis, _preis - _naehrstoffe]
+
+    _text(kasten.position + Vector2(18.0, 34.0), zeile, 16,
+        Color(0.62, 0.90, 0.86) if kann else Color(0.50, 0.60, 0.66))
+    _text(kasten.position + Vector2(18.0, 66.0),
+        "Irgendwo sonst tippen startet Welle %d" % _welle, 15,
+        Color(0.78, 0.94, 0.98, 0.55 + 0.45 * puls))
+
+
+func _endschirm(breite: float, hoehe: float) -> void:
+    _flaeche.draw_rect(Rect2(0.0, 0.0, breite, hoehe), Color(0.01, 0.03, 0.05, 0.80))
+    var mitte := Vector2(breite * 0.5, hoehe * 0.42)
+
+    if _gewonnen:
+        _text(mitte, "DER GRABEN HAELT", 30, Color(0.62, 0.98, 0.86), true)
+        _text(mitte + Vector2(0.0, 44.0),
+            "Alle %d Wellen ueberstanden" % Graben.WELLEN_GESAMT, 17,
+            Color(0.66, 0.84, 0.88), true)
+    else:
+        _text(mitte, "DIE BRUT IST GEFALLEN", 30, Color(1.0, 0.52, 0.44), true)
+        _text(mitte + Vector2(0.0, 44.0), "Welle %d" % _welle, 17,
+            Color(0.72, 0.72, 0.76), true)
+
+    _text(mitte + Vector2(0.0, 86.0), "%d Naehrstoff geerntet" % _verdient, 17,
+        Color(0.52, 0.94, 0.80), true)
+
+    var puls := 0.5 + 0.5 * sin(_zeit * 2.6)
+    _text(mitte + Vector2(0.0, 148.0), "Tippen fuer einen neuen Anlauf", 17,
+        Color(0.82, 0.94, 0.98, 0.45 + 0.55 * puls), true)
+
+
+func _text(wo: Vector2, was: String, groesse: int, farbe: Color,
+        zentriert := false) -> void:
+    var breite := _schrift.get_string_size(was, HORIZONTAL_ALIGNMENT_LEFT, -1,
+        groesse).x
+    var ort := wo
+    if zentriert:
+        ort.x -= breite * 0.5
+    # Schatten zuerst - heller Text auf bewegtem Wasser ist sonst stellenweise
+    # unlesbar, und genau dort steht die Brutzahl.
+    _flaeche.draw_string(_schrift, ort + Vector2(1.0, 1.0), was,
+        HORIZONTAL_ALIGNMENT_LEFT, -1, groesse, Color(0.0, 0.0, 0.0, farbe.a * 0.7))
+    _flaeche.draw_string(_schrift, ort, was, HORIZONTAL_ALIGNMENT_LEFT, -1,
+        groesse, farbe)
