@@ -5,10 +5,29 @@ entpackt sie beim Start über DecompressionStream und reicht sie als
 Blob-Adressen an Godots Lader weiter. Ohne das Komprimieren waeren es
 50 MB base64 - mit knapp 13 MB.
 """
-import base64, gzip, pathlib, sys
+import base64, gzip, pathlib, re, sys
 
 quelle = pathlib.Path("docs")
 ziel = pathlib.Path(sys.argv[1])
+
+
+def projektname(voreinstellung="Spiel"):
+    """Liest den Namen aus project.godot.
+
+    Vorher stand er hier fest im Quelltext - und zeigte nach zwei
+    Projektwechseln immer noch den Namen des vorletzten Spiels im
+    Ladebildschirm. Ein Name, der an zwei Stellen gepflegt werden muss, wird
+    an einer davon vergessen.
+    """
+    p = pathlib.Path("project.godot")
+    if not p.exists():
+        return voreinstellung
+    treffer = re.search(r'^config/name="([^"]*)"', p.read_text(encoding="utf-8"),
+                        re.MULTILINE)
+    return treffer.group(1) if treffer else voreinstellung
+
+
+NAME = projektname()
 
 DATEIEN = {
     "index.js":                      "text/javascript",
@@ -34,37 +53,62 @@ for name, typ in DATEIEN.items():
     )
     print("%-34s %8.1f KB komprimiert" % (name, len(roh) / 1024))
 
-kopf = '''<title>Sternwerft</title>
+# Der Ladebildschirm nimmt die Farben des Spiels vorweg: Grabenschwarz mit
+# einem Blaugruen-Stich, das kalte Biolumineszenzblau als einzige Farbe. Ein
+# neutrales Grau haette hier einen sichtbaren Bruch zum ersten Bild ergeben.
+kopf = '''<title>%(name)s</title>
 <style>
-  :root { color-scheme: dark; }
-  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden;
-    background: #0b0c13; }
-  #canvas { display: block; width: 100%; height: 100%; border: 0; outline: none;
+  :root {
+    color-scheme: dark;
+    --grund: #03060b;
+    --tiefer: #071119;
+    --schrift: #cfe4ea;
+    --leise: #6d8890;
+    --licht: #3ddcf5;
+    --warnung: #f08a78;
+  }
+  html, body { margin: 0; padding: 0; height: 100%%; overflow: hidden;
+    background: var(--grund); }
+  #canvas { display: block; width: 100%%; height: 100%%; border: 0; outline: none;
     touch-action: none; }
   #canvas:focus { outline: none; }
   #laden {
     position: fixed; inset: 0; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; gap: 18px;
-    background: #0b0c13; color: #dfe3ee; z-index: 10;
+    align-items: center; justify-content: center; gap: 20px;
+    /* Der Schein von unten - dieselbe Geste wie im Spiel, wo die Kolonie
+       unten leuchtet und die Dunkelheit oben liegt. */
+    background: radial-gradient(120%% 62%% at 50%% 118%%,
+      #0d2b31 0%%, var(--tiefer) 46%%, var(--grund) 100%%);
+    color: var(--schrift); z-index: 10;
     font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
   }
-  #laden h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: .18em; }
-  #balken { width: min(260px, 62vw); height: 4px; border-radius: 2px;
-    background: #23263a; overflow: hidden; }
-  #fuellung { height: 100%; width: 0%; background: #57c4d4; transition: width .25s; }
-  #stand { font-size: 13px; color: #8d93ab; min-height: 1.2em; }
-  #fehler { color: #e58273; font-size: 13px; max-width: 80vw; text-align: center; }
+  #laden h1 { margin: 0; font-size: 24px; font-weight: 600; letter-spacing: .34em;
+    text-indent: .34em; color: var(--schrift); }
+  #laden h1 span { color: var(--licht); }
+  #balken { width: min(260px, 62vw); height: 3px; border-radius: 2px;
+    background: #10242b; overflow: hidden; }
+  #fuellung { height: 100%%; width: 0%%; background: var(--licht);
+    box-shadow: 0 0 12px var(--licht); transition: width .25s; }
+  #stand { font-size: 13px; color: var(--leise); min-height: 1.2em;
+    letter-spacing: .04em; }
+  #fehler { color: var(--warnung); font-size: 13px; max-width: 80vw;
+    text-align: center; }
+  @media (prefers-reduced-motion: reduce) { #fuellung { transition: none; } }
 </style>
 
 <canvas id="canvas">Dein Browser unterstützt kein Canvas.</canvas>
 
 <div id="laden">
-  <h1>STERNWERFT</h1>
+  <h1>%(kopfname)s</h1>
   <div id="balken"><div id="fuellung"></div></div>
   <div id="stand">wird vorbereitet …</div>
   <div id="fehler"></div>
 </div>
-'''
+''' % {
+    "name": NAME,
+    # Der erste Buchstabe im Leuchtblau - ein Zeichen statt eines Logos.
+    "kopfname": "<span>%s</span>%s" % (NAME[:1].upper(), NAME[1:].upper()),
+}
 
 fuss = r'''
 <script>
