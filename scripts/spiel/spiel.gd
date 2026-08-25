@@ -19,6 +19,7 @@ var sporen_uebrig := 0
 var _kammer: Kammer
 var _werfer: Werfer
 var _hud: Hud
+var _myzel_schirm: MyzelSchirm
 var _kamera: Kamera
 var _klang: Klang
 
@@ -63,7 +64,15 @@ func _baue() -> void:
     _hud = Hud.new()
     _hud.weiter_gewuenscht.connect(naechste_kammer)
     _hud.wiederholen_gewuenscht.connect(wiederhole)
+    _hud.myzel_gewuenscht.connect(func(): _myzel_schirm.visible = true)
     schicht.add_child(_hud)
+
+    var oben := CanvasLayer.new()
+    oben.layer = 2
+    add_child(oben)
+    _myzel_schirm = MyzelSchirm.new()
+    _myzel_schirm.visible = false
+    oben.add_child(_myzel_schirm)
 
 
 ## Lädt eine Kammer und setzt den Vorrat zurück.
@@ -71,7 +80,7 @@ func lade_kammer(nummer: int) -> void:
     kammer_nummer = maxi(nummer, 1)
     var plan := KammerDaten.baue(kammer_nummer)
     _kammer.setze(plan)
-    sporen_uebrig = plan.sporen
+    sporen_uebrig = plan.sporen + Fortschritt.mehr_sporen()
     lage = Lage.ZIELEN
     _werfer.vorschau = PackedVector2Array()
     _werfer.zieht = false
@@ -117,7 +126,7 @@ func _beginne_zug(ort: Vector2) -> void:
 
 func _fuehre_zug(ort: Vector2) -> void:
     _werfer.setze_zug(_zug_start, ort)
-    _werfer.vorschau = _berechne(Werfer.VORSCHAU_ABPRALLER).punkte
+    _werfer.vorschau = _berechne(Fortschritt.vorschau_abpraller()).punkte
 
 
 func _beende_zug() -> void:
@@ -144,7 +153,7 @@ func _berechne(abpraller: int) -> Ballistik.Flug:
 func _feuere() -> void:
     if sporen_uebrig <= 0:
         return
-    var flug := _berechne(_kammer.bauplan.abpraller)
+    var flug := _berechne(_kammer.bauplan.abpraller + Fortschritt.mehr_abpraller())
     if flug.punkte.size() < 2:
         return
 
@@ -157,6 +166,7 @@ func _feuere() -> void:
     _aktualisiere_hud()
 
     var s := Spore.new()
+    s.radius = Fortschritt.spore_radius()
     add_child(s)
     s.angekommen.connect(_bei_angekommen)
     s.abgeprallt.connect(_bei_abprall)
@@ -225,7 +235,8 @@ func _bei_geraeumt() -> void:
     _kamera.ruettle(9.0)
     _tippe(45)
     _zeitlupe()
-    var ertrag := KammerDaten.ertrag(kammer_nummer, sporen_uebrig)
+    var ertrag := KammerDaten.ertrag(kammer_nummer, sporen_uebrig) \
+        * Fortschritt.ertrag_faktor()
     Fortschritt.schreibe_gut(ertrag)
     Fortschritt.vermerke_kammer(kammer_nummer)
     _hud.zeige_ende(true, ertrag)
@@ -269,6 +280,10 @@ func _pruefe_entwicklerschalter() -> void:
     if k >= 0 and k + 1 < args.size():
         lade_kammer(int(args[k + 1]))
 
+    if args.has("--myzel"):
+        Fortschritt.biomasse = 900.0
+        _myzel_schirm.visible = true
+
     if args.has("--gezielt"):
         _zeige_zielvorschau()
 
@@ -295,7 +310,7 @@ func _pruefe_entwicklerschalter() -> void:
 func _zeige_zielvorschau() -> void:
     _werfer.zieht = true
     _werfer.setze_zug(KammerDaten.WERFER, KammerDaten.WERFER + Vector2(-58.0, 150.0))
-    _werfer.vorschau = _berechne(Werfer.VORSCHAU_ABPRALLER).punkte
+    _werfer.vorschau = _berechne(Fortschritt.vorschau_abpraller()).punkte
 
 
 ## Ein noch stehender Knoten, auf den sich zielen laesst.

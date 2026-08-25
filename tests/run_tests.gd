@@ -23,6 +23,9 @@ const TESTS: PackedStringArray = [
     "_test_kammer_spuren",
     "_test_loesbarkeit",
     "_test_klang",
+    "_test_myzel",
+    "_test_speicher",
+    "_test_fortschritt",
 ]
 
 var _bestanden := 0
@@ -455,4 +458,126 @@ func _test_klang() -> bool:
     _ist(true, "Abgeschalteter Ton wirft keinen Fehler")
 
     k.free()
+    return true
+
+
+func _test_myzel() -> bool:
+    for e in Myzel.TABELLE:
+        var id := String(e["id"])
+        _ist(Myzel.kosten(id, 0) > 0.0, "%s: erste Stufe kostet etwas" % id)
+        _ist(Myzel.kosten(id, 1) > Myzel.kosten(id, 0),
+            "%s: jede Stufe kostet mehr" % id)
+        _gleich(Myzel.kosten(id, Myzel.max_stufe(id)), 0.0,
+            "%s: voll ausgebaut kostet nichts" % id)
+        _ist(Myzel.voll(id, Myzel.max_stufe(id)), "%s: Hoechststufe gilt als voll" % id)
+        _ist(not Myzel.voll(id, Myzel.max_stufe(id) - 1), "%s: eine darunter nicht" % id)
+
+    _gleich(Myzel.kosten("gibtsnicht", 0), 0.0, "Unbekannte Kennung kostet nichts")
+    _gleich(Myzel.max_stufe("gibtsnicht"), 0, "Unbekannte Kennung hat keine Stufen")
+
+    # Die wichtigste Zusicherung des Baums: **kein Knoten verschlechtert etwas.**
+    # Die Loesbarkeit aller dreissig Kammern wurde mit den Grundwerten geprueft.
+    # Ein Knoten, der etwas erschwert, koennte eine geprueft loesbare Kammer
+    # unloesbar machen - und niemand wuerde es merken, bis jemand feststeckt.
+    for stufe in range(0, 6):
+        _ist(Myzel.vorschau_abpraller(stufe + 1) >= Myzel.vorschau_abpraller(stufe),
+            "Weitsicht wird nie schlechter (Stufe %d)" % stufe)
+        _ist(Myzel.mehr_abpraller(stufe + 1) >= Myzel.mehr_abpraller(stufe),
+            "Nachdruck wird nie schlechter (Stufe %d)" % stufe)
+        _ist(Myzel.spore_radius(stufe + 1) >= Myzel.spore_radius(stufe),
+            "Streuflug wird nie schlechter (Stufe %d)" % stufe)
+        _ist(Myzel.mehr_sporen(stufe + 1) >= Myzel.mehr_sporen(stufe),
+            "Sporenlager wird nie schlechter (Stufe %d)" % stufe)
+        _ist(Myzel.ertrag_faktor(stufe + 1) >= Myzel.ertrag_faktor(stufe),
+            "Zersetzung wird nie schlechter (Stufe %d)" % stufe)
+
+    # Stufe 0 muss genau den Grundwerten entsprechen, mit denen geprueft wurde.
+    _gleich(Myzel.vorschau_abpraller(0), Werfer.VORSCHAU_ABPRALLER,
+        "Ohne Ausbau zeigt die Zielhilfe den Grundwert")
+    _gleich(Myzel.mehr_abpraller(0), 0, "Ohne Ausbau keine zusaetzlichen Abpraller")
+    _nahe(Myzel.spore_radius(0), Spore.RADIUS, "Ohne Ausbau der Grundradius")
+    _gleich(Myzel.mehr_sporen(0), 0, "Ohne Ausbau keine zusaetzlichen Sporen")
+    _nahe(Myzel.ertrag_faktor(0), 1.0, "Ohne Ausbau unveraenderter Ertrag")
+
+    # Negative Stufen duerfen nicht durchschlagen.
+    _gleich(Myzel.mehr_sporen(-3), 0, "Negative Stufe wirkt nicht")
+    _nahe(Myzel.ertrag_faktor(-3), 1.0, "Negative Stufe senkt den Ertrag nicht")
+    return true
+
+
+func _test_speicher() -> bool:
+    var pfad := "user://test_hypha.sav"
+    Speicher.loesche(pfad)
+
+    _ist(not Speicher.existiert(pfad), "Vorher liegt keine Datei")
+    _ist(Speicher.lies(pfad).is_empty(), "Fehlende Datei ergibt leeres Dict")
+
+    var daten := {"version": 1, "biomasse": 1234.5, "myzel": {"wurf": 2}}
+    _ist(Speicher.schreibe(daten, pfad), "Schreiben gelingt")
+    _ist(Speicher.existiert(pfad), "Datei liegt danach vor")
+    _ist(not FileAccess.file_exists(pfad + ".neu"),
+        "Die Nebendatei wird nach dem Umbenennen nicht zurueckgelassen")
+
+    var zurueck := Speicher.lies(pfad)
+    _nahe(float(zurueck.get("biomasse", 0.0)), 1234.5, "Biomasse kommt zurueck")
+    _gleich(int((zurueck.get("myzel", {}) as Dictionary).get("wurf", 0)), 2,
+        "Myzelstufen kommen zurueck")
+
+    # Unverschluesselter Muell darf das Spiel nicht aufhalten.
+    print("   (die folgenden Fehlermeldungen sind beabsichtigt: beschaedigte Datei)")
+    var kaputt := FileAccess.open(pfad, FileAccess.WRITE)
+    kaputt.store_string("das ist kein gueltiger Spielstand")
+    kaputt.close()
+    _ist(Speicher.lies(pfad).is_empty(), "Beschaedigte Datei ergibt leeres Dict")
+
+    Speicher.loesche(pfad)
+    _ist(not Speicher.existiert(pfad), "Loeschen raeumt auf")
+    return true
+
+
+func _test_fortschritt() -> bool:
+    # Ohne _ready(), damit der Testlauf nicht den echten Spielstand liest.
+    var f: Node = load("res://scripts/daten/fortschritt.gd").new()
+
+    _gleich(f.stufe_von("wurf"), 0, "Neuer Fortschritt hat Stufe 0")
+    _ist(not f.kaufe_knoten("wurf"), "Ohne Biomasse kein Kauf")
+
+    var preis: float = Myzel.kosten("wurf", 0)
+    f.biomasse = preis
+    _ist(f.kaufe_knoten("wurf"), "Mit genug Biomasse kaufbar")
+    _gleich(f.stufe_von("wurf"), 1, "Stufe steigt")
+    _nahe(float(f.biomasse), 0.0, "Der Preis wird abgezogen")
+    _gleich(f.vorschau_abpraller(), Werfer.VORSCHAU_ABPRALLER + 1,
+        "Der Kauf wirkt sofort auf die Zielhilfe")
+
+    _ist(not f.kaufe_knoten("gibtsnicht"), "Unbekannte Kennung wird abgewiesen")
+
+    # Hoechststufe sperrt.
+    f.biomasse = 1e12
+    for i in Myzel.max_stufe("wurf"):
+        f.kaufe_knoten("wurf")
+    _gleich(f.stufe_von("wurf"), Myzel.max_stufe("wurf"), "Hoechststufe wird erreicht")
+    var vor: float = f.biomasse
+    _ist(not f.kaufe_knoten("wurf"), "Voll ausgebaut nicht weiter kaufbar")
+    _nahe(float(f.biomasse), vor, "Abgelehnter Kauf kostet nichts")
+
+    # Speichern und Laden ueber ein Dictionary.
+    f.fortschrittstiefe = 12
+    f.proben = 7
+    var g: Node = load("res://scripts/daten/fortschritt.gd").new()
+    g.aus_dict(f.als_dict())
+    _gleich(g.stufe_von("wurf"), Myzel.max_stufe("wurf"), "Myzelstufen ueberstehen das Speichern")
+    _gleich(int(g.fortschrittstiefe), 12, "Die Tiefe uebersteht das Speichern")
+    _gleich(int(g.proben), 7, "Proben ueberstehen das Speichern")
+
+    # Beschaedigte Werte duerfen nicht durchschlagen.
+    var h: Node = load("res://scripts/daten/fortschritt.gd").new()
+    h.aus_dict({"myzel": {"wurf": 99, "gibtsnicht": 4}, "biomasse": -50.0})
+    _gleich(h.stufe_von("wurf"), Myzel.max_stufe("wurf"), "Zu hohe Stufe wird gekappt")
+    _gleich(h.stufe_von("gibtsnicht"), 0, "Unbekannte Kennung bleibt wirkungslos")
+    _nahe(float(h.biomasse), 0.0, "Negative Biomasse wird auf 0 gehoben")
+
+    f.free()
+    g.free()
+    h.free()
     return true

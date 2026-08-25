@@ -10,13 +10,16 @@ extends Node2D
 ## Fluggeschwindigkeit in Weltpunkten je Sekunde.
 const TEMPO := 1150.0
 
-## Radius für Treffer an Befallsknoten.
+## Grundradius für Treffer an Befallsknoten.
 const RADIUS := 7.0
 
 signal abgeprallt(ort: Vector2, nummer: int)
 signal angekommen(spur: PackedVector2Array)
 
 var farbe := Color(0.45, 0.95, 0.86)
+
+## Wirkradius dieses Schusses. Der Myzel-Ast "Zerfall" hebt ihn an.
+var radius := RADIUS
 
 var _bahn: PackedVector2Array = []
 var _abschnitt := 0
@@ -90,17 +93,17 @@ func _process(delta: float) -> void:
 ## Prüft die Strecke zwischen zwei Bildern in kleinen Schritten.
 func _pruefe_strecke(von: Vector2, nach: Vector2) -> void:
     var strecke := von.distance_to(nach)
-    if strecke <= RADIUS:
+    if strecke <= radius:
         _pruefe_knoten(nach)
         return
-    var schritte := int(ceil(strecke / RADIUS))
+    var schritte := int(ceil(strecke / radius))
     for i in range(1, schritte + 1):
         _pruefe_knoten(von.lerp(nach, float(i) / float(schritte)))
 
 
 func _pruefe_knoten(p: Vector2) -> void:
     if _flaeche != null:
-        _flaeche.pruefe_treffer(p, RADIUS)
+        _flaeche.pruefe_treffer(p, radius)
 
 
 ## Die bereits geflogene Spur, damit sie mitwächst.
@@ -113,9 +116,9 @@ func gefloge_spur() -> PackedVector2Array:
 func _draw() -> void:
     _zeichne_spur()
     # Kopf der Spore: heller Kern mit Saum.
-    draw_circle(Vector2.ZERO, RADIUS * 2.6, Color(farbe.r, farbe.g, farbe.b, 0.14))
-    draw_circle(Vector2.ZERO, RADIUS * 1.5, Color(farbe.r, farbe.g, farbe.b, 0.30))
-    draw_circle(Vector2.ZERO, RADIUS, farbe.lightened(0.35))
+    draw_circle(Vector2.ZERO, radius * 2.6, Color(farbe.r, farbe.g, farbe.b, 0.14))
+    draw_circle(Vector2.ZERO, radius * 1.5, Color(farbe.r, farbe.g, farbe.b, 0.30))
+    draw_circle(Vector2.ZERO, radius, farbe.lightened(0.35))
 
 
 ## Die bereits geflogene Spur, mitwachsend.

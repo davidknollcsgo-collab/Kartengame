@@ -8,6 +8,7 @@ extends Control
 
 signal weiter_gewuenscht
 signal wiederholen_gewuenscht
+signal myzel_gewuenscht
 
 const KOPF_H := 92.0
 const FUSS_H := 104.0
@@ -20,6 +21,7 @@ var _ende_sichtbar := false
 var _gewonnen := false
 var _ertrag := 0.0
 var _knopf := Rect2()
+var _myzel := Rect2()
 var _zeit := 0.0
 
 
@@ -69,6 +71,10 @@ func _gui_input(ereignis: InputEvent) -> void:
     var m := ereignis as InputEventMouseButton
     if m.button_index != MOUSE_BUTTON_LEFT or m.pressed:
         return
+    if _myzel.has_point(m.position):
+        myzel_gewuenscht.emit()
+        accept_event()
+        return
     if _knopf.has_point(m.position):
         if _gewonnen:
             weiter_gewuenscht.emit()
@@ -96,6 +102,12 @@ func _zeichne_kopf() -> void:
         HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.42, 0.60, 0.56))
     draw_string(display, Vector2(22.0, 68.0), str(kammer),
         HORIZONTAL_ALIGNMENT_LEFT, -1, 30, Color(0.88, 0.96, 0.93))
+
+    # Biomasse in der Mitte: sie ist der Grund, warum man weiterspielt.
+    draw_string(text, Vector2(0.0, 34.0), "BIOMASSE",
+        HORIZONTAL_ALIGNMENT_CENTER, size.x, 13, Color(0.38, 0.55, 0.52))
+    draw_string(display, Vector2(0.0, 66.0), _kurz(Fortschritt.biomasse),
+        HORIZONTAL_ALIGNMENT_CENTER, size.x, 24, Color(0.50, 0.94, 0.84))
 
     # Übrige Knoten rechts - die Zahl, die zählt.
     draw_string(text, Vector2(size.x - 172.0, 34.0), "BEFALL",
@@ -159,12 +171,21 @@ func _zeichne_ende() -> void:
         unterzeile, HORIZONTAL_ALIGNMENT_CENTER, b, 19,
         Color(0.62, 0.72, 0.70, ein))
 
-    _knopf = Rect2(feld.get_center().x - 110.0, feld.end.y - 84.0, 220.0, 56.0)
+    # Myzel links, Weiter rechts: die Belohnung steht neben dem Weitermachen,
+    # damit man sie nicht erst suchen muss.
+    _myzel = Rect2(feld.position.x + 26.0, feld.end.y - 84.0, 150.0, 56.0)
+    draw_rect(_myzel, Color(0.30, 0.62, 0.56, 0.14 * ein))
+    draw_rect(_myzel, Color(0.34, 0.70, 0.62, ein), false, 2.0)
+    draw_string(display, Vector2(_myzel.position.x, _myzel.get_center().y + 8.0),
+        "MYZEL", HORIZONTAL_ALIGNMENT_CENTER, _myzel.size.x, 19,
+        Color(0.80, 0.94, 0.90, ein))
+
+    _knopf = Rect2(feld.end.x - 176.0, feld.end.y - 84.0, 150.0, 56.0)
     draw_rect(_knopf, Color(ton.r, ton.g, ton.b, 0.16 * ein))
     draw_rect(_knopf, Color(ton.r, ton.g, ton.b, ein), false, 2.0)
     draw_string(display, Vector2(_knopf.position.x, _knopf.get_center().y + 9.0),
         "WEITER" if _gewonnen else "NOCHMAL",
-        HORIZONTAL_ALIGNMENT_CENTER, _knopf.size.x, 21,
+        HORIZONTAL_ALIGNMENT_CENTER, _knopf.size.x, 19,
         Color(0.92, 0.97, 0.95, ein))
 
 

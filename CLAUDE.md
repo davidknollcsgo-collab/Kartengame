@@ -2,9 +2,8 @@
 
 ## Godot beschaffen
 
-Godot ist in dieser Umgebung nicht vorinstalliert und `godotengine.org` ist
-durch die Netzwerkpolicy blockiert. Der Download über GitHub-Release-Assets
-funktioniert jedoch:
+Godot ist hier nicht vorinstalliert und `godotengine.org` ist durch die
+Netzwerkpolicy blockiert. Der Download über GitHub-Release-Assets funktioniert:
 
 ```bash
 V=4.5-stable
@@ -14,82 +13,76 @@ unzip -oq /tmp/godot.zip -d /tmp/g
 mv "/tmp/g/Godot_v${V}_linux.x86_64" /usr/local/bin/godot && chmod +x /usr/local/bin/godot
 ```
 
-## Tests
+## Tests und Werkzeuge
 
 ```bash
 godot --headless --import                                # class_name-Registry
-godot --headless --path . --script tests/run_tests.gd    # Exitcode 1 bei Fehler
+godot --headless --path . --script tests/run_tests.gd    # ~4 s, Exitcode 1 bei Fehler
+godot --headless --path . --script tools/loesbarkeit.gd  # alle 30 Kammern prüfen
+godot --headless --path . --script tools/kammersuche.gd  # Kammertabelle neu suchen
 ```
 
 `--check-only --script <datei>` prüft eine Datei **isoliert** und kennt die
-`class_name`-Registry nicht — `Modul`, `Oekonomie` und `Zahl` erscheinen dort
-fälschlich als undeklariert. Für echte Prüfung immer `--import` und den
-Testlauf verwenden.
+`class_name`-Registry nicht — Klassen erscheinen dort fälschlich als
+undeklariert. Für echte Prüfung immer `--import` und den Testlauf verwenden.
+
+**Achtung beim Fehler-Check in der Shell:** `godot ... | grep ... | head` gibt
+immer Erfolg zurück, weil `head` gelingt. Die Ausgabe in eine Variable fangen
+und auf leer prüfen.
 
 ## Optik prüfen (Screenshots)
 
-Godot rendert hier über einen virtuellen Bildschirm mit Mesa-Software-GL. Damit
-lässt sich die Darstellung tatsächlich ansehen statt zu erraten:
-
 ```bash
 xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 720x1280 \
-  -- --schuss /pfad/bild.png --vorrat
+  -- --schuss /pfad/bild.png --kammer 7 --feuere 3
 ```
-
-Schalter (alle nur im Debug-Build, `OS.is_debug_build()`):
 
 | Schalter | Wirkung |
 |---|---|
-| `--schuss <datei>` | speichert nach 45 Bildern und beendet |
-| `--vorrat` | baut eine laufende Station auf; der Anfangszustand zeigt nur dunkle Baugruppen |
-| `--zeige prestige\|offline\|ausbau\|protokolle\|bericht\|modul` | öffnet den jeweiligen Bildschirm |
-| `--speichern` | erzwingt eine Sicherung vor der Aufnahme |
+| `--schuss <datei>` | speichert und beendet |
+| `--kammer <n>` | lädt Kammer n |
+| `--gezielt` | zeigt eine gezogene Zielhilfe |
+| `--feuere <n>` | feuert n Schüsse auf Knoten und wartet den Flug ab |
+| `--mitten` | nimmt **während** des Flugs auf (Spur und Funken sichtbar) |
+| `--myzel` | öffnet den Myzel-Bildschirm mit Guthaben |
 
-Speichern und Laden im laufenden Spiel lassen sich damit durchgehend prüfen:
-einmal mit `--vorrat --speichern`, dann ohne `--vorrat` erneut starten. Kommt
-der Stand zurück, greift die Verdrahtung in `main.gd` — die Unit-Tests decken
-nur die Dateiebene ab.
-
-## Balancing messen
-
-```bash
-godot --headless --path . --script tools/balance.gd
-```
-
-Spielt 48 Stunden mit einer vernünftigen Kaufstrategie durch und meldet, wann
-welcher Abschnitt erreicht wird. **Balancing-Änderungen gehören gemessen, nicht
-geschätzt** — die erste Fassung brauchte 7,5 Stunden bis zum ersten Prestige,
-was erst dieser Durchlauf zeigte.
-
-## Spielbare Einzeldatei erzeugen
+## Spielbare Einzeldatei
 
 ```bash
 godot --headless --path . --export-release "Web" docs/index.html
-python3 tools/einzeldatei.py /pfad/sternwerft.html
+python3 tools/einzeldatei.py /pfad/hypha.html
 ```
 
-Packt den Web-Export in **eine** HTML-Datei: die Teile werden gzip-komprimiert
-und base64 eingebettet, der Browser entpackt sie beim Start über
-`DecompressionStream` und reicht sie als Blob-Adressen an Godots Lader weiter.
+Packt den Web-Export in **eine** HTML-Datei (gzip + base64, im Browser
+entpackt). Roh sind es 38 MB, als Artifact sind höchstens 16 MB erlaubt.
 
-Der Grund: roh sind es 38 MB, als Artifact sind höchstens 16 MB erlaubt.
-Komprimiert bleiben 12,3 MB. Damit lässt sich eine spielbare Fassung
-veröffentlichen, ohne dass jemand GitHub Pages einschalten muss.
+Der Start kommt ohne jede Netzanfrage aus, weil die Artifact-Seite unter einer
+strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
+
+## Zwei Zusicherungen, die nicht aufgeweicht werden dürfen
+
+1. **Vorschau und Flug rufen dieselbe Funktion** (`Ballistik.flug`). Eine
+   Zielhilfe, die etwas anderes zeigt als das, was passiert, macht ein
+   Puzzlespiel unspielbar.
+2. **Kammersuche und Lösbarkeitsprüfung nutzen denselben Löser**
+   (`tools/sucher.gd`). Getrennte Löser hatten verschiedene Winkelauflösungen
+   und kamen zu verschiedenen Ergebnissen.
+
+Dazu: **kein Myzel-Knoten darf etwas verschlechtern.** Die Lösbarkeit aller
+Kammern ist mit den Grundwerten geprüft; ein erschwerender Knoten könnte eine
+geprüfte Kammer unlösbar machen. Ein Test hält das fest.
 
 ## Grenzen der Umgebung
 
 - `dl.google.com` ist blockiert → kein Android SDK → **AAB-Builds nur in CI**
-- Export-Templates (1,36 GB) sind über GitHub-Releases erreichbar
 - Der Container ist flüchtig; Godot muss je Session neu installiert werden
 
 ## Konventionen
 
-- Bezeichner und Kommentare auf Deutsch, passend zum Projekt
-- Einrückung: 4 Leerzeichen (durchgängig, nicht mit Tabs mischen)
-- `oekonomie.gd` und `raster.gd` bleiben frei von Szenen- und
-  Autoload-Bezügen — nur so lassen sie sich headless testen. Wer `Spielstand`
-  in einer Datei referenziert, macht sie für `--script` unbrauchbar
-- Jede Testfunktion endet mit `return true`; der Läufer wertet einen anderen
-  Rückgabewert als Abbruch. Ohne das meldet ein abgestürzter Test grün
-- Jede Balancing-Änderung gehört in `scripts/data/module.gd`, nirgends sonst
+- Bezeichner und Kommentare auf Deutsch
+- Einrückung: 4 Leerzeichen
+- `ballistik.gd` und `kammer_daten.gd` bleiben frei von Szenen- und
+  Autoload-Bezügen — nur so sind sie headless testbar
+- Jede Testfunktion endet mit `return true`; der Läufer wertet anderes als
+  Abbruch. Und jede muss in `TESTS` stehen — ein Wächter prüft das
 - Neue Assets **immer** im selben Commit in `ASSETS.md` eintragen
