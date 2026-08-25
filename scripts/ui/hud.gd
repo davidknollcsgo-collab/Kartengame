@@ -26,6 +26,11 @@ var _zeit := 0.0
 
 
 func _ready() -> void:
+    # Ohne das schluckt das HUD saemtliche Eingaben: es liegt als Control ueber
+    # dem ganzen Bildschirm, und der Standardwert eines Control ist STOP. Das
+    # Spiel liesse sich dann nicht bedienen - und faellt bei Testschuessen aus
+    # dem Code heraus nicht auf, weil die den Eingabeweg umgehen.
+    mouse_filter = Control.MOUSE_FILTER_IGNORE
     _passe_an()
     get_viewport().size_changed.connect(_passe_an)
     set_process(true)
