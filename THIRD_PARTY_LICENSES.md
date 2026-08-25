@@ -24,8 +24,8 @@ und der Bildschirm bliebe im ausgelieferten Spiel leer.
 
 ## Schriften
 
-- **Orbitron** — SIL Open Font License 1.1 — Copyright 2018 The Orbitron
-  Project Authors. Lizenztext: `schriften/orbitron/OFL.txt`
+- **Bricolage Grotesque** — SIL Open Font License 1.1 — Mathieu Triay.
+  Lizenztext: `schriften/bricolage/OFL.txt`
 - **Rajdhani** — SIL Open Font License 1.1 — Indian Type Foundry.
   Lizenztext: `schriften/rajdhani/OFL.txt`
 

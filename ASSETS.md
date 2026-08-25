@@ -51,5 +51,5 @@ liegen als `OFL.txt` neben den Dateien und müssen mit ausgeliefert werden.
 
 | Datei | Herkunft | Autor | Lizenz | Quelle | Datum |
 |---|---|---|---|---|---|
-| `schriften/orbitron/Orbitron.ttf` | Google Fonts | The Orbitron Project Authors | OFL 1.1 | https://github.com/google/fonts/tree/main/ofl/orbitron | 2026-08-24 |
+| `schriften/bricolage/BricolageGrotesque.ttf` | Google Fonts | Mathieu Triay | OFL 1.1 | https://github.com/google/fonts/tree/main/ofl/bricolagegrotesque | 2026-08-25 |
 | `schriften/rajdhani/Rajdhani-Medium.ttf` | Google Fonts | Indian Type Foundry | OFL 1.1 | https://github.com/google/fonts/tree/main/ofl/rajdhani | 2026-08-24 |
