@@ -111,7 +111,26 @@ func gefloge_spur() -> PackedVector2Array:
 
 
 func _draw() -> void:
+    _zeichne_spur()
     # Kopf der Spore: heller Kern mit Saum.
     draw_circle(Vector2.ZERO, RADIUS * 2.6, Color(farbe.r, farbe.g, farbe.b, 0.14))
     draw_circle(Vector2.ZERO, RADIUS * 1.5, Color(farbe.r, farbe.g, farbe.b, 0.30))
     draw_circle(Vector2.ZERO, RADIUS, farbe.lightened(0.35))
+
+
+## Die bereits geflogene Spur, mitwachsend.
+##
+## Ohne sie sieht man während des Flugs nur einen Punkt, und der Kniff des
+## Spiels - die Spur bleibt liegen - wird erst nachträglich sichtbar. Er muss
+## aber im Moment des Fliegens zu sehen sein.
+func _zeichne_spur() -> void:
+    if _spur.size() < 1:
+        return
+    var bahn := PackedVector2Array()
+    for p in _spur:
+        bahn.append(to_local(p))
+    bahn.append(Vector2.ZERO)
+    if bahn.size() < 2:
+        return
+    draw_polyline(bahn, Color(farbe.r, farbe.g, farbe.b, 0.13), 15.0, true)
+    draw_polyline(bahn, Color(farbe.r, farbe.g, farbe.b, 0.85), 5.0, true)

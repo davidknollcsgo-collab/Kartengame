@@ -19,7 +19,11 @@ var sporen_uebrig := 0
 var _kammer: Kammer
 var _werfer: Werfer
 var _hud: Hud
-var _kamera: Camera2D
+var _kamera: Kamera
+var _klang: Klang
+
+## Zähler der Abpraller im laufenden Schuss - treibt die steigende Tonhöhe.
+var _kette := 0
 var _zug_start := Vector2.ZERO
 var _zieht := false
 
@@ -32,10 +36,14 @@ func _ready() -> void:
 
 func _baue() -> void:
     var feld := KammerDaten.FELD
-    _kamera = Camera2D.new()
+    _kamera = Kamera.new()
     _kamera.position = feld.get_center()
     add_child(_kamera)
     _kamera.make_current()
+
+    _klang = Klang.new()
+    _klang.an = Fortschritt.ton
+    add_child(_klang)
 
     var hintergrund := Hintergrund.new()
     hintergrund.z_index = -10
@@ -44,6 +52,7 @@ func _baue() -> void:
     _kammer = Kammer.new()
     add_child(_kammer)
     _kammer.geraeumt.connect(_bei_geraeumt)
+    _kammer.knoten_getroffen.connect(_bei_knoten)
 
     _werfer = Werfer.new()
     _werfer.position = KammerDaten.WERFER
@@ -140,7 +149,11 @@ func _feuere() -> void:
         return
 
     sporen_uebrig -= 1
+    _kette = 0
     lage = Lage.FLUG
+    _klang.spiele(Klang.Art.WURF)
+    _kamera.ruettle(3.5)
+    _tippe(18)
     _aktualisiere_hud()
 
     var s := Spore.new()
@@ -152,8 +165,38 @@ func _feuere() -> void:
 
 # --- Ablauf -----------------------------------------------------------------
 
-func _bei_abprall(_ort: Vector2, _nummer: int) -> void:
-    pass
+## Jeder Abprall klingt einen Halbton höher als der vorige.
+##
+## Der wichtigste Einzeleffekt des Spiels: eine lange Kette wird hörbar zum
+## Erfolg, bevor irgendeine Zahl erscheint.
+func _bei_abprall(ort: Vector2, _nummer: int) -> void:
+    _kette += 1
+    _klang.spiele(Klang.Art.PRALL, _kette)
+    _kamera.ruettle(2.0)
+    _streue(ort, 7, Vector2.ZERO, PI, Color(0.62, 1.0, 0.92), 190.0)
+
+
+## Ein gefallener Befallsknoten.
+func _bei_knoten(ort: Vector2) -> void:
+    _klang.spiele(Klang.Art.TREFFER)
+    _kamera.ruettle(6.0)
+    _tippe(28)
+    _streue(ort, 22, Vector2.ZERO, PI, Color(0.78, 0.58, 1.0), 320.0)
+
+
+## Streut Funken an einem Ort.
+func _streue(ort: Vector2, anzahl: int, richtung: Vector2, streuung: float,
+        farbe: Color, tempo: float) -> void:
+    var f := Funken.new()
+    f.position = ort
+    add_child(f)
+    f.starte(anzahl, richtung, streuung, farbe, tempo)
+
+
+## Kurzer Rüttelimpuls auf dem Gerät. Auf dem Rechner wirkungslos.
+func _tippe(millisekunden: int) -> void:
+    if OS.get_name() == "Android" or OS.get_name() == "iOS":
+        Input.vibrate_handheld(millisekunden)
 
 
 func _bei_angekommen(spur: PackedVector2Array) -> void:
@@ -167,6 +210,7 @@ func _bei_angekommen(spur: PackedVector2Array) -> void:
         _bei_geraeumt()
     elif sporen_uebrig <= 0:
         lage = Lage.LEER
+        _klang.spiele(Klang.Art.LEER)
         _hud.zeige_ende(false)
     else:
         lage = Lage.ZIELEN
@@ -177,11 +221,26 @@ func _bei_geraeumt() -> void:
     if lage == Lage.GERAEUMT:
         return
     lage = Lage.GERAEUMT
+    _klang.spiele(Klang.Art.GERAEUMT)
+    _kamera.ruettle(9.0)
+    _tippe(45)
+    _zeitlupe()
     var ertrag := KammerDaten.ertrag(kammer_nummer, sporen_uebrig)
     Fortschritt.schreibe_gut(ertrag)
     Fortschritt.vermerke_kammer(kammer_nummer)
     _hud.zeige_ende(true, ertrag)
     _aktualisiere_hud()
+
+
+## Kurze Zeitlupe beim letzten Knoten.
+##
+## Achtzig Millisekunden auf gut ein Drittel Geschwindigkeit. Der Zeitgeber
+## ignoriert die Zeitskala ausdrücklich - sonst dauerte die Zeitlupe genau so
+## viel länger, wie sie verlangsamt, und käme nie zum Ende.
+func _zeitlupe() -> void:
+    Engine.time_scale = 0.35
+    await get_tree().create_timer(0.085, true, false, true).timeout
+    Engine.time_scale = 1.0
 
 
 func naechste_kammer() -> void:
@@ -220,6 +279,13 @@ func _pruefe_entwicklerschalter() -> void:
     if f >= 0 and f + 1 < args.size():
         schuesse = int(args[f + 1])
 
+    # Nimmt mitten im Flug auf, damit Spur und Funken zu sehen sind.
+    if args.has("--mitten"):
+        var m := args.find("--schuss")
+        if m >= 0 and m + 1 < args.size():
+            _nimm_mitten_auf(args[m + 1])
+            return
+
     var s := args.find("--schuss")
     if s >= 0 and s + 1 < args.size():
         _nimm_auf(args[s + 1], schuesse)
@@ -233,6 +299,21 @@ func _zeige_zielvorschau() -> void:
 
 
 ## Ein noch stehender Knoten, auf den sich zielen laesst.
+## Feuert einen Schuss und nimmt auf, solange die Spore noch fliegt.
+func _nimm_mitten_auf(pfad: String) -> void:
+    for i in 15:
+        await get_tree().process_frame
+    var ziel := _naechstes_ziel()
+    _werfer.richtung = (ziel - KammerDaten.WERFER).normalized()
+    _werfer.spannung = 0.9
+    _feuere()
+    for i in 26:
+        await get_tree().process_frame
+    var bild := get_viewport().get_texture().get_image()
+    bild.save_png(pfad)
+    get_tree().quit(0)
+
+
 func _naechstes_ziel() -> Vector2:
     var plan := _kammer.bauplan
     for k in plan.knoten:

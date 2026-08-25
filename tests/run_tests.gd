@@ -22,6 +22,7 @@ const TESTS: PackedStringArray = [
     "_test_kammer_treffer",
     "_test_kammer_spuren",
     "_test_loesbarkeit",
+    "_test_klang",
 ]
 
 var _bestanden := 0
@@ -419,4 +420,39 @@ func _test_loesbarkeit() -> bool:
     var spaet := Sucher.spiele(30)
     _ist(int(spaet["schuesse"]) >= int(erste["schuesse"]),
         "Kammer 30 verlangt nicht weniger Schuesse als Kammer 1")
+    return true
+
+
+func _test_klang() -> bool:
+    # Toene kann der Testlauf nicht hoeren - aber nachrechnen, dass ein
+    # brauchbarer Puffer entsteht. Ein stiller oder leerer Ton faellt sonst erst
+    # auf dem Geraet auf, wo ihn niemand einer Ursache zuordnet.
+    var k: Node = load("res://scripts/spiel/klang.gd").new()
+
+    for art in [k.Art.WURF, k.Art.PRALL, k.Art.TREFFER, k.Art.GERAEUMT, k.Art.LEER]:
+        var s: AudioStreamWAV = k._erzeuge(art)
+        _ist(s != null, "Ton %d entsteht" % art)
+        _gleich(s.format, AudioStreamWAV.FORMAT_16_BITS, "Ton %d ist 16 Bit" % art)
+        _gleich(s.mix_rate, k.ABTASTRATE, "Ton %d hat die richtige Abtastrate" % art)
+        _ist(s.data.size() > 400, "Ton %d hat einen Puffer" % art)
+        _gleich(s.data.size() % 2, 0, "Ton %d hat vollstaendige Abtastwerte" % art)
+
+        var spitze := 0
+        for i in range(0, mini(s.data.size(), 8000), 2):
+            spitze = maxi(spitze, absi(s.data.decode_s16(i)))
+        _ist(spitze > 1000, "Ton %d ist hoerbar laut" % art)
+        _ist(spitze <= 32767, "Ton %d uebersteuert nicht" % art)
+
+    var prall: AudioStreamWAV = k._erzeuge(k.Art.PRALL)
+    _ist(absi(prall.data.decode_s16(0)) < 2000, "Ton setzt weich ein statt zu knacken")
+
+    # Zwoelf Halbtoene sind genau eine Oktave - darauf beruht die Tonkette.
+    _nahe(pow(k.HALBTON, 12.0), 2.0, "Zwoelf Halbtoene ergeben eine Oktave", 0.01)
+
+    # Abgeschaltet darf nichts passieren.
+    k.an = false
+    k.spiele(k.Art.PRALL, 5)
+    _ist(true, "Abgeschalteter Ton wirft keinen Fehler")
+
+    k.free()
     return true
