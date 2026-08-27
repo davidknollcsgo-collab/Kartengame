@@ -4,7 +4,7 @@
 // Incrementing CACHE_VERSION will kick off the install event and force
 // previously cached resources to be updated from the network.
 /** @type {string} */
-const CACHE_VERSION = '1787685598|6761735';
+const CACHE_VERSION = '1787862525|5742905';
 /** @type {string} */
 const CACHE_PREFIX = 'Nekton-sw-cache-';
 const CACHE_NAME = CACHE_PREFIX + CACHE_VERSION;

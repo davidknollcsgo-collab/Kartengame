@@ -23,6 +23,13 @@ var _ende := false
 var _gewonnen := false
 var _verdient := 0
 var _zeit := 0.0
+var _meldung := ""
+var _meldung_leben := 0.0
+
+## Tippziel des Koloniknopfs, in Bildschirmkoordinaten. `wache.gd` fragt es
+## ab, statt selbst zu rechnen - so gibt es genau eine Stelle, an der steht,
+## wo der Knopf liegt.
+var _kolonieknopf := Rect2()
 
 var _schrift: Font
 var _ausbeuten: Array[Dictionary] = []
@@ -42,11 +49,23 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
     _zeit += delta
+    if _meldung_leben > 0.0:
+        _meldung_leben -= delta
     for i in range(_ausbeuten.size() - 1, -1, -1):
         _ausbeuten[i][&"leben"] -= delta
         if _ausbeuten[i][&"leben"] <= 0.0:
             _ausbeuten.remove_at(i)
     _flaeche.queue_redraw()
+
+
+## Kurze Rueckmeldung oben, etwa wenn eine Kammer fertig wird.
+func melde(was: String) -> void:
+    _meldung = was
+    _meldung_leben = 3.0
+
+
+func kolonieknopf_bei(bildschirm: Vector2) -> bool:
+    return _bauphase and not _ende and _kolonieknopf.has_point(bildschirm)
 
 
 func setze_zahlen(brut: int, naehrstoffe: int, offen: int) -> void:
@@ -94,10 +113,18 @@ func _zeichne() -> void:
     _kopfzeile(breite)
     _schwebende_zahlen()
 
-    if _bauphase:
+    if _bauphase and not _ende:
+        _kolonieknopf_zeichnen(breite, hoehe)
         _bauhinweis(breite, hoehe)
+    else:
+        _kolonieknopf = Rect2()
     if _ende:
         _endschirm(breite, hoehe)
+
+    if _meldung_leben > 0.0:
+        var f := clampf(_meldung_leben / 0.8, 0.0, 1.0)
+        _text(Vector2(breite * 0.5, 118.0), _meldung, 17,
+            Color(0.62, 0.98, 0.86, f), true)
 
 
 func _kopfzeile(breite: float) -> void:
@@ -112,8 +139,8 @@ func _kopfzeile(breite: float) -> void:
 
     var mitte := breite * 0.5
     _text(Vector2(mitte - 40.0, 40.0), "BRUT", 13, Color(0.62, 0.52, 0.38))
-    _text(Vector2(mitte - 40.0, 66.0), "%d / %d" % [_brut, Graben.BRUT_LEBEN],
-        19, Color(0.98, 0.80, 0.42))
+    _text(Vector2(mitte - 40.0, 66.0), "%d / %d"
+        % [_brut, Fortschritt.stand.brut_leben()], 19, Color(0.98, 0.80, 0.42))
 
     _text(Vector2(breite - RAND - 120.0, 40.0), "NAEHRSTOFF", 13,
         Color(0.40, 0.66, 0.60))
@@ -135,9 +162,27 @@ func _schwebende_zahlen() -> void:
             Color(0.52, 0.94, 0.80, f), true)
 
 
+## Der Weg in die Kolonie. Steht nur zwischen den Wellen da - waehrend einer
+## Welle gehoert der Bildschirm dem Schlund.
+func _kolonieknopf_zeichnen(breite: float, hoehe: float) -> void:
+    # Ueber der Brut, nicht darauf. Im ersten Bild lagen beide Tafeln genau
+    # auf der Eierreihe - der Spieler sah in der Bauphase nicht, was er
+    # verteidigt.
+    _kolonieknopf = Rect2(RAND, hoehe - 410.0, breite - RAND * 2.0, 54.0)
+    var puls := 0.5 + 0.5 * sin(_zeit * 1.8)
+    _flaeche.draw_rect(_kolonieknopf, Color(0.05, 0.14, 0.18, 0.82))
+    _flaeche.draw_rect(_kolonieknopf, Color(0.42, 0.86, 0.92, 0.28 + 0.2 * puls),
+        false, 1.5)
+    _text(_kolonieknopf.get_center() + Vector2(0.0, 6.0), "KOLONIE AUSBAUEN",
+        17, Color(0.72, 0.94, 0.98), true)
+
+
 func _bauhinweis(breite: float, hoehe: float) -> void:
     var puls := 0.5 + 0.5 * sin(_zeit * 2.4)
-    var kasten := Rect2(RAND, hoehe - 168.0, breite - RAND * 2.0, 96.0)
+    # Ueber dem Knopf und ueber dem Waechter. Vorher lag die Tafel auf seinem
+    # Kopf, davor auf der Brut - beides Dinge, die der Spieler in der Bauphase
+    # sehen muss.
+    var kasten := Rect2(RAND, hoehe - 500.0, breite - RAND * 2.0, 76.0)
     _flaeche.draw_rect(kasten, Color(0.03, 0.08, 0.10, 0.72))
     _flaeche.draw_rect(kasten, Color(0.26, 0.60, 0.66, 0.35), false, 1.4)
 
@@ -149,9 +194,9 @@ func _bauhinweis(breite: float, hoehe: float) -> void:
     elif not kann:
         zeile = "Wehrpolyp kostet %d - noch %d fehlen" % [_preis, _preis - _naehrstoffe]
 
-    _text(kasten.position + Vector2(18.0, 34.0), zeile, 16,
+    _text(kasten.position + Vector2(18.0, 32.0), zeile, 16,
         Color(0.62, 0.90, 0.86) if kann else Color(0.50, 0.60, 0.66))
-    _text(kasten.position + Vector2(18.0, 66.0),
+    _text(kasten.position + Vector2(18.0, 62.0),
         "Irgendwo sonst tippen startet Welle %d" % _welle, 15,
         Color(0.78, 0.94, 0.98, 0.55 + 0.45 * puls))
 

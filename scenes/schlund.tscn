@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/spiel/wache.gd" id="1_wache"]
 [ext_resource type="Script" path="res://scripts/spiel/kolonie.gd" id="2_kolonie"]
@@ -7,6 +7,7 @@
 [ext_resource type="Script" path="res://scripts/spiel/funken.gd" id="5_funken"]
 [ext_resource type="Shader" path="res://shaders/graben.gdshader" id="6_graben"]
 [ext_resource type="Script" path="res://scripts/ui/hud.gd" id="7_hud"]
+[ext_resource type="Script" path="res://scripts/ui/kolonie_schirm.gd" id="8_kolonie"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_graben"]
 shader = ExtResource("6_graben")
@@ -50,3 +51,14 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+
+[node name="Koloniebild" type="CanvasLayer" parent="."]
+layer = 5
+script = ExtResource("8_kolonie")
+
+[node name="Flaeche" type="Control" parent="Koloniebild"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2

@@ -36,11 +36,11 @@ const SCHUETTELN_ABKLINGEN := 7.0
 @onready var _funken: Node2D = $Funken
 @onready var _kamera: Camera2D = $Kamera
 @onready var _hud: CanvasLayer = $Hud
+@onready var _koloniebild: CanvasLayer = $Koloniebild
 
 var lage := Lage.BAUEN
 var welle_nummer := 1
 var brut := Graben.BRUT_LEBEN
-var naehrstoffe := 0
 var polypen: Array[Vector2] = []
 var verdient := 0
 
@@ -55,27 +55,63 @@ var _polyp_takt := PackedFloat32Array()
 
 
 func _ready() -> void:
+    _koloniebild.geschlossen.connect(_kolonie_geschlossen)
+    Fortschritt.stand_geaendert.connect(_stelle_ausbau_ein)
+    Fortschritt.bau_fertig.connect(_bau_fertig)
+
+    welle_nummer = Fortschritt.stand.hoechste_welle
+    brut = Fortschritt.stand.brut_leben()
+    var offline := Fortschritt.begruesse()
     _stelle_ausbau_ein()
     _bereite_welle_vor()
+    if offline > 0:
+        _hud.zeige_ausbeute(Graben.WAECHTER + Vector2(0.0, -70.0), offline)
     _lies_entwicklerschalter()
+
+
+func _bau_fertig(kammer: int) -> void:
+    _stelle_ausbau_ein()
+    if lage == Lage.BAUEN:
+        # Eine fertige Kammer waehrend der Welle stumm zu schlucken waere die
+        # unsichtbarste Belohnung des Spiels. Zwischen den Wellen darf sie
+        # sich zeigen.
+        _funken.platzen(Graben.WAECHTER + Vector2(0.0, -40.0),
+            Color(0.62, 0.94, 1.0), 26.0)
+    _hud.melde("%s fertig" % Kammern.name_von(kammer))
+
+
+func _kolonie_geschlossen() -> void:
+    _hud.visible = true
+    _stelle_ausbau_ein()
+    _aktualisiere_kolonie()
+    _hud.zeige_bauphase(welle_nummer, brut, Fortschritt.stand.naehrstoffe,
+        Fortschritt.stand.polyp_kosten(polypen.size()), polypen.size())
+
+
+func oeffne_kolonie() -> void:
+    if lage != Lage.BAUEN:
+        return
+    _hud.visible = false
+    _koloniebild.oeffne()
 
 
 # --- Ausbau und Wellenvorbereitung ----------------------------------------
 
+## Die vier Werte des Kegels kommen aus der **Kolonie**, nicht mehr aus der
+## Sollkurve. `Ausbau` bleibt daneben die Vorgabe, an der sich die Kolonie
+## messen lassen muss - `tools/kolonielauf.gd` prueft das ueber 30 Tage.
 func _stelle_ausbau_ein() -> void:
-    # Der Koloniestand kommt vorerst aus der Sollkurve. Sobald die Kolonie
-    # gebaut ist, liefert sie diese vier Werte - `Ausbau` bleibt dann die
-    # Vorgabe, an der sie sich messen lassen muss.
-    _kegel.halbwinkel = Graben.HALBWINKEL * Ausbau.winkel_faktor(welle_nummer)
-    _kegel.reichweite = Graben.REICHWEITE * Ausbau.reichweite_faktor(welle_nummer)
+    var stand: KolonieStand = Fortschritt.stand
+    _kegel.halbwinkel = Graben.HALBWINKEL * stand.winkel_faktor()
+    _kegel.reichweite = Graben.REICHWEITE * stand.reichweite_faktor()
 
 
 func leistung() -> float:
-    return Graben.LEISTUNG * Ausbau.leistung_faktor(welle_nummer)
+    return Graben.LEISTUNG * Fortschritt.stand.leistung_faktor()
 
 
 func ziele() -> int:
-    return Ausbau.ziele(welle_nummer)
+    return Fortschritt.stand.ziele()
 
 
 func _bereite_welle_vor() -> void:
@@ -85,8 +121,8 @@ func _bereite_welle_vor() -> void:
     _stelle_ausbau_ein()
     _schwarm.tiere = _tiere
     _aktualisiere_kolonie()
-    _hud.zeige_bauphase(welle_nummer, brut, naehrstoffe,
-        Graben.polyp_kosten(polypen.size()), polypen.size())
+    _hud.zeige_bauphase(welle_nummer, brut, Fortschritt.stand.naehrstoffe,
+        Fortschritt.stand.polyp_kosten(polypen.size()), polypen.size())
 
 
 func starte_welle() -> void:
@@ -110,7 +146,7 @@ func starte_welle() -> void:
     _polyp_takt.fill(0.0)
     _schwarm.tiere = _tiere
     lage = Lage.WELLE
-    _hud.zeige_welle(welle_nummer, brut, naehrstoffe, _tiere.size())
+    _hud.zeige_welle(welle_nummer, brut, Fortschritt.stand.naehrstoffe, _tiere.size())
 
 
 # --- Schleife --------------------------------------------------------------
@@ -197,7 +233,7 @@ func _polypen_feuern(delta: float) -> void:
                 continue
             if r.ort.distance_to(polypen[n]) > Graben.POLYP_REICHWEITE:
                 continue
-            r.leben -= Graben.POLYP_LEISTUNG * delta
+            r.leben -= Fortschritt.stand.polyp_leistung() * delta
             r.hitze = maxf(r.hitze, 0.45)
             if _polyp_takt[n] <= 0.0:
                 _polyp_takt[n] = 0.22
@@ -213,7 +249,7 @@ func _raeume_auf() -> void:
             r.lebendig = false
             _offen -= 1
             var lohn := Wellen.wert_in(r.art, welle_nummer)
-            naehrstoffe += lohn
+            Fortschritt.aendere(lohn)
             verdient += lohn
             _funken.platzen(r.ort, Arten.farbe(r.art), Arten.radius(r.art))
             _hud.zeige_ausbeute(r.ort, lohn)
@@ -227,12 +263,13 @@ func _raeume_auf() -> void:
             if brut <= 0:
                 _verloren()
                 return
-    _hud.setze_zahlen(brut, naehrstoffe, _offen)
+    _hud.setze_zahlen(brut, Fortschritt.stand.naehrstoffe, _offen)
 
 
 # --- Uebergaenge -----------------------------------------------------------
 
 func _welle_geschafft() -> void:
+    Fortschritt.merke_welle(welle_nummer + 1)
     if welle_nummer >= Graben.WELLEN_GESAMT:
         lage = Lage.GESCHAFFT
         _hud.zeige_ende(true, welle_nummer, verdient)
@@ -247,11 +284,16 @@ func _verloren() -> void:
     _hud.zeige_ende(false, welle_nummer, verdient)
 
 
+## Nach einem Fall: die Sitzung beginnt neu, die Kolonie bleibt.
+##
+## Das ist die Zusage aus dem Konzept - der Fortschritt der Sitzung geht
+## verloren, der Koloniefortschritt nicht. Ohne sie waere jede Niederlage ein
+## Grund, das Spiel zu loeschen.
 func neu_anfangen() -> void:
-    brut = Graben.BRUT_LEBEN
-    naehrstoffe = 0
+    brut = Fortschritt.stand.brut_leben()
     verdient = 0
     polypen.clear()
+    Fortschritt.sichere()
     _bereite_welle_vor()
 
 
@@ -265,15 +307,15 @@ func baue_polyp(nische: int) -> bool:
     var ort := Graben.NISCHEN[nische]
     if polypen.has(ort):
         return false
-    var preis := Graben.polyp_kosten(polypen.size())
-    if naehrstoffe < preis:
+    var preis := Fortschritt.stand.polyp_kosten(polypen.size())
+    if Fortschritt.stand.naehrstoffe < preis:
         return false
-    naehrstoffe -= preis
+    Fortschritt.aendere(-preis)
     polypen.append(ort)
     _funken.platzen(ort, Color(0.52, 0.94, 0.80), 20.0)
     _aktualisiere_kolonie()
-    _hud.zeige_bauphase(welle_nummer, brut, naehrstoffe,
-        Graben.polyp_kosten(polypen.size()), polypen.size())
+    _hud.zeige_bauphase(welle_nummer, brut, Fortschritt.stand.naehrstoffe,
+        Fortschritt.stand.polyp_kosten(polypen.size()), polypen.size())
     return true
 
 
@@ -288,7 +330,8 @@ func nische_bei(punkt: Vector2) -> int:
 func _aktualisiere_kolonie() -> void:
     _kolonie.polypen = polypen
     _kolonie.brut = brut
-    _kolonie.naehrstoffe = naehrstoffe
+    _kolonie.brut_voll = Fortschritt.stand.brut_leben()
+    _kolonie.naehrstoffe = Fortschritt.stand.naehrstoffe
     _kolonie.bauphase = lage == Lage.BAUEN
     _kolonie.queue_redraw()
 
@@ -314,6 +357,9 @@ func _beruehrung(gedrueckt: bool, ort: Vector2) -> void:
 
     match lage:
         Lage.BAUEN:
+            if _hud.kolonieknopf_bei(_bildschirm(ort)):
+                oeffne_kolonie()
+                return
             var n := nische_bei(ort)
             if n >= 0:
                 if baue_polyp(n):
@@ -325,6 +371,10 @@ func _beruehrung(gedrueckt: bool, ort: Vector2) -> void:
 
 func _welt(bildschirm: Vector2) -> Vector2:
     return get_canvas_transform().affine_inverse() * bildschirm
+
+
+func _bildschirm(welt: Vector2) -> Vector2:
+    return get_canvas_transform() * welt
 
 
 # --- Entwicklerschalter ----------------------------------------------------
