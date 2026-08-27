@@ -57,3 +57,8 @@ jobs:
       # jemand feststecken würde, der nicht bezahlt hat.
       - name: Alle 60 Wellen prüfen
         run: godot --headless --path . --script tools/wellenpruefer.gd
+
+      # Beantwortet, was man einem Aufbauspiel nicht ansieht: erreicht ein
+      # normaler Spieler die Sollkurve, und entsteht dabei eine Wartemauer?
+      - name: Kolonie über 30 Tage
+        run: godot --headless --path . --script tools/kolonielauf.gd

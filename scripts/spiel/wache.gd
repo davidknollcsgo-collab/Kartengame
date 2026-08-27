@@ -212,7 +212,7 @@ func _raeume_auf() -> void:
         if r.leben <= 0.0:
             r.lebendig = false
             _offen -= 1
-            var lohn := Arten.wert(r.art)
+            var lohn := Wellen.wert_in(r.art, welle_nummer)
             naehrstoffe += lohn
             verdient += lohn
             _funken.platzen(r.ort, Arten.farbe(r.art), Arten.radius(r.art))

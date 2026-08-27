@@ -60,3 +60,16 @@ static func durchsatz(nummer: int) -> float:
     var kegel := Graben.LEISTUNG * leistung_faktor(nummer) * ziele(nummer)
     var polyp := Graben.POLYP_LEISTUNG * polypen(nummer)
     return kegel + polyp
+
+
+## Welche Kammerstufe die Sollkurve bei Welle `nummer` erwartet.
+##
+## Bindeglied zwischen dieser Kurve und `kammern.gd`: dort steht die Wirkung
+## je Stufe, hier steht, welche Stufe zu welcher Welle gehoert. Die Steigungen
+## in `kammern.gd` sind so gewaehlt, dass beide Seiten bei voller Stufe genau
+## denselben Wert liefern - `_test_kammern_treffen_die_sollkurve` prueft das
+## ueber die ganze Strecke.
+static func stufe_soll(nummer: int) -> int:
+    var t := float(clampi(nummer, 1, Graben.WELLEN_GESAMT) - 1) \
+        / float(maxi(1, Graben.WELLEN_GESAMT - 1))
+    return int(round(t * float(Kammern.HOECHSTSTUFE)))

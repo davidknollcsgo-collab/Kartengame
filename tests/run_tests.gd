@@ -42,6 +42,12 @@ const TESTS: PackedStringArray = [
     "_test_zaehigkeit_steigt",
     "_test_druck_steigt_und_bleibt_im_rahmen",
     "_test_ausbau_verschlechtert_nie",
+    "_test_kammern_treffen_die_sollkurve",
+    "_test_kammern_tabelle_vollstaendig",
+    "_test_kammerkosten_und_zeiten_steigen",
+    "_test_erste_woche_ohne_wartemauer",
+    "_test_schacht_deckelt_die_kolonie",
+    "_test_kammerausbau_verschlechtert_nie",
     "_test_polyp_kosten_steigen",
     "_test_abschnitt",
     "_test_erste_wellen_sind_ueberstehbar",
@@ -444,3 +450,124 @@ func _test_polypen_verbessern_nie_nichts() -> bool:
     return _melde(e_mit.brut_nachher >= e_ohne.brut_nachher,
         "Polypen duerfen die Brut nie schlechter stellen (%d < %d)"
         % [e_mit.brut_nachher, e_ohne.brut_nachher])
+
+# --- Kammern ---------------------------------------------------------------
+
+func _test_kammern_treffen_die_sollkurve() -> bool:
+    # Die wichtigste Verbindung im Projekt: die Sollkurve sagt, wie stark der
+    # Waechter bei Welle n sein soll; die Kammern sagen, wie er dorthin kommt.
+    # Laufen beide auseinander, prueft der Wellenpruefer ein Spiel, das
+    # niemand spielen kann.
+    for n in range(1, Graben.WELLEN_GESAMT + 1):
+        var stufe := Ausbau.stufe_soll(n)
+
+        # Rundung auf ganze Stufen erlaubt hoechstens einen halben Schritt
+        # Abweichung - mehr waere ein echtes Auseinanderlaufen.
+        var toleranz_leistung := Kammern.LEISTUNG_JE_STUFE * 0.55
+        if absf(Kammern.leistung_faktor(stufe) - Ausbau.leistung_faktor(n)) > toleranz_leistung:
+            return _melde(false, "Leistung weicht bei Welle %d ab: Kammer %.3f, Soll %.3f"
+                % [n, Kammern.leistung_faktor(stufe), Ausbau.leistung_faktor(n)])
+
+        if absf(Kammern.reichweite_faktor(stufe) - Ausbau.reichweite_faktor(n)) > 0.02:
+            return _melde(false, "Reichweite weicht bei Welle %d ab" % n)
+
+        if absf(Kammern.winkel_faktor(stufe) - Ausbau.winkel_faktor(n)) > 0.02:
+            return _melde(false, "Winkel weicht bei Welle %d ab" % n)
+
+        if absi(Kammern.ziele(stufe) - Ausbau.ziele(n)) > 1:
+            return _melde(false, "Ziele weichen bei Welle %d ab: Kammer %d, Soll %d"
+                % [n, Kammern.ziele(stufe), Ausbau.ziele(n)])
+
+    # An den Enden muss es exakt aufgehen, nicht nur ungefaehr.
+    return _melde(is_equal_approx(Kammern.leistung_faktor(0), Ausbau.leistung_faktor(1)),
+            "Stufe 0 muss den Grundwerten entsprechen") \
+        and _melde(is_equal_approx(Kammern.leistung_faktor(Kammern.HOECHSTSTUFE),
+                Ausbau.leistung_faktor(Graben.WELLEN_GESAMT)),
+            "Hoechststufe muss das Ende der Sollkurve treffen") \
+        and _melde(Kammern.ziele(Kammern.HOECHSTSTUFE) == Ausbau.ziele(Graben.WELLEN_GESAMT),
+            "Zielzahl muss am Ende uebereinstimmen")
+
+
+func _test_kammern_tabelle_vollstaendig() -> bool:
+    var felder: PackedStringArray = ["name", "zweck", "kosten", "wachstum", "zeit_faktor"]
+    if not _melde(Kammern.TABELLE.size() == Kammern.Kammer.size(),
+            "TABELLE und enum Kammer muessen gleich gross sein"):
+        return false
+    for i in Kammern.TABELLE.size():
+        for f in felder:
+            if not Kammern.TABELLE[i].has(StringName(f)):
+                return _melde(false, "Kammer %d fehlt das Feld %s" % [i, f])
+        if not _melde(not Kammern.zweck(i).is_empty(),
+                "Kammer %d braucht einen erklaerten Zweck" % i):
+            return false
+    return true
+
+
+func _test_kammerkosten_und_zeiten_steigen() -> bool:
+    for i in Kammern.zahl():
+        for stufe in range(Kammern.HOECHSTSTUFE - 1):
+            if Kammern.kosten(i, stufe + 1) <= Kammern.kosten(i, stufe):
+                return _melde(false, "%s wird auf Stufe %d nicht teurer"
+                    % [Kammern.name_von(i), stufe + 1])
+            if Kammern.bauzeit(i, stufe + 1) < Kammern.bauzeit(i, stufe):
+                return _melde(false, "%s baut auf Stufe %d kuerzer als davor"
+                    % [Kammern.name_von(i), stufe + 1])
+    return true
+
+
+func _test_erste_woche_ohne_wartemauer() -> bool:
+    # Aus dem Plan: die erste Woche fast ohne echte Wartezeit. Bauzeiten sind
+    # der Grund, warum Spieler aufhoeren - wer in den ersten Stunden auf eine
+    # Uhr starrt, kommt nicht wieder.
+    for i in Kammern.zahl():
+        for stufe in Kammern.ZEIT_SANFT_BIS:
+            var z := Kammern.bauzeit(i, stufe)
+            if z > Kammern.ZEIT_SANFT + 0.001:
+                return _melde(false, "%s Stufe %d baut %.0f s - zu lang fuer den Einstieg"
+                    % [Kammern.name_von(i), stufe + 1, z])
+    var spaet := Kammern.bauzeit(Kammern.Kammer.LEUCHTORGAN, Kammern.HOECHSTSTUFE - 1)
+    return _melde(spaet > Kammern.ZEIT_SANFT * 4.0,
+        "spaete Stufen muessen echte Wartezeit kosten, waren %.0f s" % spaet)
+
+
+func _test_schacht_deckelt_die_kolonie() -> bool:
+    # Ohne Deckel liesse sich das Leuchtorgan allein hochziehen und alles
+    # andere ignorieren - eine Kolonie mit einem einzigen sinnvollen Knopf.
+    var ohne_schacht := Kammern.deckel(Kammern.Kammer.LEUCHTORGAN, 0)
+    if not _melde(ohne_schacht < Kammern.HOECHSTSTUFE,
+            "ohne Tiefenschacht darf keine Kammer voll ausbaubar sein"):
+        return false
+    if not _melde(Kammern.deckel(Kammern.Kammer.TIEFENSCHACHT, 0) == Kammern.HOECHSTSTUFE,
+            "der Tiefenschacht selbst darf nicht von sich abhaengen"):
+        return false
+    if not _melde(not Kammern.ausbaubar(Kammern.Kammer.LEUCHTORGAN, ohne_schacht, 0),
+            "am Deckel muss der Ausbau gesperrt sein"):
+        return false
+    return _melde(Kammern.deckel(Kammern.Kammer.LEUCHTORGAN, Kammern.HOECHSTSTUFE)
+            == Kammern.HOECHSTSTUFE,
+        "mit vollem Schacht muss jede Kammer die Hoechststufe erreichen")
+
+
+func _test_kammerausbau_verschlechtert_nie() -> bool:
+    # Dieselbe Zusicherung wie fuer die Sollkurve, jetzt fuer die Kammern
+    # selbst: keine Wirkung darf mit der Stufe fallen.
+    for stufe in Kammern.HOECHSTSTUFE:
+        var paare := {
+            "Leistung": [Kammern.leistung_faktor(stufe), Kammern.leistung_faktor(stufe + 1)],
+            "Ziele": [float(Kammern.ziele(stufe)), float(Kammern.ziele(stufe + 1))],
+            "Reichweite": [Kammern.reichweite_faktor(stufe), Kammern.reichweite_faktor(stufe + 1)],
+            "Winkel": [Kammern.winkel_faktor(stufe), Kammern.winkel_faktor(stufe + 1)],
+            "Polypleistung": [Kammern.polyp_leistung(stufe), Kammern.polyp_leistung(stufe + 1)],
+            "Brut": [float(Kammern.brut_leben(stufe)), float(Kammern.brut_leben(stufe + 1))],
+            "Filter": [Kammern.filter_je_stunde(stufe), Kammern.filter_je_stunde(stufe + 1)],
+        }
+        for was in paare:
+            var werte: Array = paare[was]
+            if werte[1] < werte[0]:
+                return _melde(false, "%s faellt von Stufe %d auf %d"
+                    % [was, stufe, stufe + 1])
+        # Der Polypenpreis ist der eine Wert, der fallen *soll*.
+        if Kammern.polyp_kosten(stufe + 1, 3) > Kammern.polyp_kosten(stufe, 3):
+            return _melde(false, "Polypen werden auf Stufe %d teurer statt billiger"
+                % [stufe + 1])
+    return true

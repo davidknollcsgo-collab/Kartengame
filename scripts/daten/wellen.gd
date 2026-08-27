@@ -48,6 +48,12 @@ const SAAT := 0x4e454b
 ## Zaehigkeit bleibt die Zahl lesbar und der einzelne Treffer schwerer.
 const ZAEHIGKEIT_JE_WELLE := 0.10
 
+## Wie stark der Naehrstoffertrag der Zaehigkeit folgt. Voll gekoppelt (1.0)
+## ueberschwemmte den Kolonielauf: Welle 60 schon an Tag 23 und 315000
+## Naehrstoff ungenutzt auf dem Konto. Knapp die Haelfte laesst den Ertrag
+## mitwachsen, ohne den Vorrat bedeutungslos zu machen.
+const WERT_ANTEIL := 0.56
+
 ## Sicherung gegen eine Endlosschleife, falls jemand an der Staerke oder den
 ## Lebenswerten dreht.
 const HOECHSTZAHL := 260
@@ -62,6 +68,18 @@ static func zaehigkeit(nummer: int) -> float:
 ## Einzige Quelle fuer diesen Wert - Wellenbau, Pruefer und Spiel fragen hier.
 static func leben_in(art: int, nummer: int) -> float:
     return Arten.leben(art) * zaehigkeit(nummer)
+
+
+## Naehrstoff, den er einbringt.
+##
+## Waechst mit derselben Zaehigkeit wie sein Leben. Ohne diese Kopplung stieg
+## der Ertrag ueber 60 Wellen nur um das Siebenfache - allein dadurch, dass
+## mehr Tiere kommen -, waehrend die Kammerkosten um ein Vielfaches stiegen.
+## Der Kolonielauf zeigte die Folge: dreissig von dreissig Tagen hinter der
+## Sollkurve. Ein zaeherer Raeuber muss mehr wert sein.
+static func wert_in(art: int, nummer: int) -> int:
+    return maxi(1, int(round(Arten.wert(art)
+        * (1.0 + WERT_ANTEIL * (zaehigkeit(nummer) - 1.0)))))
 
 
 ## Wie hoch der Anteil der eigenen Leistung ist, den diese Welle abverlangt.

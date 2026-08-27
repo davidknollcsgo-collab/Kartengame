@@ -165,7 +165,7 @@ static func welle(nummer: int, z: Zustand) -> Ergebnis:
             if t.leben <= 0.0:
                 t.lebendig = false
                 offen -= 1
-                z.naehrstoffe += Arten.wert(t.art)
+                z.naehrstoffe += Wellen.wert_in(t.art, nummer)
             elif orte[i].y >= Graben.BRUT_Y - 0.5:
                 t.lebendig = false
                 t.angekommen = true
