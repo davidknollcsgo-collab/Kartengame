@@ -67,6 +67,38 @@ was erst dieser Durchlauf zeigte.
 - Export-Templates (1,36 GB) sind über GitHub-Releases erreichbar
 - Der Container ist flüchtig; Godot muss je Session neu installiert werden
 
+## Vertragsfristen-Wächter (`vertragsfristen-waechter/`)
+
+Zweites, unabhängiges Projekt im selben Verzeichnisbaum — Node und TypeScript
+statt Godot, eigene `package.json`, eigener CI-Arbeitsablauf.
+
+```bash
+cd vertragsfristen-waechter
+npm install
+npm run pruefen        # Typprüfung und Tests
+npm run dev            # Server :4000, Oberfläche :5173
+npm run demo           # eine HTML-Datei, läuft ohne Server
+```
+
+Die Optik lässt sich wie beim Spiel wirklich ansehen statt raten — Chromium
+und Playwright sind vorinstalliert:
+
+```bash
+node -e "import('/opt/node22/lib/node_modules/playwright/index.mjs')"
+```
+
+Grenzen: `fonts.googleapis.com` ist hier blockiert, die Schriften fallen also
+auf Systemschriften zurück; im Browser des Nutzers greifen sie.
+
+Regeln, die schon einmal Fehler verhindert haben:
+
+- Fristenrechnung gehört in `src/fachlogik/fristen.ts` und bleibt frei von
+  Datenbank- und Netzbezug — Server und Oberfläche rechnen damit dasselbe
+- Vertragsperioden hängen am Vertragsbeginn, nicht aneinander: Kettenrechnung
+  driftet über kurze Monate weg
+- Beispieldaten in `src/fachlogik/beispiele.ts` rechnen vom gewünschten
+  Stichtag zurück; die Tests prüfen das über mehrere Kalendertage
+
 ## Konventionen
 
 - Bezeichner und Kommentare auf Deutsch, passend zum Projekt

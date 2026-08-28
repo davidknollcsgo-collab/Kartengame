@@ -1,0 +1,60 @@
+name: Vertragsfristen-Wächter
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "vertragsfristen-waechter/**"
+      - ".github/workflows/vertragsfristen-waechter.yml"
+  pull_request:
+    paths:
+      - "vertragsfristen-waechter/**"
+      - ".github/workflows/vertragsfristen-waechter.yml"
+
+concurrency:
+  group: waechter-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: vertragsfristen-waechter
+
+jobs:
+  pruefen:
+    name: Typen, Tests, Bau
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: vertragsfristen-waechter/package-lock.json
+
+      - name: Pakete installieren
+        run: npm ci
+
+      - name: Typprüfung
+        run: npx tsc -p tsconfig.json --noEmit
+
+      - name: Tests
+        run: npm test
+
+      - name: Oberfläche und Server bauen
+        run: npm run build
+
+      # Der Serverstart deckt ab, was Unit-Tests nicht sehen: fehlende
+      # Dateien im Bau, falsche Pfade, kaputte Autostarts.
+      - name: Server startet und antwortet
+        run: |
+          set -euo pipefail
+          DATENBANK=$(mktemp -d)/probe.sqlite PORT=4123 node bau/server/server/index.js &
+          server=$!
+          for versuch in $(seq 20); do
+            if curl -sf http://127.0.0.1:4123/api/gesundheit > /dev/null; then break; fi
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:4123/api/gesundheit
+          curl -sf -o /dev/null http://127.0.0.1:4123/
+          kill "$server"

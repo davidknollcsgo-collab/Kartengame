@@ -13,7 +13,8 @@ export default defineConfig(({ mode }) => ({
         emptyOutDir: true,
         assetsInlineLimit: mode === "demo" ? 100_000_000 : 4096,
         cssCodeSplit: mode !== "demo",
-        rollupOptions: mode === "demo" ? { output: { inlineDynamicImports: true } } : {},
+        // Die Demo soll aus genau einer Skriptdatei bestehen.
+        ...(mode === "demo" ? { codeSplitting: false as const } : {}),
     },
     server: {
         port: 5173,
