@@ -3,10 +3,10 @@
 
 import { heute, plusTage, istVor, tageBis } from "../fachlogik/datum.ts";
 import { bewerteVertrag } from "../fachlogik/fristen.ts";
-import { datumKurz, euro, tageInWorten } from "../fachlogik/formate.ts";
 import type { Vertrag } from "../fachlogik/typen.ts";
 import { zuOrganisation, zuVertrag, type Db, type OrganisationZeile, type VertragZeile } from "./datenbank.ts";
 import type { Umgebung } from "./umgebung.ts";
+import { baueSammelmail } from "../fachlogik/mailtext.ts";
 import { versende } from "./versand.ts";
 
 export interface Planungsergebnis {
@@ -124,6 +124,7 @@ export async function planeErinnerungen(
         const jetzt = new Date().toISOString();
         const markieren = db.prepare(`UPDATE erinnerungen SET versendet_am = ? WHERE id = ?`);
         for (const eintrag of erzeugt) markieren.run(jetzt, eintrag.id);
+        ueberholteSchliessen(db, organisation.id, jetzt);
     }
 
     protokoll?.info(
@@ -132,40 +133,20 @@ export async function planeErinnerungen(
     return { geprueft, neueErinnerungen: neue, versendeteMails: mails };
 }
 
-export function baueSammelmail(
-    organisation: string,
-    eintraege: { vertrag: Vertrag; stichtag: string; tageBisStichtag: number }[],
-    basisAdresse: string,
-): { betreff: string; inhalt: string } {
-    const dringendste = eintraege[0];
-    const betreff =
-        eintraege.length === 1 && dringendste
-            ? `Kündigungsfrist: ${dringendste.vertrag.bezeichnung} — Stichtag ${datumKurz(dringendste.stichtag)}`
-            : `${eintraege.length} Kündigungsfristen im Blick behalten`;
-
-    const zeilen = eintraege.map((e) => {
-        const kosten = e.vertrag.betragCent > 0 ? ` — ${euro(e.vertrag.betragCent)}` : "";
-        const anbieter = e.vertrag.anbieter ? ` (${e.vertrag.anbieter})` : "";
-        return [
-            `• ${e.vertrag.bezeichnung}${anbieter}${kosten}`,
-            `  Kündigung muss bis ${datumKurz(e.stichtag)} zugehen — ${tageInWorten(e.tageBisStichtag)}.`,
-            `  ${basisAdresse}/vertraege/${e.vertrag.id}`,
-        ].join("\n");
-    });
-
-    const inhalt = [
-        `Guten Tag,`,
-        ``,
-        `für ${organisation} stehen folgende Kündigungsfristen an:`,
-        ``,
-        ...zeilen,
-        ``,
-        `Wer nichts unternimmt, verlängert die betroffenen Verträge automatisch.`,
-        ``,
-        `Übersicht: ${basisAdresse}`,
-        ``,
-        `— Vertragsfristen-Wächter`,
-    ].join("\n");
-
-    return { betreff, inhalt };
+/**
+ * Schließt Erinnerungen, die von einer dringlicheren zum selben Stichtag
+ * überholt wurden. Sonst stehen für einen Vertrag vier offene Einträge —
+ * 90, 30, 14 und 3 Tage Vorlauf —, obwohl es nur eine Frist zu erledigen gibt.
+ */
+export function ueberholteSchliessen(db: Db, organisationId: string, jetzt: string): void {
+    db.prepare(
+        `UPDATE erinnerungen SET erledigt_am = ?
+         WHERE organisation_id = ? AND erledigt_am IS NULL AND EXISTS (
+             SELECT 1 FROM erinnerungen juenger
+             WHERE juenger.vertrag_id = erinnerungen.vertrag_id
+               AND juenger.stichtag = erinnerungen.stichtag
+               AND juenger.erledigt_am IS NULL
+               AND juenger.vorlauf_tage < erinnerungen.vorlauf_tage
+         )`,
+    ).run(jetzt, organisationId);
 }

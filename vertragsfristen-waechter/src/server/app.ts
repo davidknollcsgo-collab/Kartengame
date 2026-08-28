@@ -11,7 +11,7 @@ import { heute, istVor } from "../fachlogik/datum.ts";
 import { bewerteVertrag, type Ampel } from "../fachlogik/fristen.ts";
 import { jahreskostenCent } from "../fachlogik/formate.ts";
 import type { Benutzer, Organisation, Vertrag } from "../fachlogik/typen.ts";
-import { baueCsv } from "./csv.ts";
+import { baueCsv } from "../fachlogik/csv.ts";
 import {
     neuerKalenderschluessel,
     protokolliere,
@@ -427,6 +427,7 @@ export function baueApp(optionen: AppOptionen): FastifyInstance {
             fristenIn90: inTagen(90),
             naechsteFristen: aktive
                 .filter((v) => v.fristen.stichtag !== null)
+                .sort((a, b) => (a.fristen.stichtag ?? "").localeCompare(b.fristen.stichtag ?? ""))
                 .slice(0, 8),
             offeneErinnerungen: db
                 .prepare(

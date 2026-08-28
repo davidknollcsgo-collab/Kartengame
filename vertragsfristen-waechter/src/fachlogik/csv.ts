@@ -1,15 +1,15 @@
 // CSV-Ausgabe für Excel: Semikolon als Trennzeichen und ein BOM, sonst
 // verstümmelt Excel die Umlaute.
 
-import { AMPEL_TEXT, bewerteVertrag } from "../fachlogik/fristen.ts";
-import { datumKurz, fristInWorten, jahreskostenCent } from "../fachlogik/formate.ts";
+import { AMPEL_TEXT, bewerteVertrag } from "./fristen.ts";
+import { datumKurz, jahreskostenCent, kuendigungsregel } from "./formate.ts";
 import {
     KATEGORIE_TEXT,
     LAUFZEITMODELL_TEXT,
     VERTRAGSSTATUS_TEXT,
     ZAHLUNGSINTERVALL_TEXT,
     type Vertrag,
-} from "../fachlogik/typen.ts";
+} from "./typen.ts";
 
 const SPALTEN = [
     "Bezeichnung",
@@ -60,11 +60,7 @@ export function baueCsv(vertraege: Vertrag[], basis: string): string {
                 LAUFZEITMODELL_TEXT[vertrag.laufzeitmodell],
                 vertrag.erstlaufzeitMonate,
                 vertrag.verlaengerungMonate,
-                fristInWorten(
-                    vertrag.kuendigungsfristWert,
-                    vertrag.kuendigungsfristEinheit,
-                    vertrag.kuendigungsfristBezug,
-                ),
+                kuendigungsregel(vertrag),
                 fristen.stichtag ? datumKurz(fristen.stichtag) : "",
                 fristen.tageBisStichtag ?? "",
                 fristen.wirksamesVertragsende ? datumKurz(fristen.wirksamesVertragsende) : "",

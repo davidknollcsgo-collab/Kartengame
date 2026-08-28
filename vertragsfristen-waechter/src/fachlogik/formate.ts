@@ -3,6 +3,7 @@ import {
     ZAHLUNGEN_PRO_JAHR,
     type Fristbezug,
     type Fristeinheit,
+    type Laufzeitmodell,
     type Zahlungsintervall,
 } from "./typen.ts";
 
@@ -51,6 +52,24 @@ export function fristInWorten(wert: number, einheit: Fristeinheit, bezug: Fristb
         zum_jahresende: "zum Jahresende",
     };
     return `${einheitInWorten(wert, einheit)} ${bezugstext[bezug]}`;
+}
+
+/**
+ * Die Kündigungsregel eines Vertrags in Worten. Ein Vertrag, der von selbst
+ * ausläuft, hat keine Frist — "0 Monate zum Laufzeitende" wäre irreführend.
+ */
+export function kuendigungsregel(vertrag: {
+    laufzeitmodell: Laufzeitmodell;
+    kuendigungsfristWert: number;
+    kuendigungsfristEinheit: Fristeinheit;
+    kuendigungsfristBezug: Fristbezug;
+}): string {
+    if (vertrag.laufzeitmodell === "befristet_ohne_verlaengerung") return "endet automatisch";
+    return fristInWorten(
+        vertrag.kuendigungsfristWert,
+        vertrag.kuendigungsfristEinheit,
+        vertrag.kuendigungsfristBezug,
+    );
 }
 
 export function einheitInWorten(wert: number, einheit: Fristeinheit): string {

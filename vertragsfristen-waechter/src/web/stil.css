@@ -1,0 +1,1068 @@
+/* Vertragsfristen-Wächter — Gestaltung
+ *
+ * Grundgedanke: ein Werkzeug, das man überfliegt, nicht liest. Papiergrau mit
+ * Grünstich als Fläche, Petrol als einziger Akzent, und davon streng getrennt
+ * die Ampelfarben — sonst konkurriert die Dringlichkeit mit der Navigation.
+ * Datumsangaben und Zahlen laufen in Mono mit Tabellenziffern, damit Spalten
+ * untereinander stehen und ein Countdown beim Zählen nicht springt.
+ */
+
+:root {
+    --grund: #edf0ee;
+    --flaeche: #ffffff;
+    --flaeche-tief: #e3e8e6;
+    --tinte: #101e1c;
+    --gedaempft: #566966;
+    --linie: #d3dcd9;
+    --linie-stark: #b6c4c0;
+
+    --akzent: #0e5b57;
+    --akzent-tief: #094542;
+    --akzent-schwach: #dcebe8;
+    --akzent-schrift: #ffffff;
+
+    --kritisch: #a81e17;
+    --kritisch-grund: #fbe6e4;
+    --warnung: #96520a;
+    --warnung-grund: #fbeddb;
+    --hinweis: #235f87;
+    --hinweis-grund: #e0edf6;
+    --ok: #1c6142;
+    --ok-grund: #e0efe7;
+    --ruhe: #5d6f6c;
+    --ruhe-grund: #e6ebe9;
+
+    --schatten: 0 1px 2px rgba(16, 30, 28, 0.06), 0 4px 16px -8px rgba(16, 30, 28, 0.14);
+    --rund: 6px;
+
+    --schrift-anzeige: "IBM Plex Serif", Georgia, "Times New Roman", serif;
+    --schrift-text: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --schrift-daten: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+    color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --grund: #0d1413;
+        --flaeche: #151e1c;
+        --flaeche-tief: #1d2725;
+        --tinte: #e4edea;
+        --gedaempft: #93a7a2;
+        --linie: #26332f;
+        --linie-stark: #384744;
+        --akzent: #4bc4b3;
+        --akzent-tief: #6fd6c7;
+        --akzent-schwach: #14322e;
+        --akzent-schrift: #06201d;
+
+        --kritisch: #ff8b7d;
+        --kritisch-grund: #3a1a17;
+        --warnung: #e6a552;
+        --warnung-grund: #35240f;
+        --hinweis: #7cb8e2;
+        --hinweis-grund: #14293a;
+        --ok: #6cc494;
+        --ok-grund: #102a1f;
+        --ruhe: #9aaba7;
+        --ruhe-grund: #1e2827;
+
+        --schatten: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 20px -10px rgba(0, 0, 0, 0.6);
+        color-scheme: dark;
+    }
+}
+
+:root[data-theme="dark"] {
+    --grund: #0d1413;
+    --flaeche: #151e1c;
+    --flaeche-tief: #1d2725;
+    --tinte: #e4edea;
+    --gedaempft: #93a7a2;
+    --linie: #26332f;
+    --linie-stark: #384744;
+    --akzent: #4bc4b3;
+    --akzent-tief: #6fd6c7;
+    --akzent-schwach: #14322e;
+    --akzent-schrift: #06201d;
+
+    --kritisch: #ff8b7d;
+    --kritisch-grund: #3a1a17;
+    --warnung: #e6a552;
+    --warnung-grund: #35240f;
+    --hinweis: #7cb8e2;
+    --hinweis-grund: #14293a;
+    --ok: #6cc494;
+    --ok-grund: #102a1f;
+    --ruhe: #9aaba7;
+    --ruhe-grund: #1e2827;
+
+    --schatten: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 20px -10px rgba(0, 0, 0, 0.6);
+    color-scheme: dark;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background: var(--grund);
+    color: var(--tinte);
+    font-family: var(--schrift-text);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+    font-family: var(--schrift-anzeige);
+    font-weight: 600;
+    line-height: 1.2;
+    text-wrap: balance;
+    margin: 0;
+}
+
+h1 {
+    font-size: 26px;
+    letter-spacing: -0.01em;
+}
+
+h2 {
+    font-size: 19px;
+}
+
+h3 {
+    font-size: 16px;
+}
+
+a {
+    color: var(--akzent);
+    text-underline-offset: 2px;
+}
+
+:focus-visible {
+    outline: 2px solid var(--akzent);
+    outline-offset: 2px;
+    border-radius: 3px;
+}
+
+/* --- Gerüst ----------------------------------------------------------- */
+
+.rahmen {
+    display: grid;
+    grid-template-columns: 248px minmax(0, 1fr);
+    min-height: 100vh;
+}
+
+.schrank {
+    background: var(--flaeche);
+    border-right: 1px solid var(--linie);
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding: 22px 16px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+}
+
+.marke-kopf {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 8px;
+}
+
+.marke-kopf svg {
+    flex: none;
+}
+
+.marke-kopf strong {
+    font-family: var(--schrift-anzeige);
+    font-size: 16px;
+    line-height: 1.15;
+    display: block;
+}
+
+.marke-kopf span {
+    color: var(--gedaempft);
+    font-size: 11.5px;
+    font-family: var(--schrift-daten);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.navigation {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.navigation a {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: var(--rund);
+    color: var(--tinte);
+    text-decoration: none;
+    font-size: 14.5px;
+}
+
+.navigation a:hover {
+    background: var(--flaeche-tief);
+}
+
+.navigation a[aria-current="page"] {
+    background: var(--akzent-schwach);
+    color: var(--akzent-tief);
+    font-weight: 600;
+}
+
+.navigation .zahl {
+    font-family: var(--schrift-daten);
+    font-size: 12px;
+    background: var(--kritisch-grund);
+    color: var(--kritisch);
+    border-radius: 20px;
+    padding: 1px 7px;
+}
+
+.schrank-fuss {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--gedaempft);
+    padding: 0 10px;
+}
+
+.inhalt {
+    padding: 28px 32px 64px;
+    max-width: 1180px;
+    width: 100%;
+}
+
+.seitenkopf {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 22px;
+}
+
+.seitenkopf p {
+    margin: 4px 0 0;
+    color: var(--gedaempft);
+    max-width: 62ch;
+}
+
+/* --- Bausteine -------------------------------------------------------- */
+
+.karte {
+    background: var(--flaeche);
+    border: 1px solid var(--linie);
+    border-radius: var(--rund);
+    box-shadow: var(--schatten);
+}
+
+.karte-kopf {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--linie);
+}
+
+.karte-koerper {
+    padding: 18px;
+}
+
+.gitter {
+    display: grid;
+    gap: 16px;
+}
+
+.kennzahlen {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px;
+    margin-bottom: 20px;
+}
+
+.kennzahl {
+    background: var(--flaeche);
+    border: 1px solid var(--linie);
+    border-radius: var(--rund);
+    padding: 14px 16px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    box-shadow: var(--schatten);
+}
+
+.kennzahl .beschriftung {
+    font-family: var(--schrift-daten);
+    font-size: 11px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--gedaempft);
+}
+
+.kennzahl .wert {
+    font-family: var(--schrift-daten);
+    font-size: 27px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.25;
+}
+
+.kennzahl .fussnote {
+    font-size: 12.5px;
+    color: var(--gedaempft);
+}
+
+.kennzahl.dringend {
+    border-color: color-mix(in srgb, var(--kritisch) 45%, var(--linie));
+}
+
+.kennzahl.dringend .wert {
+    color: var(--kritisch);
+}
+
+/* --- Ampel ------------------------------------------------------------ */
+
+.ampel-kritisch {
+    --ampelfarbe: var(--kritisch);
+    --ampelgrund: var(--kritisch-grund);
+}
+.ampel-warnung {
+    --ampelfarbe: var(--warnung);
+    --ampelgrund: var(--warnung-grund);
+}
+.ampel-hinweis {
+    --ampelfarbe: var(--hinweis);
+    --ampelgrund: var(--hinweis-grund);
+}
+.ampel-ok {
+    --ampelfarbe: var(--ok);
+    --ampelgrund: var(--ok-grund);
+}
+.ampel-jederzeit,
+.ampel-gekuendigt,
+.ampel-beendet {
+    --ampelfarbe: var(--ruhe);
+    --ampelgrund: var(--ruhe-grund);
+}
+
+.plakette {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--ampelgrund, var(--ruhe-grund));
+    color: var(--ampelfarbe, var(--ruhe));
+    border-radius: 3px;
+    padding: 2px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.plakette::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    flex: none;
+}
+
+.plakette.schlicht {
+    background: var(--flaeche-tief);
+    color: var(--gedaempft);
+    font-weight: 500;
+}
+
+.plakette.schlicht::before {
+    display: none;
+}
+
+/* --- Tabelle ---------------------------------------------------------- */
+
+.tabellenrahmen {
+    overflow-x: auto;
+    background: var(--flaeche);
+    border: 1px solid var(--linie);
+    border-radius: var(--rund);
+    box-shadow: var(--schatten);
+}
+
+table.liste {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    min-width: 760px;
+}
+
+/* In einer Karte fehlt der Platz für die volle Breite. */
+table.liste.eng {
+    min-width: 0;
+}
+
+.tabellenrahmen.blank {
+    border: none;
+    box-shadow: none;
+    border-radius: 0;
+}
+
+table.liste th {
+    text-align: left;
+    font-family: var(--schrift-daten);
+    font-size: 11px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--gedaempft);
+    font-weight: 500;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--linie);
+    background: var(--flaeche);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+table.liste td {
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--linie);
+    vertical-align: top;
+}
+
+table.liste tbody tr:last-child td {
+    border-bottom: none;
+}
+
+table.liste tbody tr:hover {
+    background: var(--flaeche-tief);
+}
+
+table.liste td:first-child {
+    border-left: 3px solid var(--ampelfarbe, transparent);
+}
+
+table.liste .datum,
+table.liste .zahl {
+    font-family: var(--schrift-daten);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+table.liste .zahl {
+    text-align: right;
+}
+
+.vertragsname {
+    font-weight: 600;
+    color: var(--tinte);
+    text-decoration: none;
+}
+
+.vertragsname:hover {
+    text-decoration: underline;
+}
+
+.nebenzeile {
+    color: var(--gedaempft);
+    font-size: 12.5px;
+}
+
+.rest {
+    font-family: var(--schrift-daten);
+    font-variant-numeric: tabular-nums;
+    color: var(--ampelfarbe, var(--gedaempft));
+    font-weight: 500;
+}
+
+/* --- Fristenband ------------------------------------------------------ */
+
+.band {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 3px;
+    align-items: end;
+}
+
+.band-monat {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    align-items: center;
+    min-width: 0;
+}
+
+.band-saeule {
+    width: 100%;
+    height: 72px;
+    background: var(--flaeche-tief);
+    border-radius: 3px;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 2px;
+    padding: 3px;
+    justify-content: flex-start;
+}
+
+.band-punkt {
+    height: 9px;
+    border-radius: 2px;
+    background: var(--ampelfarbe, var(--ruhe));
+}
+
+.band-monat .beschriftung {
+    font-family: var(--schrift-daten);
+    font-size: 10.5px;
+    color: var(--gedaempft);
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+}
+
+.band-monat.jetzt .beschriftung {
+    color: var(--akzent);
+    font-weight: 600;
+}
+
+.band-monat.jetzt .band-saeule {
+    outline: 1px solid var(--akzent);
+}
+
+/* --- Knöpfe und Formulare --------------------------------------------- */
+
+.knopf {
+    font: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 14px;
+    border-radius: var(--rund);
+    border: 1px solid var(--linie-stark);
+    background: var(--flaeche);
+    color: var(--tinte);
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.knopf:hover {
+    background: var(--flaeche-tief);
+}
+
+.knopf.haupt {
+    background: var(--akzent);
+    border-color: var(--akzent);
+    color: var(--akzent-schrift);
+}
+
+.knopf.haupt:hover {
+    background: var(--akzent-tief);
+    border-color: var(--akzent-tief);
+}
+
+.knopf.leise {
+    border-color: transparent;
+    background: transparent;
+    color: var(--gedaempft);
+}
+
+.knopf.leise:hover {
+    background: var(--flaeche-tief);
+    color: var(--tinte);
+}
+
+.knopf.gefahr {
+    color: var(--kritisch);
+    border-color: color-mix(in srgb, var(--kritisch) 40%, var(--linie));
+}
+
+.knopf:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.knopfreihe {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.feldgruppe {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 14px;
+}
+
+.feld {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+}
+
+.feld > label {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--gedaempft);
+}
+
+.feld input,
+.feld select,
+.feld textarea {
+    font: inherit;
+    font-size: 14px;
+    padding: 8px 10px;
+    border: 1px solid var(--linie-stark);
+    border-radius: var(--rund);
+    background: var(--flaeche);
+    color: var(--tinte);
+    width: 100%;
+}
+
+.feld input[type="date"],
+.feld input[type="number"] {
+    font-family: var(--schrift-daten);
+    font-variant-numeric: tabular-nums;
+}
+
+.feld textarea {
+    min-height: 84px;
+    resize: vertical;
+}
+
+.feld .hilfe {
+    font-size: 12px;
+    color: var(--gedaempft);
+}
+
+.feld.falsch input,
+.feld.falsch select {
+    border-color: var(--kritisch);
+}
+
+.feld .meldung {
+    font-size: 12.5px;
+    color: var(--kritisch);
+}
+
+fieldset {
+    border: none;
+    border-top: 1px solid var(--linie);
+    margin: 0;
+    padding: 20px 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+legend {
+    font-family: var(--schrift-daten);
+    font-size: 11px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--gedaempft);
+    padding: 0 8px 0 0;
+}
+
+.werkzeugleiste {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.werkzeugleiste input[type="search"],
+.werkzeugleiste select {
+    font: inherit;
+    font-size: 14px;
+    padding: 7px 10px;
+    border: 1px solid var(--linie-stark);
+    border-radius: var(--rund);
+    background: var(--flaeche);
+    color: var(--tinte);
+}
+
+.werkzeugleiste input[type="search"] {
+    flex: 1 1 240px;
+    min-width: 180px;
+}
+
+/* --- Hinweise, Dialoge, Zustände -------------------------------------- */
+
+.hinweisleiste {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    background: var(--akzent-schwach);
+    border: 1px solid color-mix(in srgb, var(--akzent) 30%, transparent);
+    border-radius: var(--rund);
+    padding: 12px 14px;
+    font-size: 13.5px;
+    margin-bottom: 18px;
+}
+
+.hinweisleiste.warnend {
+    background: var(--warnung-grund);
+    border-color: color-mix(in srgb, var(--warnung) 35%, transparent);
+    color: var(--warnung);
+}
+
+.hinweisleiste p {
+    margin: 0;
+}
+
+.leerzustand {
+    text-align: center;
+    padding: 44px 20px;
+    color: var(--gedaempft);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: center;
+}
+
+.leerzustand h3 {
+    color: var(--tinte);
+}
+
+.schleier {
+    position: fixed;
+    inset: 0;
+    background: rgba(8, 18, 16, 0.45);
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    z-index: 20;
+}
+
+.dialog {
+    background: var(--flaeche);
+    border: 1px solid var(--linie);
+    border-radius: 8px;
+    box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.45);
+    width: min(520px, 100%);
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.dialog pre {
+    background: var(--flaeche-tief);
+    border-radius: var(--rund);
+    padding: 12px;
+    font-family: var(--schrift-daten);
+    font-size: 12px;
+    white-space: pre-wrap;
+    max-height: 320px;
+    overflow: auto;
+    margin: 0;
+}
+
+.fristkarte {
+    background: var(--ampelgrund, var(--akzent-schwach));
+    border: 1px solid color-mix(in srgb, var(--ampelfarbe, var(--akzent)) 30%, transparent);
+    border-radius: var(--rund);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.fristkarte .stichtag {
+    font-family: var(--schrift-daten);
+    font-size: 25px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    color: var(--ampelfarbe, var(--akzent));
+    line-height: 1.15;
+}
+
+.fristkarte dl {
+    margin: 0;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 4px 14px;
+    font-size: 13px;
+}
+
+.fristkarte dt {
+    color: var(--gedaempft);
+}
+
+.fristkarte dd {
+    margin: 0;
+    font-family: var(--schrift-daten);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+.fristkarte .erklaerung {
+    font-size: 13px;
+    color: var(--tinte);
+    margin: 0;
+    border-top: 1px solid color-mix(in srgb, var(--ampelfarbe, var(--akzent)) 25%, transparent);
+    padding-top: 10px;
+}
+
+.zweispaltig {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(260px, 1fr);
+    gap: 20px;
+    align-items: start;
+}
+
+.stapel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.balkenliste {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.balkenliste li {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 2px 10px;
+    font-size: 13.5px;
+}
+
+.balkenliste .schiene {
+    grid-column: 1 / -1;
+    height: 5px;
+    border-radius: 3px;
+    background: var(--flaeche-tief);
+    overflow: hidden;
+}
+
+.balkenliste .schiene span {
+    display: block;
+    height: 100%;
+    background: var(--akzent);
+    border-radius: 3px;
+}
+
+.balkenliste .zahl {
+    font-family: var(--schrift-daten);
+    font-variant-numeric: tabular-nums;
+    color: var(--gedaempft);
+}
+
+.zeitleiste {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    font-size: 13.5px;
+}
+
+.zeitleiste li {
+    display: grid;
+    grid-template-columns: 96px 1fr;
+    gap: 12px;
+}
+
+.zeitleiste time {
+    font-family: var(--schrift-daten);
+    font-size: 12px;
+    color: var(--gedaempft);
+    font-variant-numeric: tabular-nums;
+}
+
+/* --- Anmeldung -------------------------------------------------------- */
+
+.anmeldeseite {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.anmeldeseite .schild {
+    background: var(--akzent);
+    color: var(--akzent-schrift);
+    padding: 48px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 22px;
+}
+
+.anmeldeseite .schild h1 {
+    font-size: 34px;
+    color: inherit;
+}
+
+.anmeldeseite .schild p {
+    max-width: 46ch;
+    margin: 0;
+    opacity: 0.92;
+}
+
+.anmeldeseite .schild ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-size: 14px;
+}
+
+.anmeldeseite .schild li {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+.anmeldeseite .schild li::before {
+    content: "→";
+    font-family: var(--schrift-daten);
+    opacity: 0.75;
+}
+
+.anmeldeseite .formularseite {
+    display: grid;
+    place-items: center;
+    padding: 40px 24px;
+}
+
+.anmeldeseite form {
+    width: min(400px, 100%);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.umschalter {
+    display: flex;
+    gap: 4px;
+    background: var(--flaeche-tief);
+    border-radius: var(--rund);
+    padding: 3px;
+}
+
+.umschalter button {
+    flex: 1;
+    font: inherit;
+    font-size: 13.5px;
+    font-weight: 500;
+    padding: 6px;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--gedaempft);
+    cursor: pointer;
+}
+
+.umschalter button[aria-pressed="true"] {
+    background: var(--flaeche);
+    color: var(--tinte);
+    box-shadow: var(--schatten);
+}
+
+.fehlerleiste {
+    background: var(--kritisch-grund);
+    color: var(--kritisch);
+    border-radius: var(--rund);
+    padding: 10px 12px;
+    font-size: 13.5px;
+}
+
+.lade {
+    padding: 40px;
+    text-align: center;
+    color: var(--gedaempft);
+    font-family: var(--schrift-daten);
+    font-size: 13px;
+}
+
+/* --- Schmale Fenster -------------------------------------------------- */
+
+@media (max-width: 940px) {
+    .rahmen {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .schrank {
+        position: static;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--linie);
+        flex-direction: row;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+        padding: 12px 16px;
+    }
+
+    .navigation {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+
+    .schrank-fuss {
+        margin-top: 0;
+        width: 100%;
+        flex-direction: row;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .inhalt {
+        padding: 20px 16px 56px;
+    }
+
+    .zweispaltig {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .anmeldeseite {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .anmeldeseite .schild {
+        padding: 32px 24px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+    }
+}

@@ -89,8 +89,8 @@ export function stichtagFuer(ende: IsoDatum, wert: number, einheit: Fristeinheit
     }
 }
 
-/** Addiert die Kündigungsfrist auf ein Datum (für "jederzeit kündbar"). */
-function plusFrist(datum: IsoDatum, wert: number, einheit: Fristeinheit): IsoDatum {
+/** Addiert eine Kündigungsfrist auf ein Datum — die Umkehrung von stichtagFuer. */
+export function fristAufschlagen(datum: IsoDatum, wert: number, einheit: Fristeinheit): IsoDatum {
     const betrag = Math.max(0, Math.trunc(wert));
     switch (einheit) {
         case "monate":
@@ -181,7 +181,7 @@ export function berechneFristen(
 
     // 1. Jederzeit kündbar: kein Termin, nur eine Auslauffrist.
     if (b.kuendigungsfristBezug === "jederzeit") {
-        const frueheste = plusFrist(basis, frist, einheit);
+        const frueheste = fristAufschlagen(basis, frist, einheit);
         const ende = mindestende && istVor(frueheste, mindestende) ? mindestende : frueheste;
         const nochGebunden = mindestende !== null && istVor(basis, mindestende);
         return {

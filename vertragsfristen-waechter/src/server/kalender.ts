@@ -3,7 +3,7 @@
 
 import { plusTage, teile, type IsoDatum } from "../fachlogik/datum.ts";
 import { bewerteVertrag } from "../fachlogik/fristen.ts";
-import { datumKurz, euro, fristInWorten } from "../fachlogik/formate.ts";
+import { datumKurz, euro, kuendigungsregel } from "../fachlogik/formate.ts";
 import { KATEGORIE_TEXT, type Vertrag } from "../fachlogik/typen.ts";
 
 function alsIcsDatum(datum: IsoDatum): string {
@@ -67,7 +67,7 @@ export function baueKalender(
             `Kategorie: ${KATEGORIE_TEXT[vertrag.kategorie]}`,
             vertrag.vertragsnummer ? `Vertragsnummer: ${vertrag.vertragsnummer}` : null,
             vertrag.betragCent > 0 ? `Betrag: ${euro(vertrag.betragCent)}` : null,
-            `Frist: ${fristInWorten(vertrag.kuendigungsfristWert, vertrag.kuendigungsfristEinheit, vertrag.kuendigungsfristBezug)}`,
+            `Frist: ${kuendigungsregel(vertrag)}`,
             fristen.wirksamesVertragsende
                 ? `Vertragsende bei Kündigung: ${datumKurz(fristen.wirksamesVertragsende)}`
                 : null,

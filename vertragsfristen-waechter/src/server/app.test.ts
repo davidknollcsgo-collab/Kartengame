@@ -302,6 +302,19 @@ describe("Fristenlauf", () => {
         expect(post.json().nachrichten).toHaveLength(1);
     });
 
+    test("überholte Vorlaufstufen stehen nicht mehr offen", async () => {
+        const marke = await konto();
+        await legeAn(marke, { beginn: "2020-12-01" });
+        await planeErinnerungen(db, umgebung, HEUTE);
+        const liste = await app.inject({ method: "GET", url: "/api/erinnerungen", cookies: alsBenutzer(marke) });
+        const eintraege = liste.json().erinnerungen as { vorlauf_tage: number; erledigt_am: string | null }[];
+        expect(eintraege).toHaveLength(3);
+        // Offen bleibt allein die dringlichste Stufe.
+        const offen = eintraege.filter((e) => !e.erledigt_am);
+        expect(offen).toHaveLength(1);
+        expect(offen[0]!.vorlauf_tage).toBe(14);
+    });
+
     test("gekündigte Verträge werden nicht mehr erinnert", async () => {
         const marke = await konto();
         const vertrag = await legeAn(marke);
