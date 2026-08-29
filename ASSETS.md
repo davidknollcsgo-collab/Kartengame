@@ -46,7 +46,7 @@ Laufzeit aus `_draw()`-Aufrufen und eigenen GDShadern:
 |---|---|
 | Wasser, Meeresschnee, Tiefenverlauf | `shaders/graben.gdshader` |
 | Grabenwände, Nischen, Polypen, Wächter, Brut | `scripts/spiel/kolonie.gd` |
-| Alle vier Räuberarten | `scripts/spiel/schwarm.gd` |
+| Alle acht Räuberarten | `scripts/spiel/schwarm.gd` |
 | Lichtkegel | `scripts/spiel/kegel.gd` |
 | Funken und Trefferstrahlen | `scripts/spiel/funken.gd` |
 

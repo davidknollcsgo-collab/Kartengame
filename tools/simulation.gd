@@ -70,7 +70,8 @@ class Tier extends RefCounted:
             return Vector2(x, Graben.EINTRITT_Y)
         var a := Arten.art(art)
         return Schlund.bahn(Vector2(x, Graben.EINTRITT_Y), Graben.BRUT_Y,
-            a[&"tempo"], a[&"schlaengel"], a[&"takt"], phase, seit)
+            a[&"tempo"], a[&"schlaengel"], a[&"takt"], phase, seit,
+            Arten.drift(art), Arten.stoss(art))
 
 
 ## Baut Wehrpolypen, solange Naehrstoffe reichen. Genau das tut ein Spieler
@@ -161,13 +162,18 @@ static func welle(nummer: int, z: Zustand) -> Ergebnis:
                 z.halbwinkel(), z.reichweite(), p, rand_kern, tiefe_kern) * schein)
 
         for i in Schlund.brennende(hell, z.ziele()):
-            lebende[i].leben -= Schlund.schaden_je_sekunde(z.leistung(), hell[i]) * TAKT
+            var opfer := lebende[i]
+            opfer.leben -= Schlund.schaden_an(z.leistung(), hell[i],
+                Arten.panzer(opfer.art), Arten.mindest_licht(opfer.art)) * TAKT
 
         # 4. Polypen. Jeder greift ein Ziel in seiner Reichweite an.
         for n in z.polypen:
             for i in lebende.size():
                 if lebende[i].leben > 0.0 and orte[i].distance_to(n) <= Graben.POLYP_REICHWEITE:
-                    lebende[i].leben -= Graben.POLYP_LEISTUNG * TAKT
+                    # Der Panzer gilt auch hier - genau das macht ihn aus: ein
+                    # Wehrpolyp kratzt an einer Schildkoralle kaum noch.
+                    lebende[i].leben -= maxf(0.0, Graben.POLYP_LEISTUNG
+                        - Arten.panzer(lebende[i].art)) * TAKT
                     break
 
         # 5. Tote zaehlen, Ankunft an der Brut abrechnen.

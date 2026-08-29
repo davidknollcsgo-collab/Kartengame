@@ -95,6 +95,14 @@ func _zeichne(t: Raeuber, stufe := 0) -> void:
             _panzerkrebs(p, r, farbe, t, hitze)
         Arten.Art.GRABNATTER:
             _grabnatter(p, r, farbe, t, hitze)
+        Arten.Art.SCHILDKORALLE:
+            _schildkoralle(p, r, farbe, t, hitze)
+        Arten.Art.GLUTQUALLE:
+            _glutqualle(p, r, farbe, t, hitze)
+        Arten.Art.TREIBANKER:
+            _treibanker(p, r, farbe, t, hitze)
+        Arten.Art.SPRUNGAAL:
+            _sprungaal(p, r, farbe, t, hitze)
 
     # Lebensanzeige nur bei Verletzten. Volle Balken ueber jedem Tier waeren
     # Rauschen; ein angeschlagener Gegner ist dagegen eine Entscheidung.
@@ -327,3 +335,143 @@ func _grabnatter(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -
     _koerper(kopf, farbe, hitze)
     _auge(p + k * r * 0.35 + quer * r * 0.30, r * 0.19, hitze)
     _auge(p + k * r * 0.35 - quer * r * 0.30, r * 0.19, hitze)
+
+
+# --- Die vier spaeten Arten -----------------------------------------------
+#
+# Jede muss auf den ersten Blick sagen, was sie anders macht. Ein Gegner mit
+# einer besonderen Regel, den man nicht von den anderen unterscheiden kann,
+# ist kein Entwurf, sondern eine Falle.
+
+func _schildkoralle(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> void:
+    # Gepanzert und schwer: uebereinanderliegende Platten mit dickem Saum. Die
+    # Fugen glimmen - die einzige Stelle, an der ueberhaupt Licht hineinkommt,
+    # und damit die Begruendung fuer den Panzer im Bild.
+    var k := t.richtung
+    var quer := k.orthogonal()
+
+    var saum := PackedVector2Array()
+    for i in 7:
+        var w := TAU * float(i) / 7.0 + t.phase * 0.2
+        saum.append(p + (k * cos(w) + quer * sin(w)) * r * (0.92 + 0.16 * float(i % 2)))
+    _koerper(saum, farbe, hitze)
+
+    for i in 3:
+        var t_i := float(i) / 2.0
+        var vorn := p + k * r * lerpf(0.62, -0.42, t_i)
+        var halb := r * lerpf(0.42, 0.86, t_i)
+        var platte := PackedVector2Array([
+            vorn + quer * halb, vorn - quer * halb,
+            vorn - k * r * 0.30 - quer * halb * 0.82,
+            vorn - k * r * 0.30 + quer * halb * 0.82,
+        ])
+        draw_colored_polygon(platte, Color(farbe.r, farbe.g, farbe.b,
+            0.16 + 0.22 * hitze))
+        # Die Fuge, nicht die Platte, traegt das Licht.
+        draw_line(vorn + quer * halb, vorn - quer * halb,
+            Color(1.0, 0.98, 0.90, 0.30 + 0.55 * hitze), 1.5)
+
+    _auge(p + k * r * 0.66 + quer * r * 0.26, r * 0.15, hitze)
+    _auge(p + k * r * 0.66 - quer * r * 0.26, r * 0.15, hitze)
+
+
+func _glutqualle(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> void:
+    # Ein weiter, blasser Schirm um einen sehr hellen Kern. Genau das ist ihre
+    # Regel als Bild: der Schirm ist Beiwerk, getroffen wird der Kern - und wer
+    # sie am Rand des Kegels mitlaufen laesst, trifft ihn nicht.
+    var k := t.richtung
+    var quer := k.orthogonal()
+
+    var schirm := PackedVector2Array()
+    for i in 13:
+        var w := lerpf(-PI * 0.62, PI * 0.62, float(i) / 12.0)
+        var welle := 1.0 + 0.10 * sin(t.alter * 2.2 + float(i) * 0.9 + t.phase)
+        schirm.append(p + (k * cos(w) * 1.02 + quer * sin(w) * 1.28) * r * welle)
+    schirm.append(p - k * r * 0.52)
+    draw_colored_polygon(schirm, Color(farbe.r, farbe.g, farbe.b,
+        0.13 + 0.20 * hitze))
+    draw_polyline(schirm + PackedVector2Array([schirm[0]]),
+        Color(farbe.r, farbe.g, farbe.b, 0.34 + 0.30 * hitze), 1.3, true)
+
+    for i in 5:
+        var s := (float(i) - 2.0) * 0.34
+        var wurzel := p - k * r * 0.30 + quer * r * s
+        var wehen := sin(t.alter * 4.4 + float(i) * 1.3) * r * 0.26
+        draw_line(wurzel, wurzel - k * r * 1.5 + quer * wehen,
+            Color(farbe.r, farbe.g, farbe.b, 0.24), 1.2)
+
+    var glut := 0.5 + 0.5 * sin(t.alter * 3.0 + t.phase)
+    draw_circle(p, r * (0.40 + 0.06 * glut), Color(1.0, 0.86, 0.72,
+        0.55 + 0.45 * hitze))
+    draw_circle(p, r * 0.22, Color(1.0, 0.98, 0.94, 0.85))
+
+
+func _treibanker(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> void:
+    # Ein schwerer Leib an einer langen Schleppe. Die Schleppe haengt gegen die
+    # Wanderrichtung - man sieht dem Tier an, wohin es zieht, bevor es zieht.
+    var seite: float = 1.0 if cos(t.phase) >= 0.0 else -1.0
+    var zug := Vector2(seite, 0.0)
+    var k := t.richtung
+    var quer := k.orthogonal()
+
+    var schleppe := PackedVector2Array()
+    for i in 6:
+        var f := float(i) / 5.0
+        schleppe.append(p - zug * r * (0.6 + 2.3 * f)
+            - k * r * 0.5 * f
+            + quer * sin(t.alter * 3.0 + f * 3.4) * r * 0.22 * f)
+    draw_polyline(schleppe, Color(farbe.r, farbe.g, farbe.b, 0.34), 1.6)
+    draw_circle(schleppe[schleppe.size() - 1], r * 0.16,
+        Color(farbe.r, farbe.g, farbe.b, 0.42))
+
+    var leib := PackedVector2Array([
+        p + k * r * 0.92 + zug * r * 0.28,
+        p + quer * r * 0.70,
+        p - k * r * 0.86 + zug * r * 0.12,
+        p - quer * r * 0.70,
+    ])
+    _koerper(leib, farbe, hitze)
+
+    # Zwei kurze Fluegel quer zur Wanderrichtung - das Segel, das ihn treibt.
+    for s: float in SEITEN:
+        var wurzel := p + quer * r * 0.5 * s
+        draw_line(wurzel, wurzel + zug * r * 1.15 + quer * r * 0.2 * s,
+            Color(farbe.r, farbe.g, farbe.b, 0.46 + 0.3 * hitze), 2.0)
+
+    _auge(p + k * r * 0.42 + zug * r * 0.22, r * 0.19, hitze)
+
+
+func _sprungaal(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> void:
+    # Der Leib staucht sich vor dem Schub und streckt sich waehrend des Schubs.
+    # Dieselbe Zahl, die in `Schlund.bahn()` das Sinken treibt - der Koerper
+    # luegt also nicht ueber die Bewegung, die gleich kommt.
+    var takt: float = Arten.art(t.art)[&"takt"]
+    var schub := cos(takt * t.alter + t.phase)
+    var laenge := 1.0 + 0.55 * schub
+    var dicke := 1.0 - 0.26 * schub
+
+    var k := t.richtung
+    var quer := k.orthogonal()
+
+    var glieder := 5
+    for i in range(glieder - 1, -1, -1):
+        var f := float(i) / float(glieder - 1)
+        var wo := p - k * r * 1.5 * laenge * f \
+            + quer * sin(t.alter * 7.0 + f * 4.2 + t.phase) * r * 0.34 * f
+        draw_circle(wo, r * dicke * (0.52 - 0.30 * f),
+            Color(farbe.r, farbe.g, farbe.b, (0.34 + 0.40 * hitze) * (1.0 - 0.5 * f)))
+
+    var kopf := PackedVector2Array([
+        p + k * r * 1.05 * laenge,
+        p + quer * r * 0.46 * dicke,
+        p - k * r * 0.30,
+        p - quer * r * 0.46 * dicke,
+    ])
+    _koerper(kopf, farbe, hitze)
+
+    # Ein heller Blitz entlang des Leibes, wenn er gerade schiesst.
+    if schub > 0.45:
+        draw_line(p - k * r * 1.2, p + k * r * 1.1 * laenge,
+            Color(1.0, 0.98, 0.92, 0.28 * (schub - 0.45) / 0.55), 2.4)
+
+    _auge(p + k * r * 0.48 * laenge, r * 0.17, hitze)

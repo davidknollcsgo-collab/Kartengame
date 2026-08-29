@@ -260,7 +260,8 @@ func _bewege(delta: float) -> void:
         var art := Arten.art(r.art)
         var vorher := r.ort
         r.ort = Schlund.bahn(Vector2(r.start_x, Graben.EINTRITT_Y), Graben.BRUT_Y,
-            art[&"tempo"], art[&"schlaengel"], art[&"takt"], r.phase, r.alter)
+            art[&"tempo"], art[&"schlaengel"], art[&"takt"], r.phase, r.alter,
+            Arten.drift(r.art), Arten.stoss(r.art))
 
         var weg := r.ort - vorher
         if weg.length_squared() > 0.0001:
@@ -272,7 +273,8 @@ func _bewege(delta: float) -> void:
                 var t := maxf(0.0, r.alter - float(k + 1) * NATTER_ABSTAND)
                 r.rueckweg.append(Schlund.bahn(
                     Vector2(r.start_x, Graben.EINTRITT_Y), Graben.BRUT_Y,
-                    art[&"tempo"], art[&"schlaengel"], art[&"takt"], r.phase, t))
+                    art[&"tempo"], art[&"schlaengel"], art[&"takt"], r.phase, t,
+                    Arten.drift(r.art), Arten.stoss(r.art)))
 
         r.hitze = maxf(0.0, r.hitze - delta * HITZE_ABKLINGEN)
 
@@ -295,16 +297,17 @@ func _verbrenne(delta: float) -> void:
     # nur eine groessere Zahl.
     var glut_dauer := Fortschritt.stand.nachglut_dauer()
     if glut_dauer > 0.0:
-        var glut := leistung() * Fortschritt.stand.nachglut_anteil() * delta
+        var glut := leistung() * Fortschritt.stand.nachglut_anteil()
         for r in sichtbar:
             if r.glut > 0.0:
                 r.glut = maxf(0.0, r.glut - delta)
-                r.leben -= glut
+                r.leben -= maxf(0.0, glut - Arten.panzer(r.art)) * delta
                 r.hitze = maxf(r.hitze, 0.35)
 
     for i in Schlund.brennende(hell, ziele()):
         var r := sichtbar[i]
-        r.leben -= Schlund.schaden_je_sekunde(leistung(), hell[i]) * delta
+        r.leben -= Schlund.schaden_an(leistung(), hell[i],
+            Arten.panzer(r.art), Arten.mindest_licht(r.art)) * delta
         r.hitze = 1.0
         r.glut = glut_dauer
         if randf() < hell[i] * delta * 26.0:
@@ -323,7 +326,10 @@ func _polypen_feuern(delta: float) -> void:
                 continue
             if r.ort.distance_to(polypen[n]) > Graben.POLYP_REICHWEITE:
                 continue
-            r.leben -= Fortschritt.stand.polyp_leistung() * delta
+            # Der Panzer gilt auch hier - genau das macht ihn aus: ein
+            # Wehrpolyp kratzt an einer Schildkoralle kaum noch.
+            r.leben -= maxf(0.0, Fortschritt.stand.polyp_leistung()
+                - Arten.panzer(r.art)) * delta
             r.hitze = maxf(r.hitze, 0.45)
             if _polyp_takt[n] <= 0.0:
                 _polyp_takt[n] = 0.22

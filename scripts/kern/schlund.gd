@@ -10,6 +10,11 @@ extends RefCounted
 ## **Zusicherung:** Das gezeichnete Licht und der Schaden kommen aus derselben
 ## Funktion `beleuchtung()`. Ein Kegel, der anders aussieht als er wirkt, macht
 ## die Kernschleife unlesbar - der Spieler kann nicht lernen, was er tut.
+##
+## Einzige Abhaengigkeit nach aussen ist `Graben` - selbst reine Daten, ohne
+## Szenen- und Autoload-Bezug und ohne Rueckbezug hierher. `bahn()` braucht die
+## Feldbreite, um driftende Tiere im Bild zu halten; die Zahl daneben noch
+## einmal hinzuschreiben waere die zweite Quelle fuer denselben Wert.
 
 
 ## Der Kegel liegt nicht am Rand hart an, sondern verlaeuft. Innerhalb dieses
@@ -70,6 +75,25 @@ static func getroffen(spitze: Vector2, richtung: Vector2, halbwinkel: float,
 ## Schaden je Sekunde auf einen Punkt.
 static func schaden_je_sekunde(leistung: float, helligkeit: float) -> float:
     return leistung * helligkeit
+
+
+## Schaden je Sekunde auf einen Raeuber - mit seiner Haut.
+##
+## Zwei Eigenschaften, und beide aendern das Zielen statt der Zahl:
+##
+##   * `panzer` zieht einen festen Betrag je Sekunde ab. Eine schwache Quelle
+##     kommt damit gar nicht mehr durch - ein Wehrpolyp kratzt an einer
+##     Schildkoralle, der Kegel nicht.
+##   * `mindest_licht` verlangt eine Mindesthelligkeit. Wer am Rand des Kegels
+##     mitlaeuft, nimmt keinen Schaden; das Tier muss in den Kern.
+##
+## Beides gehoert **hierher** und nicht in Spiel und Pruefer getrennt: was
+## brennt, muss in beiden dieselbe Rechnung sein.
+static func schaden_an(leistung: float, helligkeit: float, panzer: float,
+        mindest_licht: float) -> float:
+    if helligkeit < mindest_licht:
+        return 0.0
+    return maxf(0.0, schaden_je_sekunde(leistung, helligkeit) - panzer)
 
 
 ## Welche der beleuchteten Raeuber der Kegel tatsaechlich verbrennt.
@@ -135,16 +159,63 @@ static func gedreht(von: Vector2, nach: Vector2, tempo: float,
     return von.rotated(schritt).normalized()
 
 
+## Wie stark ein Schub die Sinkgeschwindigkeit hoechstens veraendern darf.
+##
+## Bei 1.0 stuende das Tier im Umkehrpunkt still, darueber stiege es wieder
+## auf - und ein Raeuber, der rueckwaerts schwimmt, ist kein Entwurf, sondern
+## ein Vorzeichenfehler.
+const STOSS_DECKEL := 0.9
+
+
 ## Der Weg eines Raeubers zu einem Zeitpunkt.
 ##
-## Raeuber sinken geradlinig zur Brut und schlaengeln dabei seitlich. Reine
-## Funktion der Zeit - deshalb kann der Wellenpruefer eine Welle vollstaendig
-## durchrechnen, ohne die Szene zu bauen.
+## Raeuber sinken zur Brut und schlaengeln dabei seitlich. Drei Zusaetze
+## veraendern, wie schwer sie im Kegel zu halten sind:
+##
+##   * `schlaengel` - seitliches Pendeln um die Eintrittsspur
+##   * `drift`      - stetige Querbewegung; das Tier wandert durch das Bild
+##   * `stoss`      - Sinken in Schueben statt gleichmaessig
+##
+## Alles drei bleibt eine **reine Funktion der Zeit**. Das ist keine Zierde:
+## nur so kann der Wellenpruefer eine Welle vollstaendig durchrechnen, ohne
+## die Szene zu bauen, und nur so sehen Spiel und Pruefer dasselbe Tier.
 static func bahn(start: Vector2, ziel_y: float, tempo: float, schlaengel: float,
-        takt: float, phase: float, zeit: float) -> Vector2:
-    var y := minf(start.y + tempo * zeit, ziel_y)
+        takt: float, phase: float, zeit: float,
+        drift := 0.0, stoss := 0.0) -> Vector2:
+    var weg := tempo * zeit
+    if stoss > 0.0:
+        # Das Integral des Schubs, damit der Weg stetig bleibt. Der Mittelwert
+        # der Geschwindigkeit aendert sich dadurch nicht - `laufzeit()` gilt
+        # weiter.
+        var s := minf(stoss, STOSS_DECKEL)
+        weg += tempo * s * (sin(takt * zeit + phase) - sin(phase)) / maxf(0.001, takt)
+    var y := minf(start.y + weg, ziel_y)
+
     var x := start.x + schlaengel * sin(takt * zeit + phase)
-    return Vector2(x, y)
+    if drift != 0.0:
+        # Die Richtung steckt in der Phase - dieselbe Zahl, die schon das
+        # Pendeln versetzt. Ein eigener Wuerfel dafuer waere eine zweite
+        # Quelle fuer denselben Zufall.
+        x += drift * zeit * (1.0 if cos(phase) >= 0.0 else -1.0)
+
+    # Am Rand wird gespiegelt, nicht angehalten. Gekappt klebte ein driftendes
+    # Tier an der Grabenwand - im Bild sah das nach einem Fehler aus, und im
+    # Spiel war es einer: dort steht es dann still und ist trivial zu treffen.
+    return Vector2(gespiegelt(x, RAND_ABSTAND), y)
+
+
+## Wie weit der Weg vom Bildrand fernbleibt. Deckt den groessten Tierradius ab,
+## damit kein Leib halb aus dem Bild ragt.
+const RAND_ABSTAND := 28.0
+
+
+## Spiegelt `x` in das Feld zurueck - so oft, wie noetig.
+##
+## Eigene Funktion, weil sie testbar sein muss: dass ein Weg im Bild bleibt,
+## ist eine Zusicherung und keine Nebenwirkung.
+static func gespiegelt(x: float, abstand: float) -> float:
+    var halb := maxf(1.0, Graben.FELD.size.x * 0.5 - abstand)
+    return pingpong(x + halb, halb * 2.0) - halb
 
 
 ## Wie lange ein Raeuber von `start_y` bis zur Brut braucht.

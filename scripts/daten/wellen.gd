@@ -70,6 +70,16 @@ static func leben_in(art: int, nummer: int) -> float:
     return Arten.leben(art) * zaehigkeit(nummer)
 
 
+## Was eine Art in Welle `nummer` vom Budget wegnimmt.
+##
+## Nicht dasselbe wie ihr Leben: eine Schildkoralle mit Panzer kostet den
+## Spieler mehr Zeit, als ihre Lebenspunkte sagen. `leben_in()` bleibt davon
+## unberuehrt - sonst waere die Lebensanzeige ueber dem Tier falsch. Siehe
+## `Arten.aufwand()`.
+static func aufwand_in(art: int, nummer: int) -> float:
+    return leben_in(art, nummer) * Arten.aufwand(art)
+
+
 ## Naehrstoff, den er einbringt.
 ##
 ## Waechst mit derselben Zaehigkeit wie sein Leben. Ohne diese Kopplung stieg
@@ -131,12 +141,12 @@ static func auftritte(nummer: int) -> Array[Dictionary]:
         if index == Arten.Art.SCHLEIER:
             anzahl = rng.randi_range(3, 5)
 
-        var kosten := leben_in(index, nummer) * anzahl
+        var kosten := aufwand_in(index, nummer) * anzahl
         if kosten > budget:
             # Zu teuer fuer den Rest: mit der billigsten Art auffuellen.
             index = billig
             anzahl = 1
-            kosten = leben_in(index, nummer)
+            kosten = aufwand_in(index, nummer)
             if kosten > budget:
                 break
 
@@ -187,6 +197,6 @@ static func lebenssumme(nummer: int) -> float:
 static func billigste(moeglich: PackedInt32Array) -> int:
     var beste := moeglich[0]
     for i in moeglich:
-        if Arten.leben(i) < Arten.leben(beste):
+        if Arten.leben(i) * Arten.aufwand(i) < Arten.leben(beste) * Arten.aufwand(beste):
             beste = i
     return beste

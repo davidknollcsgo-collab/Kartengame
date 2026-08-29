@@ -20,8 +20,9 @@ werden.
 
 | Bereich | Stand |
 |---|---|
-| Rechenkern (`Schlund`) | Lichtkegel, Bahnen, Zielauswahl — 47 Tests grün |
+| Rechenkern (`Schlund`) | Lichtkegel, Bahnen, Zielauswahl — 53 Tests grün |
 | Wellen 1–60 | aus der Ausbaukurve abgeleitet, alle 60 geprüft |
+| Acht Räuberarten | vier davon mit eigener Regel: Panzer, Mindestlicht, Querdrift, Schub |
 | Sechs Grabenabschnitte | eigene Regel je Abschnitt: Strömung, Trübung, Dunkelphasen, Streulicht |
 | Grabentiefe | der Tiefenschacht öffnet die Abschnitte — abgeleitet aus der Sollkurve |
 | Kolonie | fünf Kammern mit Stufen, Kosten und Bauzeiten; 50 Tage gemessen, keine gefallene Sitzung |

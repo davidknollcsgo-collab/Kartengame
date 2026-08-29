@@ -33,6 +33,9 @@ const TESTS: PackedStringArray = [
     "_test_laufzeit",
     "_test_arten_tabelle_vollstaendig",
     "_test_arten_erst_ab_ihrer_welle",
+    "_test_arten_verhalten_bleibt_im_rahmen",
+    "_test_bahn_bleibt_im_bild_und_sinkt",
+    "_test_haut_schluckt_schwache_quellen",
     "_test_wellen_wachsen",
     "_test_wellen_sind_reproduzierbar",
     "_test_wellen_bleiben_im_feld",
@@ -304,6 +307,82 @@ func _test_arten_erst_ab_ihrer_welle() -> bool:
 
 
 # --- Wellen ----------------------------------------------------------------
+
+func _test_arten_verhalten_bleibt_im_rahmen() -> bool:
+    # Die vier Eigenschaften der spaeten Arten haben Grenzen, hinter denen sie
+    # nicht mehr Entwurf, sondern Fehler sind.
+    for i in Arten.zahl():
+        var name := Arten.name_von(i)
+        if not _melde(Arten.stoss(i) <= Schlund.STOSS_DECKEL,
+                "%s: ein Schub ueber %.2f liesse sie rueckwaerts schwimmen"
+                % [name, Schlund.STOSS_DECKEL]):
+            return false
+        if not _melde(Arten.mindest_licht(i) >= 0.0 and Arten.mindest_licht(i) < 1.0,
+                "%s: eine Mindesthelligkeit ab 1.0 waere unverwundbar" % name):
+            return false
+        if not _melde(Arten.drift(i) >= 0.0, "%s: negative Drift" % name):
+            return false
+        if not _melde(Arten.panzer(i) >= 0.0, "%s: negativer Panzer" % name):
+            return false
+        if not _melde(Arten.aufwand(i) >= 1.0,
+                "%s: eine Art darf nie weniger kosten als ihr Leben" % name):
+            return false
+
+        # Und keine Art darf gegen den vollen Kegel unverwundbar sein - sonst
+        # steht der Spieler vor einem Gegner, den er nicht toeten kann.
+        var voll := Schlund.schaden_an(Graben.LEISTUNG, 1.0,
+            Arten.panzer(i), Arten.mindest_licht(i))
+        if not _melde(voll > 0.0, "%s: der Grundkegel kommt gar nicht durch" % name):
+            return false
+    return true
+
+
+func _test_bahn_bleibt_im_bild_und_sinkt() -> bool:
+    # Zwei Zusicherungen an einem Weg: er verlaesst das Bild nicht, und er
+    # geht nie rueckwaerts. Der Schub war genau dafuer der Verdachtsfall.
+    var halb := Graben.FELD.size.x * 0.5
+    for i in Arten.zahl():
+        var a := Arten.art(i)
+        for phase: float in [0.0, 1.4, 3.1, 4.8]:
+            for start: float in [-Graben.EINTRITT_SEITE, 0.0, Graben.EINTRITT_SEITE]:
+                var vorher := -INF
+                var t := 0.0
+                while t < 40.0:
+                    var p := Schlund.bahn(Vector2(start, Graben.EINTRITT_Y),
+                        Graben.BRUT_Y, a[&"tempo"], a[&"schlaengel"], a[&"takt"],
+                        phase, t, Arten.drift(i), Arten.stoss(i))
+                    if not _melde(absf(p.x) <= halb,
+                            "%s verlaesst das Bild bei %.1f s: x=%.1f"
+                            % [Arten.name_von(i), t, p.x]):
+                        return false
+                    if not _melde(p.y >= vorher - 0.001,
+                            "%s schwimmt bei %.1f s rueckwaerts" % [Arten.name_von(i), t]):
+                        return false
+                    vorher = p.y
+                    t += 0.05
+    return true
+
+
+func _test_haut_schluckt_schwache_quellen() -> bool:
+    # Panzer: ein fester Betrag je Sekunde geht ab. Genau das macht einen
+    # Wehrpolypen gegen eine Schildkoralle stumpf.
+    if not _melde(is_equal_approx(Schlund.schaden_an(30.0, 1.0, 0.0, 0.0), 30.0),
+            "ohne Haut muss der volle Schaden ankommen"):
+        return false
+    if not _melde(is_equal_approx(Schlund.schaden_an(30.0, 1.0, 12.0, 0.0), 18.0),
+            "der Panzer muss genau seinen Betrag abziehen"):
+        return false
+    if not _melde(is_equal_approx(Schlund.schaden_an(8.0, 1.0, 12.0, 0.0), 0.0),
+            "eine Quelle unter dem Panzer darf nichts ausrichten"):
+        return false
+
+    # Mindesthelligkeit: am Rand des Kegels passiert nichts, im Kern alles.
+    if not _melde(is_equal_approx(Schlund.schaden_an(30.0, 0.4, 0.0, 0.5), 0.0),
+            "unter der Mindesthelligkeit darf kein Schaden entstehen"):
+        return false
+    return _melde(Schlund.schaden_an(30.0, 0.6, 0.0, 0.5) > 0.0,
+        "ueber der Mindesthelligkeit muss Schaden entstehen")
+
 
 func _test_wellen_wachsen() -> bool:
     # Nicht die rohe Lebenspunktzahl waechst, sondern der **Anspruch**.
