@@ -42,6 +42,10 @@ var ziel_fortschritt := PackedInt32Array()
 var ziel_geholt := PackedInt32Array()
 var strecke := 0
 
+## Wie viele Stroemungswellen heute noch offen sind. Wird am Tageswechsel
+## wieder aufgefuellt - siehe `Tagesstroemung`.
+var stroemung_offen := Tagesstroemung.JE_TAG
+
 ## Wie weit der Einstieg gediehen ist. Er laeuft genau einmal, und zwar
 ## waehrend gespielt wird - nicht als Textwand davor.
 var einstieg := 0
@@ -166,6 +170,7 @@ func pruefe_tag() -> bool:
     tag = jetzt
     ziel_fortschritt.fill(0)
     ziel_geholt.fill(0)
+    stroemung_offen = Tagesstroemung.JE_TAG
     return true
 
 
@@ -210,6 +215,20 @@ func ziele_offen() -> int:
         if ziel_offen(i):
             zahl += 1
     return zahl
+
+
+# --- Tagesstroemung --------------------------------------------------------
+
+func hat_stroemung() -> bool:
+    return stroemung_offen > 0
+
+
+## Verbraucht eine Stroemungswelle. Gibt zurueck, ob eine da war.
+func nutze_stroemung() -> bool:
+    if stroemung_offen <= 0:
+        return false
+    stroemung_offen -= 1
+    return true
 
 
 # --- Brutlinien ------------------------------------------------------------
@@ -339,6 +358,7 @@ func zu_wort() -> Dictionary:
         &"ziel_fortschritt": Array(ziel_fortschritt),
         &"ziel_geholt": Array(ziel_geholt),
         &"strecke": strecke,
+        &"stroemung_offen": stroemung_offen,
         &"einstieg": einstieg,
     }
 
@@ -371,6 +391,8 @@ static func aus_wort(wort: Dictionary) -> KolonieStand:
 
     s.tag = int(wort.get(&"tag", 0))
     s.strecke = maxi(0, int(wort.get(&"strecke", 0)))
+    s.stroemung_offen = clampi(int(wort.get(&"stroemung_offen", Tagesstroemung.JE_TAG)),
+        0, Tagesstroemung.JE_TAG)
     s.einstieg = maxi(0, int(wort.get(&"einstieg", 0)))
     var roh_f: Array = wort.get(&"ziel_fortschritt", [])
     for i in mini(roh_f.size(), s.ziel_fortschritt.size()):

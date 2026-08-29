@@ -101,6 +101,9 @@ func _init() -> void:
     print("  ----+-------+-------+----------------------------------+--------+------+--------+---------")
 
     for tag in TAGE:
+        # Der Tageswechsel von Hand - `pruefe_tag()` fragt die Systemuhr, und
+        # die laeuft hier nicht mit.
+        stand.stroemung_offen = Tagesstroemung.JE_TAG
         var tages_leerlauf := 0.0
         var tages_faelle := 0
         var welle_am_morgen := stand.hoechste_welle
@@ -122,8 +125,15 @@ func _init() -> void:
                 # einmal - das bringt Naehrstoff, aber keinen Fortschritt.
                 var nummer := mini(stand.hoechste_welle + i, stand.offene_welle())
                 Simulation.baue_polypen(z)
+                var vorher := z.naehrstoffe
                 var e := Simulation.welle(nummer, z)
                 zeit += Wellen.dauer(nummer)
+
+                # Die Tagesstroemung gehoert in die Messung, sonst misst das
+                # Werkzeug ein anderes Spiel als das, das gespielt wird.
+                var roh := z.naehrstoffe - vorher
+                if stand.nutze_stroemung():
+                    z.naehrstoffe += Tagesstroemung.ausbeute(roh, true) - roh
                 if not e.ueberstanden:
                     tages_faelle += 1
                     break

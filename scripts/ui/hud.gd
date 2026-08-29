@@ -12,6 +12,10 @@ const RAND := 22.0
 
 @onready var _flaeche: Control = $Flaeche
 
+## Ob die laufende Welle eine Tagesstroemung ist. `wache.gd` setzt es beim
+## Wellenstart - das HUD entscheidet nichts, es zeigt nur an.
+var stroemung := false
+
 var _welle := 1
 var _brut := Graben.BRUT_LEBEN
 var _naehrstoffe := 0
@@ -191,8 +195,12 @@ func _kopfzeile(breite: float) -> void:
         Color(0.24, 0.56, 0.62, 0.35), 1.5)
 
     _text(Vector2(RAND, 36.0), "WELLE %d" % _welle, 20, Color(0.72, 0.94, 0.98))
-    _text(Vector2(RAND, 64.0), Regeln.name_von(Graben.abschnitt(_welle)),
-        14, Color(0.44, 0.66, 0.72))
+    if stroemung and not _bauphase and not _ende:
+        _text(Vector2(RAND, 64.0), "STROEMUNG x%d" % int(Tagesstroemung.FAKTOR),
+            14, Color(0.52, 0.94, 0.80))
+    else:
+        _text(Vector2(RAND, 64.0), Regeln.name_von(Graben.abschnitt(_welle)),
+            14, Color(0.44, 0.66, 0.72))
 
     var mitte := breite * 0.5
     _text(Vector2(mitte - 40.0, 40.0), "BRUT", 13, Color(0.62, 0.52, 0.38))
@@ -207,6 +215,14 @@ func _kopfzeile(breite: float) -> void:
     if not _bauphase and not _ende:
         _text(Vector2(breite - RAND - 120.0, 108.0), "noch %d" % _offen, 15,
             Color(0.62, 0.74, 0.80, 0.8))
+    elif _bauphase and not _ende:
+        # Derselbe Platz, andere Auskunft: in der Bauphase steht dort, was der
+        # Tag noch hergibt. Ein Bonus, den man erst im Koloniebildschirm
+        # entdeckt, wirkt nicht.
+        var hinweis := Tagesstroemung.hinweis(Fortschritt.stand.stroemung_offen)
+        if not hinweis.is_empty():
+            _text(Vector2(breite - RAND - 120.0, 108.0), hinweis, 14,
+                Color(0.52, 0.94, 0.80, 0.85))
 
 
 func _schwebende_zahlen() -> void:

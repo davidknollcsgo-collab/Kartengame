@@ -49,6 +49,8 @@ const TESTS: PackedStringArray = [
     "_test_schacht_deckelt_die_kolonie",
     "_test_grabentiefe_folgt_der_sollkurve",
     "_test_grabentiefe_deckelt_den_fortschritt",
+    "_test_tagesstroemung_ist_je_tag_gedeckelt",
+    "_test_stand_uebersteht_das_sichern",
     "_test_kammerausbau_verschlechtert_nie",
     "_test_jeder_abschnitt_hat_namen_und_hinweis",
     "_test_erster_abschnitt_bleibt_ruhig",
@@ -638,6 +640,101 @@ func _test_grabentiefe_deckelt_den_fortschritt() -> bool:
         return false
     return _melde(stand.naechste_tiefe() == 0,
         "am Ende des Grabens gibt es keine naechste Tiefe mehr")
+
+
+func _test_tagesstroemung_ist_je_tag_gedeckelt() -> bool:
+    # Der Sinn der Tagesstroemung ist Wiederkommen, nicht Dauerspielen. Waere
+    # sie je Sitzung gedeckelt statt je Tag, belohnte sie Sitzen.
+    var stand := KolonieStand.new()
+    stand.pruefe_tag()
+    if not _melde(stand.stroemung_offen == Tagesstroemung.JE_TAG,
+            "ein neuer Tag muss die Stroemung auffuellen"):
+        return false
+
+    var genutzt := 0
+    while stand.nutze_stroemung():
+        genutzt += 1
+        if genutzt > Tagesstroemung.JE_TAG:
+            return _melde(false, "die Stroemung geht nie aus")
+    if not _melde(genutzt == Tagesstroemung.JE_TAG,
+            "die Stroemung gab %d statt %d Wellen her" % [genutzt, Tagesstroemung.JE_TAG]):
+        return false
+    if not _melde(not stand.hat_stroemung(), "aufgebraucht heisst aufgebraucht"):
+        return false
+
+    # Und sie darf eine Ausbeute nie kleiner machen.
+    for grund in [0, 1, 7, 250]:
+        var mit := Tagesstroemung.ausbeute(grund, true)
+        var ohne := Tagesstroemung.ausbeute(grund, false)
+        if not _melde(ohne == grund and mit >= grund,
+                "Ausbeute %d wird durch die Stroemung nicht besser" % grund):
+            return false
+    return _melde(Tagesstroemung.hinweis(0).is_empty(),
+        "ohne offene Stroemung darf kein Hinweis stehen")
+
+
+func _test_stand_uebersteht_das_sichern() -> bool:
+    # Ein Feld, das jemand einzubauen vergisst, faellt sonst erst dem Spieler
+    # auf - und zwar daran, dass sein Fortschritt weg ist.
+    var stand := KolonieStand.new()
+    stand.stufen[Kammern.Kammer.LEUCHTORGAN] = 7
+    stand.stufen[Kammern.Kammer.TIEFENSCHACHT] = 5
+    stand.naehrstoffe = 4321
+    stand.hoechste_welle = 33
+    stand.linien.append(Brutlinien.Linie.STROMSINN)
+    stand.linie = Brutlinien.Linie.STROMSINN
+    stand.bau_kammer = Kammern.Kammer.FILTERBECKEN
+    stand.bau_fertig_um = 12345.5
+    stand.zuletzt_gesehen = 999.25
+    stand.tag = 20260829
+    stand.strecke = 6
+    stand.stroemung_offen = 1
+    stand.einstieg = 4
+    stand.ziel_fortschritt[0] = 2
+    stand.ziel_geholt[0] = 1
+
+    var zurueck := KolonieStand.aus_wort(stand.zu_wort())
+    var paare := {
+        "Stufen": [Array(stand.stufen), Array(zurueck.stufen)],
+        "Naehrstoffe": [stand.naehrstoffe, zurueck.naehrstoffe],
+        "Hoechste Welle": [stand.hoechste_welle, zurueck.hoechste_welle],
+        "Linien": [Array(stand.linien), Array(zurueck.linien)],
+        "Linie": [stand.linie, zurueck.linie],
+        "Baukammer": [stand.bau_kammer, zurueck.bau_kammer],
+        "Bauende": [stand.bau_fertig_um, zurueck.bau_fertig_um],
+        "Zuletzt gesehen": [stand.zuletzt_gesehen, zurueck.zuletzt_gesehen],
+        "Tag": [stand.tag, zurueck.tag],
+        "Strecke": [stand.strecke, zurueck.strecke],
+        "Stroemung": [stand.stroemung_offen, zurueck.stroemung_offen],
+        "Einstieg": [stand.einstieg, zurueck.einstieg],
+        "Zielfortschritt": [Array(stand.ziel_fortschritt), Array(zurueck.ziel_fortschritt)],
+        "Zielgeholt": [Array(stand.ziel_geholt), Array(zurueck.ziel_geholt)],
+    }
+    for was in paare:
+        var werte: Array = paare[was]
+        if not _melde(werte[0] == werte[1],
+                "%s ueberlebt das Sichern nicht: %s statt %s"
+                % [was, str(werte[1]), str(werte[0])]):
+            return false
+
+    # Und ein veraenderter Stand darf keine unmoeglichen Werte einspeisen.
+    var boese := KolonieStand.aus_wort({
+        &"stufen": [999, -5],
+        &"naehrstoffe": -100,
+        &"hoechste_welle": 9999,
+        &"linien": [42],
+        &"linie": 42,
+        &"bau_kammer": 77,
+        &"stroemung_offen": 99,
+    })
+    return _melde(boese.stufe(0) == Kammern.HOECHSTSTUFE
+            and boese.stufe(1) == 0
+            and boese.naehrstoffe == 0
+            and boese.hoechste_welle == Graben.WELLEN_GESAMT
+            and boese.linie == Brutlinien.Linie.KEINE
+            and boese.bau_kammer == -1
+            and boese.stroemung_offen == Tagesstroemung.JE_TAG,
+        "ein veraenderter Stand muss zurechtgebogen werden")
 
 
 func _test_kammerausbau_verschlechtert_nie() -> bool:

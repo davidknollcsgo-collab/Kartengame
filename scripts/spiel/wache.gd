@@ -57,6 +57,11 @@ var _polyp_takt := PackedFloat32Array()
 ## Wieviele Treffer ohne Unterbrechung. Treibt nur die Tonhoehe.
 var _folge := 0.0
 
+## Ob die laufende Welle eine Tagesstroemung ist. Wird beim Start der Welle
+## entschieden und verbraucht - nicht bei jedem Treffer neu gefragt, sonst
+## koennte eine einzige Welle den ganzen Tagesvorrat aufzehren.
+var _stroemung := false
+
 
 func _ready() -> void:
     _koloniebild.geschlossen.connect(_kolonie_geschlossen)
@@ -170,6 +175,8 @@ func starte_welle() -> void:
         r.ort = Vector2(r.start_x, Graben.EINTRITT_Y)
         _tiere.append(r)
 
+    _stroemung = Fortschritt.stand.nutze_stroemung()
+    _hud.stroemung = _stroemung
     _offen = _tiere.size()
     _wellenzeit = 0.0
     _polyp_takt.resize(polypen.size())
@@ -179,6 +186,8 @@ func starte_welle() -> void:
     _folge = 0.0
     Klang.spiele(Klang.Ton.WELLE, 1.0, 0.55)
     _hud.zeige_welle(welle_nummer, brut, Fortschritt.stand.naehrstoffe, _tiere.size())
+    if _stroemung:
+        _hud.melde("Tagesstroemung - doppelte Ausbeute")
 
     # Eine neue Regel gehoert angekuendigt. Wer in Welle 31 ploetzlich im
     # Dunkeln steht und nicht weiss warum, haelt es fuer einen Fehler.
@@ -318,7 +327,8 @@ func _raeume_auf() -> void:
         if r.leben <= 0.0:
             r.lebendig = false
             _offen -= 1
-            var lohn := Wellen.wert_in(r.art, welle_nummer)
+            var lohn := Tagesstroemung.ausbeute(
+                Wellen.wert_in(r.art, welle_nummer), _stroemung)
             Fortschritt.aendere(lohn)
             verdient += lohn
             _funken.platzen(r.ort, Arten.farbe(r.art), Arten.radius(r.art))
