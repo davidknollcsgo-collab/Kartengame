@@ -94,7 +94,8 @@ static func druck(nummer: int) -> float:
 ## Abgeleitet aus dem, was ein Spieler auf dieser Stufe leisten kann - nicht
 ## aus einer freien Wachstumszahl. Siehe die Begruendung in `ausbau.gd`.
 static func staerke(nummer: int) -> float:
-    return Ausbau.durchsatz(nummer) * WIRKUNGSGRAD * fenster(nummer) * druck(nummer)
+    return Ausbau.durchsatz(nummer) * WIRKUNGSGRAD * Regeln.wirkungsgrad(nummer) \
+        * fenster(nummer) * druck(nummer)
 
 
 ## Wie lange Raeuber eintreten. Die Welle selbst dauert laenger - der letzte

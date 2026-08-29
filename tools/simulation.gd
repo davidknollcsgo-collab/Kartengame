@@ -130,9 +130,20 @@ static func welle(nummer: int, z: Zustand) -> Ergebnis:
                     ziel = t
 
         # 2. Kegel nachfuehren - mit derselben Drehgrenze wie im Spiel.
+        #
+        # Die Stroemung des Abschnitts treibt den Kegel ab. Der simulierte
+        # Spieler haelt dagegen, indem er die Ablenkung von seinem Zielwinkel
+        # abzieht - aber die Drehgrenze bleibt, also kostet ihn eine schnell
+        # wechselnde Stroemung Zeit. Genau das soll sie.
+        var abtrieb := Regeln.stroemung(nummer, zeit)
         if ziel != null:
             var soll := Schlund.zielrichtung(Graben.WAECHTER, ziel.ort(zeit), richtung)
-            richtung = Schlund.gedreht(richtung, soll, Graben.DREHTEMPO, TAKT)
+            richtung = Schlund.gedreht(richtung, soll.rotated(-abtrieb),
+                Graben.DREHTEMPO, TAKT)
+        var wirksam := richtung.rotated(abtrieb)
+        var schein := Regeln.helligkeit(nummer, zeit)
+        var rand_kern := Regeln.rand_kern(nummer)
+        var tiefe_kern := Regeln.tiefe_kern(nummer)
 
         # 3. Wer steht wie hell im Licht? Erst danach entscheidet
         #    `Schlund.brennende()`, wen der Kegel tatsaechlich fasst - genau so
@@ -146,8 +157,8 @@ static func welle(nummer: int, z: Zustand) -> Ergebnis:
             var p := t.ort(zeit)
             lebende.append(t)
             orte.append(p)
-            hell.append(Schlund.beleuchtung(Graben.WAECHTER, richtung,
-                z.halbwinkel(), z.reichweite(), p))
+            hell.append(Schlund.beleuchtung(Graben.WAECHTER, wirksam,
+                z.halbwinkel(), z.reichweite(), p, rand_kern, tiefe_kern) * schein)
 
         for i in Schlund.brennende(hell, z.ziele()):
             lebende[i].leben -= Schlund.schaden_je_sekunde(z.leistung(), hell[i]) * TAKT

@@ -96,6 +96,8 @@ jobs:
         run: |
           set -uo pipefail
           mkdir -p build
+          echo "--- Android-Vorgabe ---"
+          sed -n '/platform="Android"/,$p' export_presets.cfg | head -40
           godot --headless --verbose --export-debug "Android" build/nekton.apk \
             2>&1 | tee export.log | tail -60
           echo "--- Konfigurationsfehler, falls vorhanden ---"

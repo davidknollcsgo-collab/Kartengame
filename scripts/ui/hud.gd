@@ -31,6 +31,11 @@ var _meldung_leben := 0.0
 ## wo der Knopf liegt.
 var _kolonieknopf := Rect2()
 
+## Ankuendigung einer neuen Abschnittsregel. Steht laenger als eine Meldung,
+## weil sie erklaert, warum sich das Spiel gerade anders anfuehlt.
+var _abschnitt := -1
+var _abschnitt_leben := 0.0
+
 var _schrift: Font
 var _ausbeuten: Array[Dictionary] = []
 
@@ -51,6 +56,8 @@ func _process(delta: float) -> void:
     _zeit += delta
     if _meldung_leben > 0.0:
         _meldung_leben -= delta
+    if _abschnitt_leben > 0.0:
+        _abschnitt_leben -= delta
     for i in range(_ausbeuten.size() - 1, -1, -1):
         _ausbeuten[i][&"leben"] -= delta
         if _ausbeuten[i][&"leben"] <= 0.0:
@@ -62,6 +69,13 @@ func _process(delta: float) -> void:
 func melde(was: String) -> void:
     _meldung = was
     _meldung_leben = 3.0
+
+
+## Kuendigt die Regel eines neuen Abschnitts an. Wer in Welle 31 ploetzlich im
+## Dunkeln steht und nicht weiss warum, haelt es fuer einen Fehler.
+func zeige_abschnitt(abschnitt: int) -> void:
+    _abschnitt = abschnitt
+    _abschnitt_leben = 5.0
 
 
 func kolonieknopf_bei(bildschirm: Vector2) -> bool:
@@ -126,6 +140,22 @@ func _zeichne() -> void:
         _text(Vector2(breite * 0.5, 118.0), _meldung, 17,
             Color(0.62, 0.98, 0.86, f), true)
 
+    if _abschnitt_leben > 0.0:
+        _abschnittstafel(breite, hoehe)
+
+
+## Zwei Zeilen in der Bildmitte: der Name des Abschnitts und was er aendert.
+func _abschnittstafel(breite: float, hoehe: float) -> void:
+    var f := clampf(_abschnitt_leben / 1.2, 0.0, 1.0)
+    var mitte := Vector2(breite * 0.5, hoehe * 0.34)
+    var kasten := Rect2(RAND, mitte.y - 54.0, breite - RAND * 2.0, 96.0)
+    _flaeche.draw_rect(kasten, Color(0.02, 0.06, 0.09, 0.72 * f))
+    _flaeche.draw_rect(kasten, Color(0.42, 0.86, 0.92, 0.34 * f), false, 1.4)
+    _text(mitte - Vector2(0.0, 18.0), Regeln.name_von(_abschnitt).to_upper(), 22,
+        Color(0.72, 0.96, 1.0, f), true)
+    _text(mitte + Vector2(0.0, 16.0), Regeln.hinweis(_abschnitt), 15,
+        Color(0.66, 0.82, 0.88, f), true)
+
 
 func _kopfzeile(breite: float) -> void:
     var balken := Rect2(0.0, 0.0, breite, 84.0)
@@ -134,7 +164,7 @@ func _kopfzeile(breite: float) -> void:
         Color(0.24, 0.56, 0.62, 0.35), 1.5)
 
     _text(Vector2(RAND, 36.0), "WELLE %d" % _welle, 20, Color(0.72, 0.94, 0.98))
-    _text(Vector2(RAND, 64.0), "Abschnitt %d" % (Graben.abschnitt(_welle) + 1),
+    _text(Vector2(RAND, 64.0), Regeln.name_von(Graben.abschnitt(_welle)),
         14, Color(0.44, 0.66, 0.72))
 
     var mitte := breite * 0.5

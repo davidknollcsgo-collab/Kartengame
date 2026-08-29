@@ -26,6 +26,13 @@ var halbwinkel := Graben.HALBWINKEL
 var reichweite := Graben.REICHWEITE
 var flackern := 0.0
 
+## Von `wache.gd` je Bild aus `Regeln` gesetzt. Der Kegel sieht damit genau
+## so aus, wie er wirkt - auch wenn ein Abschnitt seine Form veraendert oder
+## das Leuchtorgan aussetzt.
+var rand_kern := Schlund.RAND_KERN
+var tiefe_kern := Schlund.TIEFE_KERN
+var schein := 1.0
+
 
 func _ready() -> void:
     # Additiv: Licht addiert sich zum Wasser, es deckt es nicht ab.
@@ -65,12 +72,13 @@ func _draw() -> void:
             draw_polygon(punkte, farben)
 
     # Der Austritt am Waechter selbst - ein harter, heller Kern.
-    draw_circle(spitze, 13.0, Color(KERN.r, KERN.g, KERN.b, 0.55 * puls))
-    draw_circle(spitze, 26.0, Color(FARBE.r, FARBE.g, FARBE.b, 0.16 * puls))
+    draw_circle(spitze, 13.0, Color(KERN.r, KERN.g, KERN.b, 0.55 * puls * schein))
+    draw_circle(spitze, 26.0, Color(FARBE.r, FARBE.g, FARBE.b, 0.16 * puls * schein))
 
 
 func _farbe_an(spitze: Vector2, punkt: Vector2, puls: float) -> Color:
-    var hell := Schlund.beleuchtung(spitze, richtung, halbwinkel, reichweite, punkt)
+    var hell := Schlund.beleuchtung(spitze, richtung, halbwinkel, reichweite,
+        punkt, rand_kern, tiefe_kern) * schein
     if hell <= 0.0:
         return Color(FARBE.r, FARBE.g, FARBE.b, 0.0)
     var mische := FARBE.lerp(KERN, hell * hell)

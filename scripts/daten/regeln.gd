@@ -114,3 +114,68 @@ static func rand_kern(nummer: int) -> float:
 ## lohnt es, den Spieler darauf hinzuweisen.
 static func neu_in(abschnitt: int) -> bool:
     return abschnitt in [0, STROM_AB, TRUEB_AB, DUNKEL_AB, STREU_AB, STURM]
+
+
+# --- Was die Regeln den Spieler kosten -------------------------------------
+#
+# `Wellen.staerke()` leitet die Wellenstaerke aus dem ab, was ein Spieler
+# leisten kann. Kennt sie die Regeln nicht, wird jeder neue Abschnitt zur
+# Wand: der Wellenpruefer meldete nach Einfuehrung der Regeln fuenf gefallene
+# Sitzungen ab Welle 36. Diese Funktionen rechnen den Verlust aus, statt ihn
+# zu schaetzen - wer an einer Regel dreht, dreht die Wellenstaerke mit.
+
+## Aufloesung der Zahlenintegration. Grob genug, um billig zu sein, fein genug
+## fuer einen Faktor, der ohnehin nur die Groessenordnung setzen muss.
+const GITTER := 24
+const TAKTE := 48
+
+## Was das Gegenhalten gegen die Stroemung an Zielzeit kostet. Anders als die
+## uebrigen drei laesst sich das nicht aus der Kegelform ableiten - es haengt
+## am Drehtempo. Gemessen wurde es am Wellenpruefer.
+const STROM_VERLUST := 0.93
+const STROM_VERLUST_STURM := 0.87
+
+
+## Wieviel von seiner Leistung ein Spieler in diesem Abschnitt ueberhaupt auf
+## die Raeuber bringt, verglichen mit ruhigem Wasser. 1.0 heisst: kein Verlust.
+static func wirkungsgrad(nummer: int) -> float:
+    var form := _kegelanteil(rand_kern(nummer), tiefe_kern(nummer)) \
+        / maxf(0.0001, _kegelanteil(Schlund.RAND_KERN, Schlund.TIEFE_KERN))
+    return form * _mittlere_helligkeit(nummer) * _stroemungsverlust(nummer)
+
+
+## Mittlere Helligkeit ueber die Kegelflaeche, bei gegebener Form.
+##
+## Ueber die Tiefe wird mit `laengs` gewichtet: ein Ring weit vorn ist laenger
+## als einer nah an der Spitze und deckt entsprechend mehr Wasser ab.
+static func _kegelanteil(rk: float, tk: float) -> float:
+    var summe := 0.0
+    var gewicht := 0.0
+    for i in GITTER:
+        var laengs := (float(i) + 0.5) / float(GITTER)
+        var tiefe := 1.0 - smoothstep(clampf(tk, 0.0, 0.999), 1.0, laengs)
+        for j in GITTER:
+            var quer := (float(j) + 0.5) / float(GITTER)
+            var rand := smoothstep(0.0, maxf(0.001, 1.0 - rk), quer)
+            summe += rand * tiefe * laengs
+            gewicht += laengs
+    return summe / maxf(0.0001, gewicht)
+
+
+## Mittlere Helligkeit ueber einen vollen Dunkelzyklus.
+static func _mittlere_helligkeit(nummer: int) -> float:
+    var a := Graben.abschnitt(nummer)
+    if a < DUNKEL_AB:
+        return 1.0
+    var zyklus := DUNKEL_ZYKLUS_STURM if a >= STURM else DUNKEL_ZYKLUS
+    var summe := 0.0
+    for i in TAKTE:
+        summe += helligkeit(nummer, (float(i) + 0.5) / float(TAKTE) * zyklus)
+    return summe / float(TAKTE)
+
+
+static func _stroemungsverlust(nummer: int) -> float:
+    var a := Graben.abschnitt(nummer)
+    if a < STROM_AB:
+        return 1.0
+    return STROM_VERLUST_STURM if a >= STURM else STROM_VERLUST

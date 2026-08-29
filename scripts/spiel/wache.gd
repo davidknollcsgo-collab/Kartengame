@@ -48,6 +48,7 @@ var _tiere: Array[Raeuber] = []
 var _offen := 0
 var _wellenzeit := 0.0
 var _richtung := Vector2.UP
+var _wirksam := Vector2.UP
 var _finger := Graben.WAECHTER + Vector2.UP * 300.0
 var _zieht := false
 var _schuetteln := 0.0
@@ -148,6 +149,12 @@ func starte_welle() -> void:
     lage = Lage.WELLE
     _hud.zeige_welle(welle_nummer, brut, Fortschritt.stand.naehrstoffe, _tiere.size())
 
+    # Eine neue Regel gehoert angekuendigt. Wer in Welle 31 ploetzlich im
+    # Dunkeln steht und nicht weiss warum, haelt es fuer einen Fehler.
+    var a := Graben.abschnitt(welle_nummer)
+    if Regeln.neu_in(a) and welle_nummer == a * Graben.WELLEN_JE_ABSCHNITT + 1:
+        _hud.zeige_abschnitt(a)
+
 
 # --- Schleife --------------------------------------------------------------
 
@@ -168,13 +175,25 @@ func _process(delta: float) -> void:
     elif lage == Lage.BAUEN:
         _fuehre_kegel(delta)
 
-    _kegel.richtung = _richtung
     _schwarm.queue_redraw()
 
 
+## Fuehrt den Kegel dem Finger nach und legt die Regeln des Abschnitts an.
+##
+## `_richtung` ist, wohin der Spieler zielt. `_wirksam` ist, wo das Licht
+## tatsaechlich hinfaellt - dazwischen liegt die Stroemung. Beide auseinander
+## zu halten ist der ganze Reiz von Abschnitt 2: man zielt nicht dorthin, wo
+## man treffen will.
 func _fuehre_kegel(delta: float) -> void:
     var soll := Schlund.zielrichtung(Graben.WAECHTER, _finger, _richtung)
     _richtung = Schlund.gedreht(_richtung, soll, Graben.DREHTEMPO, delta)
+
+    var abtrieb := Regeln.stroemung(welle_nummer, _wellenzeit)
+    _wirksam = _richtung.rotated(abtrieb)
+    _kegel.richtung = _wirksam
+    _kegel.rand_kern = Regeln.rand_kern(welle_nummer)
+    _kegel.tiefe_kern = Regeln.tiefe_kern(welle_nummer)
+    _kegel.schein = Regeln.helligkeit(welle_nummer, _wellenzeit)
 
 
 func _bewege(delta: float) -> void:
@@ -214,8 +233,9 @@ func _verbrenne(delta: float) -> void:
         if not r.lebendig or r.alter < 0.0:
             continue
         sichtbar.append(r)
-        hell.append(Schlund.beleuchtung(Graben.WAECHTER, _richtung,
-            _kegel.halbwinkel, _kegel.reichweite, r.ort))
+        hell.append(Schlund.beleuchtung(Graben.WAECHTER, _wirksam,
+            _kegel.halbwinkel, _kegel.reichweite, r.ort,
+            _kegel.rand_kern, _kegel.tiefe_kern) * _kegel.schein)
 
     for i in Schlund.brennende(hell, ziele()):
         var r := sichtbar[i]
