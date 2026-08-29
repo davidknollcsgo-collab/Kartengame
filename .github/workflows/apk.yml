@@ -136,10 +136,6 @@ jobs:
       # Ohne `|| true` bricht die Standardshell (bash -e) am fehlgeschlagenen
       # Godot-Aufruf ab - und zwar **vor** der Fehlerauswertung. Zwei CI-Laeufe
       # lang habe ich deshalb geraten, statt die Meldung zu lesen.
-      # Zwei Wege, ein Lauf. Der erste packt die mitgelieferte Vorlagen-APK um
-      # und braucht kaum Werkzeug. Schlaegt er fehl, baut der zweite mit Gradle
-      # aus den Quellen - langsamer, aber der Weg, den Godot selbst am besten
-      # geprueft hat. Einzeln zu raten kostet je Versuch einen ganzen CI-Lauf.
       - name: APK bauen
         shell: bash
         run: |
@@ -161,27 +157,9 @@ jobs:
             return 1
           }
 
-          echo "== Weg 1: mitgelieferte Vorlage =="
-          if bauen; then echo "Weg 1 hat geklappt"; ls -la build/; exit 0; fi
+          if bauen; then ls -la build/; exit 0; fi
 
-          echo "== Weg 2: Gradle aus den Quellen =="
-          # Genau das, was der Editor unter "Android-Build-Vorlage
-          # installieren" tut: die Quellen ins Projekt legen und markieren,
-          # damit Godot sie nicht als Spielinhalt einliest.
-          V="${GODOT_VERSION}"
-          mkdir -p android
-          unzip -oq "$HOME/.local/share/godot/export_templates/${V%-*}.stable/android_source.zip" \
-            -d android/build
-          touch android/.gdignore
-          echo "${V%-*}.stable" > android/build/.build_version
-          sed -i 's|gradle_build/use_gradle_build=false|gradle_build/use_gradle_build=true|' \
-            export_presets.cfg
-          godot --headless --import > /dev/null 2>&1
-
-          rm -f build/nekton.apk
-          if bauen; then echo "Weg 2 hat geklappt"; ls -la build/; exit 0; fi
-
-          echo "Beide Wege fehlgeschlagen."
+          echo "Bau fehlgeschlagen."
           exit 1
 
       - name: APK pruefen

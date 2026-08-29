@@ -260,10 +260,10 @@ func _zeichne() -> void:
         passt = verfuegbar / float(anzahl) - LUECKE
         gebraucht = verfuegbar
 
-    # Auf hohen Bildschirmen bleibt Platz uebrig. Der Block sitzt dann mittig
-    # statt oben - sonst klebt die Kolonie am Kopf und darunter gaehnt der
-    # halbe Bildschirm.
-    var y := oben + maxf(0.0, (verfuegbar - gebraucht) * 0.5)
+    # Oben ansetzen, nicht mittig. Mittig sah bei fuenf Kammern noch aus wie
+    # Absicht, bei drei Linien wie ein Versehen - und auf dem Tagesreiter
+    # schob es die Fusszeile unter den Bildrand.
+    var y := oben + minf(28.0, maxf(0.0, (verfuegbar - gebraucht) * 0.5))
 
     for k in anzahl:
         var kasten := Rect2(RAND, y, breite - RAND * 2.0, passt)
@@ -393,7 +393,8 @@ func _tagesziel(kasten: Rect2, index: int, stand: KolonieStand) -> void:
 
 ## Unter den Zielen: Anwesenheit, Lautstaerke, Lizenzen, Neuanfang.
 func _tagesfuss(breite: float, y: float, stand: KolonieStand) -> void:
-    _text(Vector2(RAND, y + 22.0), "%d Tage in Folge im Graben" % stand.strecke,
+    var tage := "1 Tag" if stand.strecke == 1 else "%d Tage" % stand.strecke
+    _text(Vector2(RAND, y + 22.0), "%s in Folge im Graben" % tage,
         15, Color(0.72, 0.88, 0.92))
 
     # Lautstaerke in Schritten statt als Schieber: einen Schieber trifft man

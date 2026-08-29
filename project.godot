@@ -7,6 +7,7 @@ config/name="Nekton"
 config/description="Schlundwache: ein Lichtkegel am Finger gegen alles, was aus dem Graben kommt."
 config/version="0.1.0"
 run/main_scene="res://scenes/schlund.tscn"
+config/icon="res://symbol.png"
 config/features=PackedStringArray("4.5", "GL Compatibility")
 
 [autoload]
@@ -23,6 +24,8 @@ window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 
 [rendering]
+
+textures/vram_compression/import_etc2_astc=true
 
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"

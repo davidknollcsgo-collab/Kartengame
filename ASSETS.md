@@ -54,14 +54,22 @@ Das ist Absicht und nicht nur eine Frage der Dateigröße: prozedural erzeugte
 Optik hat genau eine Quelle — dieses Repository. Diese Dateien sind selbst
 geschriebener Quelltext und stehen deshalb nicht in der Tabelle unten.
 
+Die einzige Bilddatei im Projekt ist das App-Symbol. Auch das ist gerechnet
+und nicht gemalt: `tools/symbol.gd` erzeugt es aus derselben
+`Schlund.beleuchtung()`, die im Spiel den Lichtkegel zeichnet. Wer es neu
+bauen will, ruft das Werkzeug auf — es gibt kein Original in einem
+Grafikprogramm, weil es keines braucht.
+
 | Datei | Herkunft | Autor | Lizenz | Quelle | Datum |
 |---|---|---|---|---|---|
-| _(keine)_ | | | | | |
+| `symbol.png` | selbst erzeugt | dieses Projekt | eigen | `tools/symbol.gd` | 2026-08-29 |
 
 ## Ton
 
-Noch keiner. Geplant ist Synthese über `AudioStreamWAV` — null Audiodateien
-heißt null Lizenzrisiko.
+**Keine einzige Audiodatei im Projekt.** Alles entsteht zur Laufzeit in
+`scripts/spiel/klang.gd` als `AudioStreamWAV` mit von Hand gefüllten Puffern:
+Treffer, Tod, Fall der Brut, Wehrpolyp, fertige Kammer, Wellenbeginn, Tippen.
+Null Audiodateien heißt null Lizenzrisiko.
 
 | Datei | Herkunft | Autor | Lizenz | Quelle | Datum |
 |---|---|---|---|---|---|
