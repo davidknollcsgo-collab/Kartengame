@@ -495,6 +495,7 @@ func _lies_entwicklerschalter() -> void:
     var stau := false
     var welle := 0
     var polypenzahl := 0
+    var reiter := -1
 
     for i in argumente.size():
         match argumente[i]:
@@ -512,6 +513,10 @@ func _lies_entwicklerschalter() -> void:
                     polypenzahl = int(argumente[i + 1])
             "--bauen":
                 bauen = true
+            "--kolonie":
+                # Auch der Koloniebildschirm muss sich ansehen lassen, ohne
+                # ihn von Hand aufzutippen. 0 Kammern, 1 Linien, 2 Tag.
+                reiter = int(argumente[i + 1]) if i + 1 < argumente.size() else 0
             "--messen":
                 if i + 1 < argumente.size():
                     messen = float(argumente[i + 1])
@@ -528,9 +533,12 @@ func _lies_entwicklerschalter() -> void:
     if messen > 0.0:
         _miss_bildrate(messen, stau)
         return
+    if reiter >= 0:
+        oeffne_kolonie()
+        _koloniebild.zeige_reiter(reiter)
     if bild.is_empty():
         return
-    _nimm_auf(bild, vorlauf, bauen)
+    _nimm_auf(bild, vorlauf, bauen or reiter >= 0)
 
 
 ## Misst die tatsaechliche Bildrate ueber `dauer` Sekunden.

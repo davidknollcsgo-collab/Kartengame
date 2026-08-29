@@ -51,6 +51,7 @@ const TESTS: PackedStringArray = [
     "_test_grabentiefe_deckelt_den_fortschritt",
     "_test_tagesstroemung_ist_je_tag_gedeckelt",
     "_test_stand_uebersteht_das_sichern",
+    "_test_zuchtkalender_laeuft_einmal_und_endet_auf_einer_linie",
     "_test_kammerausbau_verschlechtert_nie",
     "_test_jeder_abschnitt_hat_namen_und_hinweis",
     "_test_erster_abschnitt_bleibt_ruhig",
@@ -673,6 +674,50 @@ func _test_tagesstroemung_ist_je_tag_gedeckelt() -> bool:
         "ohne offene Stroemung darf kein Hinweis stehen")
 
 
+func _test_zuchtkalender_laeuft_einmal_und_endet_auf_einer_linie() -> bool:
+    var stand := KolonieStand.new()
+    stand.pruefe_tag()
+    var vorher_linien := stand.linien.size()
+
+    # Sieben Tage, sieben Abholungen - und je Tag genau eine.
+    var geholt := 0
+    var linien_geschenke := 0
+    for durchlauf in Zuchtkalender.TAGE + 3:
+        if not stand.kalender_offen():
+            break
+        var lohn := stand.hole_kalender()
+        if not _melde(not lohn.is_empty(),
+                "Tag %d gibt nichts her" % (durchlauf + 1)):
+            return false
+        if not _melde(stand.hole_kalender().is_empty(),
+                "Tag %d liesse sich zweimal abholen" % (durchlauf + 1)):
+            return false
+        if lohn.has(&"linie"):
+            linien_geschenke += 1
+        geholt += 1
+        # Der naechste Tag - sonst bleibt der Kalender heute zu.
+        stand.tag += 1
+
+    if not _melde(geholt == Zuchtkalender.TAGE,
+            "der Kalender gab %d statt %d Tage her" % [geholt, Zuchtkalender.TAGE]):
+        return false
+    if not _melde(linien_geschenke == 1,
+            "genau ein Tag muss eine Brutlinie geben, nicht %d" % linien_geschenke):
+        return false
+    if not _melde(stand.linien.size() == vorher_linien + 1,
+            "die geschenkte Linie fehlt im Bestand"):
+        return false
+    if not _melde(stand.linie != Brutlinien.Linie.KEINE,
+            "die geschenkte Linie muss auch die Wache uebernehmen"):
+        return false
+
+    # Und danach ist Schluss. Ein Kalender, der sich auffuellt, verschenkt
+    # Brutlinien am laufenden Band.
+    stand.tag += 1
+    return _melde(not stand.kalender_offen(),
+        "der Kalender laeuft ein zweites Mal")
+
+
 func _test_stand_uebersteht_das_sichern() -> bool:
     # Ein Feld, das jemand einzubauen vergisst, faellt sonst erst dem Spieler
     # auf - und zwar daran, dass sein Fortschritt weg ist.
@@ -689,6 +734,8 @@ func _test_stand_uebersteht_das_sichern() -> bool:
     stand.tag = 20260829
     stand.strecke = 6
     stand.stroemung_offen = 1
+    stand.kalender = 3
+    stand.kalender_tag = 20260828
     stand.einstieg = 4
     stand.ziel_fortschritt[0] = 2
     stand.ziel_geholt[0] = 1
@@ -706,6 +753,8 @@ func _test_stand_uebersteht_das_sichern() -> bool:
         "Tag": [stand.tag, zurueck.tag],
         "Strecke": [stand.strecke, zurueck.strecke],
         "Stroemung": [stand.stroemung_offen, zurueck.stroemung_offen],
+        "Kalender": [stand.kalender, zurueck.kalender],
+        "Kalendertag": [stand.kalender_tag, zurueck.kalender_tag],
         "Einstieg": [stand.einstieg, zurueck.einstieg],
         "Zielfortschritt": [Array(stand.ziel_fortschritt), Array(zurueck.ziel_fortschritt)],
         "Zielgeholt": [Array(stand.ziel_geholt), Array(zurueck.ziel_geholt)],

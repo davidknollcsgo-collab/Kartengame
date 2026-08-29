@@ -55,6 +55,7 @@ enum Sicht { KAMMERN, LINIEN, TAG }
 var _sicht := Sicht.KAMMERN
 
 ## Tippziele der Tagesansicht, in Bildschirmkoordinaten.
+var _kalender := Rect2()
 var _lauter := Rect2()
 var _leiser := Rect2()
 var _loeschen := Rect2()
@@ -132,6 +133,9 @@ func _eingabe(ereignis: InputEvent) -> void:
             return
 
     if _sicht == Sicht.TAG:
+        if _kalender.has_point(ort):
+            _hole_kalender()
+            return
         if _lauter.has_point(ort):
             Klang.laut = Klang.laut + 0.2
             Klang.spiele(Klang.Ton.TIPP)
@@ -180,6 +184,22 @@ func _versuche_ausbau(kammer: int) -> void:
         Fortschritt.sichere()
         Fortschritt.stand_geaendert.emit()
         _zeige("%s wird gegraben" % Kammern.name_von(kammer))
+
+
+func _hole_kalender() -> void:
+    var stand: KolonieStand = Fortschritt.stand
+    var lohn := stand.hole_kalender()
+    if lohn.is_empty():
+        return
+    Fortschritt.sichere()
+    Fortschritt.stand_geaendert.emit()
+    if lohn.has(&"linie"):
+        Klang.spiele(Klang.Ton.KAMMER, 1.5, 0.85)
+        _zeige("%s gezuechtet - sie uebernimmt die Wache"
+            % Brutlinien.name_von(int(lohn[&"linie"])))
+    else:
+        Klang.spiele(Klang.Ton.KAMMER, 1.2, 0.7)
+        _zeige("+%d Naehrstoff" % int(lohn[&"naehrstoff"]))
 
 
 func _hole_ziel(index: int) -> void:
@@ -278,8 +298,14 @@ func _zeichne() -> void:
         y += passt + LUECKE
 
     if _sicht == Sicht.TAG:
-        _tagesfuss(breite, y + 6.0, stand)
+        y = _zuchtkalender(breite, y + 8.0, stand)
+        _grabenwertung(breite, y + 18.0, stand)
+        # Der Fuss haengt unten, nicht hinter dem Kalender. Sonst stand die
+        # untere Haelfte des Tagesreiters leer und der Loeschknopf mitten im
+        # Bild - genau dort, wo der Daumen ohnehin liegt.
+        _tagesfuss(breite, hoehe - FUSS - 186.0, stand)
     else:
+        _kalender = Rect2()
         _lauter = Rect2()
         _leiser = Rect2()
         _loeschen = Rect2()
@@ -347,7 +373,8 @@ func _umschalterzeile(breite: float) -> void:
 
         # Ein Punkt am Reiter, wenn dort etwas abzuholen ist. Sonst muesste
         # man jeden Tag nachsehen, ob sich etwas getan hat.
-        if i == Sicht.TAG and Fortschritt.stand.ziele_offen() > 0:
+        if i == Sicht.TAG and (Fortschritt.stand.ziele_offen() > 0
+                or Fortschritt.stand.kalender_offen()):
             _flaeche.draw_circle(kasten.position + Vector2(kasten.size.x - 10.0, 10.0),
                 4.0, NAEHR)
 
@@ -390,6 +417,113 @@ func _tagesziel(kasten: Rect2, index: int, stand: KolonieStand) -> void:
         _text(Vector2(rechts, kasten.get_center().y + 5.0),
             "+%d" % Tagesziel.lohn(index, stand.hoechste_welle), 15, LEISE,
             false, true)
+
+
+## Die Grabenwertung: wo man zwischen den Nachbarkolonien steht.
+##
+## Nicht die ganze Liste, sondern der eigene Platz mit zwei Namen darueber und
+## zwei darunter. Elf Zeilen waeren eine Tabelle; fuenf sind eine Aussage.
+func _grabenwertung(breite: float, y: float, stand: KolonieStand) -> float:
+    const ZEIGEN := 5
+    var liste := Geister.rangliste(stand.hoechste_welle)
+    var eigen := Geister.platz(stand.hoechste_welle) - 1
+    var erste := clampi(eigen - 2, 0, maxi(0, liste.size() - ZEIGEN))
+
+    _text(Vector2(RAND, y + 14.0), "GRABENWERTUNG", 13, LEISE)
+    var vor := Geister.naechster_vor(stand.hoechste_welle)
+    if not String(vor[&"name"]).is_empty():
+        var abstand := int(vor[&"tiefe"]) - stand.hoechste_welle
+        _text(Vector2(breite - RAND, y + 14.0),
+            "%d Wellen bis %s" % [maxi(0, abstand), vor[&"name"]], 12, LEISE,
+            false, true)
+    else:
+        _text(Vector2(breite - RAND, y + 14.0), "tiefster Graben", 12, NAEHR,
+            false, true)
+
+    var zeile_y := y + 24.0
+    for i in range(erste, mini(erste + ZEIGEN, liste.size())):
+        var eintrag := liste[i]
+        var selbst: bool = eintrag[&"selbst"]
+        var kasten := Rect2(RAND, zeile_y, breite - RAND * 2.0, 32.0)
+        if selbst:
+            _flaeche.draw_rect(kasten, Color(BAND_FARBE.r, BAND_FARBE.g,
+                BAND_FARBE.b, 0.9))
+            _flaeche.draw_rect(Rect2(kasten.position, Vector2(3.0, kasten.size.y)),
+                NAEHR)
+
+        var farbe := NAEHR if selbst else LEISE
+        _text(Vector2(RAND + 14.0, zeile_y + 21.0), "%d." % (i + 1), 13, farbe)
+        _text(Vector2(RAND + 46.0, zeile_y + 21.0), String(eintrag[&"name"]), 15,
+            SCHRIFT if selbst else LEISE)
+        _text(Vector2(breite - RAND - 10.0, zeile_y + 21.0),
+            "Welle %d" % int(eintrag[&"tiefe"]), 14, farbe, false, true)
+        zeile_y += 34.0
+
+    return zeile_y
+
+
+## Schaltet die Ansicht um. Nur fuer die Entwicklerschalter - im Spiel tippt
+## man die Reiter an.
+func zeige_reiter(welche: int) -> void:
+    _sicht = clampi(welche, 0, 2) as Sicht
+
+
+## Sieben Kaesten in einer Reihe. Der letzte traegt keine Zahl, sondern eine
+## Brutlinie - und sieht deshalb anders aus als die sechs davor.
+func _zuchtkalender(breite: float, y: float, stand: KolonieStand) -> float:
+    var fertig := stand.kalender >= Zuchtkalender.TAGE
+    var offen := stand.kalender_offen()
+
+    var kopf := "ZUCHTKALENDER"
+    var kopffarbe := LEISE
+    if fertig:
+        kopf = "ZUCHTKALENDER  ·  durchgelaufen"
+    elif offen:
+        kopf = "ZUCHTKALENDER  ·  Tag %d abholen" % (stand.kalender + 1)
+        kopffarbe = NAEHR
+    else:
+        kopf = "ZUCHTKALENDER  ·  Tag %d von %d" % [stand.kalender, Zuchtkalender.TAGE]
+    _text(Vector2(RAND, y + 16.0), kopf, 13, kopffarbe)
+
+    var reihe_y := y + 28.0
+    var hoch := 54.0
+    var breit := (breite - RAND * 2.0 - 6.0 * 4.0) / float(Zuchtkalender.TAGE)
+    var puls := 0.5 + 0.5 * sin(_zeit * 2.6)
+
+    for i in Zuchtkalender.TAGE:
+        var kasten := Rect2(RAND + (breit + 4.0) * float(i), reihe_y, breit, hoch)
+        var geholt := i < stand.kalender
+        var dran := i == stand.kalender and offen
+        var linientag := Zuchtkalender.ist_linientag(i)
+
+        var farbe := LEISE
+        if geholt:
+            farbe = NAEHR
+        elif dran:
+            farbe = Color(NAEHR.r, NAEHR.g, NAEHR.b, 0.55 + 0.45 * puls)
+        elif linientag:
+            farbe = Brutlinien.farbe(Brutlinien.Linie.STROMSINN)
+
+        _flaeche.draw_rect(kasten, Color(BAND_FARBE.r, BAND_FARBE.g, BAND_FARBE.b,
+            0.9 if geholt or dran else 0.55))
+        _flaeche.draw_rect(kasten, Color(farbe.r, farbe.g, farbe.b,
+            0.7 if dran else 0.3), false, 1.8 if dran else 1.2)
+
+        _text(Vector2(kasten.get_center().x, kasten.position.y + 20.0),
+            str(i + 1), 13, farbe if geholt or dran else LEISE, true)
+        _text(Vector2(kasten.get_center().x, kasten.position.y + 42.0),
+            Zuchtkalender.kurz(i, stand.hoechste_welle), 11,
+            farbe if geholt or dran else Color(0.34, 0.44, 0.50), true)
+
+        if geholt:
+            # Ein Haken waere ein Zeichen mehr, das die Schrift tragen muss.
+            # Ein Strich durch den Kasten sagt dasselbe und ist gezeichnet.
+            _flaeche.draw_line(kasten.position + Vector2(6.0, hoch - 7.0),
+                kasten.position + Vector2(breit - 6.0, hoch - 7.0),
+                Color(NAEHR.r, NAEHR.g, NAEHR.b, 0.7), 1.6)
+
+    _kalender = Rect2(RAND, y, breite - RAND * 2.0, hoch + 28.0) if offen else Rect2()
+    return reihe_y + hoch
 
 
 ## Unter den Zielen: Anwesenheit, Lautstaerke, Lizenzen, Neuanfang.

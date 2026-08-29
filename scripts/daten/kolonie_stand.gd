@@ -42,6 +42,11 @@ var ziel_fortschritt := PackedInt32Array()
 var ziel_geholt := PackedInt32Array()
 var strecke := 0
 
+## Zuchtkalender: wie viele Tage schon abgeholt sind und an welchem Kalendertag
+## zuletzt. Er laeuft genau einmal durch - siehe `Zuchtkalender`.
+var kalender := 0
+var kalender_tag := 0
+
 ## Wie viele Stroemungswellen heute noch offen sind. Wird am Tageswechsel
 ## wieder aufgefuellt - siehe `Tagesstroemung`.
 var stroemung_offen := Tagesstroemung.JE_TAG
@@ -217,6 +222,49 @@ func ziele_offen() -> int:
     return zahl
 
 
+# --- Zuchtkalender ---------------------------------------------------------
+
+## Ob heute ein Kalendertag abzuholen ist.
+func kalender_offen() -> bool:
+    return kalender < Zuchtkalender.TAGE and kalender_tag != tag
+
+
+## Welche Linie der Kalender schenkt: die naechste, die noch fehlt. Weil jede
+## Linie die davor voraussetzt, ist die erste fehlende immer auch die
+## zuechtbare - der Kalender kann also nichts verschenken, was ins Leere geht.
+func kalender_linie() -> int:
+    for i in range(1, Brutlinien.zahl()):
+        if not hat_linie(i):
+            return i
+    return Brutlinien.Linie.KEINE
+
+
+## Holt den heutigen Kalendertag ab. Gibt zurueck, was er einbrachte:
+## `{&"linie": n}` oder `{&"naehrstoff": n}`, leer wenn nichts offen war.
+func hole_kalender() -> Dictionary:
+    if not kalender_offen():
+        return {}
+    var index := kalender
+    kalender += 1
+    kalender_tag = tag
+
+    if Zuchtkalender.ist_linientag(index):
+        var l := kalender_linie()
+        if l != Brutlinien.Linie.KEINE:
+            linien.append(l)
+            linie = l
+            return {&"linie": l}
+        # Wer bis dahin alle Linien selbst gezuechtet hat, bekommt ihren Wert.
+        # Ein leerer siebter Tag waere die schlechteste Belohnung von allen.
+        var wert := Brutlinien.kosten(Brutlinien.zahl() - 1)
+        naehrstoffe += wert
+        return {&"naehrstoff": wert}
+
+    var lohn := Zuchtkalender.naehrstoff(index, hoechste_welle)
+    naehrstoffe += lohn
+    return {&"naehrstoff": lohn}
+
+
 # --- Tagesstroemung --------------------------------------------------------
 
 func hat_stroemung() -> bool:
@@ -359,6 +407,8 @@ func zu_wort() -> Dictionary:
         &"ziel_geholt": Array(ziel_geholt),
         &"strecke": strecke,
         &"stroemung_offen": stroemung_offen,
+        &"kalender": kalender,
+        &"kalender_tag": kalender_tag,
         &"einstieg": einstieg,
     }
 
@@ -393,6 +443,8 @@ static func aus_wort(wort: Dictionary) -> KolonieStand:
     s.strecke = maxi(0, int(wort.get(&"strecke", 0)))
     s.stroemung_offen = clampi(int(wort.get(&"stroemung_offen", Tagesstroemung.JE_TAG)),
         0, Tagesstroemung.JE_TAG)
+    s.kalender = clampi(int(wort.get(&"kalender", 0)), 0, Zuchtkalender.TAGE)
+    s.kalender_tag = maxi(0, int(wort.get(&"kalender_tag", 0)))
     s.einstieg = maxi(0, int(wort.get(&"einstieg", 0)))
     var roh_f: Array = wort.get(&"ziel_fortschritt", [])
     for i in mini(roh_f.size(), s.ziel_fortschritt.size()):
