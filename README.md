@@ -20,10 +20,11 @@ werden.
 
 | Bereich | Stand |
 |---|---|
-| Rechenkern (`Schlund`) | Lichtkegel, Bahnen, Zielauswahl — 42 Tests grün |
+| Rechenkern (`Schlund`) | Lichtkegel, Bahnen, Zielauswahl — 47 Tests grün |
 | Wellen 1–60 | aus der Ausbaukurve abgeleitet, alle 60 geprüft |
 | Sechs Grabenabschnitte | eigene Regel je Abschnitt: Strömung, Trübung, Dunkelphasen, Streulicht |
-| Kolonie | fünf Kammern mit Stufen, Kosten und Bauzeiten; 30 Tage gemessen |
+| Grabentiefe | der Tiefenschacht öffnet die Abschnitte — abgeleitet aus der Sollkurve |
+| Kolonie | fünf Kammern mit Stufen, Kosten und Bauzeiten; 50 Tage gemessen, keine gefallene Sitzung |
 | Brutlinien | drei Linien, gezüchtet statt gezogen — kein Zufall, keine Kiste |
 | Tagesziel | drei Aufgaben, Anwesenheitszähler, Lohn wächst mit dem Fortschritt |
 | Ton | vollständig synthetisiert, keine Audiodatei |

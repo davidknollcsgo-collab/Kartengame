@@ -65,6 +65,33 @@ func schacht() -> int:
     return stufe(Kammern.Kammer.TIEFENSCHACHT)
 
 
+# --- Grabentiefe -----------------------------------------------------------
+
+## Die tiefste Welle, die der Graben derzeit hergibt.
+func offene_welle() -> int:
+    return Ausbau.offene_welle(schacht())
+
+
+## Die Welle, die als naechstes gespielt wird. Der Fortschritt darf ueber den
+## offenen Graben hinauszeigen - gespielt wird trotzdem nur, was offen ist.
+func naechste_welle() -> int:
+    return clampi(mini(hoechste_welle, offene_welle()), 1, Graben.WELLEN_GESAMT)
+
+
+## Ob der Graben den Fortschritt gerade aufhaelt.
+func graben_haelt() -> bool:
+    return hoechste_welle > offene_welle()
+
+
+## Welche Schachtstufe den naechsten Abschnitt oeffnet - 0, wenn keiner mehr
+## aussteht.
+func naechste_tiefe() -> int:
+    var offen := offene_welle()
+    if offen >= Graben.WELLEN_GESAMT:
+        return 0
+    return Ausbau.schacht_fuer_abschnitt(Graben.abschnitt(offen) + 1)
+
+
 # --- Bauen -----------------------------------------------------------------
 
 func baut() -> bool:

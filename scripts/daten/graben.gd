@@ -62,6 +62,7 @@ const NISCHEN: PackedVector2Array = [
 const WELLEN_JE_SITZUNG := 5
 const WELLEN_GESAMT := 60
 const WELLEN_JE_ABSCHNITT := 10
+const ABSCHNITTE := WELLEN_GESAMT / WELLEN_JE_ABSCHNITT
 
 
 ## Was ein Wehrpolyp als naechstes kostet, wenn schon `gebaut` stehen.
@@ -71,4 +72,9 @@ static func polyp_kosten(gebaut: int) -> int:
 
 ## Grabenabschnitt einer Welle, ab 0 gezaehlt.
 static func abschnitt(nummer: int) -> int:
-    return clampi((nummer - 1) / WELLEN_JE_ABSCHNITT, 0, 5)
+    return clampi((nummer - 1) / WELLEN_JE_ABSCHNITT, 0, ABSCHNITTE - 1)
+
+
+## Die letzte Welle eines Abschnitts.
+static func letzte_welle(abschnitt_nr: int) -> int:
+    return clampi(abschnitt_nr + 1, 1, ABSCHNITTE) * WELLEN_JE_ABSCHNITT

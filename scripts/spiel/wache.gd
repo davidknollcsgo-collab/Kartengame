@@ -63,7 +63,7 @@ func _ready() -> void:
     Fortschritt.stand_geaendert.connect(_stelle_ausbau_ein)
     Fortschritt.bau_fertig.connect(_bau_fertig)
 
-    welle_nummer = Fortschritt.stand.hoechste_welle
+    welle_nummer = Fortschritt.stand.naechste_welle()
     brut = Fortschritt.stand.brut_leben()
     var offline := Fortschritt.begruesse()
     _stelle_ausbau_ein()
@@ -99,6 +99,14 @@ func _bau_fertig(kammer: int) -> void:
             Color(0.62, 0.94, 1.0), 26.0)
     Klang.spiele(Klang.Ton.KAMMER, 1.0, 0.7)
     _hud.melde("%s fertig" % Kammern.name_von(kammer))
+
+    # Ein Schacht, der einen Abschnitt oeffnet, ist mehr als eine Stufe mehr:
+    # er gibt den Weg frei, auf dem der Spieler gerade steht.
+    if kammer == Kammern.Kammer.TIEFENSCHACHT \
+            and Fortschritt.stand.naechste_welle() > welle_nummer:
+        welle_nummer = Fortschritt.stand.naechste_welle()
+        _hud.zeige_abschnitt(Graben.abschnitt(welle_nummer))
+        _bereite_welle_vor()
 
 
 func _kolonie_geschlossen() -> void:
@@ -344,6 +352,17 @@ func _welle_geschafft() -> void:
         lage = Lage.GESCHAFFT
         _hud.zeige_ende(true, welle_nummer, verdient)
         return
+
+    # Der Graben gibt nur her, was der Tiefenschacht geoeffnet hat. Wer am
+    # Ende des Abschnitts steht, spielt ihn weiter - und erfaehrt, woran es
+    # liegt. Eine Wand ohne Grund ist ein Fehler; eine mit Grund ist ein Ziel.
+    var stand: KolonieStand = Fortschritt.stand
+    if welle_nummer + 1 > stand.offene_welle():
+        _hud.melde("Der Graben endet hier - Tiefenschacht Stufe %d graebt weiter"
+            % stand.naechste_tiefe())
+        _bereite_welle_vor()
+        return
+
     welle_nummer += 1
     _bereite_welle_vor()
 
@@ -363,6 +382,7 @@ func neu_anfangen() -> void:
     brut = Fortschritt.stand.brut_leben()
     verdient = 0
     polypen.clear()
+    welle_nummer = Fortschritt.stand.naechste_welle()
     Fortschritt.sichere()
     _bereite_welle_vor()
 

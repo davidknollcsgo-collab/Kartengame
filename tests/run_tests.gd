@@ -47,6 +47,8 @@ const TESTS: PackedStringArray = [
     "_test_kammerkosten_und_zeiten_steigen",
     "_test_erste_woche_ohne_wartemauer",
     "_test_schacht_deckelt_die_kolonie",
+    "_test_grabentiefe_folgt_der_sollkurve",
+    "_test_grabentiefe_deckelt_den_fortschritt",
     "_test_kammerausbau_verschlechtert_nie",
     "_test_jeder_abschnitt_hat_namen_und_hinweis",
     "_test_erster_abschnitt_bleibt_ruhig",
@@ -495,7 +497,12 @@ func _test_kammern_treffen_die_sollkurve() -> bool:
         if absf(Kammern.winkel_faktor(stufe) - Ausbau.winkel_faktor(n)) > 0.02:
             return _melde(false, "Winkel weicht bei Welle %d ab" % n)
 
-        if absi(Kammern.ziele(stufe) - Ausbau.ziele(n)) > 1:
+        # Hier stand einmal eine Toleranz von einem Ziel. Sie hat den Fehler
+        # durchgelassen, der die Wellen 37 bis 48 unspielbar machte: die
+        # Sollkurve verlangte dort sieben gleichzeitige Ziele, die Sollstufe
+        # gab sechs her. Ein Ziel mehr oder weniger ist der spuerbarste
+        # Unterschied im ganzen Spiel - dafuer gibt es keine Toleranz.
+        if Kammern.ziele(stufe) != Ausbau.ziele(n):
             return _melde(false, "Ziele weichen bei Welle %d ab: Kammer %d, Soll %d"
                 % [n, Kammern.ziele(stufe), Ausbau.ziele(n)])
 
@@ -567,6 +574,70 @@ func _test_schacht_deckelt_die_kolonie() -> bool:
     return _melde(Kammern.deckel(Kammern.Kammer.LEUCHTORGAN, Kammern.HOECHSTSTUFE)
             == Kammern.HOECHSTSTUFE,
         "mit vollem Schacht muss jede Kammer die Hoechststufe erreichen")
+
+
+func _test_grabentiefe_folgt_der_sollkurve() -> bool:
+    # Der Tiefenschacht oeffnet den Graben, und zwar genau so weit, dass die
+    # Sollstufe der letzten Welle des Abschnitts noch unter den Deckel passt.
+    # Waere das Tor niedriger, liefe der Spieler in Wellen hinein, fuer die es
+    # seine Kolonie nicht geben kann - genau der Fehler, den der Kolonielauf
+    # als gefallene Sitzungen ab Welle 36 gemeldet hat.
+    if not _melde(Ausbau.schacht_fuer_abschnitt(0) == 0,
+            "der erste Abschnitt darf nichts verlangen"):
+        return false
+
+    var vorher := -1
+    for a in Graben.ABSCHNITTE:
+        var tor := Ausbau.schacht_fuer_abschnitt(a)
+        if not _melde(tor > vorher or a == 0,
+                "Abschnitt %d verlangt nicht mehr als der davor" % (a + 1)):
+            return false
+        vorher = tor
+        if not _melde(tor <= Kammern.HOECHSTSTUFE,
+                "Abschnitt %d verlangt eine Stufe, die es nicht gibt" % (a + 1)):
+            return false
+
+        var deckel := Kammern.deckel(Kammern.Kammer.LEUCHTORGAN, tor)
+        var soll := Ausbau.stufe_soll(Graben.letzte_welle(a))
+        if not _melde(deckel >= soll,
+                "Abschnitt %d oeffnet bei Schacht %d, aber Welle %d verlangt Stufe %d"
+                % [a + 1, tor, Graben.letzte_welle(a), soll]):
+            return false
+
+    # Und die Leiter darf nirgends zurueckfallen.
+    var offen := 0
+    for schacht in range(0, Kammern.HOECHSTSTUFE + 1):
+        var jetzt := Ausbau.offene_welle(schacht)
+        if not _melde(jetzt >= offen,
+                "Schacht %d oeffnet weniger als %d" % [schacht, schacht - 1]):
+            return false
+        offen = jetzt
+    return _melde(Ausbau.offene_welle(Kammern.HOECHSTSTUFE) == Graben.WELLEN_GESAMT,
+        "der volle Schacht muss den ganzen Graben oeffnen")
+
+
+func _test_grabentiefe_deckelt_den_fortschritt() -> bool:
+    # Der Fortschritt darf ueber den offenen Graben hinauszeigen - gespielt
+    # wird trotzdem nur, was offen ist.
+    var stand := KolonieStand.new()
+    stand.hoechste_welle = Graben.WELLEN_GESAMT
+    if not _melde(stand.naechste_welle() == Graben.WELLEN_JE_ABSCHNITT,
+            "ohne Schacht darf nur der erste Abschnitt offen sein"):
+        return false
+    if not _melde(stand.graben_haelt(), "der Graben muesste hier halten"):
+        return false
+    if not _melde(stand.naechste_tiefe() == Ausbau.schacht_fuer_abschnitt(1),
+            "die naechste Tiefe muss den zweiten Abschnitt nennen"):
+        return false
+
+    stand.stufen[Kammern.Kammer.TIEFENSCHACHT] = Kammern.HOECHSTSTUFE
+    if not _melde(stand.naechste_welle() == Graben.WELLEN_GESAMT,
+            "mit vollem Schacht muss der ganze Graben offen sein"):
+        return false
+    if not _melde(not stand.graben_haelt(), "der volle Schacht darf nichts halten"):
+        return false
+    return _melde(stand.naechste_tiefe() == 0,
+        "am Ende des Grabens gibt es keine naechste Tiefe mehr")
 
 
 func _test_kammerausbau_verschlechtert_nie() -> bool:

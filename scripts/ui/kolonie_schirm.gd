@@ -522,7 +522,19 @@ func _kammer(kasten: Rect2, k: int, stand: KolonieStand, jetzt: float) -> void:
 
     var links := kasten.position.x + 84.0
     _text(Vector2(links, kasten.position.y + 30.0), Kammern.name_von(k), 17, SCHRIFT)
-    _text(Vector2(links, kasten.position.y + 52.0), Kammern.zweck(k), 12, LEISE)
+
+    # Der Tiefenschacht sagt, was er als naechstes aufmacht. Ein Spieler, der
+    # am Ende eines Abschnitts steht, muss hier ablesen koennen, woran es
+    # liegt - sonst haelt er den Graben fuer kaputt statt fuer verschlossen.
+    var zweite := Kammern.zweck(k)
+    var zweite_farbe := LEISE
+    if k == Kammern.Kammer.TIEFENSCHACHT and stand.naechste_tiefe() > 0:
+        var naechster := Graben.abschnitt(stand.offene_welle()) + 1
+        zweite = "%s oeffnet bei Stufe %d" % [Regeln.name_von(naechster),
+            stand.naechste_tiefe()]
+        if stand.graben_haelt():
+            zweite_farbe = NAEHR
+    _text(Vector2(links, kasten.position.y + 52.0), zweite, 12, zweite_farbe)
 
     # Stufenpunkte statt einer Zahl: man sieht auf einen Blick, wieviel noch
     # geht, ohne rechnen zu muessen.

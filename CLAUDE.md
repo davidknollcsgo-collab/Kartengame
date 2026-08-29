@@ -35,7 +35,16 @@ godot --headless --import                                     # class_name-Regis
 godot --headless --path . --script tests/run_tests.gd         # ~3 s, Exitcode 1 bei Fehler
 godot --headless --path . --script tools/wellenpruefer.gd     # alle 60 Wellen, ~2 min
 godot --headless --path . --script tools/wellenpruefer.gd -- --spielraum
+godot --headless --path . --script tools/kolonielauf.gd      # 50 Tage Kolonie, ~1 min
 ```
+
+Der Kolonielauf ist das Werkzeug, das die meisten Fehler gefunden hat. Er
+**spielt die Wellen wirklich durch** — mit dem Koloniestand, den ein normaler
+Spieler zu diesem Zeitpunkt hat, nicht mit der Sollkurve. Er meldet drei Dinge:
+gefallene Sitzungen, eine Wartemauer (Bauzeit, die den Tag blockiert) und eine
+Fortschrittsmauer (ein Tag ohne neue Welle **und** ohne neue Kammerstufe).
+Die Wellenzahl allein ist kein Fortschrittsmaß — wer heute keine neue Welle
+sieht, aber seine Kolonie hebt, steckt nicht fest.
 
 **`--import` nach jeder neuen Datei mit `class_name`.** Sonst kennt die
 Registry die Klasse nicht, und was dann passiert, sieht nicht nach dem Fehler
@@ -100,6 +109,19 @@ unter einer strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
 6. **Es gibt keine Audiodatei und nur eine Bilddatei.** Der Ton entsteht in
    `klang.gd`, das App-Symbol in `tools/symbol.gd` — beide zur Laufzeit
    gerechnet. Das ist der Copyright-Nachweis, nicht nur ein Stil.
+7. **Es gibt genau eine Ausbaukurve.** `Ausbau.leistung_faktor`, `.ziele`,
+   `.reichweite_faktor`, `.winkel_faktor` sind der Koloniestand *auf*
+   `stufe_soll()` — gerechnet mit denselben `Kammern`-Funktionen, die auch der
+   Spieler benutzt. Vorher stand daneben eine zweite Kurve mit eigenen
+   Steigungen: sie traf die Enden genau und lief in der Mitte auseinander. Bei
+   Welle 49 verlangte sie sieben gleichzeitige Ziele, während die zugehörige
+   Sollstufe 16 nur sechs hergab — zwölf Wellen lang prüfte der Wellenprüfer
+   einen Wächter, den es auf keiner Kammerstufe gab.
+8. **Der Graben öffnet sich am Tiefenschacht.** `Ausbau.schacht_fuer_abschnitt`
+   leitet aus der Sollkurve ab, welche Schachtstufe einen Abschnitt aufmacht;
+   `KolonieStand.naechste_welle()` ist der einzige Weg, an die zu spielende
+   Welle zu kommen. Ohne diese Kopplung stand der Spieler an Tag 6 in Welle 36,
+   während seine Kolonie bei gut der Hälfte der Sollkurve lag.
 
 ## APK bauen
 

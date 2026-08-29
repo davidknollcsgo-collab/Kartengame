@@ -83,10 +83,10 @@ const TABELLE: Array[Dictionary] = [
     },
     {
         &"name": "Tiefenschacht",
-        &"zweck": "Graebt tiefer und hebt den Deckel aller anderen Kammern.",
+        &"zweck": "Graebt tiefer, oeffnet den Graben und hebt den Deckel aller anderen Kammern.",
         &"kosten": 44.0,
         &"wachstum": 1.55,
-        &"zeit_faktor": 1.25,
+        &"zeit_faktor": 0.9,
     },
 ]
 
