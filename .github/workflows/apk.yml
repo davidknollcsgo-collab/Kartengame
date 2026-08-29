@@ -51,7 +51,8 @@ jobs:
           mkdir -p "$HOME/.local/share/godot/export_templates"
           unzip -q templates.tpz -d /tmp/tpl
           mv /tmp/tpl/templates "$HOME/.local/share/godot/export_templates/${V%-*}.stable"
-          ls "$HOME/.local/share/godot/export_templates/${V%-*}.stable" | head -5
+          echo "--- Vorlagen ---"
+          ls "$HOME/.local/share/godot/export_templates/${V%-*}.stable" | grep -i android || true
 
       # Debug-Schluessel. Nur zum Sideloaden - fuer den Play Store braucht es
       # einen eigenen, dauerhaft aufbewahrten Schluessel. Geht der verloren,
@@ -88,13 +89,20 @@ jobs:
       - name: Projekt importieren
         run: godot --headless --import
 
+      # --verbose, weil Godot im Headless-Betrieb sonst nur "configuration
+      # errors" meldet und verschweigt, welcher. Raten kostet je Versuch einen
+      # ganzen CI-Lauf.
       - name: APK bauen
         run: |
-          set -euo pipefail
+          set -uo pipefail
           mkdir -p build
-          godot --headless --export-debug "Android" build/nekton.apk
-          ls -la build/
+          godot --headless --verbose --export-debug "Android" build/nekton.apk \
+            2>&1 | tee export.log | tail -60
+          echo "--- Konfigurationsfehler, falls vorhanden ---"
+          grep -iE "cannot export|configuration error|not found|missing|invalid|keystore|sdk" \
+            export.log | head -30 || true
           test -s build/nekton.apk
+          ls -la build/
 
       - name: APK pruefen
         run: |

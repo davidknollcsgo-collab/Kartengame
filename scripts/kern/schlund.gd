@@ -29,8 +29,13 @@ const NAHFELD := 4.0
 ##
 ## `richtung` muss nicht normiert sein. `halbwinkel` ist der halbe
 ## Oeffnungswinkel in Bogenmass, `reichweite` die Laenge des Kegels.
+## `rand_kern` und `tiefe_kern` sind ueberschreibbar, weil die Grabenabschnitte
+## sie veraendern (truebes Wasser, Streulicht). Sie bleiben Parameter dieser
+## einen Funktion, statt eine zweite Rechnung daneben zu stellen - Anzeige und
+## Schaden duerfen nie auseinanderlaufen.
 static func beleuchtung(spitze: Vector2, richtung: Vector2, halbwinkel: float,
-        reichweite: float, punkt: Vector2) -> float:
+        reichweite: float, punkt: Vector2,
+        rand_kern := RAND_KERN, tiefe_kern := TIEFE_KERN) -> float:
     if reichweite <= 0.0 or halbwinkel <= 0.0:
         return 0.0
 
@@ -50,8 +55,8 @@ static func beleuchtung(spitze: Vector2, richtung: Vector2, halbwinkel: float,
     var quer := 1.0 - abweichung / halbwinkel
     var laengs := abstand / reichweite
 
-    var rand := smoothstep(0.0, 1.0 - RAND_KERN, quer)
-    var tiefe := 1.0 - smoothstep(TIEFE_KERN, 1.0, laengs)
+    var rand := smoothstep(0.0, maxf(0.001, 1.0 - rand_kern), quer)
+    var tiefe := 1.0 - smoothstep(clampf(tiefe_kern, 0.0, 0.999), 1.0, laengs)
     return rand * tiefe
 
 
