@@ -1,0 +1,110 @@
+name: APK
+
+# Godot braucht fuer den Android-Export das Android SDK, und dl.google.com ist
+# aus der Entwicklungsumgebung heraus gesperrt. Der Bau gehoert deshalb
+# hierher - auf dem Runner liegt das SDK bereits.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["**"]
+    paths:
+      - "scripts/**"
+      - "scenes/**"
+      - "shaders/**"
+      - "project.godot"
+      - "export_presets.cfg"
+      - ".github/workflows/apk.yml"
+
+concurrency:
+  group: apk-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: "4.5-stable"
+
+jobs:
+  apk:
+    name: Debug-APK bauen
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Godot und Exportvorlagen holen
+        run: |
+          set -euo pipefail
+          V="${GODOT_VERSION}"
+          curl -sSL --retry 3 -o godot.zip \
+            "https://github.com/godotengine/godot-builds/releases/download/${V}/Godot_v${V}_linux.x86_64.zip"
+          unzip -q godot.zip
+          sudo mv "Godot_v${V}_linux.x86_64" /usr/local/bin/godot
+          sudo chmod +x /usr/local/bin/godot
+
+          curl -sSL --retry 3 -o templates.tpz \
+            "https://github.com/godotengine/godot-builds/releases/download/${V}/Godot_v${V}_export_templates.tpz"
+          mkdir -p "$HOME/.local/share/godot/export_templates"
+          unzip -q templates.tpz -d /tmp/tpl
+          mv /tmp/tpl/templates "$HOME/.local/share/godot/export_templates/${V%-*}.stable"
+          ls "$HOME/.local/share/godot/export_templates/${V%-*}.stable" | head -5
+
+      # Debug-Schluessel. Nur zum Sideloaden - fuer den Play Store braucht es
+      # einen eigenen, dauerhaft aufbewahrten Schluessel. Geht der verloren,
+      # laesst sich die App nie wieder aktualisieren.
+      - name: Debug-Schluessel erzeugen
+        run: |
+          keytool -keyalg RSA -genkeypair -alias androiddebugkey \
+            -keypass android -keystore "$HOME/debug.keystore" \
+            -storepass android -dname "CN=Android Debug,O=Android,C=US" \
+            -validity 9999 -deststoretype pkcs12
+
+      # Godot liest den SDK-Pfad aus den Editoreinstellungen, nicht aus der
+      # Umgebung. Beide Dateinamen, weil Godot je nach Fassung den einen oder
+      # den anderen sucht.
+      - name: Editoreinstellungen schreiben
+        run: |
+          mkdir -p "$HOME/.config/godot"
+          for datei in editor_settings-4.tres editor_settings-4.5.tres; do
+            cat > "$HOME/.config/godot/$datei" <<EOF
+          [gd_resource type="EditorSettings" format=3]
+
+          [resource]
+          export/android/android_sdk_path = "${ANDROID_SDK_ROOT}"
+          export/android/debug_keystore = "${HOME}/debug.keystore"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
+          EOF
+          done
+          echo "SDK: ${ANDROID_SDK_ROOT}"
+          ls "${ANDROID_SDK_ROOT}/build-tools" | tail -3
+
+      # Baut die class_name-Registry auf. Ohne diesen Schritt findet der
+      # Export die globalen Klassen nicht.
+      - name: Projekt importieren
+        run: godot --headless --import
+
+      - name: APK bauen
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          godot --headless --export-debug "Android" build/nekton.apk
+          ls -la build/
+          test -s build/nekton.apk
+
+      - name: APK pruefen
+        run: |
+          set -euo pipefail
+          AAPT=$(ls "${ANDROID_SDK_ROOT}"/build-tools/*/aapt2 | tail -1)
+          "$AAPT" dump badging build/nekton.apk | head -5
+          unzip -l build/nekton.apk | tail -5
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nekton-apk
+          path: build/nekton.apk
+          if-no-files-found: error
