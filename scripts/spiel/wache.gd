@@ -54,6 +54,9 @@ var _zieht := false
 var _schuetteln := 0.0
 var _polyp_takt := PackedFloat32Array()
 
+## Wieviele Treffer ohne Unterbrechung. Treibt nur die Tonhoehe.
+var _folge := 0.0
+
 
 func _ready() -> void:
     _koloniebild.geschlossen.connect(_kolonie_geschlossen)
@@ -78,6 +81,7 @@ func _bau_fertig(kammer: int) -> void:
         # sich zeigen.
         _funken.platzen(Graben.WAECHTER + Vector2(0.0, -40.0),
             Color(0.62, 0.94, 1.0), 26.0)
+    Klang.spiele(Klang.Ton.KAMMER, 1.0, 0.7)
     _hud.melde("%s fertig" % Kammern.name_von(kammer))
 
 
@@ -147,6 +151,8 @@ func starte_welle() -> void:
     _polyp_takt.fill(0.0)
     _schwarm.tiere = _tiere
     lage = Lage.WELLE
+    _folge = 0.0
+    Klang.spiele(Klang.Ton.WELLE, 1.0, 0.55)
     _hud.zeige_welle(welle_nummer, brut, Fortschritt.stand.naehrstoffe, _tiere.size())
 
     # Eine neue Regel gehoert angekuendigt. Wer in Welle 31 ploetzlich im
@@ -170,6 +176,7 @@ func _process(delta: float) -> void:
         _polypen_feuern(delta)
         _raeume_auf()
         _wellenzeit += delta
+        _folge = maxf(0.0, _folge - delta * 6.0)
         if _offen <= 0:
             _welle_geschafft()
     elif lage == Lage.BAUEN:
@@ -243,6 +250,10 @@ func _verbrenne(delta: float) -> void:
         r.hitze = 1.0
         if randf() < hell[i] * delta * 26.0:
             _funken.strahl(Graben.WAECHTER, r.ort, Arten.farbe(r.art))
+            # Die Tonhoehe steigt, solange man dranbleibt, und faellt beim
+            # Abrutschen. Das ist die einzige Rueckmeldung, die man auch mit
+            # dem Daumen auf dem Bildschirm noch mitbekommt.
+            Klang.spiele(Klang.Ton.TREFFER, 0.8 + _folge * 0.02, 0.28)
 
 
 func _polypen_feuern(delta: float) -> void:
@@ -273,11 +284,15 @@ func _raeume_auf() -> void:
             verdient += lohn
             _funken.platzen(r.ort, Arten.farbe(r.art), Arten.radius(r.art))
             _hud.zeige_ausbeute(r.ort, lohn)
+            _folge = minf(24.0, _folge + 1.0)
+            Klang.spiele(Klang.Ton.TOD, 0.82 + _folge * 0.025, 0.5)
         elif r.ort.y >= Graben.BRUT_Y - 0.5:
             r.lebendig = false
             _offen -= 1
             brut = maxi(0, brut - Arten.wucht(r.art))
             _schuetteln = 1.0
+            _folge = 0.0
+            Klang.spiele(Klang.Ton.BRUT_FAELLT, 1.0, 0.85)
             _funken.platzen(r.ort, Color(1.0, 0.42, 0.34), Arten.radius(r.art) * 1.6)
             _aktualisiere_kolonie()
             if brut <= 0:
@@ -333,6 +348,7 @@ func baue_polyp(nische: int) -> bool:
     Fortschritt.aendere(-preis)
     polypen.append(ort)
     _funken.platzen(ort, Color(0.52, 0.94, 0.80), 20.0)
+    Klang.spiele(Klang.Ton.POLYP)
     _aktualisiere_kolonie()
     _hud.zeige_bauphase(welle_nummer, brut, Fortschritt.stand.naehrstoffe,
         Fortschritt.stand.polyp_kosten(polypen.size()), polypen.size())
@@ -378,6 +394,7 @@ func _beruehrung(gedrueckt: bool, ort: Vector2) -> void:
     match lage:
         Lage.BAUEN:
             if _hud.kolonieknopf_bei(_bildschirm(ort)):
+                Klang.spiele(Klang.Ton.TIPP)
                 oeffne_kolonie()
                 return
             var n := nische_bei(ort)

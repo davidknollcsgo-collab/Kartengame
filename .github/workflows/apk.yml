@@ -76,13 +76,18 @@ jobs:
 
           [resource]
           export/android/android_sdk_path = "${ANDROID_SDK_ROOT}"
+          export/android/java_sdk_path = "${JAVA_HOME}"
           export/android/debug_keystore = "${HOME}/debug.keystore"
           export/android/debug_keystore_user = "androiddebugkey"
           export/android/debug_keystore_pass = "android"
+          export/android/shutdown_adb_on_exit = false
+          export/android/force_system_user = false
           EOF
           done
           echo "SDK: ${ANDROID_SDK_ROOT}"
+          echo "JDK: ${JAVA_HOME}"
           ls "${ANDROID_SDK_ROOT}/build-tools" | tail -3
+          ls "${ANDROID_SDK_ROOT}/platforms" | tail -3
 
       # Baut die class_name-Registry auf. Ohne diesen Schritt findet der
       # Export die globalen Klassen nicht.
@@ -95,6 +100,10 @@ jobs:
       # Ohne `|| true` bricht die Standardshell (bash -e) am fehlgeschlagenen
       # Godot-Aufruf ab - und zwar **vor** der Fehlerauswertung. Zwei CI-Laeufe
       # lang habe ich deshalb geraten, statt die Meldung zu lesen.
+      # Zwei Wege, ein Lauf. Der erste packt die mitgelieferte Vorlagen-APK um
+      # und braucht kaum Werkzeug. Schlaegt er fehl, baut der zweite mit Gradle
+      # aus den Quellen - langsamer, aber der Weg, den Godot selbst am besten
+      # geprueft hat. Einzeln zu raten kostet je Versuch einen ganzen CI-Lauf.
       - name: APK bauen
         shell: bash
         run: |
@@ -106,20 +115,38 @@ jobs:
           ls -la "$HOME/debug.keystore"
           echo "::endgroup::"
 
-          echo "::group::Android-Vorgabe"
-          sed -n '/platform="Android"/,$p' export_presets.cfg
-          echo "::endgroup::"
+          bauen () {
+            godot --headless --verbose --export-debug "Android" build/nekton.apk \
+              > export.log 2>&1 || true
+            if [ -s build/nekton.apk ]; then return 0; fi
+            echo "--- fehlgeschlagen, Auszug aus dem Protokoll ---"
+            grep -inE "android|export|keystore|template|apk|error|gradle|java" export.log \
+              | grep -viE "TextServer|Horipad|Nintendo|misc2|SDL|pen tablet" | tail -40
+            return 1
+          }
 
-          godot --headless --verbose --export-debug "Android" build/nekton.apk \
-            > export.log 2>&1 || true
+          echo "== Weg 1: mitgelieferte Vorlage =="
+          if bauen; then echo "Weg 1 hat geklappt"; ls -la build/; exit 0; fi
 
-          echo "--- Alles mit Android-, Export- oder Fehlerbezug ---"
-          grep -inE "android|export|keystore|template|apk|error|warn" export.log \
-            | grep -viE "TextServer|Horipad|Nintendo|misc2|SDL|pen tablet" \
-            | tail -60
+          echo "== Weg 2: Gradle aus den Quellen =="
+          # Genau das, was der Editor unter "Android-Build-Vorlage
+          # installieren" tut: die Quellen ins Projekt legen und markieren,
+          # damit Godot sie nicht als Spielinhalt einliest.
+          V="${GODOT_VERSION}"
+          mkdir -p android
+          unzip -oq "$HOME/.local/share/godot/export_templates/${V%-*}.stable/android_source.zip" \
+            -d android/build
+          touch android/.gdignore
+          echo "${V%-*}.stable" > android/build/.build_version
+          sed -i 's|gradle_build/use_gradle_build=false|gradle_build/use_gradle_build=true|' \
+            export_presets.cfg
+          godot --headless --import > /dev/null 2>&1
 
-          test -s build/nekton.apk
-          ls -la build/
+          rm -f build/nekton.apk
+          if bauen; then echo "Weg 2 hat geklappt"; ls -la build/; exit 0; fi
+
+          echo "Beide Wege fehlgeschlagen."
+          exit 1
 
       - name: APK pruefen
         run: |

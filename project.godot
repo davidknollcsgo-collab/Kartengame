@@ -12,6 +12,7 @@ config/features=PackedStringArray("4.5", "GL Compatibility")
 [autoload]
 
 Fortschritt="*res://scripts/autoload/fortschritt.gd"
+Klang="*res://scripts/spiel/klang.gd"
 
 [display]
 

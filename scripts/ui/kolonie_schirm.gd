@@ -99,6 +99,7 @@ func _eingabe(ereignis: InputEvent) -> void:
         return
 
     if _schliessen.has_point(ort):
+        Klang.spiele(Klang.Ton.TIPP)
         geschlossen.emit()
         hide()
         return
@@ -116,9 +117,11 @@ func _versuche_ausbau(kammer: int) -> void:
     if not grund.is_empty():
         # Der Grund wird angezeigt, nicht verschwiegen. Ein Knopf, der nur
         # grau ist, laesst den Spieler raten.
+        Klang.spiele(Klang.Ton.TIPP, 0.6, 0.5)
         _zeige(grund)
         return
     if stand.starte_bau(kammer, Time.get_unix_time_from_system()):
+        Klang.spiele(Klang.Ton.POLYP, 0.8)
         Fortschritt.sichere()
         Fortschritt.stand_geaendert.emit()
         _zeige("%s wird gegraben" % Kammern.name_von(kammer))
