@@ -25,6 +25,7 @@ var _gebaut := 0
 var _bauphase := true
 var _ende := false
 var _gewonnen := false
+var _sitzung := false
 var _verdient := 0
 var _zeit := 0.0
 var _meldung := ""
@@ -129,7 +130,19 @@ func zeige_bauphase(nummer: int, brut: int, naehrstoffe: int, preis: int,
 func zeige_ende(gewonnen: bool, nummer: int, verdient: int) -> void:
     _ende = true
     _gewonnen = gewonnen
+    _sitzung = false
     _welle = nummer
+    _verdient = verdient
+
+
+## Das Ende einer Sitzung - kein Verlust, sondern ein Punkt zum Aufhoeren.
+## Bewusst anders gefaerbt und anders formuliert als der Fall der Brut: wer
+## gerade fuenf Wellen gehalten hat, darf das nicht wie eine Niederlage lesen.
+func zeige_sitzungsende(naechste: int, verdient: int) -> void:
+    _ende = true
+    _gewonnen = false
+    _sitzung = true
+    _welle = naechste
     _verdient = verdient
 
 
@@ -283,6 +296,12 @@ func _endschirm(breite: float, hoehe: float) -> void:
         _text(mitte + Vector2(0.0, 44.0),
             "Alle %d Wellen ueberstanden" % Graben.WELLEN_GESAMT, 17,
             Color(0.66, 0.84, 0.88), true)
+    elif _sitzung:
+        _text(mitte, "SITZUNG GEHALTEN", 30, Color(0.62, 0.98, 0.86), true)
+        _text(mitte + Vector2(0.0, 44.0),
+            "%d Wellen am Stueck - weiter bei Welle %d"
+            % [Graben.WELLEN_JE_SITZUNG, _welle], 17,
+            Color(0.66, 0.84, 0.88), true)
     else:
         _text(mitte, "DIE BRUT IST GEFALLEN", 30, Color(1.0, 0.52, 0.44), true)
         _text(mitte + Vector2(0.0, 44.0), "Welle %d" % _welle, 17,
@@ -296,7 +315,11 @@ func _endschirm(breite: float, hoehe: float) -> void:
     _grabenwertung(mitte + Vector2(0.0, 122.0))
 
     var puls := 0.5 + 0.5 * sin(_zeit * 2.6)
-    _text(mitte + Vector2(0.0, 148.0), "Tippen fuer einen neuen Anlauf", 17,
+    var weiter := "Tippen setzt die Wache fort" if _sitzung \
+        else "Tippen fuer einen neuen Anlauf"
+    # 196 und nicht 148: die Wertung darueber ist zwei Zeilen hoch, und die
+    # zweite lag genau hier. Auf dem Bild sah es aus wie ein Schriftfehler.
+    _text(mitte + Vector2(0.0, 196.0), weiter, 17,
         Color(0.82, 0.94, 0.98, 0.45 + 0.55 * puls), true)
 
 

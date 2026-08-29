@@ -117,7 +117,12 @@ unter einer strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
    Welle 49 verlangte sie sieben gleichzeitige Ziele, während die zugehörige
    Sollstufe 16 nur sechs hergab — zwölf Wellen lang prüfte der Wellenprüfer
    einen Wächter, den es auf keiner Kammerstufe gab.
-8. **Der Graben öffnet sich am Tiefenschacht.** `Ausbau.schacht_fuer_abschnitt`
+8. **Eine Sitzung ist `Graben.WELLEN_JE_SITZUNG` Wellen lang.** Danach volle
+   Brut, keine Wehrpolypen. Wellenprüfer und Kolonielauf rechnen seit jeher so;
+   das Spiel tat es nicht — dort trug die Brut ihren Schaden über beliebig
+   viele Wellen weiter und einmal gesetzte Polypen standen für immer. Gemessen
+   wurde damit ein anderes Spiel als gespielt.
+9. **Der Graben öffnet sich am Tiefenschacht.** `Ausbau.schacht_fuer_abschnitt`
    leitet aus der Sollkurve ab, welche Schachtstufe einen Abschnitt aufmacht;
    `KolonieStand.naechste_welle()` ist der einzige Weg, an die zu spielende
    Welle zu kommen. Ohne diese Kopplung stand der Spieler an Tag 6 in Welle 36,

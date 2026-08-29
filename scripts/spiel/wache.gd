@@ -17,7 +17,7 @@ extends Node2D
 ## hier ein Daumen. Alles andere getrennt zu fuehren waere derselbe Fehler wie
 ## bei HYPHA - getrennte Loeser, verschiedene Ergebnisse.
 
-enum Lage { BAUEN, WELLE, VERLOREN, GESCHAFFT }
+enum Lage { BAUEN, WELLE, VERLOREN, GESCHAFFT, SITZUNG_ENDE }
 
 ## Wie lange die Trefferanzeige eines Raeubers nachgluecht. Ohne Nachhall
 ## flackert sie bei jedem Schwenk, und man sieht nicht mehr, wen man fasst.
@@ -43,6 +43,16 @@ var welle_nummer := 1
 var brut := Graben.BRUT_LEBEN
 var polypen: Array[Vector2] = []
 var verdient := 0
+
+## Wie viele Wellen diese Sitzung schon gelaufen sind.
+##
+## **Warum es das ueberhaupt gibt.** Der Wellenpruefer und der Kolonielauf
+## rechnen seit jeher in Sitzungen zu `Graben.WELLEN_JE_SITZUNG` Wellen: volle
+## Brut am Anfang, Wehrpolypen aus dem Verdienst der Sitzung. Das Spiel tat
+## das nicht - dort trug die Brut ihren Schaden ueber beliebig viele Wellen
+## weiter, und einmal gesetzte Polypen standen fuer immer. Beides zusammen
+## heisst: gemessen wurde ein anderes Spiel als gespielt.
+var welle_in_sitzung := 0
 
 var _tiere: Array[Raeuber] = []
 var _offen := 0
@@ -175,6 +185,7 @@ func starte_welle() -> void:
         r.ort = Vector2(r.start_x, Graben.EINTRITT_Y)
         _tiere.append(r)
 
+    welle_in_sitzung += 1
     _stroemung = Fortschritt.stand.nutze_stroemung()
     _hud.stroemung = _stroemung
     _offen = _tiere.size()
@@ -370,10 +381,15 @@ func _welle_geschafft() -> void:
     if welle_nummer + 1 > stand.offene_welle():
         _hud.melde("Der Graben endet hier - Tiefenschacht Stufe %d graebt weiter"
             % stand.naechste_tiefe())
+        welle_in_sitzung = 0
         _bereite_welle_vor()
         return
 
     welle_nummer += 1
+    if welle_in_sitzung >= Graben.WELLEN_JE_SITZUNG:
+        lage = Lage.SITZUNG_ENDE
+        _hud.zeige_sitzungsende(welle_nummer, verdient)
+        return
     _bereite_welle_vor()
 
 
@@ -392,6 +408,7 @@ func neu_anfangen() -> void:
     brut = Fortschritt.stand.brut_leben()
     verdient = 0
     polypen.clear()
+    welle_in_sitzung = 0
     welle_nummer = Fortschritt.stand.naechste_welle()
     Fortschritt.sichere()
     _bereite_welle_vor()
@@ -470,7 +487,7 @@ func _beruehrung(gedrueckt: bool, ort: Vector2) -> void:
                 if baue_polyp(n):
                     return
             starte_welle()
-        Lage.VERLOREN, Lage.GESCHAFFT:
+        Lage.VERLOREN, Lage.GESCHAFFT, Lage.SITZUNG_ENDE:
             neu_anfangen()
 
 
@@ -496,6 +513,7 @@ func _lies_entwicklerschalter() -> void:
     var welle := 0
     var polypenzahl := 0
     var reiter := -1
+    var endschirm := -1
 
     for i in argumente.size():
         match argumente[i]:
@@ -513,6 +531,10 @@ func _lies_entwicklerschalter() -> void:
                     polypenzahl = int(argumente[i + 1])
             "--bauen":
                 bauen = true
+            "--endschirm":
+                # Die drei Schlussbilder lassen sich sonst nur erspielen.
+                # 0 gefallen, 1 Sitzung gehalten, 2 Graben durchgestanden.
+                endschirm = int(argumente[i + 1]) if i + 1 < argumente.size() else 0
             "--kolonie":
                 # Auch der Koloniebildschirm muss sich ansehen lassen, ohne
                 # ihn von Hand aufzutippen. 0 Kammern, 1 Linien, 2 Tag.
@@ -536,9 +558,21 @@ func _lies_entwicklerschalter() -> void:
     if reiter >= 0:
         oeffne_kolonie()
         _koloniebild.zeige_reiter(reiter)
+    if endschirm >= 0:
+        verdient = 1840
+        match endschirm:
+            1:
+                lage = Lage.SITZUNG_ENDE
+                _hud.zeige_sitzungsende(welle_nummer + 1, verdient)
+            2:
+                lage = Lage.GESCHAFFT
+                _hud.zeige_ende(true, Graben.WELLEN_GESAMT, verdient)
+            _:
+                lage = Lage.VERLOREN
+                _hud.zeige_ende(false, welle_nummer, verdient)
     if bild.is_empty():
         return
-    _nimm_auf(bild, vorlauf, bauen or reiter >= 0)
+    _nimm_auf(bild, vorlauf, bauen or reiter >= 0 or endschirm >= 0)
 
 
 ## Misst die tatsaechliche Bildrate ueber `dauer` Sekunden.
