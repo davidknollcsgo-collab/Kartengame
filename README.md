@@ -20,17 +20,29 @@ werden.
 
 | Bereich | Stand |
 |---|---|
-| Rechenkern (`Schlund`) | Lichtkegel, Bahnen, Zielauswahl — 23 Tests grün |
+| Rechenkern (`Schlund`) | Lichtkegel, Bahnen, Zielauswahl — 42 Tests grün |
 | Wellen 1–60 | aus der Ausbaukurve abgeleitet, alle 60 geprüft |
-| Schwierigkeitskurve | gemessen, steigt monoton von 0.25 auf 1.00 |
-| Schlundwache | spielbar: Wellen, Bauphase, Polypen, Niederlage, Neustart |
-| Optik | Wasser-Shader, vier gezeichnete Räuberarten, Kolonie, Funken |
+| Sechs Grabenabschnitte | eigene Regel je Abschnitt: Strömung, Trübung, Dunkelphasen, Streulicht |
+| Kolonie | fünf Kammern mit Stufen, Kosten und Bauzeiten; 30 Tage gemessen |
+| Brutlinien | drei Linien, gezüchtet statt gezogen — kein Zufall, keine Kiste |
+| Tagesziel | drei Aufgaben, Anwesenheitszähler, Lohn wächst mit dem Fortschritt |
+| Ton | vollständig synthetisiert, keine Audiodatei |
+| Speichern | verschlüsselt, mit Prüfung jedes gelesenen Werts |
+| Android | Debug-APK baut in CI und lässt sich sideloaden |
 
 ## Was noch fehlt
 
-Die Kolonie als eigener Bildschirm, Brutlinien, Speichern, Tagesziel,
-Geisterdaten, Ton, Werbung und Käufe. Der vollständige Bauplan steht im
-Projektplan.
+Geisterdaten und Bestenliste, Werbung und Käufe — alles drei braucht Konten
+und SDKs, die außerhalb dieses Repositorys eingerichtet werden. Der
+vollständige Bauplan steht im Projektplan.
+
+## APK
+
+Der Bau läuft in CI: Actions → **APK** → letzter Lauf → Artefakt
+`nekton-apk`. Die APK ist mit einem Debug-Schlüssel signiert und nur zum
+Sideloaden gedacht — für den Play Store braucht es einen eigenen,
+dauerhaft aufbewahrten Schlüssel. Geht der verloren, lässt sich die App nie
+wieder aktualisieren.
 
 ## Bauen und prüfen
 

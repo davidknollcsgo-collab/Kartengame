@@ -92,10 +92,47 @@ unter einer strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
    Wachstumszahl ergab 55 Wellen ohne einen einzigen Verlust und dann
    Totalverlust in Welle 56.
 4. **Kein Ausbau darf etwas verschlechtern.** Ein Test hält das fest.
+5. **Die Abschnittsregeln stehen im Rechenkern, nicht nur im Spiel.**
+   `Regeln.stroemung`, `Regeln.helligkeit`, `Regeln.rand_kern`,
+   `Regeln.tiefe_kern` — und ihr Wirkungsgrad geht in `Wellen.staerke()` ein.
+   Ohne diese Kopplung wurde jeder neue Abschnitt zur Wand: der Wellenprüfer
+   meldete fünf gefallene Sitzungen ab Welle 36.
+6. **Es gibt keine Audiodatei und nur eine Bilddatei.** Der Ton entsteht in
+   `klang.gd`, das App-Symbol in `tools/symbol.gd` — beide zur Laufzeit
+   gerechnet. Das ist der Copyright-Nachweis, nicht nur ein Stil.
+
+## APK bauen
+
+`dl.google.com` ist blockiert, also gibt es hier kein Android SDK. Der Bau
+läuft in CI (`.github/workflows/apk.yml`) und lädt die APK als Artefakt hoch.
+
+**Zwei Fallen, die zusammen sieben CI-Läufe gekostet haben:**
+
+1. **Godot verlangt `rendering/textures/vram_compression/import_etc2_astc`.**
+   Fehlt es, bricht der Android-Export mit `configuration errors:` und einer
+   **leeren** Fehlerliste ab — weil `has_valid_project_configuration` die
+   Meldung der vorigen Prüfung überschreibt statt sie zu ergänzen.
+2. **`export/android/android_sdk_path` gehört dem Android-Exportmodul.** Von
+   Hand in die Editoreinstellungen geschrieben, bevor Godot einmal lief,
+   verwirft es den Schlüssel beim nächsten Sichern. Also: Godot einmal laufen
+   lassen, dann die Werte per `sed` hineinschreiben.
+
+**Lehre daraus:** raten Sie nicht in CI. Der Fehler lässt sich hier
+reproduzieren — Exportvorlagen von GitHub holen und ein Schein-SDK bauen:
+
+```bash
+FAKE=/tmp/fakesdk
+mkdir -p $FAKE/platform-tools $FAKE/build-tools/34.0.0 $FAKE/platforms/android-34
+for f in $FAKE/platform-tools/adb $FAKE/build-tools/34.0.0/{apksigner,zipalign}; do
+  printf '#!/bin/sh\nexit 0\n' > "$f"; chmod +x "$f"
+done
+```
+
+Damit kostet ein Versuch Sekunden statt einer CI-Minute.
 
 ## Grenzen der Umgebung
 
-- `dl.google.com` ist blockiert → kein Android SDK → **AAB-Builds nur in CI**
+- `dl.google.com` ist blockiert → kein Android SDK → **APK-Builds nur in CI**
 - Der Container ist flüchtig; Godot muss je Session neu installiert werden
 
 ## Konventionen

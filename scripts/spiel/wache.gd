@@ -70,7 +70,22 @@ func _ready() -> void:
     _bereite_welle_vor()
     if offline > 0:
         _hud.zeige_ausbeute(Graben.WAECHTER + Vector2(0.0, -70.0), offline)
+    _zeige_einstieg()
     _lies_entwicklerschalter()
+
+
+## Der Einstieg schreitet an Ereignissen fort, nicht an einer Uhr. Wer
+## langsamer ist, bekommt mehr Zeit; wer es sofort versteht, wird nicht
+## aufgehalten.
+func _zeige_einstieg() -> void:
+    _hud.zeige_einstieg(Fortschritt.stand.einstieg
+        if Fortschritt.stand.einstieg < _hud.EINSTIEG.size() else -1)
+
+
+func _einstieg_weiter(ab: int) -> void:
+    if Fortschritt.stand.einstieg == ab:
+        Fortschritt.stand.einstieg += 1
+        _zeige_einstieg()
 
 
 func _bau_fertig(kammer: int) -> void:
@@ -98,6 +113,7 @@ func oeffne_kolonie() -> void:
     if lage != Lage.BAUEN:
         return
     _hud.visible = false
+    _einstieg_weiter(4)
     _koloniebild.oeffne()
 
 
@@ -301,6 +317,7 @@ func _raeume_auf() -> void:
             _hud.zeige_ausbeute(r.ort, lohn)
             _folge = minf(24.0, _folge + 1.0)
             Fortschritt.melde_ziel(Tagesziel.Ziel.RAEUBER)
+            _einstieg_weiter(1)
             Klang.spiele(Klang.Ton.TOD, 0.82 + _folge * 0.025, 0.5)
         elif r.ort.y >= Graben.BRUT_Y - 0.5:
             r.lebendig = false
@@ -321,6 +338,7 @@ func _raeume_auf() -> void:
 
 func _welle_geschafft() -> void:
     Fortschritt.melde_ziel(Tagesziel.Ziel.WELLEN)
+    _einstieg_weiter(2)
     Fortschritt.merke_welle(welle_nummer + 1)
     if welle_nummer >= Graben.WELLEN_GESAMT:
         lage = Lage.GESCHAFFT
@@ -366,6 +384,7 @@ func baue_polyp(nische: int) -> bool:
     polypen.append(ort)
     _funken.platzen(ort, Color(0.52, 0.94, 0.80), 20.0)
     Klang.spiele(Klang.Ton.POLYP)
+    _einstieg_weiter(3)
     _aktualisiere_kolonie()
     _hud.zeige_bauphase(welle_nummer, brut, Fortschritt.stand.naehrstoffe,
         Fortschritt.stand.polyp_kosten(polypen.size()), polypen.size())
@@ -396,10 +415,12 @@ func _unhandled_input(ereignis: InputEvent) -> void:
         _beruehrung(ereignis.pressed, _welt(ereignis.position))
     elif ereignis is InputEventScreenDrag:
         _finger = _welt(ereignis.position)
+        _einstieg_weiter(0)
     elif ereignis is InputEventMouseButton and ereignis.button_index == MOUSE_BUTTON_LEFT:
         _beruehrung(ereignis.pressed, _welt(ereignis.position))
     elif ereignis is InputEventMouseMotion and _zieht:
         _finger = _welt(ereignis.position)
+        _einstieg_weiter(0)
 
 
 func _beruehrung(gedrueckt: bool, ort: Vector2) -> void:

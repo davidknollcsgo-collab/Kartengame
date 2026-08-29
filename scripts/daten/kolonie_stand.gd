@@ -42,6 +42,10 @@ var ziel_fortschritt := PackedInt32Array()
 var ziel_geholt := PackedInt32Array()
 var strecke := 0
 
+## Wie weit der Einstieg gediehen ist. Er laeuft genau einmal, und zwar
+## waehrend gespielt wird - nicht als Textwand davor.
+var einstieg := 0
+
 
 func _init() -> void:
     stufen.resize(Kammern.zahl())
@@ -308,6 +312,7 @@ func zu_wort() -> Dictionary:
         &"ziel_fortschritt": Array(ziel_fortschritt),
         &"ziel_geholt": Array(ziel_geholt),
         &"strecke": strecke,
+        &"einstieg": einstieg,
     }
 
 
@@ -339,6 +344,7 @@ static func aus_wort(wort: Dictionary) -> KolonieStand:
 
     s.tag = int(wort.get(&"tag", 0))
     s.strecke = maxi(0, int(wort.get(&"strecke", 0)))
+    s.einstieg = maxi(0, int(wort.get(&"einstieg", 0)))
     var roh_f: Array = wort.get(&"ziel_fortschritt", [])
     for i in mini(roh_f.size(), s.ziel_fortschritt.size()):
         s.ziel_fortschritt[i] = clampi(int(roh_f[i]), 0, Tagesziel.menge(i))

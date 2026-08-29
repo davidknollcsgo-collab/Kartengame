@@ -36,6 +36,18 @@ var _kolonieknopf := Rect2()
 var _abschnitt := -1
 var _abschnitt_leben := 0.0
 
+## Einstieg. Ein Satz zur Zeit, mitten im Spiel statt als Textwand davor -
+## wer eine Anleitung lesen muss, bevor er etwas anfassen darf, faengt bei
+## einem Einminutenspiel gar nicht erst an.
+const EINSTIEG: PackedStringArray = [
+    "Halte den Finger auf dem Bild und schwenke den Lichtkegel.",
+    "Was im Licht steht, verbrennt. Der Kegel fasst nur wenige zugleich.",
+    "Lass nichts zur Brut durch - die Eier unten sind, was du huetest.",
+    "Zwischen den Wellen: Nischen antippen fuer Wehrpolypen.",
+    "Und im Graben darunter waechst deine Kolonie.",
+]
+var _einstieg := -1
+
 var _schrift: Font
 var _ausbeuten: Array[Dictionary] = []
 
@@ -76,6 +88,11 @@ func melde(was: String) -> void:
 func zeige_abschnitt(abschnitt: int) -> void:
     _abschnitt = abschnitt
     _abschnitt_leben = 5.0
+
+
+## Zeigt den Einstiegssatz mit dieser Nummer, oder -1 fuer keinen.
+func zeige_einstieg(schritt: int) -> void:
+    _einstieg = schritt if schritt >= 0 and schritt < EINSTIEG.size() else -1
 
 
 func kolonieknopf_bei(bildschirm: Vector2) -> bool:
@@ -142,6 +159,16 @@ func _zeichne() -> void:
 
     if _abschnitt_leben > 0.0:
         _abschnittstafel(breite, hoehe)
+    elif _einstieg >= 0 and not _ende:
+        _einstiegszeile(breite, hoehe)
+
+
+## Ein Satz, unten, ohne Kasten. Er soll begleiten, nicht unterbrechen.
+func _einstiegszeile(breite: float, hoehe: float) -> void:
+    var puls := 0.6 + 0.4 * sin(_zeit * 2.0)
+    var y := hoehe * 0.24
+    _text(Vector2(breite * 0.5, y), EINSTIEG[_einstieg], 16,
+        Color(0.80, 0.94, 0.98, puls), true)
 
 
 ## Zwei Zeilen in der Bildmitte: der Name des Abschnitts und was er aendert.
