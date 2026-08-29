@@ -47,11 +47,18 @@ var _schrift: Font
 var _zeit := 0.0
 var _baender: Array[Rect2] = []
 var _schliessen := Rect2()
-var _umschalter := Rect2()
+var _reiter: Array[Rect2] = []
 
-## Zwei Ansichten statt einer langen Liste: fuenf Kammern und vier Linien
-## nebeneinander waeren auf einem Telefon neun gedraengte Zeilen.
-var _zeigt_linien := false
+## Drei Ansichten statt einer langen Liste: fuenf Kammern, drei Linien und
+## der Tag nebeneinander waeren auf einem Telefon elf gedraengte Zeilen.
+enum Sicht { KAMMERN, LINIEN, TAG }
+var _sicht := Sicht.KAMMERN
+
+## Tippziele der Tagesansicht, in Bildschirmkoordinaten.
+var _lauter := Rect2()
+var _leiser := Rect2()
+var _loeschen := Rect2()
+var _loeschen_sicher := false
 var _gedrueckt := -1
 var _meldung := ""
 var _meldung_leben := 0.0
@@ -75,7 +82,9 @@ func _ready() -> void:
 
 func oeffne() -> void:
     show()
-    _zeigt_linien = false
+    _sicht = Sicht.KAMMERN
+    _loeschen_sicher = false
+    Fortschritt.pruefe_tag()
     _meldung = ""
     _meldung_leben = 0.0
     _flaeche.queue_redraw()
@@ -114,19 +123,46 @@ func _eingabe(ereignis: InputEvent) -> void:
         hide()
         return
 
-    if _umschalter.has_point(ort):
-        Klang.spiele(Klang.Ton.TIPP)
-        _zeigt_linien = not _zeigt_linien
-        _meldung_leben = 0.0
-        return
+    for r in _reiter.size():
+        if _reiter[r].has_point(ort):
+            Klang.spiele(Klang.Ton.TIPP)
+            _sicht = r as Sicht
+            _loeschen_sicher = false
+            _meldung_leben = 0.0
+            return
+
+    if _sicht == Sicht.TAG:
+        if _lauter.has_point(ort):
+            Klang.laut = Klang.laut + 0.2
+            Klang.spiele(Klang.Ton.TIPP)
+            return
+        if _leiser.has_point(ort):
+            Klang.laut = Klang.laut - 0.2
+            Klang.spiele(Klang.Ton.TIPP)
+            return
+        if _loeschen.has_point(ort):
+            # Zwei Tipps, nicht einer. Ein Spielstand, den ein Fehlgriff
+            # loescht, ist kein Spielstand.
+            if _loeschen_sicher:
+                Fortschritt.von_vorn()
+                _loeschen_sicher = false
+                _zeige("Kolonie neu gegruendet")
+            else:
+                _loeschen_sicher = true
+                _zeige("Noch einmal tippen loescht wirklich")
+            Klang.spiele(Klang.Ton.TIPP, 0.6)
+            return
 
     for i in _baender.size():
         if _baender[i].has_point(ort):
             _gedrueckt = i
-            if _zeigt_linien:
-                _versuche_linie(i + 1)
-            else:
-                _versuche_ausbau(i)
+            match _sicht:
+                Sicht.LINIEN:
+                    _versuche_linie(i + 1)
+                Sicht.TAG:
+                    _hole_ziel(i)
+                _:
+                    _versuche_ausbau(i)
             return
 
 
@@ -144,6 +180,23 @@ func _versuche_ausbau(kammer: int) -> void:
         Fortschritt.sichere()
         Fortschritt.stand_geaendert.emit()
         _zeige("%s wird gegraben" % Kammern.name_von(kammer))
+
+
+func _hole_ziel(index: int) -> void:
+    var stand: KolonieStand = Fortschritt.stand
+    if not stand.ziel_erfuellt(index):
+        Klang.spiele(Klang.Ton.TIPP, 0.6, 0.5)
+        _zeige("Noch %d von %d" % [stand.ziel_fortschritt[index],
+            Tagesziel.menge(index)])
+        return
+    var lohn := stand.hole_ziel(index)
+    if lohn > 0:
+        Klang.spiele(Klang.Ton.KAMMER, 1.2, 0.7)
+        Fortschritt.sichere()
+        Fortschritt.stand_geaendert.emit()
+        _zeige("+%d Naehrstoff" % lohn)
+    else:
+        _zeige("Schon abgeholt")
 
 
 ## Zuechten oder, wenn schon gezuechtet, auswaehlen.
@@ -194,7 +247,11 @@ func _zeichne() -> void:
     _umschalterzeile(breite)
 
     _baender.clear()
-    var anzahl := (Brutlinien.zahl() - 1) if _zeigt_linien else Kammern.zahl()
+    var anzahl := Kammern.zahl()
+    if _sicht == Sicht.LINIEN:
+        anzahl = Brutlinien.zahl() - 1
+    elif _sicht == Sicht.TAG:
+        anzahl = Tagesziel.zahl()
     var oben := KOPF + 58.0
     var verfuegbar := hoehe - oben - FUSS - 24.0
     var passt := BAND
@@ -211,11 +268,21 @@ func _zeichne() -> void:
     for k in anzahl:
         var kasten := Rect2(RAND, y, breite - RAND * 2.0, passt)
         _baender.append(kasten)
-        if _zeigt_linien:
-            _brutlinie(kasten, k + 1, stand)
-        else:
-            _kammer(kasten, k, stand, jetzt)
+        match _sicht:
+            Sicht.LINIEN:
+                _brutlinie(kasten, k + 1, stand)
+            Sicht.TAG:
+                _tagesziel(kasten, k, stand)
+            _:
+                _kammer(kasten, k, stand, jetzt)
         y += passt + LUECKE
+
+    if _sicht == Sicht.TAG:
+        _tagesfuss(breite, y + 6.0, stand)
+    else:
+        _lauter = Rect2()
+        _leiser = Rect2()
+        _loeschen = Rect2()
 
     _fusszeile(breite, hoehe)
 
@@ -260,22 +327,104 @@ func _kopfzeile(breite: float, stand: KolonieStand) -> void:
         Color(BAND_KANTE.r, BAND_KANTE.g, BAND_KANTE.b, 0.4), 1.4)
 
 
-## Die Umschaltzeile: zwei Reiter, der aktive hell.
+## Die Umschaltzeile: drei Reiter, der aktive hell.
 func _umschalterzeile(breite: float) -> void:
+    const BESCHRIFTUNG: PackedStringArray = ["KAMMERN", "LINIEN", "TAG"]
     var y := KOPF + 12.0
-    var halb := (breite - RAND * 2.0 - 8.0) * 0.5
-    var links := Rect2(RAND, y, halb, 36.0)
-    var rechts := Rect2(RAND + halb + 8.0, y, halb, 36.0)
-    _umschalter = rechts if not _zeigt_linien else links
+    var breit := (breite - RAND * 2.0 - 16.0) / 3.0
+    _reiter.clear()
 
-    for paar in [[links, "KAMMERN", not _zeigt_linien], [rechts, "BRUTLINIEN", _zeigt_linien]]:
-        var kasten: Rect2 = paar[0]
-        var aktiv: bool = paar[2]
+    for i in 3:
+        var kasten := Rect2(RAND + (breit + 8.0) * float(i), y, breit, 36.0)
+        _reiter.append(kasten)
+        var aktiv := _sicht == i
         _flaeche.draw_rect(kasten, Color(0.06, 0.16, 0.20, 0.9 if aktiv else 0.45))
         _flaeche.draw_rect(kasten, Color(0.42, 0.86, 0.92, 0.5 if aktiv else 0.16),
             false, 1.4)
-        _text(kasten.get_center() + Vector2(0.0, 5.0), paar[1], 14,
+        _text(kasten.get_center() + Vector2(0.0, 5.0), BESCHRIFTUNG[i], 14,
             SCHRIFT if aktiv else LEISE, true)
+
+        # Ein Punkt am Reiter, wenn dort etwas abzuholen ist. Sonst muesste
+        # man jeden Tag nachsehen, ob sich etwas getan hat.
+        if i == Sicht.TAG and Fortschritt.stand.ziele_offen() > 0:
+            _flaeche.draw_circle(kasten.position + Vector2(kasten.size.x - 10.0, 10.0),
+                4.0, NAEHR)
+
+
+## Ein Tagesziel mit Fortschrittsbalken.
+func _tagesziel(kasten: Rect2, index: int, stand: KolonieStand) -> void:
+    var erfuellt := stand.ziel_erfuellt(index)
+    var geholt := stand.ziel_geholt[index] == 1
+    var farbe := NAEHR if erfuellt and not geholt else LEISE
+
+    _flaeche.draw_rect(kasten, Color(BAND_FARBE.r, BAND_FARBE.g, BAND_FARBE.b, 0.85))
+    _flaeche.draw_rect(kasten, Color(farbe.r, farbe.g, farbe.b, 0.32), false, 1.4)
+    _flaeche.draw_rect(Rect2(kasten.position, Vector2(3.0, kasten.size.y)),
+        Color(farbe.r, farbe.g, farbe.b, 0.85))
+
+    var links := kasten.position.x + 20.0
+    _text(Vector2(links, kasten.position.y + 32.0), Tagesziel.name_von(index), 16,
+        LEISE if geholt else SCHRIFT)
+
+    var soll := Tagesziel.menge(index)
+    var ist: int = stand.ziel_fortschritt[index]
+    var balken := Rect2(links, kasten.end.y - 30.0, kasten.size.x - 150.0, 5.0)
+    _flaeche.draw_rect(balken, Color(0.0, 0.0, 0.0, 0.45))
+    _flaeche.draw_rect(Rect2(balken.position,
+        Vector2(balken.size.x * clampf(float(ist) / float(soll), 0.0, 1.0),
+        balken.size.y)), farbe)
+    _text(Vector2(links, kasten.end.y - 8.0), "%d / %d" % [ist, soll], 12, LEISE)
+
+    var rechts := kasten.end.x - 14.0
+    if geholt:
+        _text(Vector2(rechts, kasten.get_center().y + 5.0), "geholt", 14, LEISE,
+            false, true)
+    elif erfuellt:
+        _text(Vector2(rechts, kasten.get_center().y - 4.0), "abholen", 13, NAEHR,
+            false, true)
+        _text(Vector2(rechts, kasten.get_center().y + 18.0),
+            "+%d" % Tagesziel.lohn(index, stand.hoechste_welle), 17, NAEHR,
+            false, true)
+    else:
+        _text(Vector2(rechts, kasten.get_center().y + 5.0),
+            "+%d" % Tagesziel.lohn(index, stand.hoechste_welle), 15, LEISE,
+            false, true)
+
+
+## Unter den Zielen: Anwesenheit, Lautstaerke, Lizenzen, Neuanfang.
+func _tagesfuss(breite: float, y: float, stand: KolonieStand) -> void:
+    _text(Vector2(RAND, y + 22.0), "%d Tage in Folge im Graben" % stand.strecke,
+        15, Color(0.72, 0.88, 0.92))
+
+    # Lautstaerke in Schritten statt als Schieber: einen Schieber trifft man
+    # mit dem Daumen schlecht, zwei Knoepfe immer.
+    var zeile := y + 44.0
+    _text(Vector2(RAND, zeile + 24.0), "Ton  %d%%" % int(round(Klang.laut * 100.0)),
+        15, LEISE)
+    _leiser = Rect2(breite - RAND - 96.0, zeile, 44.0, 34.0)
+    _lauter = Rect2(breite - RAND - 44.0, zeile, 44.0, 34.0)
+    for paar in [[_leiser, "-"], [_lauter, "+"]]:
+        var kasten: Rect2 = paar[0]
+        _flaeche.draw_rect(kasten, Color(0.06, 0.16, 0.20, 0.8))
+        _flaeche.draw_rect(kasten, Color(0.42, 0.86, 0.92, 0.28), false, 1.3)
+        _text(kasten.get_center() + Vector2(0.0, 6.0), paar[1], 18, SCHRIFT, true)
+
+    # Lizenzen sind Pflicht, nicht Kuer: Godot steht unter MIT, die Schriften
+    # unter SIL OFL, und beide verlangen, dass der Text mit ausgeliefert wird.
+    var lz := zeile + 46.0
+    _text(Vector2(RAND, lz + 16.0),
+        "Godot Engine (MIT) - Schriften SIL OFL 1.1", 12, Color(0.40, 0.52, 0.58))
+    _text(Vector2(RAND, lz + 34.0),
+        "Grafik und Ton in diesem Spiel selbst erzeugt", 12, Color(0.40, 0.52, 0.58))
+
+    _loeschen = Rect2(RAND, lz + 46.0, breite - RAND * 2.0, 34.0)
+    var warnfarbe := Color(1.0, 0.52, 0.44) if _loeschen_sicher else Color(0.44, 0.36, 0.36)
+    _flaeche.draw_rect(_loeschen, Color(0.10, 0.05, 0.05, 0.7))
+    _flaeche.draw_rect(_loeschen, Color(warnfarbe.r, warnfarbe.g, warnfarbe.b, 0.4),
+        false, 1.3)
+    _text(_loeschen.get_center() + Vector2(0.0, 5.0),
+        "WIRKLICH LOESCHEN?" if _loeschen_sicher else "Kolonie neu gruenden",
+        14, warnfarbe, true)
 
 
 ## Eine Brutlinie. Anders als eine Kammer hat sie keine Stufen - sie ist da

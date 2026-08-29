@@ -74,6 +74,7 @@ func _ready() -> void:
 
 
 func _bau_fertig(kammer: int) -> void:
+    Fortschritt.melde_ziel(Tagesziel.Ziel.AUSBAU)
     _stelle_ausbau_ein()
     if lage == Lage.BAUEN:
         # Eine fertige Kammer waehrend der Welle stumm zu schlucken waere die
@@ -299,6 +300,7 @@ func _raeume_auf() -> void:
             _funken.platzen(r.ort, Arten.farbe(r.art), Arten.radius(r.art))
             _hud.zeige_ausbeute(r.ort, lohn)
             _folge = minf(24.0, _folge + 1.0)
+            Fortschritt.melde_ziel(Tagesziel.Ziel.RAEUBER)
             Klang.spiele(Klang.Ton.TOD, 0.82 + _folge * 0.025, 0.5)
         elif r.ort.y >= Graben.BRUT_Y - 0.5:
             r.lebendig = false
@@ -318,6 +320,7 @@ func _raeume_auf() -> void:
 # --- Uebergaenge -----------------------------------------------------------
 
 func _welle_geschafft() -> void:
+    Fortschritt.melde_ziel(Tagesziel.Ziel.WELLEN)
     Fortschritt.merke_welle(welle_nummer + 1)
     if welle_nummer >= Graben.WELLEN_GESAMT:
         lage = Lage.GESCHAFFT

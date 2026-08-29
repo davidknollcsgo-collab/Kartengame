@@ -64,30 +64,52 @@ jobs:
             -storepass android -dname "CN=Android Debug,O=Android,C=US" \
             -validity 9999 -deststoretype pkcs12
 
-      # Godot liest den SDK-Pfad aus den Editoreinstellungen, nicht aus der
-      # Umgebung. Beide Dateinamen, weil Godot je nach Fassung den einen oder
-      # den anderen sucht.
-      - name: Editoreinstellungen schreiben
+      # **Reihenfolge ist hier alles.**
+      #
+      # `export/android/android_sdk_path` gehoert dem Android-Exportmodul und
+      # wird erst angemeldet, wenn Godot dieses Modul geladen hat. Schreibt man
+      # den Schluessel vorher von Hand in die Einstellungsdatei, kennt Godot ihn
+      # beim Laden noch nicht und wirft ihn beim naechsten Sichern weg - der
+      # SDK-Pfad ist danach leer.
+      #
+      # Sechs CI-Laeufe lang war das unsichtbar, weil Godot die Meldung dazu
+      # verliert: `has_valid_project_configuration` ueberschreibt die
+      # Fehlerzeile der vorigen Pruefung, statt sie zu ergaenzen. Uebrig bleibt
+      # "configuration errors:" mit leerer Liste. Erst derselbe Export lokal,
+      # ohne Vorlagen, hat die echten Meldungen gezeigt.
+      #
+      # Also: Godot einmal laufen lassen, damit es eine vollstaendige
+      # Einstellungsdatei anlegt - und erst dann die Werte hineinschreiben.
+      - name: Editoreinstellungen anlegen und fuellen
+        shell: bash
         run: |
-          mkdir -p "$HOME/.config/godot"
-          for datei in editor_settings-4.tres editor_settings-4.5.tres; do
-            cat > "$HOME/.config/godot/$datei" <<EOF
-          [gd_resource type="EditorSettings" format=3]
+          set -euo pipefail
+          godot --headless --import > /dev/null 2>&1 || true
 
-          [resource]
-          export/android/android_sdk_path = "${ANDROID_SDK_ROOT}"
-          export/android/java_sdk_path = "${JAVA_HOME}"
-          export/android/debug_keystore = "${HOME}/debug.keystore"
-          export/android/debug_keystore_user = "androiddebugkey"
-          export/android/debug_keystore_pass = "android"
-          export/android/shutdown_adb_on_exit = false
-          export/android/force_system_user = false
-          EOF
-          done
-          echo "SDK: ${ANDROID_SDK_ROOT}"
-          echo "JDK: ${JAVA_HOME}"
-          ls "${ANDROID_SDK_ROOT}/build-tools" | tail -3
-          ls "${ANDROID_SDK_ROOT}/platforms" | tail -3
+          DATEI=$(ls "$HOME/.config/godot/"editor_settings-*.tres 2>/dev/null | head -1)
+          test -n "$DATEI"
+          echo "Einstellungen: $DATEI"
+
+          setze () {
+            if grep -q "^$1 = " "$DATEI"; then
+              sed -i "s|^$1 = .*|$1 = $2|" "$DATEI"
+            else
+              # Godot kennt den Schluessel doch nicht - dann ans Ende des
+              # [resource]-Blocks haengen, bevor die Unterressourcen kommen.
+              printf '%s = %s\n' "$1" "$2" >> "$DATEI"
+            fi
+          }
+
+          setze "export/android/android_sdk_path" "\"${ANDROID_SDK_ROOT}\""
+          setze "export/android/java_sdk_path" "\"${JAVA_HOME}\""
+          setze "export/android/debug_keystore" "\"${HOME}/debug.keystore\""
+          setze "export/android/debug_keystore_user" "\"androiddebugkey\""
+          setze "export/android/debug_keystore_pass" "\"android\""
+
+          echo "--- was jetzt drinsteht ---"
+          grep -n "export/android" "$DATEI"
+          echo "--- SDK-Inhalt ---"
+          ls "${ANDROID_SDK_ROOT}" | head -10
 
       # Wo sucht Godot die Exportvorlagen wirklich? Fuenf Laeufe lang war die
       # Fehlerliste leer - das passt zu "Vorlage nicht gefunden", und dann ist
@@ -107,11 +129,6 @@ jobs:
           echo "--- was tatsaechlich liegt ---"
           find "$HOME/.local/share/godot" -maxdepth 3 | head -20
           cat "$HOME/.local/share/godot/export_templates/"*/version.txt 2>/dev/null || echo "keine version.txt"
-
-      # Baut die class_name-Registry auf. Ohne diesen Schritt findet der
-      # Export die globalen Klassen nicht.
-      - name: Projekt importieren
-        run: godot --headless --import
 
       # --verbose, weil Godot im Headless-Betrieb sonst nur "configuration
       # errors" meldet und verschweigt, welcher. Raten kostet je Versuch einen
@@ -139,8 +156,8 @@ jobs:
               > export.log 2>&1 || true
             if [ -s build/nekton.apk ]; then return 0; fi
             echo "--- fehlgeschlagen, Auszug aus dem Protokoll ---"
-            grep -inE "android|export|keystore|template|apk|error|gradle|java" export.log \
-              | grep -viE "TextServer|Horipad|Nintendo|misc2|SDL|pen tablet" | tail -40
+            grep -viE "TextServer|Horipad|Nintendo|misc2|SDL|pen tablet|Unrecognized" \
+              export.log | tail -45
             return 1
           }
 

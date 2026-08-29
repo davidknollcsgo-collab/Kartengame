@@ -20,6 +20,7 @@ var _bis_zum_sichern := SICHERN_ALLE
 func _ready() -> void:
     process_mode = Node.PROCESS_MODE_ALWAYS
     stand = Speicher.lies()
+    pruefe_tag()
 
 
 func _process(delta: float) -> void:
@@ -60,6 +61,21 @@ func begruesse() -> int:
         stand_geaendert.emit()
         sichere()
     return ertrag
+
+
+## Prueft den Tageswechsel und sichert, wenn einer stattfand.
+func pruefe_tag() -> bool:
+    if stand == null:
+        return false
+    if not stand.pruefe_tag():
+        return false
+    stand_geaendert.emit()
+    sichere()
+    return true
+
+
+func melde_ziel(index: int, menge := 1) -> void:
+    stand.melde_ziel(index, menge)
 
 
 func aendere(betrag: int) -> void:

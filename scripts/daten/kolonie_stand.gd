@@ -33,11 +33,22 @@ var bau_fertig_um := 0.0
 ## Wann der Spieler zuletzt da war - Grundlage des Offline-Ertrags.
 var zuletzt_gesehen := 0.0
 
+## --- Tagesziel ---
+##
+## `tag` ist der Tag, fuer den `fortschritt` und `geholt` gelten. Wechselt er,
+## beginnen die Ziele von vorn; `strecke` zaehlt weiter.
+var tag := 0
+var ziel_fortschritt := PackedInt32Array()
+var ziel_geholt := PackedInt32Array()
+var strecke := 0
+
 
 func _init() -> void:
     stufen.resize(Kammern.zahl())
     stufen.fill(0)
     linien.append(Brutlinien.Linie.KEINE)
+    ziel_fortschritt.resize(Tagesziel.zahl())
+    ziel_geholt.resize(Tagesziel.zahl())
 
 
 func stufe(kammer: int) -> int:
@@ -109,6 +120,65 @@ func hole_bau_ab(jetzt: float) -> int:
     bau_kammer = -1
     bau_fertig_um = 0.0
     return kammer
+
+
+# --- Tagesziel -------------------------------------------------------------
+
+## Prueft den Tageswechsel. Gibt zurueck, ob ein neuer Tag begonnen hat.
+func pruefe_tag() -> bool:
+    var jetzt := Tagesziel.heute()
+    if jetzt == tag:
+        return false
+    # Nur wer *gestern* da war, setzt die Strecke fort. Wer laenger weg war,
+    # beginnt bei eins - aber verliert nichts anderes.
+    strecke = strecke + 1 if tag > 0 and _ist_gestern(tag, jetzt) else 1
+    tag = jetzt
+    ziel_fortschritt.fill(0)
+    ziel_geholt.fill(0)
+    return true
+
+
+static func _ist_gestern(alt: int, neu: int) -> bool:
+    var a := Time.get_unix_time_from_datetime_dict({
+        "year": alt / 10000, "month": (alt / 100) % 100, "day": alt % 100,
+        "hour": 12, "minute": 0, "second": 0})
+    var n := Time.get_unix_time_from_datetime_dict({
+        "year": neu / 10000, "month": (neu / 100) % 100, "day": neu % 100,
+        "hour": 12, "minute": 0, "second": 0})
+    return absf(n - a - 86400.0) < 43200.0
+
+
+func melde_ziel(index: int, menge := 1) -> void:
+    if index < 0 or index >= ziel_fortschritt.size():
+        return
+    ziel_fortschritt[index] = mini(ziel_fortschritt[index] + menge,
+        Tagesziel.menge(index))
+
+
+func ziel_erfuellt(index: int) -> bool:
+    return ziel_fortschritt[index] >= Tagesziel.menge(index)
+
+
+func ziel_offen(index: int) -> bool:
+    return ziel_erfuellt(index) and ziel_geholt[index] == 0
+
+
+## Holt den Lohn eines erfuellten Ziels ab. Gibt zurueck, was es einbrachte.
+func hole_ziel(index: int) -> int:
+    if not ziel_offen(index):
+        return 0
+    ziel_geholt[index] = 1
+    var lohn := Tagesziel.lohn(index, hoechste_welle)
+    naehrstoffe += lohn
+    return lohn
+
+
+func ziele_offen() -> int:
+    var zahl := 0
+    for i in ziel_fortschritt.size():
+        if ziel_offen(i):
+            zahl += 1
+    return zahl
 
 
 # --- Brutlinien ------------------------------------------------------------
@@ -234,6 +304,10 @@ func zu_wort() -> Dictionary:
         &"bau_kammer": bau_kammer,
         &"bau_fertig_um": bau_fertig_um,
         &"zuletzt_gesehen": zuletzt_gesehen,
+        &"tag": tag,
+        &"ziel_fortschritt": Array(ziel_fortschritt),
+        &"ziel_geholt": Array(ziel_geholt),
+        &"strecke": strecke,
     }
 
 
@@ -262,4 +336,13 @@ static func aus_wort(wort: Dictionary) -> KolonieStand:
         s.bau_kammer = -1
     s.bau_fertig_um = float(wort.get(&"bau_fertig_um", 0.0))
     s.zuletzt_gesehen = float(wort.get(&"zuletzt_gesehen", 0.0))
+
+    s.tag = int(wort.get(&"tag", 0))
+    s.strecke = maxi(0, int(wort.get(&"strecke", 0)))
+    var roh_f: Array = wort.get(&"ziel_fortschritt", [])
+    for i in mini(roh_f.size(), s.ziel_fortschritt.size()):
+        s.ziel_fortschritt[i] = clampi(int(roh_f[i]), 0, Tagesziel.menge(i))
+    var roh_g: Array = wort.get(&"ziel_geholt", [])
+    for i in mini(roh_g.size(), s.ziel_geholt.size()):
+        s.ziel_geholt[i] = clampi(int(roh_g[i]), 0, 1)
     return s
