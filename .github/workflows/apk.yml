@@ -92,17 +92,32 @@ jobs:
       # --verbose, weil Godot im Headless-Betrieb sonst nur "configuration
       # errors" meldet und verschweigt, welcher. Raten kostet je Versuch einen
       # ganzen CI-Lauf.
+      # Ohne `|| true` bricht die Standardshell (bash -e) am fehlgeschlagenen
+      # Godot-Aufruf ab - und zwar **vor** der Fehlerauswertung. Zwei CI-Laeufe
+      # lang habe ich deshalb geraten, statt die Meldung zu lesen.
       - name: APK bauen
+        shell: bash
         run: |
           set -uo pipefail
           mkdir -p build
-          echo "--- Android-Vorgabe ---"
-          sed -n '/platform="Android"/,$p' export_presets.cfg | head -40
+
+          echo "::group::Editoreinstellungen"
+          cat "$HOME/.config/godot/editor_settings-4.5.tres"
+          ls -la "$HOME/debug.keystore"
+          echo "::endgroup::"
+
+          echo "::group::Android-Vorgabe"
+          sed -n '/platform="Android"/,$p' export_presets.cfg
+          echo "::endgroup::"
+
           godot --headless --verbose --export-debug "Android" build/nekton.apk \
-            2>&1 | tee export.log | tail -60
-          echo "--- Konfigurationsfehler, falls vorhanden ---"
-          grep -iE "cannot export|configuration error|not found|missing|invalid|keystore|sdk" \
-            export.log | head -30 || true
+            > export.log 2>&1 || true
+
+          echo "--- Alles mit Android-, Export- oder Fehlerbezug ---"
+          grep -inE "android|export|keystore|template|apk|error|warn" export.log \
+            | grep -viE "TextServer|Horipad|Nintendo|misc2|SDL|pen tablet" \
+            | tail -60
+
           test -s build/nekton.apk
           ls -la build/
 

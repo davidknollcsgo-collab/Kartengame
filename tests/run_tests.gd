@@ -48,6 +48,12 @@ const TESTS: PackedStringArray = [
     "_test_erste_woche_ohne_wartemauer",
     "_test_schacht_deckelt_die_kolonie",
     "_test_kammerausbau_verschlechtert_nie",
+    "_test_jeder_abschnitt_hat_namen_und_hinweis",
+    "_test_erster_abschnitt_bleibt_ruhig",
+    "_test_regeln_bleiben_in_ihren_grenzen",
+    "_test_regeln_sind_reproduzierbar",
+    "_test_wirkungsgrad_faellt_mit_den_regeln",
+    "_test_wellenstaerke_folgt_dem_wirkungsgrad",
     "_test_polyp_kosten_steigen",
     "_test_abschnitt",
     "_test_erste_wellen_sind_ueberstehbar",
@@ -292,11 +298,23 @@ func _test_arten_erst_ab_ihrer_welle() -> bool:
 # --- Wellen ----------------------------------------------------------------
 
 func _test_wellen_wachsen() -> bool:
+    # Nicht die rohe Lebenspunktzahl waechst, sondern der **Anspruch**.
+    #
+    # An jeder Abschnittsgrenze faellt die Zahl der Raeuber, weil die neue
+    # Regel dem Spieler Leistung abzieht - Welle 21 hat weniger Leben als
+    # Welle 20 und ist trotzdem schwerer. Wer hier die rohe Staerke prueft,
+    # zwingt die Wellen dazu, die Regeln zu ignorieren.
     for n in range(1, Graben.WELLEN_GESAMT):
-        if not _melde(Wellen.staerke(n + 1) > Wellen.staerke(n),
-                "Welle %d ist nicht staerker als %d" % [n + 1, n]):
+        var jetzt := Wellen.staerke(n) / maxf(0.0001, Regeln.wirkungsgrad(n))
+        var danach := Wellen.staerke(n + 1) / maxf(0.0001, Regeln.wirkungsgrad(n + 1))
+        if not _melde(danach > jetzt,
+                "Welle %d verlangt nicht mehr als %d" % [n + 1, n]):
             return false
-    return true
+
+    # Ueber die ganze Strecke muss auch die rohe Zahl deutlich steigen -
+    # sonst waeren die Abschnitte das einzige Wachstum.
+    return _melde(Wellen.staerke(Graben.WELLEN_GESAMT) > Wellen.staerke(1) * 8.0,
+        "die letzte Welle muss um ein Vielfaches groesser sein als die erste")
 
 
 func _test_wellen_sind_reproduzierbar() -> bool:
@@ -570,4 +588,97 @@ func _test_kammerausbau_verschlechtert_nie() -> bool:
         if Kammern.polyp_kosten(stufe + 1, 3) > Kammern.polyp_kosten(stufe, 3):
             return _melde(false, "Polypen werden auf Stufe %d teurer statt billiger"
                 % [stufe + 1])
+    return true
+
+
+# --- Grabenabschnitte ------------------------------------------------------
+
+func _test_jeder_abschnitt_hat_namen_und_hinweis() -> bool:
+    var abschnitte := Graben.abschnitt(Graben.WELLEN_GESAMT) + 1
+    if not _melde(Regeln.NAMEN.size() == abschnitte,
+            "%d Abschnitte, aber %d Namen" % [abschnitte, Regeln.NAMEN.size()]):
+        return false
+    if not _melde(Regeln.HINWEISE.size() == abschnitte,
+            "%d Abschnitte, aber %d Hinweise" % [abschnitte, Regeln.HINWEISE.size()]):
+        return false
+    for i in abschnitte:
+        if not _melde(not Regeln.name_von(i).is_empty(), "Abschnitt %d ohne Namen" % i):
+            return false
+        if not _melde(not Regeln.hinweis(i).is_empty(), "Abschnitt %d ohne Hinweis" % i):
+            return false
+    return true
+
+
+func _test_erster_abschnitt_bleibt_ruhig() -> bool:
+    # Die ersten zehn Wellen sind der Einstieg. Wer hier schon gegen eine
+    # Stroemung kaempft, lernt die Grundhandlung nicht.
+    for n in range(1, Graben.WELLEN_JE_ABSCHNITT + 1):
+        for i in 20:
+            var t := float(i) * 1.7
+            if not is_equal_approx(Regeln.stroemung(n, t), 0.0):
+                return _melde(false, "Welle %d hat Stroemung" % n)
+            if not is_equal_approx(Regeln.helligkeit(n, t), 1.0):
+                return _melde(false, "Welle %d hat Dunkelphasen" % n)
+        if not is_equal_approx(Regeln.rand_kern(n), Schlund.RAND_KERN):
+            return _melde(false, "Welle %d hat Streulicht" % n)
+        if not is_equal_approx(Regeln.tiefe_kern(n), Schlund.TIEFE_KERN):
+            return _melde(false, "Welle %d hat truebes Wasser" % n)
+    return _melde(is_equal_approx(Regeln.wirkungsgrad(1), 1.0),
+        "der erste Abschnitt darf keinen Wirkungsgrad kosten, war %.3f"
+        % Regeln.wirkungsgrad(1))
+
+
+func _test_regeln_bleiben_in_ihren_grenzen() -> bool:
+    for n in range(1, Graben.WELLEN_GESAMT + 1):
+        for i in 60:
+            var t := float(i) * 0.83
+            var s := Regeln.stroemung(n, t)
+            if absf(s) > Regeln.STROM_WEITE_STURM + 0.001:
+                return _melde(false, "Stroemung %.3f in Welle %d ist zu stark" % [s, n])
+            var h := Regeln.helligkeit(n, t)
+            if h < Regeln.DUNKEL_TIEFE - 0.001 or h > 1.001:
+                return _melde(false, "Helligkeit %.3f in Welle %d liegt ausserhalb" % [h, n])
+        var w := Regeln.wirkungsgrad(n)
+        if w <= 0.0 or w > 1.001:
+            return _melde(false, "Wirkungsgrad %.3f in Welle %d liegt ausserhalb" % [w, n])
+    return true
+
+
+func _test_regeln_sind_reproduzierbar() -> bool:
+    # Der Wellenpruefer rechnet dieselben Funktionen wie das Spiel. Waeren sie
+    # nicht reproduzierbar, prueft er etwas anderes, als gespielt wird.
+    for n in [12, 34, 57]:
+        for i in 30:
+            var t := float(i) * 0.41
+            if not is_equal_approx(Regeln.stroemung(n, t), Regeln.stroemung(n, t)):
+                return _melde(false, "Stroemung schwankt bei gleicher Eingabe")
+            if not is_equal_approx(Regeln.helligkeit(n, t), Regeln.helligkeit(n, t)):
+                return _melde(false, "Helligkeit schwankt bei gleicher Eingabe")
+    return true
+
+
+func _test_wirkungsgrad_faellt_mit_den_regeln() -> bool:
+    # Jeder neue Abschnitt muss den Spieler etwas kosten - sonst waere er eine
+    # Farbe, keine Regel.
+    var vorher := 2.0
+    for a in Regeln.NAMEN.size():
+        var n := a * Graben.WELLEN_JE_ABSCHNITT + 1
+        var w := Regeln.wirkungsgrad(n)
+        if w > vorher + 0.001:
+            return _melde(false, "Abschnitt %d ist leichter als der davor" % (a + 1))
+        vorher = w
+    return _melde(Regeln.wirkungsgrad(Graben.WELLEN_GESAMT) < 0.75,
+        "der letzte Abschnitt muss spuerbar kosten, war %.3f"
+        % Regeln.wirkungsgrad(Graben.WELLEN_GESAMT))
+
+
+func _test_wellenstaerke_folgt_dem_wirkungsgrad() -> bool:
+    # Ohne diese Kopplung wurde jeder neue Abschnitt zur Wand: der
+    # Wellenpruefer meldete nach Einfuehrung der Regeln fuenf gefallene
+    # Sitzungen ab Welle 36.
+    for n in range(1, Graben.WELLEN_GESAMT + 1):
+        var erwartet := Ausbau.durchsatz(n) * Wellen.WIRKUNGSGRAD \
+            * Regeln.wirkungsgrad(n) * Wellen.fenster(n) * Wellen.druck(n)
+        if not is_equal_approx(Wellen.staerke(n), erwartet):
+            return _melde(false, "Welle %d rechnet den Wirkungsgrad nicht ein" % n)
     return true
