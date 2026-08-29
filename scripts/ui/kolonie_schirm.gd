@@ -310,8 +310,9 @@ func _grabenwand(breite: float, hoehe: float) -> void:
 
 func _kopfzeile(breite: float, stand: KolonieStand) -> void:
     _text(Vector2(RAND, 34.0), "KOLONIE", 21, SCHRIFT)
-    _text(Vector2(RAND, 58.0), "Tiefste Welle %d von %d"
-        % [stand.hoechste_welle, Graben.WELLEN_GESAMT], 14, LEISE)
+    _text(Vector2(RAND, 58.0), "Tiefste Welle %d von %d  ·  Platz %d von %d"
+        % [stand.hoechste_welle, Graben.WELLEN_GESAMT,
+           Geister.platz(stand.hoechste_welle), Geister.zahl() + 1], 14, LEISE)
 
     var rechts := breite - RAND
     _text(Vector2(rechts, 34.0), str(stand.naehrstoffe), 21, NAEHR, false, true)

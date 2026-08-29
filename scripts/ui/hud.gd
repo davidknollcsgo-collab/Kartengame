@@ -275,9 +275,33 @@ func _endschirm(breite: float, hoehe: float) -> void:
     _text(mitte + Vector2(0.0, 86.0), "%d Naehrstoff geerntet" % _verdient, 17,
         Color(0.52, 0.94, 0.80), true)
 
+    # Die Wertung steht genau hier, weil sie hier wirkt: im Moment des
+    # Aufhoerens der Grund, es noch einmal zu versuchen.
+    _grabenwertung(mitte + Vector2(0.0, 122.0))
+
     var puls := 0.5 + 0.5 * sin(_zeit * 2.6)
     _text(mitte + Vector2(0.0, 148.0), "Tippen fuer einen neuen Anlauf", 17,
         Color(0.82, 0.94, 0.98, 0.45 + 0.55 * puls), true)
+
+
+## Der eigene Platz und der Naechste, den man einholen kann.
+func _grabenwertung(wo: Vector2) -> void:
+    var tiefe: int = Fortschritt.stand.hoechste_welle
+    var platz := Geister.platz(tiefe)
+    var gesamt := Geister.zahl() + 1
+    _text(wo, "Platz %d von %d im Graben" % [platz, gesamt], 16,
+        Color(0.72, 0.86, 0.92), true)
+
+    var vor := Geister.naechster_vor(tiefe)
+    var name: String = vor[&"name"]
+    if name.is_empty():
+        _text(wo + Vector2(0.0, 24.0), "Niemand ist tiefer gekommen.", 14,
+            Color(0.62, 0.92, 0.84), true)
+        return
+    var abstand: int = int(vor[&"tiefe"]) - tiefe
+    _text(wo + Vector2(0.0, 24.0),
+        "%s liegt %d Wellen vor dir" % [name, maxi(1, abstand)], 14,
+        Color(0.56, 0.74, 0.80), true)
 
 
 func _text(wo: Vector2, was: String, groesse: int, farbe: Color,

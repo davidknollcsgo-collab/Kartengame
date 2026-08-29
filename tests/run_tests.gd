@@ -54,6 +54,9 @@ const TESTS: PackedStringArray = [
     "_test_regeln_sind_reproduzierbar",
     "_test_wirkungsgrad_faellt_mit_den_regeln",
     "_test_wellenstaerke_folgt_dem_wirkungsgrad",
+    "_test_geister_stehen_gestaffelt",
+    "_test_geisterleiter_beginnt_frueh",
+    "_test_eigener_platz_folgt_der_tiefe",
     "_test_polyp_kosten_steigen",
     "_test_abschnitt",
     "_test_erste_wellen_sind_ueberstehbar",
@@ -682,3 +685,52 @@ func _test_wellenstaerke_folgt_dem_wirkungsgrad() -> bool:
         if not is_equal_approx(Wellen.staerke(n), erwartet):
             return _melde(false, "Welle %d rechnet den Wirkungsgrad nicht ein" % n)
     return true
+
+
+# --- Geisterdaten ----------------------------------------------------------
+
+func _test_geister_stehen_gestaffelt() -> bool:
+    if not _melde(Geister.NAMEN.size() == Geister.STAERKEN.size(),
+            "jeder Nachbar braucht Namen und Staerke"):
+        return false
+    for i in range(Geister.zahl() - 1):
+        if not _melde(Geister.staerke(i + 1) > Geister.staerke(i),
+                "Nachbar %d ist nicht staerker als %d" % [i + 1, i]):
+            return false
+        if not _melde(Geister.tiefe(i + 1) > Geister.tiefe(i),
+                "Nachbar %d kommt nicht tiefer als %d" % [i + 1, i]):
+            return false
+    return _melde(Geister.tiefe(Geister.zahl() - 1) == Graben.WELLEN_GESAMT,
+        "der staerkste Nachbar muss den ganzen Graben schaffen")
+
+
+func _test_geisterleiter_beginnt_frueh() -> bool:
+    # Im ersten Entwurf lag der schwaechste Nachbar bei Welle 23 - ein neuer
+    # Spieler stand abgeschlagen Letzter, mit zweiundzwanzig Wellen bis zum
+    # naechsten Namen. Es muss immer jemand in Reichweite stehen.
+    if not _melde(Geister.tiefe(0) <= 6,
+            "der schwaechste Nachbar steht bei Welle %d - zu tief fuer den Einstieg"
+            % Geister.tiefe(0)):
+        return false
+    for i in range(Geister.zahl() - 1):
+        var luecke := Geister.tiefe(i + 1) - Geister.tiefe(i)
+        if luecke > 10:
+            return _melde(false, "Luecke von %d Wellen zwischen %s und %s"
+                % [luecke, Geister.name_von(i), Geister.name_von(i + 1)])
+    return true
+
+
+func _test_eigener_platz_folgt_der_tiefe() -> bool:
+    var vorher := Geister.zahl() + 2
+    for tiefe in [1, 5, 12, 25, 40, 55, Graben.WELLEN_GESAMT]:
+        var platz := Geister.platz(tiefe)
+        if not _melde(platz >= 1 and platz <= Geister.zahl() + 1,
+                "Platz %d bei Tiefe %d liegt ausserhalb" % [platz, tiefe]):
+            return false
+        if not _melde(platz <= vorher,
+                "tiefer gekommen, aber schlechter platziert (%d nach %d)"
+                % [platz, vorher]):
+            return false
+        vorher = platz
+    return _melde(Geister.platz(Graben.WELLEN_GESAMT) == 1,
+        "wer den ganzen Graben schafft, steht oben")
