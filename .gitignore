@@ -17,6 +17,10 @@ local.properties
 *.env
 service_account.json
 
+# Bauergebnis des Web-Exports. Reproduzierbar mit einem Befehl, aber rund
+# 38 MB WebAssembly - das gehoert nicht in die Versionsgeschichte.
+docs/
+
 # Werkzeuge
 node_modules/
 
