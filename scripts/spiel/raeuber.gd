@@ -32,6 +32,10 @@ var richtung := Vector2.DOWN
 ## 0 bis 1: wie frisch der letzte Treffer ist. Steuert nur die Anzeige.
 var hitze: float = 0.0
 
+## Restsekunden Nachglut - die Brutlinie, bei der Treffer weiterbrennen.
+## Anders als `hitze` macht das echten Schaden.
+var glut: float = 0.0
+
 ## Frueherere Orte auf der eigenen Bahn - fuer den Leib der Grabnatter.
 var rueckweg: Array[Vector2] = []
 

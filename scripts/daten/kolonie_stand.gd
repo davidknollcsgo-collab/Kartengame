@@ -19,6 +19,10 @@ const START_NAEHRSTOFF := 40
 const OFFLINE_DECKEL_STUNDEN := 8.0
 
 var stufen := PackedInt32Array()
+
+## Welche Brutlinien schon gezuechtet sind, und welche gerade traegt.
+var linien := PackedInt32Array()
+var linie := Brutlinien.Linie.KEINE
 var naehrstoffe := START_NAEHRSTOFF
 var hoechste_welle := 1
 
@@ -33,6 +37,7 @@ var zuletzt_gesehen := 0.0
 func _init() -> void:
     stufen.resize(Kammern.zahl())
     stufen.fill(0)
+    linien.append(Brutlinien.Linie.KEINE)
 
 
 func stufe(kammer: int) -> int:
@@ -106,6 +111,46 @@ func hole_bau_ab(jetzt: float) -> int:
     return kammer
 
 
+# --- Brutlinien ------------------------------------------------------------
+
+func hat_linie(index: int) -> bool:
+    return linien.has(index)
+
+
+## Warum sich eine Linie gerade nicht zuechten laesst. Leer heisst: sie geht.
+func linie_hindernis(index: int) -> String:
+    if hat_linie(index):
+        return "Bereits gezuechtet"
+    var davor := Brutlinien.voraussetzung(index)
+    if not hat_linie(davor):
+        return "Erst %s zuechten" % Brutlinien.name_von(davor)
+    var fehlt := Brutlinien.kosten(index) - naehrstoffe
+    if fehlt > 0:
+        return "Es fehlen %d Naehrstoff" % fehlt
+    return ""
+
+
+func kann_zuechten(index: int) -> bool:
+    return linie_hindernis(index).is_empty()
+
+
+func zuechte(index: int) -> bool:
+    if not kann_zuechten(index):
+        return false
+    naehrstoffe -= Brutlinien.kosten(index)
+    linien.append(index)
+    linie = index
+    return true
+
+
+## Waehlt eine bereits gezuechtete Linie aus.
+func waehle_linie(index: int) -> bool:
+    if not hat_linie(index):
+        return false
+    linie = index
+    return true
+
+
 # --- Ertrag ----------------------------------------------------------------
 
 func je_stunde() -> float:
@@ -130,11 +175,30 @@ func ernte_offline(jetzt: float) -> int:
 # Sollkurve, an der sich die Kolonie messen lassen muss - nicht ihr Ersatz.
 
 func leistung_faktor() -> float:
-    return Kammern.leistung_faktor(stufe(Kammern.Kammer.LEUCHTORGAN))
+    return Kammern.leistung_faktor(stufe(Kammern.Kammer.LEUCHTORGAN)) \
+        * Brutlinien.leistung_faktor(linie)
 
 
+## Nie unter eins: eine Linie darf den Waechter umbauen, aber nicht lahmlegen.
 func ziele() -> int:
-    return Kammern.ziele(stufe(Kammern.Kammer.LEUCHTORGAN))
+    return maxi(1, Kammern.ziele(stufe(Kammern.Kammer.LEUCHTORGAN))
+        + Brutlinien.ziele_zusatz(linie))
+
+
+func drehtempo() -> float:
+    return Graben.DREHTEMPO * Brutlinien.drehtempo_faktor(linie)
+
+
+func stroemung_faktor() -> float:
+    return Brutlinien.stroemung_faktor(linie)
+
+
+func nachglut_dauer() -> float:
+    return Brutlinien.nachglut_dauer(linie)
+
+
+func nachglut_anteil() -> float:
+    return Brutlinien.nachglut_anteil(linie)
 
 
 func reichweite_faktor() -> float:
@@ -165,6 +229,8 @@ func zu_wort() -> Dictionary:
         &"stufen": Array(stufen),
         &"naehrstoffe": naehrstoffe,
         &"hoechste_welle": hoechste_welle,
+        &"linien": Array(linien),
+        &"linie": linie,
         &"bau_kammer": bau_kammer,
         &"bau_fertig_um": bau_fertig_um,
         &"zuletzt_gesehen": zuletzt_gesehen,
@@ -179,6 +245,15 @@ static func aus_wort(wort: Dictionary) -> KolonieStand:
     var roh: Array = wort.get(&"stufen", [])
     for i in mini(roh.size(), s.stufen.size()):
         s.stufen[i] = clampi(int(roh[i]), 0, Kammern.HOECHSTSTUFE)
+
+    var rohe_linien: Array = wort.get(&"linien", [])
+    for wert in rohe_linien:
+        var i := int(wert)
+        if i >= 0 and i < Brutlinien.zahl() and not s.linien.has(i):
+            s.linien.append(i)
+    s.linie = int(wort.get(&"linie", Brutlinien.Linie.KEINE))
+    if not s.linien.has(s.linie):
+        s.linie = Brutlinien.Linie.KEINE
 
     s.naehrstoffe = maxi(0, int(wort.get(&"naehrstoffe", START_NAEHRSTOFF)))
     s.hoechste_welle = clampi(int(wort.get(&"hoechste_welle", 1)), 1, Graben.WELLEN_GESAMT)

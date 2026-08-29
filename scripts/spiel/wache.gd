@@ -192,10 +192,11 @@ func _process(delta: float) -> void:
 ## zu halten ist der ganze Reiz von Abschnitt 2: man zielt nicht dorthin, wo
 ## man treffen will.
 func _fuehre_kegel(delta: float) -> void:
+    var stand: KolonieStand = Fortschritt.stand
     var soll := Schlund.zielrichtung(Graben.WAECHTER, _finger, _richtung)
-    _richtung = Schlund.gedreht(_richtung, soll, Graben.DREHTEMPO, delta)
+    _richtung = Schlund.gedreht(_richtung, soll, stand.drehtempo(), delta)
 
-    var abtrieb := Regeln.stroemung(welle_nummer, _wellenzeit)
+    var abtrieb := Regeln.stroemung(welle_nummer, _wellenzeit) * stand.stroemung_faktor()
     _wirksam = _richtung.rotated(abtrieb)
     _kegel.richtung = _wirksam
     _kegel.rand_kern = Regeln.rand_kern(welle_nummer)
@@ -244,10 +245,23 @@ func _verbrenne(delta: float) -> void:
             _kegel.halbwinkel, _kegel.reichweite, r.ort,
             _kegel.rand_kern, _kegel.tiefe_kern) * _kegel.schein)
 
+    # Nachglut (Brutlinie): wer getroffen wurde, brennt kurz weiter. Das
+    # belohnt Ueberstreichen statt Verweilen - eine andere Handbewegung, nicht
+    # nur eine groessere Zahl.
+    var glut_dauer := Fortschritt.stand.nachglut_dauer()
+    if glut_dauer > 0.0:
+        var glut := leistung() * Fortschritt.stand.nachglut_anteil() * delta
+        for r in sichtbar:
+            if r.glut > 0.0:
+                r.glut = maxf(0.0, r.glut - delta)
+                r.leben -= glut
+                r.hitze = maxf(r.hitze, 0.35)
+
     for i in Schlund.brennende(hell, ziele()):
         var r := sichtbar[i]
         r.leben -= Schlund.schaden_je_sekunde(leistung(), hell[i]) * delta
         r.hitze = 1.0
+        r.glut = glut_dauer
         if randf() < hell[i] * delta * 26.0:
             _funken.strahl(Graben.WAECHTER, r.ort, Arten.farbe(r.art))
             # Die Tonhoehe steigt, solange man dranbleibt, und faellt beim

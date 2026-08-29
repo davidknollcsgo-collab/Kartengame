@@ -89,6 +89,25 @@ jobs:
           ls "${ANDROID_SDK_ROOT}/build-tools" | tail -3
           ls "${ANDROID_SDK_ROOT}/platforms" | tail -3
 
+      # Wo sucht Godot die Exportvorlagen wirklich? Fuenf Laeufe lang war die
+      # Fehlerliste leer - das passt zu "Vorlage nicht gefunden", und dann ist
+      # der Pfad die einzige Frage, die zaehlt.
+      - name: Wo Godot sucht
+        shell: bash
+        run: |
+          cat > /tmp/wo.gd <<'GD'
+          extends SceneTree
+          func _init() -> void:
+              print("Datenverzeichnis: ", OS.get_data_dir())
+              print("Konfigverzeichnis: ", OS.get_config_dir())
+              print("Version: ", Engine.get_version_info())
+              quit(0)
+          GD
+          godot --headless --path . --script /tmp/wo.gd 2>&1 | grep -E "verzeichnis|Version"
+          echo "--- was tatsaechlich liegt ---"
+          find "$HOME/.local/share/godot" -maxdepth 3 | head -20
+          cat "$HOME/.local/share/godot/export_templates/"*/version.txt 2>/dev/null || echo "keine version.txt"
+
       # Baut die class_name-Registry auf. Ohne diesen Schritt findet der
       # Export die globalen Klassen nicht.
       - name: Projekt importieren

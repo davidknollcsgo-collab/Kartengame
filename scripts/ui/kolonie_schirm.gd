@@ -29,6 +29,10 @@ const SPERRE := Color(0.62, 0.52, 0.48)
 ## Eine Farbe je Kammer, in der Reihenfolge von `Kammern.Kammer`. Sie taucht
 ## im Sinnbild, im Balken und in der Stufenzahl auf - dieselbe Kammer ist
 ## ueberall dieselbe Farbe.
+## Links und rechts. Als Konstante, weil ein Feldliteral in einer for-Schleife
+## seinen Typ verliert und jede Ableitung daraus mit.
+const SEITEN: PackedFloat32Array = [-1.0, 1.0]
+
 const FARBEN: PackedColorArray = [
     Color(0.42, 0.88, 1.00),   ## Leuchtorgan
     Color(0.52, 0.94, 0.80),   ## Zuchtkammer
@@ -43,6 +47,11 @@ var _schrift: Font
 var _zeit := 0.0
 var _baender: Array[Rect2] = []
 var _schliessen := Rect2()
+var _umschalter := Rect2()
+
+## Zwei Ansichten statt einer langen Liste: fuenf Kammern und vier Linien
+## nebeneinander waeren auf einem Telefon neun gedraengte Zeilen.
+var _zeigt_linien := false
 var _gedrueckt := -1
 var _meldung := ""
 var _meldung_leben := 0.0
@@ -66,6 +75,7 @@ func _ready() -> void:
 
 func oeffne() -> void:
     show()
+    _zeigt_linien = false
     _meldung = ""
     _meldung_leben = 0.0
     _flaeche.queue_redraw()
@@ -104,10 +114,19 @@ func _eingabe(ereignis: InputEvent) -> void:
         hide()
         return
 
+    if _umschalter.has_point(ort):
+        Klang.spiele(Klang.Ton.TIPP)
+        _zeigt_linien = not _zeigt_linien
+        _meldung_leben = 0.0
+        return
+
     for i in _baender.size():
         if _baender[i].has_point(ort):
             _gedrueckt = i
-            _versuche_ausbau(i)
+            if _zeigt_linien:
+                _versuche_linie(i + 1)
+            else:
+                _versuche_ausbau(i)
             return
 
 
@@ -125,6 +144,31 @@ func _versuche_ausbau(kammer: int) -> void:
         Fortschritt.sichere()
         Fortschritt.stand_geaendert.emit()
         _zeige("%s wird gegraben" % Kammern.name_von(kammer))
+
+
+## Zuechten oder, wenn schon gezuechtet, auswaehlen.
+func _versuche_linie(index: int) -> void:
+    var stand: KolonieStand = Fortschritt.stand
+    if stand.hat_linie(index):
+        if stand.linie == index:
+            _zeige("%s traegt bereits" % Brutlinien.name_von(index))
+        elif stand.waehle_linie(index):
+            Klang.spiele(Klang.Ton.POLYP, 0.9)
+            Fortschritt.sichere()
+            Fortschritt.stand_geaendert.emit()
+            _zeige("%s uebernimmt die Wache" % Brutlinien.name_von(index))
+        return
+
+    var grund := stand.linie_hindernis(index)
+    if not grund.is_empty():
+        Klang.spiele(Klang.Ton.TIPP, 0.6, 0.5)
+        _zeige(grund)
+        return
+    if stand.zuechte(index):
+        Klang.spiele(Klang.Ton.KAMMER, 1.1, 0.7)
+        Fortschritt.sichere()
+        Fortschritt.stand_geaendert.emit()
+        _zeige("%s gezuechtet" % Brutlinien.name_von(index))
 
 
 func _zeige(was: String) -> void:
@@ -147,23 +191,30 @@ func _zeichne() -> void:
     _grabenwand(breite, hoehe)
     _kopfzeile(breite, stand)
 
+    _umschalterzeile(breite)
+
     _baender.clear()
-    var verfuegbar := hoehe - KOPF - FUSS - 24.0
+    var anzahl := (Brutlinien.zahl() - 1) if _zeigt_linien else Kammern.zahl()
+    var oben := KOPF + 58.0
+    var verfuegbar := hoehe - oben - FUSS - 24.0
     var passt := BAND
-    var gebraucht := float(Kammern.zahl()) * (BAND + LUECKE)
+    var gebraucht := float(anzahl) * (BAND + LUECKE)
     if gebraucht > verfuegbar:
-        passt = verfuegbar / float(Kammern.zahl()) - LUECKE
+        passt = verfuegbar / float(anzahl) - LUECKE
         gebraucht = verfuegbar
 
     # Auf hohen Bildschirmen bleibt Platz uebrig. Der Block sitzt dann mittig
     # statt oben - sonst klebt die Kolonie am Kopf und darunter gaehnt der
     # halbe Bildschirm.
-    var y := KOPF + 12.0 + maxf(0.0, (verfuegbar - gebraucht) * 0.5)
+    var y := oben + maxf(0.0, (verfuegbar - gebraucht) * 0.5)
 
-    for k in Kammern.zahl():
+    for k in anzahl:
         var kasten := Rect2(RAND, y, breite - RAND * 2.0, passt)
         _baender.append(kasten)
-        _kammer(kasten, k, stand, jetzt)
+        if _zeigt_linien:
+            _brutlinie(kasten, k + 1, stand)
+        else:
+            _kammer(kasten, k, stand, jetzt)
         y += passt + LUECKE
 
     _fusszeile(breite, hoehe)
@@ -201,8 +252,104 @@ func _kopfzeile(breite: float, stand: KolonieStand) -> void:
     var zeile := "Naehrstoff" if strom <= 0.0 else "Naehrstoff  +%d/h" % int(strom)
     _text(Vector2(rechts, 58.0), zeile, 13, LEISE, false, true)
 
+    if stand.linie != Brutlinien.Linie.KEINE:
+        _text(Vector2(breite * 0.5, 58.0), Brutlinien.name_von(stand.linie), 14,
+            Brutlinien.farbe(stand.linie), true)
+
     _flaeche.draw_line(Vector2(0.0, KOPF), Vector2(breite, KOPF),
         Color(BAND_KANTE.r, BAND_KANTE.g, BAND_KANTE.b, 0.4), 1.4)
+
+
+## Die Umschaltzeile: zwei Reiter, der aktive hell.
+func _umschalterzeile(breite: float) -> void:
+    var y := KOPF + 12.0
+    var halb := (breite - RAND * 2.0 - 8.0) * 0.5
+    var links := Rect2(RAND, y, halb, 36.0)
+    var rechts := Rect2(RAND + halb + 8.0, y, halb, 36.0)
+    _umschalter = rechts if not _zeigt_linien else links
+
+    for paar in [[links, "KAMMERN", not _zeigt_linien], [rechts, "BRUTLINIEN", _zeigt_linien]]:
+        var kasten: Rect2 = paar[0]
+        var aktiv: bool = paar[2]
+        _flaeche.draw_rect(kasten, Color(0.06, 0.16, 0.20, 0.9 if aktiv else 0.45))
+        _flaeche.draw_rect(kasten, Color(0.42, 0.86, 0.92, 0.5 if aktiv else 0.16),
+            false, 1.4)
+        _text(kasten.get_center() + Vector2(0.0, 5.0), paar[1], 14,
+            SCHRIFT if aktiv else LEISE, true)
+
+
+## Eine Brutlinie. Anders als eine Kammer hat sie keine Stufen - sie ist da
+## oder nicht, und genau eine traegt.
+func _brutlinie(kasten: Rect2, index: int, stand: KolonieStand) -> void:
+    var farbe := Brutlinien.farbe(index)
+    var hat := stand.hat_linie(index)
+    var traegt := stand.linie == index
+
+    _flaeche.draw_rect(kasten, Color(BAND_FARBE.r, BAND_FARBE.g, BAND_FARBE.b,
+        0.92 if hat else 0.62))
+    _flaeche.draw_rect(kasten, Color(farbe.r, farbe.g, farbe.b,
+        0.62 if traegt else 0.26), false, 2.0 if traegt else 1.4)
+    _flaeche.draw_rect(Rect2(kasten.position, Vector2(3.0, kasten.size.y)),
+        Color(farbe.r, farbe.g, farbe.b, 0.85 if hat else 0.30))
+
+    var mitte_y := kasten.position.y + kasten.size.y * 0.5
+    _brutsinnbild(Vector2(kasten.position.x + 46.0, mitte_y), 22.0, index, farbe, hat)
+
+    var links := kasten.position.x + 84.0
+    _text(Vector2(links, kasten.position.y + 32.0), Brutlinien.name_von(index), 17,
+        SCHRIFT if hat else LEISE)
+    _text(Vector2(links, kasten.position.y + 56.0), Brutlinien.wirkung(index), 12,
+        LEISE if hat else Color(0.34, 0.44, 0.50))
+
+    var rechts := kasten.end.x - 12.0
+    if traegt:
+        _text(Vector2(rechts, mitte_y + 5.0), "traegt", 15, farbe, false, true)
+    elif hat:
+        _text(Vector2(rechts, mitte_y + 5.0), "waehlen", 15, LEISE, false, true)
+    else:
+        var frei := stand.hat_linie(Brutlinien.voraussetzung(index))
+        var preis := Brutlinien.kosten(index)
+        var reicht := frei and stand.naehrstoffe >= preis
+        _text(Vector2(rechts, mitte_y - 6.0), "zuechten", 13, LEISE, false, true)
+        _text(Vector2(rechts, mitte_y + 16.0), str(preis) if frei else "gesperrt", 18,
+            NAEHR if reicht else SPERRE, false, true)
+
+
+## Ein Sinnbild je Linie. Wie bei den Kammern: gezeichnet, keine Bilddatei.
+func _brutsinnbild(p: Vector2, r: float, index: int, farbe: Color, hat: bool) -> void:
+    var deckung := 1.0 if hat else 0.38
+    var puls := 0.5 + 0.5 * sin(_zeit * 1.4 + float(index))
+    _flaeche.draw_circle(p, r * 1.3, Color(farbe.r, farbe.g, farbe.b,
+        (0.08 + 0.05 * puls) * deckung))
+
+    match index:
+        Brutlinien.Linie.STROMSINN:
+            # Drei Stromlinien, die sich biegen.
+            for i in 3:
+                var y := p.y - r * 0.5 + r * 0.5 * float(i)
+                var punkte := PackedVector2Array()
+                for k in 9:
+                    var t := float(k) / 8.0
+                    punkte.append(Vector2(p.x - r + t * r * 2.0,
+                        y + sin(t * PI * 1.6 + _zeit * 1.2 + float(i)) * r * 0.22))
+                _flaeche.draw_polyline(punkte,
+                    Color(farbe.r, farbe.g, farbe.b, 0.75 * deckung), 1.8, true)
+        Brutlinien.Linie.NACHGLUT:
+            # Ein Kern mit abklingenden Ringen.
+            for i in 4:
+                var f := 1.0 - float(i) / 4.0
+                _flaeche.draw_arc(p, r * (0.35 + 0.22 * float(i)), 0.0, TAU, 18,
+                    Color(farbe.r, farbe.g, farbe.b, 0.55 * f * deckung), 1.6, true)
+            _flaeche.draw_circle(p, r * 0.26, Color(1.0, 0.92, 0.78, 0.85 * deckung))
+        Brutlinien.Linie.KALTBRAND:
+            # Ein einzelner, scharfer Strahl statt vieler.
+            _flaeche.draw_line(p - Vector2(0.0, r * 0.9), p + Vector2(0.0, r * 0.9),
+                Color(farbe.r, farbe.g, farbe.b, 0.85 * deckung), 3.4)
+            for seite: float in SEITEN:
+                _flaeche.draw_line(p + Vector2(seite * r * 0.55, -r * 0.3),
+                    p + Vector2(seite * r * 0.55, r * 0.3),
+                    Color(farbe.r, farbe.g, farbe.b, 0.30 * deckung), 1.4)
+            _flaeche.draw_circle(p, r * 0.2, Color(1.0, 0.96, 1.0, 0.9 * deckung))
 
 
 func _kammer(kasten: Rect2, k: int, stand: KolonieStand, jetzt: float) -> void:
