@@ -276,7 +276,7 @@ func _test_laufzeit() -> bool:
 
 func _test_arten_tabelle_vollstaendig() -> bool:
     var felder: PackedStringArray = ["name", "leben", "tempo", "radius", "wert",
-        "wucht", "schlaengel", "takt", "farbe", "ab_welle"]
+        "wucht", "schlaengel", "takt", "farbe", "ab_welle", "regel"]
     if not _melde(Arten.TABELLE.size() == Arten.Art.size(),
             "TABELLE und enum Art muessen gleich gross sein"):
         return false

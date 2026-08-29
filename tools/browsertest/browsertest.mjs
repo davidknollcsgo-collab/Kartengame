@@ -84,10 +84,12 @@ const tipp = async (fy, fx = 0.5, warte = 900) => {
 };
 
 if (k) {
-    // 1. Kolonie oeffnen und alle drei Reiter besuchen.
+    // 1. Kolonie oeffnen und alle vier Reiter besuchen.
     await tipp(anteil(H - 410 + 27));
     const reiterY = anteil(96 + 12 + 18);
-    for (const fx of [0.5, 0.83, 0.17]) await tipp(reiterY, fx);
+    // Vier Reiter, gleich breit mit 8 px Luecke - die Mitten liegen bei
+    // 1/8, 3/8, 5/8 und 7/8 der Breite. Ein geratener Anteil trifft daneben.
+    for (const fx of [0.375, 0.625, 0.875, 0.125]) await tipp(reiterY, fx);
     await tipp(anteil(H - 78 + 34));                 // zurueck zum Schlund
 
     // 2. Welle starten und den Kegel wirklich schwenken.
@@ -114,7 +116,7 @@ await browser.close();
 server.close();
 
 if (fehler.length === 0) {
-    console.log('Browsertest bestanden: Start, alle drei Reiter, Wellenstart, Kegelzug.');
+    console.log('Browsertest bestanden: Start, alle vier Reiter, Wellenstart, Kegelzug.');
     process.exit(0);
 }
 for (const f of fehler) console.log('FEHLER: ' + f);

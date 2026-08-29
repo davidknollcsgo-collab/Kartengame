@@ -44,6 +44,7 @@ enum Art {
 const TABELLE: Array[Dictionary] = [
     {
         &"name": "Zahnkiefer",
+        &"regel": "Sinkt gerade und stirbt schnell. Der Massstab fuer alles andere.",
         &"leben": 22.0,
         &"tempo": 92.0,
         &"radius": 17.0,
@@ -56,6 +57,7 @@ const TABELLE: Array[Dictionary] = [
     },
     {
         &"name": "Schleier",
+        &"regel": "Kommt im Schwarm und ist sehr schnell. Einzeln fast nichts wert.",
         &"leben": 8.0,
         &"tempo": 168.0,
         &"radius": 12.0,
@@ -68,6 +70,7 @@ const TABELLE: Array[Dictionary] = [
     },
     {
         &"name": "Panzerkrebs",
+        &"regel": "Traege und zaeh. Zwingt den Kegel zum Verweilen.",
         &"leben": 74.0,
         &"tempo": 54.0,
         &"radius": 25.0,
@@ -80,6 +83,7 @@ const TABELLE: Array[Dictionary] = [
     },
     {
         &"name": "Grabnatter",
+        &"regel": "Schlaengelt breit aus. Wer nachfuehrt, verliert sie; wer vorhaelt, trifft.",
         &"leben": 34.0,
         &"tempo": 104.0,
         &"radius": 15.0,
@@ -92,6 +96,7 @@ const TABELLE: Array[Dictionary] = [
     },
     {
         &"name": "Schildkoralle",
+        &"regel": "Panzer: ein fester Betrag geht je Sekunde ab. Wehrpolypen kratzen nur.",
         &"leben": 58.0,
         &"tempo": 44.0,
         &"radius": 24.0,
@@ -106,6 +111,7 @@ const TABELLE: Array[Dictionary] = [
     },
     {
         &"name": "Glutqualle",
+        &"regel": "Brennt nur im Kern des Kegels. Am Rand mitlaufen lassen nuetzt nichts.",
         &"leben": 38.0,
         &"tempo": 60.0,
         &"radius": 21.0,
@@ -120,6 +126,7 @@ const TABELLE: Array[Dictionary] = [
     },
     {
         &"name": "Treibanker",
+        &"regel": "Wandert quer durchs Bild. Verlaesst den Kegel, auch wenn man stillhaelt.",
         &"leben": 44.0,
         &"tempo": 56.0,
         &"radius": 19.0,
@@ -134,6 +141,7 @@ const TABELLE: Array[Dictionary] = [
     },
     {
         &"name": "Sprungaal",
+        &"regel": "Sinkt in Schueben. Die gewohnte Nachfuehrung geht bei ihm daneben.",
         &"leben": 28.0,
         &"tempo": 118.0,
         &"radius": 14.0,
@@ -183,6 +191,15 @@ static func farbe(index: int) -> Color:
 
 static func name_von(index: int) -> String:
     return art(index)[&"name"]
+
+
+## Ein Satz, der sagt, was diese Art vom Spieler verlangt.
+##
+## Steht im Bestiarium und in der Ankuendigung beim ersten Auftreten. Eine
+## Regel, die man sich erspielen muss, ist bei einem Gegner, der nach vierzig
+## Sekunden bei der Brut ist, keine Regel, sondern eine Falle.
+static func regel(index: int) -> String:
+    return String(art(index).get(&"regel", ""))
 
 
 # --- Die vier Eigenschaften der spaeten Arten ------------------------------

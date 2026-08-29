@@ -26,6 +26,9 @@ var _bauphase := true
 var _ende := false
 var _gewonnen := false
 var _sitzung := false
+
+## Welche Art die Tafel gerade ankuendigt, oder -1 fuer den Abschnitt.
+var _neue_art := -1
 var _verdient := 0
 var _zeit := 0.0
 var _meldung := ""
@@ -92,6 +95,17 @@ func melde(was: String) -> void:
 ## Dunkeln steht und nicht weiss warum, haelt es fuer einen Fehler.
 func zeige_abschnitt(abschnitt: int) -> void:
     _abschnitt = abschnitt
+    _neue_art = -1
+    _abschnitt_leben = 5.0
+
+
+## Kuendigt eine Art an, die zum ersten Mal auftritt.
+##
+## Dieselbe Tafel wie beim Abschnitt, nur mit anderem Inhalt. Eine Regel, die
+## man sich erspielen muss, ist bei einem Gegner, der nach vierzig Sekunden
+## bei der Brut steht, keine Regel, sondern eine Falle.
+func zeige_art(art: int) -> void:
+    _neue_art = art
     _abschnitt_leben = 5.0
 
 
@@ -193,11 +207,22 @@ func _abschnittstafel(breite: float, hoehe: float) -> void:
     var f := clampf(_abschnitt_leben / 1.2, 0.0, 1.0)
     var mitte := Vector2(breite * 0.5, hoehe * 0.34)
     var kasten := Rect2(RAND, mitte.y - 54.0, breite - RAND * 2.0, 96.0)
+
+    var titel := Regeln.name_von(_abschnitt).to_upper()
+    var zeile := Regeln.hinweis(_abschnitt)
+    var rahmen := Color(0.42, 0.86, 0.92, 0.34 * f)
+    var farbe := Color(0.72, 0.96, 1.0, f)
+    if _neue_art >= 0:
+        var a := Arten.farbe(_neue_art)
+        titel = "NEU: %s" % Arten.name_von(_neue_art).to_upper()
+        zeile = Arten.regel(_neue_art)
+        rahmen = Color(a.r, a.g, a.b, 0.45 * f)
+        farbe = Color(a.r, a.g, a.b, f)
+
     _flaeche.draw_rect(kasten, Color(0.02, 0.06, 0.09, 0.72 * f))
-    _flaeche.draw_rect(kasten, Color(0.42, 0.86, 0.92, 0.34 * f), false, 1.4)
-    _text(mitte - Vector2(0.0, 18.0), Regeln.name_von(_abschnitt).to_upper(), 22,
-        Color(0.72, 0.96, 1.0, f), true)
-    _text(mitte + Vector2(0.0, 16.0), Regeln.hinweis(_abschnitt), 15,
+    _flaeche.draw_rect(kasten, rahmen, false, 1.4)
+    _text(mitte - Vector2(0.0, 18.0), titel, 22, farbe, true)
+    _text(mitte + Vector2(0.0, 16.0), zeile, 15,
         Color(0.66, 0.82, 0.88, f), true)
 
 

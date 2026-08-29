@@ -49,9 +49,10 @@ var _baender: Array[Rect2] = []
 var _schliessen := Rect2()
 var _reiter: Array[Rect2] = []
 
-## Drei Ansichten statt einer langen Liste: fuenf Kammern, drei Linien und
-## der Tag nebeneinander waeren auf einem Telefon elf gedraengte Zeilen.
-enum Sicht { KAMMERN, LINIEN, TAG }
+## Vier Ansichten statt einer langen Liste: fuenf Kammern, drei Linien, acht
+## Arten und der Tag nebeneinander waeren auf einem Telefon zwanzig gedraengte
+## Zeilen.
+enum Sicht { KAMMERN, LINIEN, ARTEN, TAG }
 var _sicht := Sicht.KAMMERN
 
 ## Tippziele der Tagesansicht, in Bildschirmkoordinaten.
@@ -163,6 +164,9 @@ func _eingabe(ereignis: InputEvent) -> void:
             match _sicht:
                 Sicht.LINIEN:
                     _versuche_linie(i + 1)
+                Sicht.ARTEN:
+                    # Nichts zu tun - das Bestiarium ist zum Nachschlagen da.
+                    pass
                 Sicht.TAG:
                     _hole_ziel(i)
                 _:
@@ -270,6 +274,8 @@ func _zeichne() -> void:
     var anzahl := Kammern.zahl()
     if _sicht == Sicht.LINIEN:
         anzahl = Brutlinien.zahl() - 1
+    elif _sicht == Sicht.ARTEN:
+        anzahl = Arten.zahl()
     elif _sicht == Sicht.TAG:
         anzahl = Tagesziel.zahl()
     var oben := KOPF + 58.0
@@ -291,6 +297,8 @@ func _zeichne() -> void:
         match _sicht:
             Sicht.LINIEN:
                 _brutlinie(kasten, k + 1, stand)
+            Sicht.ARTEN:
+                _artband(kasten, k, stand)
             Sicht.TAG:
                 _tagesziel(kasten, k, stand)
             _:
@@ -356,19 +364,20 @@ func _kopfzeile(breite: float, stand: KolonieStand) -> void:
 
 ## Die Umschaltzeile: drei Reiter, der aktive hell.
 func _umschalterzeile(breite: float) -> void:
-    const BESCHRIFTUNG: PackedStringArray = ["KAMMERN", "LINIEN", "TAG"]
+    const BESCHRIFTUNG: PackedStringArray = ["KAMMERN", "LINIEN", "ARTEN", "TAG"]
     var y := KOPF + 12.0
-    var breit := (breite - RAND * 2.0 - 16.0) / 3.0
+    var anzahl := BESCHRIFTUNG.size()
+    var breit := (breite - RAND * 2.0 - 8.0 * float(anzahl - 1)) / float(anzahl)
     _reiter.clear()
 
-    for i in 3:
+    for i in anzahl:
         var kasten := Rect2(RAND + (breit + 8.0) * float(i), y, breit, 36.0)
         _reiter.append(kasten)
         var aktiv := _sicht == i
         _flaeche.draw_rect(kasten, Color(0.06, 0.16, 0.20, 0.9 if aktiv else 0.45))
         _flaeche.draw_rect(kasten, Color(0.42, 0.86, 0.92, 0.5 if aktiv else 0.16),
             false, 1.4)
-        _text(kasten.get_center() + Vector2(0.0, 5.0), BESCHRIFTUNG[i], 14,
+        _text(kasten.get_center() + Vector2(0.0, 5.0), BESCHRIFTUNG[i], 13,
             SCHRIFT if aktiv else LEISE, true)
 
         # Ein Punkt am Reiter, wenn dort etwas abzuholen ist. Sonst muesste
@@ -417,6 +426,110 @@ func _tagesziel(kasten: Rect2, index: int, stand: KolonieStand) -> void:
         _text(Vector2(rechts, kasten.get_center().y + 5.0),
             "+%d" % Tagesziel.lohn(index, stand.hoechste_welle), 15, LEISE,
             false, true)
+
+
+## Eine Art im Bestiarium.
+##
+## Unbekannte Arten stehen als Umriss da, mit der Welle, ab der sie kommen.
+## Zu sehen, dass noch etwas kommt, ist ein Grund weiterzuspielen; zu sehen,
+## *was* kommt, waere die Ueberraschung weg.
+func _artband(kasten: Rect2, index: int, stand: KolonieStand) -> void:
+    var kennt := stand.kennt(index)
+    var farbe := Arten.farbe(index)
+    if not kennt:
+        farbe = Color(0.34, 0.44, 0.50)
+
+    _flaeche.draw_rect(kasten, Color(BAND_FARBE.r, BAND_FARBE.g, BAND_FARBE.b,
+        0.88 if kennt else 0.52))
+    _flaeche.draw_rect(kasten, Color(farbe.r, farbe.g, farbe.b, 0.28), false, 1.4)
+    _flaeche.draw_rect(Rect2(kasten.position, Vector2(3.0, kasten.size.y)),
+        Color(farbe.r, farbe.g, farbe.b, 0.85 if kennt else 0.30))
+
+    var mitte_y := kasten.position.y + kasten.size.y * 0.5
+    _artsinnbild(Vector2(kasten.position.x + 46.0, mitte_y), 22.0, index, farbe, kennt)
+
+    var links := kasten.position.x + 84.0
+    _text(Vector2(links, kasten.position.y + 32.0),
+        Arten.name_von(index) if kennt else "Noch nicht begegnet", 17,
+        SCHRIFT if kennt else LEISE)
+    _text(Vector2(links, kasten.position.y + 56.0),
+        Arten.regel(index) if kennt else "Taucht ab Welle %d auf" % Arten.art(index)[&"ab_welle"],
+        12, LEISE if kennt else Color(0.34, 0.44, 0.50))
+
+    if not kennt:
+        return
+
+    # Die Zahlen, die man beim Zielen wirklich braucht - und nur die.
+    var zeile := "Leben %d  ·  Tempo %d  ·  Wucht %d" % [
+        int(Arten.leben(index)), int(Arten.tempo(index)), Arten.wucht(index)]
+    _text(Vector2(links, kasten.end.y - 16.0), zeile, 11, Color(0.40, 0.54, 0.60))
+
+    var rechts := kasten.end.x - 14.0
+    _text(Vector2(rechts, mitte_y - 6.0), "ab Welle", 12, LEISE, false, true)
+    _text(Vector2(rechts, mitte_y + 16.0), str(Arten.art(index)[&"ab_welle"]), 18,
+        Color(farbe.r, farbe.g, farbe.b, 0.9), false, true)
+
+
+## Ein Zeichen je Art. Wie bei den Kammern: gezeichnet, keine Bilddatei - und
+## jedes zeigt die Eigenart, nicht nur den Umriss.
+func _artsinnbild(p: Vector2, r: float, index: int, farbe: Color, kennt: bool) -> void:
+    var puls := 0.5 + 0.5 * sin(_zeit * 1.5 + float(index))
+    _flaeche.draw_circle(p, r * 1.2, Color(farbe.r, farbe.g, farbe.b,
+        0.06 + 0.06 * puls))
+    if not kennt:
+        _flaeche.draw_arc(p, r * 0.8, 0.0, TAU, 20,
+            Color(farbe.r, farbe.g, farbe.b, 0.35), 1.4)
+        return
+
+    match index:
+        Arten.Art.ZAHNKIEFER:
+            _flaeche.draw_circle(p, r * 0.6, Color(farbe.r, farbe.g, farbe.b, 0.55))
+            for i in 4:
+                var w := PI * (0.15 + 0.23 * float(i))
+                _flaeche.draw_line(p + Vector2(cos(w), sin(w)) * r * 0.6,
+                    p + Vector2(cos(w), sin(w)) * r * 0.95, farbe, 1.6)
+        Arten.Art.SCHLEIER:
+            for i in 3:
+                _flaeche.draw_arc(p + Vector2(0.0, r * 0.2 * float(i)), r * 0.62,
+                    PI, TAU, 14, Color(farbe.r, farbe.g, farbe.b, 0.7 - 0.2 * float(i)), 1.6)
+        Arten.Art.PANZERKREBS:
+            _flaeche.draw_arc(p, r * 0.7, PI, TAU, 18, farbe, 2.6)
+            for s: float in SEITEN:
+                _flaeche.draw_line(p + Vector2(s * r * 0.7, 0.0),
+                    p + Vector2(s * r * 0.95, r * 0.5), farbe, 1.6)
+        Arten.Art.GRABNATTER:
+            var welle := PackedVector2Array()
+            for i in 12:
+                var t := float(i) / 11.0
+                welle.append(p + Vector2(lerpf(-r * 0.9, r * 0.9, t),
+                    sin(t * TAU) * r * 0.42))
+            _flaeche.draw_polyline(welle, farbe, 2.0)
+        Arten.Art.SCHILDKORALLE:
+            for i in 3:
+                var y := p.y - r * 0.5 + r * 0.5 * float(i)
+                var halb := lerpf(r * 0.42, r * 0.86, float(i) / 2.0)
+                _flaeche.draw_line(Vector2(p.x - halb, y), Vector2(p.x + halb, y),
+                    farbe, 3.0)
+        Arten.Art.GLUTQUALLE:
+            _flaeche.draw_arc(p, r * 0.86, PI, TAU, 18,
+                Color(farbe.r, farbe.g, farbe.b, 0.4), 1.6)
+            _flaeche.draw_circle(p, r * (0.30 + 0.05 * puls),
+                Color(1.0, 0.90, 0.80, 0.85))
+        Arten.Art.TREIBANKER:
+            _flaeche.draw_line(p + Vector2(-r * 0.9, r * 0.3),
+                p + Vector2(r * 0.9, r * 0.3), farbe, 2.2)
+            _flaeche.draw_line(p + Vector2(r * 0.9, r * 0.3),
+                p + Vector2(r * 0.45, 0.0), farbe, 2.0)
+            _flaeche.draw_line(p + Vector2(r * 0.9, r * 0.3),
+                p + Vector2(r * 0.45, r * 0.6), farbe, 2.0)
+            _flaeche.draw_circle(p + Vector2(-r * 0.7, -r * 0.35), r * 0.2,
+                Color(farbe.r, farbe.g, farbe.b, 0.7))
+        Arten.Art.SPRUNGAAL:
+            var zack := PackedVector2Array([
+                p + Vector2(-r * 0.9, r * 0.4), p + Vector2(-r * 0.2, -r * 0.4),
+                p + Vector2(r * 0.2, r * 0.2), p + Vector2(r * 0.9, -r * 0.5),
+            ])
+            _flaeche.draw_polyline(zack, farbe, 2.2)
 
 
 ## Die Grabenwertung: wo man zwischen den Nachbarkolonien steht.

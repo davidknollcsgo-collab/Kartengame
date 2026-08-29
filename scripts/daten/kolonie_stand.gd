@@ -42,6 +42,10 @@ var ziel_fortschritt := PackedInt32Array()
 var ziel_geholt := PackedInt32Array()
 var strecke := 0
 
+## Welche Raeuberarten schon einmal aufgetreten sind. Grundlage des
+## Bestiariums - und der Ankuendigung, wenn eine zum ersten Mal kommt.
+var gesehen := PackedInt32Array()
+
 ## Zuchtkalender: wie viele Tage schon abgeholt sind und an welchem Kalendertag
 ## zuletzt. Er laeuft genau einmal durch - siehe `Zuchtkalender`.
 var kalender := 0
@@ -220,6 +224,20 @@ func ziele_offen() -> int:
         if ziel_offen(i):
             zahl += 1
     return zahl
+
+
+# --- Bestiarium ------------------------------------------------------------
+
+func kennt(art: int) -> bool:
+    return gesehen.has(art)
+
+
+## Merkt sich eine Art. Gibt zurueck, ob sie neu war.
+func merke_art(art: int) -> bool:
+    if art < 0 or art >= Arten.zahl() or gesehen.has(art):
+        return false
+    gesehen.append(art)
+    return true
 
 
 # --- Zuchtkalender ---------------------------------------------------------
@@ -407,6 +425,7 @@ func zu_wort() -> Dictionary:
         &"ziel_geholt": Array(ziel_geholt),
         &"strecke": strecke,
         &"stroemung_offen": stroemung_offen,
+        &"gesehen": Array(gesehen),
         &"kalender": kalender,
         &"kalender_tag": kalender_tag,
         &"einstieg": einstieg,
@@ -443,6 +462,12 @@ static func aus_wort(wort: Dictionary) -> KolonieStand:
     s.strecke = maxi(0, int(wort.get(&"strecke", 0)))
     s.stroemung_offen = clampi(int(wort.get(&"stroemung_offen", Tagesstroemung.JE_TAG)),
         0, Tagesstroemung.JE_TAG)
+    var rohe_arten: Array = wort.get(&"gesehen", [])
+    for wert in rohe_arten:
+        var a := int(wert)
+        if a >= 0 and a < Arten.zahl() and not s.gesehen.has(a):
+            s.gesehen.append(a)
+
     s.kalender = clampi(int(wort.get(&"kalender", 0)), 0, Zuchtkalender.TAGE)
     s.kalender_tag = maxi(0, int(wort.get(&"kalender_tag", 0)))
     s.einstieg = maxi(0, int(wort.get(&"einstieg", 0)))

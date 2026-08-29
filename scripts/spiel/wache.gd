@@ -206,6 +206,17 @@ func starte_welle() -> void:
     if Regeln.neu_in(a) and welle_nummer == a * Graben.WELLEN_JE_ABSCHNITT + 1:
         _hud.zeige_abschnitt(a)
 
+    # Dasselbe fuer ein Tier, das der Spieler noch nie gesehen hat. Die Regel
+    # steht ab dann auch im Bestiarium - der Hinweis verschwindet, die
+    # Nachschlagemoeglichkeit nicht.
+    var neu := -1
+    for r in _tiere:
+        if Fortschritt.stand.merke_art(r.art) and neu < 0:
+            neu = r.art
+    if neu >= 0:
+        _hud.zeige_art(neu)
+        Fortschritt.sichere()
+
 
 # --- Schleife --------------------------------------------------------------
 
@@ -561,9 +572,6 @@ func _lies_entwicklerschalter() -> void:
     if messen > 0.0:
         _miss_bildrate(messen, stau)
         return
-    if reiter >= 0:
-        oeffne_kolonie()
-        _koloniebild.zeige_reiter(reiter)
     if endschirm >= 0:
         verdient = 1840
         match endschirm:
@@ -577,8 +585,11 @@ func _lies_entwicklerschalter() -> void:
                 lage = Lage.VERLOREN
                 _hud.zeige_ende(false, welle_nummer, verdient)
     if bild.is_empty():
+        if reiter >= 0:
+            oeffne_kolonie()
+            _koloniebild.zeige_reiter(reiter)
         return
-    _nimm_auf(bild, vorlauf, bauen or reiter >= 0 or endschirm >= 0)
+    _nimm_auf(bild, vorlauf, bauen or endschirm >= 0, reiter)
 
 
 ## Misst die tatsaechliche Bildrate ueber `dauer` Sekunden.
@@ -631,7 +642,7 @@ func _miss_bildrate(dauer: float, stau: bool) -> void:
     get_tree().quit()
 
 
-func _nimm_auf(datei: String, vorlauf: float, bauen: bool) -> void:
+func _nimm_auf(datei: String, vorlauf: float, bauen: bool, reiter := -1) -> void:
     if not bauen:
         starte_welle()
         _finger = Graben.WAECHTER + Vector2(-70.0, -520.0)
@@ -643,6 +654,13 @@ func _nimm_auf(datei: String, vorlauf: float, bauen: bool) -> void:
             if lage != Lage.WELLE:
                 break
             _process(takt)
+
+    # Der Koloniebildschirm **nach** der Welle: so steht im Bestiarium, was
+    # gerade aufgetreten ist, statt einer Liste aus lauter Fragezeichen.
+    if reiter >= 0:
+        lage = Lage.BAUEN
+        oeffne_kolonie()
+        _koloniebild.zeige_reiter(reiter)
     await get_tree().process_frame
     await RenderingServer.frame_post_draw
     var bildchen := get_viewport().get_texture().get_image()
