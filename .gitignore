@@ -17,6 +17,9 @@ local.properties
 *.env
 service_account.json
 
+# Werkzeuge
+node_modules/
+
 # Editor / OS
 .DS_Store
 .vscode/

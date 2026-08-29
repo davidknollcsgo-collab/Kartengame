@@ -461,6 +461,8 @@ func _lies_entwicklerschalter() -> void:
     var bild := ""
     var vorlauf := 0.0
     var bauen := false
+    var messen := 0.0
+    var stau := false
     var welle := 0
     var polypenzahl := 0
 
@@ -480,6 +482,11 @@ func _lies_entwicklerschalter() -> void:
                     polypenzahl = int(argumente[i + 1])
             "--bauen":
                 bauen = true
+            "--messen":
+                if i + 1 < argumente.size():
+                    messen = float(argumente[i + 1])
+            "--stau":
+                stau = true
 
     if welle > 0:
         welle_nummer = clampi(welle, 1, Graben.WELLEN_GESAMT)
@@ -488,9 +495,62 @@ func _lies_entwicklerschalter() -> void:
     if welle > 0 or polypenzahl > 0:
         _bereite_welle_vor()
 
+    if messen > 0.0:
+        _miss_bildrate(messen, stau)
+        return
     if bild.is_empty():
         return
     _nimm_auf(bild, vorlauf, bauen)
+
+
+## Misst die tatsaechliche Bildrate ueber `dauer` Sekunden.
+##
+## **Was diese Messung kann und was nicht.** Hier rendert xvfb in Software, es
+## gibt keine Grafikkarte - die absolute Bildrate sagt also nichts ueber ein
+## Telefon aus. Was sie sehr wohl sagt, ist die **Kosten je Raeuber**: waechst
+## die Bildzeit linear und flach, traegt der Entwurf; explodiert sie, ist es
+## auf jeder Hardware ein Problem.
+##
+## Mit `--stau` faellt kein Raeuber, damit sich eine feste Zahl ansammelt und
+## verschiedene Laeufe vergleichbar sind.
+func _miss_bildrate(dauer: float, stau: bool) -> void:
+    starte_welle()
+    _finger = Graben.WAECHTER + Vector2(-70.0, -520.0)
+    if stau:
+        # Kegel aus dem Feld drehen und die Brut unverwundbar machen. Ohne
+        # beides endete die Messung, bevor sich etwas angesammelt hatte: die
+        # Raeuber erreichten die Brut, die Brut fiel, die Welle war vorbei.
+        _finger = Graben.WAECHTER + Vector2(0.0, 400.0)
+        brut = 1000000
+
+    var takt := 1.0 / 60.0
+    for _i in int(20.0 / takt):
+        if lage != Lage.WELLE:
+            break
+        _process(takt)
+
+    var lebende := 0
+    for r in _tiere:
+        if r.lebendig and r.alter >= 0.0:
+            lebende += 1
+
+    var bilder := 0
+    var schlimmstes := 0.0
+    var beginn := Time.get_ticks_usec()
+    var letztes := beginn
+    while float(Time.get_ticks_usec() - beginn) / 1e6 < dauer:
+        await RenderingServer.frame_post_draw
+        var jetzt := Time.get_ticks_usec()
+        var schritt := float(jetzt - letztes) / 1e6
+        letztes = jetzt
+        bilder += 1
+        if bilder > 5:
+            schlimmstes = maxf(schlimmstes, schritt)
+
+    var verstrichen := float(Time.get_ticks_usec() - beginn) / 1e6
+    print("Welle %d: %d Raeuber im Bild, %.1f Bilder/s, schlimmstes Bild %.1f ms"
+        % [welle_nummer, lebende, float(bilder) / verstrichen, schlimmstes * 1000.0])
+    get_tree().quit()
 
 
 func _nimm_auf(datei: String, vorlauf: float, bauen: bool) -> void:

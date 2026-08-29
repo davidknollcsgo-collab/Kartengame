@@ -12,6 +12,16 @@ extends Node2D
 
 const GLUEHRINGE := 3
 
+## Ab wievielen Tieren im Bild die Feinheiten wegfallen.
+##
+## Ehrlich gesagt: die Bildrate eines Telefons laesst sich von hier aus nicht
+## messen - xvfb rendert in Software, es gibt keine Grafikkarte. Statt eine
+## Zahl zu erfinden, wird die Zeichenlast begrenzt, wo sie ohnehin nichts
+## bringt: bei achtzig Tieren im Bild sieht niemand mehr den Hof um ein
+## einzelnes, aber jeder sieht es ruckeln.
+const DICHT_AB := 80
+const SEHR_DICHT_AB := 140
+
 ## Links und rechts. Als Konstante, weil ein Feldliteral in einer for-Schleife
 ## seinen Typ verliert und jede Ableitung daraus mit.
 const SEITEN: PackedFloat32Array = [-1.0, 1.0]
@@ -35,13 +45,24 @@ func _ready() -> void:
 
 
 func _draw() -> void:
+    var sichtbar := 0
+    for t in tiere:
+        if t.lebendig and t.alter >= 0.0:
+            sichtbar += 1
+
+    var stufe := 0
+    if sichtbar >= SEHR_DICHT_AB:
+        stufe = 2
+    elif sichtbar >= DICHT_AB:
+        stufe = 1
+
     for t in tiere:
         if not t.lebendig:
             continue
-        _zeichne(t)
+        _zeichne(t, stufe)
 
 
-func _zeichne(t: Raeuber) -> void:
+func _zeichne(t: Raeuber, stufe := 0) -> void:
     var p := t.ort
     var farbe: Color = Arten.farbe(t.art)
     var r: float = Arten.radius(t.art)
@@ -51,7 +72,19 @@ func _zeichne(t: Raeuber) -> void:
     var hitze := t.hitze
     var puls := 1.0 + 0.18 * hitze
 
-    _gluehen(p, r * 2.4 * puls, farbe, 0.16 + 0.42 * hitze)
+    # Der Hof faellt als Erstes weg - er kostet drei Kreise je Tier und traegt
+    # am wenigsten, sobald das Bild voll ist.
+    if stufe == 0:
+        _gluehen(p, r * 2.4 * puls, farbe, 0.16 + 0.42 * hitze)
+    elif stufe == 1:
+        draw_circle(p, r * 1.6 * puls, Color(farbe.r, farbe.g, farbe.b,
+            0.10 + 0.20 * hitze))
+
+    # Bei sehr vielen Tieren nur noch Umriss und Farbe: die Form bleibt
+    # lesbar, die Zierde geht.
+    if stufe >= 2:
+        _knapp(p, r, farbe, t, hitze)
+        return
 
     match t.art:
         Arten.Art.ZAHNKIEFER:
@@ -72,6 +105,22 @@ func _zeichne(t: Raeuber) -> void:
         draw_rect(Rect2(oben, Vector2(breite, 2.4)), Color(0.0, 0.0, 0.0, 0.55))
         draw_rect(Rect2(oben, Vector2(breite * anteil, 2.4)),
             farbe.lerp(Color(1.0, 0.42, 0.34), 1.0 - anteil))
+
+
+## Sparfassung: ein Leib, ein Umriss, kein Beiwerk. Wird erst gezeichnet, wenn
+## so viele Tiere im Bild sind, dass Einzelheiten ohnehin verschwimmen.
+func _knapp(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> void:
+    var k := t.richtung
+    var quer := k.orthogonal()
+    var leib := PackedVector2Array([
+        p + k * r * 1.1,
+        p + quer * r * 0.62,
+        p - k * r * 1.0,
+        p - quer * r * 0.62,
+    ])
+    draw_colored_polygon(leib, Color(farbe.r, farbe.g, farbe.b, 0.30 + 0.35 * hitze))
+    draw_polyline(leib + PackedVector2Array([leib[0]]),
+        farbe.lerp(Color(1.0, 0.98, 0.94), 0.4 + 0.4 * hitze), 1.4, true)
 
 
 ## Weicher Schein aus gestapelten Kreisen. Billiger als ein Shader je Tier und

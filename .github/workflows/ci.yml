@@ -52,6 +52,12 @@ jobs:
       - name: Tests
         run: godot --headless --path . --script tests/run_tests.gd
 
+      # Der Unterschied zwischen "wir haben nichts kopiert" und "wir koennen
+      # beweisen, dass wir nichts kopiert haben". Bei einer Beschwerde gegen
+      # eine Play-Store-App zaehlt nur das Zweite.
+      - name: Herkunft aller Dateien belegt
+        run: godot --headless --path . --script tools/lizenzcheck.gd
+
       # Getrennter Schritt, weil der Prüfer je Welle spürbar Zeit braucht.
       # Bricht ab, sobald eine Sitzung mit dem Sollausbau fällt - also sobald
       # jemand feststecken würde, der nicht bezahlt hat.

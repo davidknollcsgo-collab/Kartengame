@@ -1,0 +1,9 @@
+{
+  "name": "nekton-browsertest",
+  "private": true,
+  "type": "module",
+  "description": "Browsertest mit echter Eingabe - siehe browsertest.mjs",
+  "dependencies": {
+    "playwright": "^1.62.0"
+  }
+}
