@@ -18,6 +18,7 @@ enum Art {
     GLUTQUALLE,     ## Brennt nur im Kern des Kegels, nicht am Rand.
     TREIBANKER,     ## Wandert quer durchs Bild, waehrend er sinkt.
     SPRUNGAAL,      ## Sinkt in Schueben - der Kegel laeuft ihm nach.
+    SCHLUNDMUTTER,  ## Leitwesen. Steht am Ende jedes Abschnitts, sonst nie.
 }
 
 ## --- Was die vier spaeten Arten anders machen ---
@@ -140,6 +141,38 @@ const TABELLE: Array[Dictionary] = [
         &"aufwand": 1.30,
     },
     {
+        &"name": "Schlundmutter",
+        &"regel": "Leitwesen am Ende jedes Abschnitts. Traege, sehr zaeh - und ein Treffer kostet ein Drittel der Brut.",
+        &"leben": 1.0,
+        # So langsam, dass sie erst gegen Ende der Welle bei der Brut waere.
+        # Das ist der Entwurf: sie ist das Finale, nicht die Ueberraschung.
+        # Bei Tempo 30 lag der Spielraum der Wellen 36-40 wieder bei 1.00 -
+        # kein Puffer mehr, und den hatte diese Strecke vorher.
+        &"tempo": 23.0,
+        # Gross genug, dass man sie nicht fuer eine Glutqualle haelt. Bei 42
+        # sah sie im Bild aus wie ein weiteres mittleres Tier - ein
+        # Hoehepunkt, den man erst am Lebensbalken erkennt, ist keiner.
+        &"radius": 60.0,
+        &"wert": 60,
+        # Bei Wucht 6 kam der Wellenpruefer in Welle 40 mit 1 von 12 Brut
+        # durch: dort dunkelt der Abschnitt den Kegel ab, die Schlundmutter
+        # erreicht die Brut, und ein einziger Treffer nahm die Haelfte. Ein
+        # Hoehepunkt darf teuer sein, aber nicht auf einen Schlag entscheiden.
+        &"wucht": 4,
+        &"schlaengel": 7.0,
+        &"takt": 0.45,
+        &"farbe": Color(0.98, 0.30, 0.52),
+        &"ab_welle": Graben.WELLEN_JE_ABSCHNITT,
+        # Nur wenig Panzer, obwohl sie danach aussieht. Bei acht meldete der
+        # Wellenpruefer Welle 40 mit 1/12 Brut: dort dunkelt der Abschnitt den
+        # Kegel auf ein Fuenftel ab, und ein fester Abzug frisst von einem
+        # Fuenftel fast alles. Ihre Groesse liegt in den Lebenspunkten, nicht
+        # in der Haut - dafuer gibt es die Schildkoralle.
+        &"panzer": 3.0,
+        &"aufwand": 1.0,
+        &"leitwesen": true,
+    },
+    {
         &"name": "Sprungaal",
         &"regel": "Sinkt in Schueben. Die gewohnte Nachfuehrung geht bei ihm daneben.",
         &"leben": 28.0,
@@ -236,10 +269,31 @@ static func aufwand(index: int) -> float:
     return maxf(0.1, float(art(index).get(&"aufwand", 1.0)))
 
 
-## Welche Arten in Welle `nummer` ueberhaupt auftreten duerfen.
+## Ob eine Art ein Leitwesen ist - eines der sechs Tiere, die nur am Ende
+## eines Grabenabschnitts stehen.
+##
+## Sie werden **nicht** gewuerfelt wie die anderen: `Wellen.auftritte()` setzt
+## genau eines auf die letzte Welle jedes Abschnitts und bezahlt es zuerst aus
+## dem Budget. Waeren sie Teil der normalen Auswahl, kaeme irgendwann eine
+## Welle aus lauter Leitwesen - und aus sechs Hoehepunkten wuerde Rauschen.
+static func ist_leitwesen(index: int) -> bool:
+    return bool(art(index).get(&"leitwesen", false))
+
+
+## Welche Arten in Welle `nummer` ueberhaupt gewuerfelt werden duerfen.
 static func verfuegbar(nummer: int) -> PackedInt32Array:
     var liste := PackedInt32Array()
     for i in TABELLE.size():
+        if ist_leitwesen(i):
+            continue
         if nummer >= int(TABELLE[i][&"ab_welle"]):
             liste.append(i)
     return liste
+
+
+## Das Leitwesen, oder -1. Es gibt genau eines.
+static func leitwesen() -> int:
+    for i in TABELLE.size():
+        if ist_leitwesen(i):
+            return i
+    return -1

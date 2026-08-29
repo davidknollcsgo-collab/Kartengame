@@ -64,10 +64,35 @@ static func zaehigkeit(nummer: int) -> float:
     return 1.0 + ZAEHIGKEIT_JE_WELLE * maxi(0, nummer - 1)
 
 
+## Welchen Anteil einer Welle das Leitwesen allein ausmacht.
+##
+## Abgeleitet statt fest: ein Leitwesen mit fester Lebenszahl waere in Welle 10
+## die halbe Welle und in Welle 60 eine Randnotiz. So bleibt es an jedem der
+## sechs Abschnittsenden derselbe Brocken - und die Wellenstaerke bleibt die
+## einzige Stellschraube fuer die Schwierigkeit.
+##
+## **Der Wert ist gemessen, nicht gewaehlt.** Bei 0.32 sah der Wellenpruefer
+## gut aus - alle 60 Wellen ueberstanden, mit sichtbaren Verlusten an den
+## Abschnittsenden. Der Kolonielauf sagte etwas anderes: 112 gefallene
+## Sitzungen in 50 Tagen, weil ein Spieler dort scheitert, wo er noch nicht
+## genau auf der Sollkurve steht - und die letzte Welle eines Abschnitts ist
+## zugleich die, die er bestehen muss, um weiterzukommen. Bei 0.20 sind es
+## sieben, der Spielraum steigt glatt von 0.25 auf 0.85, und nirgends steht
+## eine 1.00.
+const LEIT_ANTEIL := 0.20
+
+
 ## Lebenspunkte, die ein Raeuber der Art `art` in Welle `nummer` mitbringt.
 ## Einzige Quelle fuer diesen Wert - Wellenbau, Pruefer und Spiel fragen hier.
 static func leben_in(art: int, nummer: int) -> float:
+    if Arten.ist_leitwesen(art):
+        return staerke(nummer) * LEIT_ANTEIL / Arten.aufwand(art)
     return Arten.leben(art) * zaehigkeit(nummer)
+
+
+## Ob in dieser Welle ein Leitwesen steht: am Ende jedes Grabenabschnitts.
+static func hat_leitwesen(nummer: int) -> bool:
+    return nummer > 0 and nummer % Graben.WELLEN_JE_ABSCHNITT == 0
 
 
 ## Was eine Art in Welle `nummer` vom Budget wegnimmt.
@@ -135,6 +160,16 @@ static func auftritte(nummer: int) -> Array[Dictionary]:
     # Zeit je Gruppe frei, klumpten sie sichtbar - die Welle haette Loecher
     # und Spitzen, die niemand entworfen hat.
     var gruppen: Array[Array] = []
+
+    # Das Leitwesen zuerst, und aus demselben Budget. Es kommt also nicht
+    # obendrauf - die Welle wird nicht schwerer, sondern anders: ein Brocken
+    # statt eines Dutzends.
+    var leit := Arten.leitwesen()
+    if hat_leitwesen(nummer) and leit >= 0:
+        budget -= aufwand_in(leit, nummer)
+        var allein: Array[int] = [leit]
+        gruppen.append(allein)
+
     while budget > 0.0 and gruppen.size() < HOECHSTZAHL:
         var index := moeglich[rng.randi_range(0, moeglich.size() - 1)]
         var anzahl := 1

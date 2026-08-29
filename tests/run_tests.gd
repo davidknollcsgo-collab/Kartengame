@@ -36,6 +36,7 @@ const TESTS: PackedStringArray = [
     "_test_arten_verhalten_bleibt_im_rahmen",
     "_test_bahn_bleibt_im_bild_und_sinkt",
     "_test_haut_schluckt_schwache_quellen",
+    "_test_leitwesen_stehen_an_den_abschnittsenden",
     "_test_wellen_wachsen",
     "_test_wellen_sind_reproduzierbar",
     "_test_wellen_bleiben_im_feld",
@@ -301,9 +302,18 @@ func _test_arten_erst_ab_ihrer_welle() -> bool:
         if not _melde(int(Arten.art(i)[&"ab_welle"]) <= 1,
                 "Art %d darf in Welle 1 nicht vorkommen" % i):
             return false
+    # Alle Arten ausser dem Leitwesen - das wird nie gewuerfelt, sondern von
+    # `Wellen.auftritte()` an die Abschnittsenden gesetzt.
+    var leitwesen := 0
+    for i in Arten.zahl():
+        if Arten.ist_leitwesen(i):
+            leitwesen += 1
+    if not _melde(leitwesen == 1, "es muss genau ein Leitwesen geben, nicht %d" % leitwesen):
+        return false
+
     var spaet := Arten.verfuegbar(Graben.WELLEN_GESAMT)
-    return _melde(spaet.size() == Arten.zahl(),
-        "in der letzten Welle muessen alle Arten verfuegbar sein")
+    return _melde(spaet.size() == Arten.zahl() - leitwesen,
+        "in der letzten Welle muessen alle wuerfelbaren Arten verfuegbar sein")
 
 
 # --- Wellen ----------------------------------------------------------------
@@ -382,6 +392,34 @@ func _test_haut_schluckt_schwache_quellen() -> bool:
         return false
     return _melde(Schlund.schaden_an(30.0, 0.6, 0.0, 0.5) > 0.0,
         "ueber der Mindesthelligkeit muss Schaden entstehen")
+
+
+func _test_leitwesen_stehen_an_den_abschnittsenden() -> bool:
+    # Genau eines je Abschnittsende, sonst keines. Waeren sie Teil der
+    # normalen Auswahl, kaeme irgendwann eine Welle aus lauter Leitwesen - und
+    # aus sechs Hoehepunkten wuerde Rauschen.
+    var leit := Arten.leitwesen()
+    if not _melde(leit >= 0, "es gibt kein Leitwesen"):
+        return false
+
+    for n in range(1, Graben.WELLEN_GESAMT + 1):
+        var zahl := 0
+        for a in Wellen.auftritte(n):
+            if int(a[&"art"]) == leit:
+                zahl += 1
+        var soll := 1 if Wellen.hat_leitwesen(n) else 0
+        if not _melde(zahl == soll,
+                "Welle %d hat %d Leitwesen statt %d" % [n, zahl, soll]):
+            return false
+
+    # Und es waechst mit der Welle, statt spaeter zur Randnotiz zu werden.
+    var frueh := Wellen.leben_in(leit, Graben.WELLEN_JE_ABSCHNITT)
+    var spaet := Wellen.leben_in(leit, Graben.WELLEN_GESAMT)
+    if not _melde(spaet > frueh * 2.0,
+            "das Leitwesen muss ueber 60 Wellen deutlich zulegen"):
+        return false
+    return _melde(Arten.wucht(leit) > Arten.wucht(Arten.Art.PANZERKREBS),
+        "das Leitwesen muss haerter zuschlagen als jeder gewoehnliche Raeuber")
 
 
 func _test_wellen_wachsen() -> bool:

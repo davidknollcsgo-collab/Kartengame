@@ -103,6 +103,8 @@ func _zeichne(t: Raeuber, stufe := 0) -> void:
             _treibanker(p, r, farbe, t, hitze)
         Arten.Art.SPRUNGAAL:
             _sprungaal(p, r, farbe, t, hitze)
+        Arten.Art.SCHLUNDMUTTER:
+            _schlundmutter(p, r, farbe, t, hitze)
 
     # Lebensanzeige nur bei Verletzten. Volle Balken ueber jedem Tier waeren
     # Rauschen; ein angeschlagener Gegner ist dagegen eine Entscheidung.
@@ -475,3 +477,44 @@ func _sprungaal(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) ->
             Color(1.0, 0.98, 0.92, 0.28 * (schub - 0.45) / 0.55), 2.4)
 
     _auge(p + k * r * 0.48 * laenge, r * 0.17, hitze)
+
+
+func _schlundmutter(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> void:
+    # Das Leitwesen. Es muss auf den ersten Blick anders **gross** sein als
+    # alles andere - deshalb ein breiter Mantel, ein Kranz aus Augen und ein
+    # Schleppnetz aus Faeden, das ueber den halben Bildschirm reicht.
+    var k := t.richtung
+    var quer := k.orthogonal()
+    var atem := 1.0 + 0.05 * sin(t.alter * 1.1 + t.phase)
+
+    # Die Faeden zuerst, damit der Leib darueber liegt.
+    for i in 9:
+        var s := (float(i) - 4.0) * 0.24
+        var wurzel := p - k * r * 0.2 + quer * r * s * 1.15
+        var wehen := sin(t.alter * 1.7 + float(i) * 0.8) * r * 0.5
+        draw_line(wurzel, wurzel - k * r * 2.4 + quer * wehen,
+            Color(farbe.r, farbe.g, farbe.b, 0.16 + 0.10 * hitze), 1.6)
+
+    var mantel := PackedVector2Array()
+    for i in 17:
+        var w := lerpf(-PI * 0.72, PI * 0.72, float(i) / 16.0)
+        var buchtung := 1.0 + 0.07 * sin(float(i) * 2.3 + t.alter * 1.4)
+        mantel.append(p + (k * cos(w) * 0.96 + quer * sin(w) * 1.22)
+            * r * atem * buchtung)
+    mantel.append(p - k * r * 0.72)
+    _koerper(mantel, farbe, hitze)
+
+    # Panzerrippen ueber dem Mantel - dieselbe Sprache wie bei der
+    # Schildkoralle, weil beide dieselbe Eigenschaft haben.
+    for i in 4:
+        var f := float(i) / 3.0
+        var y := lerpf(0.62, -0.42, f)
+        var halb := lerpf(r * 0.46, r * 1.02, f)
+        draw_line(p + k * r * y + quer * halb, p + k * r * y - quer * halb,
+            Color(1.0, 0.96, 0.92, 0.16 + 0.34 * hitze), 2.0)
+
+    # Ein Kranz aus Augen. Kein einzelnes grosses - viele kleine wirken auf
+    # einem Telefon groesser als eines, das man fuer einen Reflex haelt.
+    for i in 7:
+        var w := lerpf(-PI * 0.42, PI * 0.42, float(i) / 6.0)
+        _auge(p + (k * cos(w) * 0.62 + quer * sin(w) * 0.86) * r, r * 0.10, hitze)
