@@ -54,6 +54,27 @@ jobs:
           echo "--- Vorlagen ---"
           ls "$HOME/.local/share/godot/export_templates/${V%-*}.stable" | grep -i android || true
 
+      # Vor dem Bauen: laeuft das Spiel ueberhaupt?
+      #
+      # Der Testlauf allein reicht dafuer nicht. Er laedt `wache.gd`, `hud.gd`
+      # und `kolonie_schirm.gd` nie, weil ein `--script`-Lauf keine Autoloads
+      # kennt - ein Parse-Fehler in einer dieser Dateien blieb dort gruen und
+      # kam als APK heraus, die beim Start nichts tut. Deshalb wird das Spiel
+      # hier wirklich gestartet und die Ausgabe auf SCRIPT ERROR geprueft.
+      - name: Tests und Startpruefung
+        run: |
+          set -euo pipefail
+          godot --headless --import >/dev/null 2>&1 || true
+          godot --headless --path . --script tests/run_tests.gd
+          godot --headless --path . --script tools/lizenzcheck.gd
+
+          AUSGABE="$(godot --headless --path . --quit-after 120 2>&1 || true)"
+          echo "$AUSGABE" | tail -20
+          if echo "$AUSGABE" | grep -q "SCRIPT ERROR"; then
+            echo "::error::Das Spiel startet nicht sauber - siehe SCRIPT ERROR oben."
+            exit 1
+          fi
+
       # Debug-Schluessel. Nur zum Sideloaden - fuer den Play Store braucht es
       # einen eigenen, dauerhaft aufbewahrten Schluessel. Geht der verloren,
       # laesst sich die App nie wieder aktualisieren.

@@ -32,6 +32,13 @@ var richtung := Vector2.DOWN
 ## 0 bis 1: wie frisch der letzte Treffer ist. Steuert nur die Anzeige.
 var hitze: float = 0.0
 
+## Wie hell das Tier gerade im Kegel steht - dieselbe Zahl, aus der auch der
+## Schaden faellt. `schwarm.gd` setzt daraus das Randlicht: die dem Waechter
+## zugewandte Kante wird hell, die abgewandte bleibt dunkel. Ohne das
+## schwimmen flache Scherenschnitte durch das Wasser, egal wie fein sie
+## gezeichnet sind.
+var licht: float = 0.0
+
 ## Restsekunden Nachglut - die Brutlinie, bei der Treffer weiterbrennen.
 ## Anders als `hitze` macht das echten Schaden.
 var glut: float = 0.0

@@ -273,7 +273,9 @@ func _schwebende_zahlen() -> void:
         # Grabenwand stirbt, hinterliess sonst ein halbes "+4" am Bildrand -
         # im Bild sah es aus wie ein Textfehler.
         ort.x = clampf(ort.x, RAND + 12.0, _flaeche.size.x - RAND - 12.0)
-        ort.y = maxf(ort.y, 96.0)
+        # Unter die Kopfzeile, nicht hinein: dort standen die Zahlen sonst
+        # auf "BROOD" und "WAVE".
+        ort.y = maxf(ort.y, 132.0)
         _text(ort, "+%d" % a[&"wert"], 15,
             Color(0.52, 0.94, 0.80, f), true)
 

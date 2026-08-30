@@ -20,6 +20,19 @@ const FARBE := Color(0.24, 0.86, 1.0)
 const KERN := Color(0.82, 1.0, 0.96)
 const STAERKE := 0.52
 
+## --- Staub im Strahl ---
+##
+## Ein Lichtkegel im Wasser ist nur deshalb sichtbar, weil etwas darin
+## schwebt. Ohne das ist er eine gefaerbte Flaeche; mit ihm ist er ein
+## Volumen, durch das man hindurchsieht.
+##
+## Die Koerner stehen fest im Grabenraum und sinken langsam - sie gehoeren dem
+## Wasser, nicht dem Kegel. Wer den Kegel schwenkt, sieht deshalb andere
+## Koerner aufleuchten, und genau daran liest man die Bewegung ab.
+const STAUB := 220
+const STAUB_SINKEN := 16.0
+const STAUB_HELL := 0.90
+
 
 var richtung := Vector2.UP
 var halbwinkel := Graben.HALBWINKEL
@@ -33,12 +46,37 @@ var rand_kern := Schlund.RAND_KERN
 var tiefe_kern := Schlund.TIEFE_KERN
 var schein := 1.0
 
+## Wie viele Staubkoerner gezeichnet werden. `wache.gd` senkt es, wenn viele
+## Tiere im Bild sind - der Staub ist Beiwerk, die Raeuber sind es nicht.
+var staub_anteil := 1.0
+
+var _staub := PackedVector2Array()
+var _staub_groesse := PackedFloat32Array()
+var _staub_takt := PackedFloat32Array()
+
 
 func _ready() -> void:
     # Additiv: Licht addiert sich zum Wasser, es deckt es nicht ab.
     var stoff := CanvasItemMaterial.new()
     stoff.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
     material = stoff
+    _streue_staub()
+
+
+## Feste Saat: derselbe Staub in jeder Sitzung. Ein Wasser, dessen Schwebstoff
+## bei jedem Start woanders haengt, wirkt nicht wie ein Ort.
+func _streue_staub() -> void:
+    var rng := RandomNumberGenerator.new()
+    rng.seed = 0x4e454b21
+    _staub.resize(STAUB)
+    _staub_groesse.resize(STAUB)
+    _staub_takt.resize(STAUB)
+    for i in STAUB:
+        _staub[i] = Vector2(
+            rng.randf_range(Graben.FELD.position.x, Graben.FELD.end.x),
+            rng.randf_range(Graben.FELD.position.y - 200.0, Graben.FELD.end.y))
+        _staub_groesse[i] = rng.randf_range(0.7, 2.3)
+        _staub_takt[i] = rng.randf_range(0.3, 1.4)
 
 
 func _process(delta: float) -> void:
@@ -71,9 +109,39 @@ func _draw() -> void:
                 farben.append(_farbe_an(spitze, p, puls))
             draw_polygon(punkte, farben)
 
+    _zeichne_staub(spitze, puls)
+
     # Der Austritt am Waechter selbst - ein harter, heller Kern.
     draw_circle(spitze, 13.0, Color(KERN.r, KERN.g, KERN.b, 0.55 * puls * schein))
     draw_circle(spitze, 26.0, Color(FARBE.r, FARBE.g, FARBE.b, 0.16 * puls * schein))
+
+
+## Die Koerner im Strahl. Gezeichnet wird nur, was der Kegel wirklich trifft -
+## dieselbe `Schlund.beleuchtung()`, die auch den Schaden bestimmt. Ein
+## Staubkorn, das ausserhalb des Kegels leuchtet, waere eine Luege ueber die
+## Reichweite.
+func _zeichne_staub(spitze: Vector2, puls: float) -> void:
+    var zahl := int(float(STAUB) * clampf(staub_anteil, 0.0, 1.0))
+    if zahl <= 0:
+        return
+    var hoehe := Graben.FELD.size.y + 200.0
+    var sink := fmod(flackern * STAUB_SINKEN * 0.44, hoehe)
+
+    for i in zahl:
+        var p := _staub[i]
+        # Sinken mit Umbruch am oberen Rand - so bleibt der Vorrat endlich.
+        p.y = Graben.FELD.position.y - 200.0 \
+            + fmod(p.y - Graben.FELD.position.y + 200.0 + sink, hoehe)
+
+        var hell := Schlund.beleuchtung(spitze, richtung, halbwinkel, reichweite,
+            p, rand_kern, tiefe_kern) * schein
+        if hell <= 0.06:
+            continue
+        var funkeln := 0.55 + 0.45 * sin(flackern * _staub_takt[i] * 3.1 + float(i))
+        var r := _staub_groesse[i] * (0.8 + 1.5 * hell) * puls
+        var deckung := hell * hell * STAUB_HELL * funkeln
+        draw_circle(p, r * 2.6, Color(FARBE.r, FARBE.g, FARBE.b, deckung * 0.22))
+        draw_circle(p, r, Color(KERN.r, KERN.g, KERN.b, deckung))
 
 
 func _farbe_an(spitze: Vector2, punkt: Vector2, puls: float) -> Color:

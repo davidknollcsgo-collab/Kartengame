@@ -28,6 +28,7 @@ werden.
 | Neun Räuberarten | vier mit eigener Regel: Panzer, Mindestlicht, Querdrift, Schub |
 | Leitwesen | die Schlundmutter am Ende jedes Abschnitts — sechs Höhepunkte statt sechzig gleicher Wellen |
 | Bestiarium | jede begegnete Art mit ihrer Regel; unbekannte zeigen nur, ab wann sie kommen |
+| Grafische Tiefe | drei Wandebenen mit Wasserdunst, Staub im Lichtkegel, Randlicht auf jedem Tier, Schlick im Vordergrund |
 | Sechs Grabenabschnitte | eigene Regel je Abschnitt: Strömung, Trübung, Dunkelphasen, Streulicht |
 | Grabentiefe | der Tiefenschacht öffnet die Abschnitte — abgeleitet aus der Sollkurve |
 | Kolonie | fünf Kammern mit Stufen, Kosten und Bauzeiten; 50 Tage gemessen, keine gefallene Sitzung |

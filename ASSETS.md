@@ -45,9 +45,10 @@ Laufzeit aus `_draw()`-Aufrufen und eigenen GDShadern:
 | Was | Wo |
 |---|---|
 | Wasser, Meeresschnee, Tiefenverlauf | `shaders/graben.gdshader` |
-| Grabenwände, Nischen, Polypen, Wächter, Brut | `scripts/spiel/kolonie.gd` |
+| Grabenwände in drei Ebenen, Vorsprünge, Bewuchs, Nischen, Polypen, Wächter, Brut | `scripts/spiel/kolonie.gd` |
+| Schlickschwaden und nahe Flocken im Vordergrund | `scripts/spiel/vordergrund.gd` |
 | Alle neun Räuberarten | `scripts/spiel/schwarm.gd` |
-| Lichtkegel | `scripts/spiel/kegel.gd` |
+| Lichtkegel und Staub im Strahl | `scripts/spiel/kegel.gd` |
 | Funken und Trefferstrahlen | `scripts/spiel/funken.gd` |
 
 Das ist Absicht und nicht nur eine Frage der Dateigröße: prozedural erzeugte

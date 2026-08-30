@@ -34,6 +34,7 @@ const SCHUETTELN_ABKLINGEN := 7.0
 @onready var _schwarm: Node2D = $Schwarm
 @onready var _kolonie: Node2D = $Kolonie
 @onready var _funken: Node2D = $Funken
+@onready var _vordergrund: Node2D = $Vordergrund
 @onready var _kamera: Camera2D = $Kamera
 @onready var _hud: CanvasLayer = $Hud
 @onready var _koloniebild: CanvasLayer = $Koloniebild
@@ -74,6 +75,10 @@ var _stroemung := false
 
 
 func _ready() -> void:
+    # Der Fels soll vom selben Kegel angeleuchtet werden, der auch Schaden
+    # macht. Deshalb bekommt die Kolonie den Knoten selbst, nicht eine Kopie
+    # seiner Werte - eine Kopie liefe irgendwann auseinander.
+    _kolonie.kegel = _kegel
     _koloniebild.geschlossen.connect(_kolonie_geschlossen)
     Fortschritt.stand_geaendert.connect(_stelle_ausbau_ein)
     Fortschritt.bau_fertig.connect(_bau_fertig)
@@ -221,6 +226,7 @@ func starte_welle() -> void:
 # --- Schleife --------------------------------------------------------------
 
 func _process(delta: float) -> void:
+    _stimmung_nachfuehren()
     _schuetteln = maxf(0.0, _schuetteln - delta * SCHUETTELN_ABKLINGEN)
     _kamera.offset = Vector2(
         randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * _schuetteln * 7.0
@@ -299,9 +305,17 @@ func _verbrenne(delta: float) -> void:
         if not r.lebendig or r.alter < 0.0:
             continue
         sichtbar.append(r)
-        hell.append(Schlund.beleuchtung(Graben.WAECHTER, _wirksam,
+        # Ausgeschriebener Typ, nicht `:=`. `_kegel.schein` ist untypisiert
+        # (der Knoten ist ein Node2D), damit hat das Produkt keinen Typ, und
+        # GDScript bricht die ganze Datei mit einem Parse-Fehler ab - der im
+        # Testlauf nicht auffaellt, weil der `wache.gd` nie laedt.
+        var h: float = Schlund.beleuchtung(Graben.WAECHTER, _wirksam,
             _kegel.halbwinkel, _kegel.reichweite, r.ort,
-            _kegel.rand_kern, _kegel.tiefe_kern) * _kegel.schein)
+            _kegel.rand_kern, _kegel.tiefe_kern) * _kegel.schein
+        # Fuer das Randlicht beim Zeichnen. Es ist dieselbe Zahl, die gleich
+        # den Schaden bestimmt - was hell aussieht, brennt auch.
+        r.licht = h
+        hell.append(h)
 
     # Nachglut (Brutlinie): wer getroffen wurde, brennt kurz weiter. Das
     # belohnt Ueberstreichen statt Verweilen - eine andere Handbewegung, nicht
@@ -378,6 +392,21 @@ func _raeume_auf() -> void:
                 _verloren()
                 return
     _hud.setze_zahlen(brut, Fortschritt.stand.naehrstoffe, _offen)
+
+
+## Staub und Vordergrund weichen zurueck, wenn das Bild voll wird.
+##
+## Dieselbe Regel wie bei den Zeichenstufen im Schwarm: Stimmung ist das
+## Erste, was geht, und die Raeuber sind das Letzte. Ein Bild, in dem man den
+## naechsten Gegner nicht mehr findet, ist kein schoenes Bild.
+func _stimmung_nachfuehren() -> void:
+    var lebende := 0
+    for r in _tiere:
+        if r.lebendig and r.alter >= 0.0:
+            lebende += 1
+    var anteil := clampf(1.0 - float(lebende) / 110.0, 0.22, 1.0)
+    _kegel.staub_anteil = anteil
+    _vordergrund.staerke = anteil
 
 
 # --- Uebergaenge -----------------------------------------------------------

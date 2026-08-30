@@ -46,6 +46,18 @@ Fortschrittsmauer (ein Tag ohne neue Welle **und** ohne neue Kammerstufe).
 Die Wellenzahl allein ist kein Fortschrittsmaß — wer heute keine neue Welle
 sieht, aber seine Kolonie hebt, steckt nicht fest.
 
+```bash
+godot --headless --path . --quit-after 120            # startet das Spiel wirklich
+```
+
+**Der Testlauf allein beweist nicht, dass das Spiel laeuft.** Er laedt
+`wache.gd`, `hud.gd` und `kolonie_schirm.gd` nie — ein `--script`-Lauf kennt
+keine Autoloads, und `Fortschritt` ist einer. Ein Parse-Fehler in einer dieser
+Dateien bleibt im Testlauf grün, und das Spiel startet dann *scheinbar*: kein
+Fehler im Bild, keine Ausgabe, nur ein Prozess, der hängt. Genau so sieht ein
+nicht geladenes Skript aus. Der Startlauf oben findet es in Sekunden — er läuft
+auch in CI vor dem APK-Bau.
+
 **`--import` nach jeder neuen Datei mit `class_name`.** Sonst kennt die
 Registry die Klasse nicht, und was dann passiert, sieht nicht nach dem Fehler
 aus, der es ist: das Skript lädt gar nicht erst, die Ausgabe bleibt leer, und

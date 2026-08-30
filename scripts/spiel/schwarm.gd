@@ -108,6 +108,8 @@ func _zeichne(t: Raeuber, stufe := 0) -> void:
 
     # Lebensanzeige nur bei Verletzten. Volle Balken ueber jedem Tier waeren
     # Rauschen; ein angeschlagener Gegner ist dagegen eine Entscheidung.
+    _randlicht(p, r, farbe, t)
+
     if t.verletzt():
         var anteil := t.anteil()
         var breite := r * 1.8
@@ -518,3 +520,31 @@ func _schlundmutter(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float
     for i in 7:
         var w := lerpf(-PI * 0.42, PI * 0.42, float(i) / 6.0)
         _auge(p + (k * cos(w) * 0.62 + quer * sin(w) * 0.86) * r, r * 0.10, hitze)
+
+
+## Randlicht: die dem Waechter zugewandte Kante wird hell.
+##
+## Das ist der billigste Weg zu Koerperlichkeit, den es gibt - ein heller
+## Bogen auf einer Seite, sonst nichts. Ein Tier, das von ueberall gleich
+## beleuchtet ist, sieht aus wie ein Aufkleber; eines mit einer hellen und
+## einer dunklen Seite sieht aus wie ein Koerper im Wasser.
+##
+## Die Staerke kommt aus `Raeuber.licht`, also aus derselben
+## `Schlund.beleuchtung()`, die den Schaden bestimmt. Randlicht ohne Schaden
+## waere ein Kegel, der weiter zu reichen scheint als er reicht.
+func _randlicht(p: Vector2, r: float, farbe: Color, t: Raeuber) -> void:
+    if t.licht <= 0.05:
+        return
+    var zum_licht := (Graben.WAECHTER - p)
+    if zum_licht.length_squared() < 1.0:
+        return
+    var w := zum_licht.angle()
+    var staerke: float = t.licht
+    var bogen := lerpf(1.15, 0.72, staerke)
+
+    # Zwei Bogen: ein breiter, weicher Saum und darin eine schmale, harte
+    # Kante. Der Saum macht die Rundung, die Kante den Glanzpunkt.
+    draw_arc(p, r * 1.02, w - bogen, w + bogen, 16,
+        Color(farbe.r, farbe.g, farbe.b, 0.30 * staerke), 3.4)
+    draw_arc(p, r * 0.94, w - bogen * 0.52, w + bogen * 0.52, 12,
+        Color(1.0, 0.99, 0.94, 0.42 * staerke * staerke), 1.8)
