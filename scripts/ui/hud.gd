@@ -176,8 +176,29 @@ func zeige_sitzungsende(naechste: int, verdient: int) -> void:
 
 ## Eine aufsteigende Zahl am Ort des Treffers. Die einzige Stelle, an der das
 ## HUD Spielkoordinaten kennt - deshalb wird hier umgerechnet.
+## Wie nah zwei Ausbeuten sein muessen, um zu einer zusammenzufallen.
+##
+## Grosszuegig, und das ist Absicht: gezeichnet wird spaeter in den Rand
+## hinein und unter die Kopfzeile geschoben, also liegen zwei Zahlen im Bild
+## naeher beieinander als im Wasser. Bei 52 Pixeln stapelten sich am oberen
+## Rand immer noch drei Posten uebereinander.
+const AUSBEUTE_NAH := 140.0
+
 func zeige_ausbeute(welt: Vector2, wert: int) -> void:
-    if _ausbeuten.size() > 40:
+    # **Zusammenzaehlen statt stapeln.**
+    #
+    # In Welle 187 sterben Dutzende Raeuber im selben Augenblick am selben
+    # Fleck. Vorher stand dort ein eigenes "+1.23B" je Tier, alle an
+    # derselben Stelle uebereinander - im Bild ein unlesbarer Klumpen, aus dem
+    # sich nicht einmal die Groessenordnung ablesen liess. Wer nah genug an
+    # einer laufenden Zahl stirbt, wird jetzt dazugezaehlt: aus vierzig
+    # Fetzen wird eine Zahl, und die sagt mehr als jeder einzelne Posten.
+    for a in _ausbeuten:
+        if (a[&"ort"] as Vector2).distance_to(welt) < AUSBEUTE_NAH:
+            a[&"wert"] = int(a[&"wert"]) + wert
+            a[&"leben"] = maxf(float(a[&"leben"]), 0.7)
+            return
+    if _ausbeuten.size() > 8:
         return
     _ausbeuten.append({&"ort": welt, &"wert": wert, &"leben": 0.9})
 
@@ -274,22 +295,26 @@ func _kopfzeile(breite: float) -> void:
     _text(Vector2(mitte - 40.0, 66.0), "%d / %d"
         % [_brut, Fortschritt.stand.brut_leben()], 19, Color(0.98, 0.80, 0.42))
 
-    _text(Vector2(breite - RAND - 120.0, 40.0), "NUTRIENTS", 13,
-        Color(0.40, 0.66, 0.60))
-    _text(Vector2(breite - RAND - 120.0, 66.0), Zahl.kurz(_naehrstoffe), 19,
-        Color(0.52, 0.94, 0.80))
+    # Rechtsbuendig an der Randkante, nicht linksbuendig 120 Pixel davor: was
+    # dort steht, ist mal "40" und mal "60.0T", und die Spalte soll bei beiden
+    # am selben Rand enden.
+    var rechts := breite - RAND
+    _text(Vector2(rechts, 40.0), "NUTRIENTS", 13,
+        Color(0.40, 0.66, 0.60), false, true)
+    _text(Vector2(rechts, 66.0), Zahl.kurz(_naehrstoffe), 19,
+        Color(0.52, 0.94, 0.80), false, true)
 
     if not _bauphase and not _ende:
-        _text(Vector2(breite - RAND - 120.0, 108.0), "%d left" % _offen, 15,
-            Color(0.62, 0.74, 0.80, 0.8))
+        _text(Vector2(rechts, 108.0), "%d left" % _offen, 15,
+            Color(0.62, 0.74, 0.80, 0.8), false, true)
     elif _bauphase and not _ende:
         # Derselbe Platz, andere Auskunft: in der Bauphase steht dort, was der
         # Tag noch hergibt. Ein Bonus, den man erst im Koloniebildschirm
         # entdeckt, wirkt nicht.
         var hinweis := Tagesstroemung.hinweis(Fortschritt.stand.stroemung_offen)
         if not hinweis.is_empty():
-            _text(Vector2(breite - RAND - 120.0, 108.0), hinweis, 14,
-                Color(0.52, 0.94, 0.80, 0.85))
+            _text(Vector2(rechts, 108.0), hinweis, 14,
+                Color(0.52, 0.94, 0.80, 0.85), false, true)
 
 
 func _schwebende_zahlen() -> void:
@@ -408,13 +433,21 @@ func _grabenwertung(wo: Vector2) -> void:
         Color(0.56, 0.74, 0.80), true)
 
 
+## `rechtsbuendig` setzt `wo` als **rechte** Kante statt als linke.
+##
+## Gebraucht wird das oben rechts: dort stehen Zahlen und Hinweise
+## unterschiedlicher Laenge in einer Spalte, und links auszurichten heisst,
+## sich auf die laengste festzulegen. Die Tagesstroemung ("Day current x2 -
+## 3 left") lief so aus dem Bild.
 func _text(wo: Vector2, was: String, groesse: int, farbe: Color,
-        zentriert := false) -> void:
+        zentriert := false, rechtsbuendig := false) -> void:
     var breite := _schrift.get_string_size(was, HORIZONTAL_ALIGNMENT_LEFT, -1,
         groesse).x
     var ort := wo
     if zentriert:
         ort.x -= breite * 0.5
+    elif rechtsbuendig:
+        ort.x -= breite
     # Schatten zuerst - heller Text auf bewegtem Wasser ist sonst stellenweise
     # unlesbar, und genau dort steht die Brutzahl.
     _flaeche.draw_string(_schrift, ort + Vector2(1.0, 1.0), was,
