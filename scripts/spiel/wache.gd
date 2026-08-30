@@ -610,6 +610,7 @@ func _lies_entwicklerschalter() -> void:
     var polypenzahl := 0
     var reiter := -1
     var endschirm := -1
+    var stufen := -1
 
     for i in argumente.size():
         match argumente[i]:
@@ -631,6 +632,11 @@ func _lies_entwicklerschalter() -> void:
                 # Die drei Schlussbilder lassen sich sonst nur erspielen.
                 # 0 gefallen, 1 Sitzung gehalten, 2 Graben durchgestanden.
                 endschirm = int(argumente[i + 1]) if i + 1 < argumente.size() else 0
+            "--stufen":
+                # Alle Kammern auf diese Stufe. Der Koloniebildschirm sieht
+                # bei Stufe 0 anders aus als bei 14, und beides muss sich
+                # ansehen lassen, ohne es zu erspielen.
+                stufen = int(argumente[i + 1]) if i + 1 < argumente.size() else 0
             "--kolonie":
                 # Auch der Koloniebildschirm muss sich ansehen lassen, ohne
                 # ihn von Hand aufzutippen. 0 Kammern, 1 Linien, 2 Tag.
@@ -640,6 +646,13 @@ func _lies_entwicklerschalter() -> void:
                     messen = float(argumente[i + 1])
             "--stau":
                 stau = true
+
+    if stufen >= 0:
+        var st := clampi(stufen, 0, Kammern.HOECHSTSTUFE)
+        for k in Kammern.zahl():
+            Fortschritt.stand.stufen[k] = st
+        Fortschritt.stand.hoechste_welle = Graben.WELLEN_GESAMT
+        _stelle_ausbau_ein()
 
     if welle > 0:
         welle_nummer = clampi(welle, 1, Graben.WELLEN_GESAMT)

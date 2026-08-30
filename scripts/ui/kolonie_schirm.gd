@@ -265,7 +265,9 @@ func _zeichne() -> void:
     # Schlundwache durch die Kammern und die alte Naehrstoffzahl des HUD stand
     # neben der neuen - zwei Bildschirme uebereinander statt einem.
     _flaeche.draw_rect(Rect2(0.0, 0.0, breite, hoehe), GRUND)
+    _tiefenverlauf(breite, hoehe)
     _grabenwand(breite, hoehe)
+    _schwebstoff(breite, hoehe)
     _kopfzeile(breite, stand)
 
     _umschalterzeile(breite)
@@ -305,6 +307,9 @@ func _zeichne() -> void:
                 _kammer(kasten, k, stand, jetzt)
         y += passt + LUECKE
 
+    if _sicht == Sicht.KAMMERN:
+        _schnitt(breite, y + 18.0, hoehe - FUSS - 24.0, stand, jetzt)
+
     if _sicht == Sicht.TAG:
         y = _zuchtkalender(breite, y + 8.0, stand)
         _grabenwertung(breite, y + 18.0, stand)
@@ -326,20 +331,68 @@ func _zeichne() -> void:
             Color(0.88, 0.96, 1.0, f), true)
 
 
+## Der Blick geht nach unten, also wird es nach unten heller: dort liegt die
+## Kolonie. Ein gleichmaessig dunkler Grund ist ein Menuehintergrund, ein
+## Verlauf ist ein Ort.
+func _tiefenverlauf(breite: float, hoehe: float) -> void:
+    const STUFEN := 14
+    for i in STUFEN:
+        var t0 := float(i) / float(STUFEN)
+        var t1 := float(i + 1) / float(STUFEN)
+        var kraft := pow(t0, 2.1)
+        _flaeche.draw_rect(Rect2(0.0, t0 * hoehe, breite, (t1 - t0) * hoehe + 1.0),
+            Color(0.030, 0.090, 0.100, 0.30 * kraft))
+
+    # Und ein Schein, der von unten heraufkommt - dieselbe Geste wie im
+    # Schlund, wo die Kolonie unten leuchtet.
+    for i in 7:
+        var f := float(i + 1) / 7.0
+        _flaeche.draw_circle(Vector2(breite * 0.5, hoehe * 1.06),
+            breite * 0.42 * f, Color(0.10, 0.30, 0.30, 0.030 * (1.0 - f)))
+
+
 ## Angedeutete Felswand links und rechts, damit der Bildschirm im Graben
 ## bleibt und nicht wie ein aufgesetztes Menue wirkt.
+##
+## Drei Ebenen, wie im Schlund: die hintere hell und weich vom Wasserdunst,
+## die vordere dunkel und scharf. Das ist derselbe Trick und derselbe Grund -
+## ohne Versatz bleibt es eine Zeichnung.
 func _grabenwand(breite: float, hoehe: float) -> void:
-    for seite: float in [0.0, 1.0]:
-        var punkte := PackedVector2Array()
-        var x0: float = seite * breite
-        var richtung: float = 1.0 if seite < 0.5 else -1.0
-        punkte.append(Vector2(x0, 0.0))
-        for i in 15:
-            var t := float(i) / 14.0
-            var tief := RAND * 0.62 * (1.0 + 0.5 * sin(t * 9.0 + seite * 3.0))
-            punkte.append(Vector2(x0 + richtung * tief, t * hoehe))
-        punkte.append(Vector2(x0, hoehe))
-        _flaeche.draw_colored_polygon(punkte, Color(0.045, 0.075, 0.095))
+    const WAND_EBENEN := 3
+    for ebene in WAND_EBENEN:
+        var dunst := 1.0 - float(ebene) / float(WAND_EBENEN)
+        var tiefe := RAND * (0.62 + 1.5 * (1.0 - dunst))
+        var farbe := Color(0.045, 0.075, 0.095).lerp(
+            Color(0.052, 0.112, 0.132), dunst)
+        for seite: float in [0.0, 1.0]:
+            var punkte := PackedVector2Array()
+            var x0: float = seite * breite
+            var richtung: float = 1.0 if seite < 0.5 else -1.0
+            punkte.append(Vector2(x0, 0.0))
+            for i in 19:
+                var t := float(i) / 18.0
+                var zack := tiefe * (1.0 + 0.5 * sin(t * 9.0 + seite * 3.0
+                    + float(ebene) * 2.2)
+                    + 0.22 * sin(t * 23.0 + float(ebene)))
+                punkte.append(Vector2(x0 + richtung * zack, t * hoehe))
+            punkte.append(Vector2(x0, hoehe))
+            _flaeche.draw_colored_polygon(punkte, farbe)
+
+
+## Meeresschnee hinter den Tafeln. Er bewegt sich - und Bewegung ist der
+## Unterschied zwischen einem Bild vom Graben und dem Graben selbst.
+func _schwebstoff(breite: float, hoehe: float) -> void:
+    const FLOCKEN := 46
+    for i in FLOCKEN:
+        var saat := float(i) * 12.9898
+        var x := fposmod(sin(saat) * 43758.5453, 1.0) * breite
+        var tempo := 6.0 + fposmod(cos(saat) * 21237.13, 1.0) * 18.0
+        var y := fposmod(fposmod(sin(saat * 1.7) * 1237.3, 1.0) * hoehe
+            + _zeit * tempo, hoehe)
+        var r := 0.8 + fposmod(sin(saat * 3.1) * 917.7, 1.0) * 1.9
+        var glimmen := 0.5 + 0.5 * sin(_zeit * 0.7 + saat)
+        _flaeche.draw_circle(Vector2(x, y), r,
+            Color(0.44, 0.66, 0.72, 0.05 + 0.05 * glimmen))
 
 
 func _kopfzeile(breite: float, stand: KolonieStand) -> void:
@@ -426,6 +479,115 @@ func _tagesziel(kasten: Rect2, index: int, stand: KolonieStand) -> void:
         _text(Vector2(rechts, kasten.get_center().y + 5.0),
             "+%d" % Tagesziel.lohn(index, stand.hoechste_welle), 15, LEISE,
             false, true)
+
+
+## Der senkrechte Schnitt durch den Graben.
+##
+## **Das ist der Bildschirm, den der Plan beschreibt** - "die Kolonie als
+## senkrechter Schnitt, Kammern werden nach unten gegraben". Bisher stand
+## darueber eine Liste, und darunter war Platz. Eine Liste sagt, was man
+## kaufen kann; ein Schnitt sagt, wo man ist.
+##
+## Der Schacht faellt in der Mitte, die Kammern haengen abwechselnd links und
+## rechts daran. Jede waechst mit ihrer Stufe und leuchtet staerker - man
+## sieht seine Kolonie also wachsen, statt es aus Zahlen abzuleiten.
+func _schnitt(breite: float, oben: float, unten: float, stand: KolonieStand,
+        _jetzt: float) -> void:
+    var hoch := unten - oben
+    if hoch < 140.0:
+        return
+    var mitte := breite * 0.5
+    var tiefste := stand.stufe(Kammern.Kammer.TIEFENSCHACHT)
+    var puls := 0.5 + 0.5 * sin(_zeit * 2.4)
+
+    _text(Vector2(RAND, oben + 12.0), "THE COLONY", 13, LEISE)
+    _text(Vector2(breite - RAND, oben + 12.0),
+        "trench open to wave %d" % stand.offene_welle(), 12, LEISE, false, true)
+
+    var kopf := oben + 30.0
+    var fuss := unten - 16.0
+    var spanne := fuss - kopf
+
+    # **Der Schacht laeuft durch.** Im ersten Entwurf endete er dort, wo
+    # gerade gegraben ist - und die beiden unteren Kammern hingen frei im
+    # Bild, weil ihre Gaenge ins Leere zeigten. Jetzt ist der ganze Schacht
+    # da; hell ist, was gegraben wurde, und der Rest steht als Umriss.
+    var gegraben := clampf(float(tiefste) / float(Kammern.HOECHSTSTUFE), 0.10, 1.0)
+    var spitze_y := kopf + spanne * gegraben
+    var schachtfarbe: Color = FARBEN[Kammern.Kammer.TIEFENSCHACHT]
+
+    var halb := 15.0
+    var offen := PackedVector2Array([
+        Vector2(mitte - halb, kopf), Vector2(mitte + halb, kopf),
+        Vector2(mitte + halb * 0.62, spitze_y), Vector2(mitte - halb * 0.62, spitze_y),
+    ])
+    _flaeche.draw_colored_polygon(offen, Color(0.030, 0.062, 0.075))
+    _flaeche.draw_polyline(offen + PackedVector2Array([offen[0]]),
+        Color(schachtfarbe.r, schachtfarbe.g, schachtfarbe.b, 0.40), 1.5, true)
+
+    # Was noch bevorsteht - nur angedeutet, in Strichen.
+    if gegraben < 0.995:
+        var y := spitze_y
+        while y < fuss:
+            var bis := minf(y + 9.0, fuss)
+            var b := lerpf(halb * 0.62, halb * 0.24,
+                (y - spitze_y) / maxf(1.0, fuss - spitze_y))
+            _flaeche.draw_line(Vector2(mitte - b, y), Vector2(mitte - b, bis),
+                Color(schachtfarbe.r, schachtfarbe.g, schachtfarbe.b, 0.13), 1.2)
+            _flaeche.draw_line(Vector2(mitte + b, y), Vector2(mitte + b, bis),
+                Color(schachtfarbe.r, schachtfarbe.g, schachtfarbe.b, 0.13), 1.2)
+            y += 16.0
+
+    # Die Bohrspitze: dort ist die Kolonie gerade angekommen.
+    _flaeche.draw_circle(Vector2(mitte, spitze_y), 5.0 + 3.5 * puls,
+        Color(schachtfarbe.r, schachtfarbe.g, schachtfarbe.b, 0.22 + 0.24 * puls))
+    _text(Vector2(mitte, spitze_y + 22.0), "shaft %d" % tiefste, 11,
+        Color(schachtfarbe.r, schachtfarbe.g, schachtfarbe.b, 0.7), true)
+
+    # Vier Kammern am Schacht, abwechselnd links und rechts - ueber die ganze
+    # Laenge verteilt, damit jeder Gang den Schacht auch trifft.
+    var reihe: PackedInt32Array = [
+        Kammern.Kammer.LEUCHTORGAN, Kammern.Kammer.ZUCHTKAMMER,
+        Kammern.Kammer.BRUTKAMMER, Kammern.Kammer.FILTERBECKEN,
+    ]
+    for i in reihe.size():
+        var k := reihe[i]
+        var stufe := stand.stufe(k)
+        var voll := clampf(float(stufe) / float(Kammern.HOECHSTSTUFE), 0.0, 1.0)
+        var seite: float = SEITEN[i % 2]
+        var y := kopf + spanne * (0.13 + 0.25 * float(i))
+        var weite := 52.0 + 66.0 * voll
+        var kammerhoch := 17.0 + 17.0 * voll
+        var wo := Vector2(mitte + seite * (halb + 18.0 + weite * 0.5), y)
+        var farbe: Color = FARBEN[k]
+        var baut_hier := stand.bau_kammer == k
+        var erreicht := y <= spitze_y + 4.0
+
+        _flaeche.draw_line(Vector2(mitte + seite * halb * 0.7, y), wo,
+            Color(0.14, 0.24, 0.28, 0.9 if erreicht else 0.35), 5.0)
+
+        # Eine gegrabene Blase, kein Rechteck. Ein Rechteck waere ein Raum,
+        # den jemand gebaut hat; das hier ist aus dem Fels geholt.
+        var blase := PackedVector2Array()
+        for e in 13:
+            var w := TAU * float(e) / 13.0
+            var zerre := 1.0 + 0.13 * sin(float(e) * 2.7 + float(i) * 1.9)
+            blase.append(wo + Vector2(cos(w) * weite * 0.5,
+                sin(w) * kammerhoch) * zerre)
+
+        var leuchten := 0.10 + 0.32 * voll
+        if baut_hier:
+            leuchten += 0.20 * puls
+        _flaeche.draw_colored_polygon(blase,
+            Color(farbe.r, farbe.g, farbe.b, leuchten * 0.40))
+        _flaeche.draw_polyline(blase + PackedVector2Array([blase[0]]),
+            Color(farbe.r, farbe.g, farbe.b, 0.28 + leuchten), 1.4, true)
+        _flaeche.draw_circle(wo, 3.0 + 4.5 * voll,
+            Color(farbe.r, farbe.g, farbe.b, 0.55 + 0.35 * leuchten))
+
+        var beschriftung := "%s %d" % [Kammern.name_von(k).split(" ")[0], stufe]
+        _text(wo + Vector2(0.0, kammerhoch + 15.0), beschriftung, 11,
+            Color(farbe.r, farbe.g, farbe.b, 0.75), true)
 
 
 ## Eine Art im Bestiarium.
