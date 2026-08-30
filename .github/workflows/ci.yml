@@ -35,10 +35,14 @@ jobs:
         run: |
           set -euo pipefail
           V="${GODOT_VERSION}"
-          curl -sSL --retry 3 -o godot.zip \
+          # Nach /tmp, nicht neben das Projekt: der Lizenzpruefer meldet
+          # jede Datei ohne Herkunftseintrag, und ein liegengelassenes
+          # Bauarchiv ist fuer ihn nicht von einem eingeschleppten Asset zu
+          # unterscheiden. Das soll es auch nicht sein.
+          curl -sSL --retry 3 -o /tmp/godot.zip \
             "https://github.com/godotengine/godot-builds/releases/download/${V}/Godot_v${V}_linux.x86_64.zip"
-          unzip -q godot.zip
-          sudo mv "Godot_v${V}_linux.x86_64" /usr/local/bin/godot
+          unzip -q /tmp/godot.zip -d /tmp/godot
+          sudo mv "/tmp/godot/Godot_v${V}_linux.x86_64" /usr/local/bin/godot
           sudo chmod +x /usr/local/bin/godot
 
       - name: Version

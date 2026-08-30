@@ -45,13 +45,32 @@ Geisterdaten und Bestenliste, Werbung und Käufe — alles drei braucht Konten
 und SDKs, die außerhalb dieses Repositorys eingerichtet werden. Der
 vollständige Bauplan steht im Projektplan.
 
-## APK
+## Auf dem Telefon spielen
 
-Der Bau läuft in CI: Actions → **APK** → letzter Lauf → Artefakt
-`nekton-apk`. Die APK ist mit einem Debug-Schlüssel signiert und nur zum
-Sideloaden gedacht — für den Play Store braucht es einen eigenen,
-dauerhaft aufbewahrten Schlüssel. Geht der verloren, lässt sich die App nie
-wieder aktualisieren.
+Bei jedem Push baut die CI (`Veroeffentlichung`) die App und hängt sie an eine
+**Vorabveröffentlichung** mit fester Marke — die Adresse bleibt also gleich,
+und dort liegt immer der neueste Stand:
+
+**Releases → `test-claude-delete-all-previous-44i1x5` → `nekton.apk`**
+
+Am Telefon reicht es, diesen Link im Browser zu öffnen und die
+heruntergeladene Datei anzutippen. Android fragt einmal nach der Erlaubnis,
+Apps aus dieser Quelle zu installieren — das ist der normale Weg für eine App,
+die nicht aus dem Store kommt.
+
+Die APK ist mit einem Debug-Schlüssel signiert und nur zum Sideloaden gedacht.
+Für den Play Store braucht es einen eigenen, dauerhaft aufbewahrten Schlüssel;
+geht der verloren, lässt sich die App nie wieder aktualisieren.
+
+### Ohne Installation nachsehen
+
+Derselbe Bau landet als Seite auf **GitHub Pages** — eine Adresse, dieselbe am
+Rechner und am Telefon. Zum schnellen Nachsehen ist das der kürzere Weg; die
+App auf dem Telefon bleibt die Fassung, um die es geht. Der Link steht im
+Actions-Lauf beim Schritt *Seite veröffentlichen*.
+
+Wer die Datei lieber selbst in der Hand hat: an derselben Veröffentlichung
+hängt `nekton.html` — das ganze Spiel in einer einzigen Datei, ohne Server.
 
 ## Bauen und prüfen
 

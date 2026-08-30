@@ -57,20 +57,26 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      # **Alles nach /tmp, nichts ins Arbeitsverzeichnis.**
+      #
+      # Vorher landeten `godot.zip` und `templates.tpz` neben dem Projekt, und
+      # der Lizenzpruefer meldete sie zu Recht als Dateien ohne Herkunfts-
+      # eintrag - er unterscheidet nicht zwischen "fremdes Asset eingeschleppt"
+      # und "Bauwerkzeug liegengelassen", und das soll er auch nicht.
       - name: Godot und Exportvorlagen holen
         run: |
           set -euo pipefail
           V="${GODOT_VERSION}"
-          curl -sSL --retry 3 -o godot.zip \
+          curl -sSL --retry 3 -o /tmp/godot.zip \
             "https://github.com/godotengine/godot-builds/releases/download/${V}/Godot_v${V}_linux.x86_64.zip"
-          unzip -q godot.zip
-          sudo mv "Godot_v${V}_linux.x86_64" /usr/local/bin/godot
+          unzip -q /tmp/godot.zip -d /tmp/godot
+          sudo mv "/tmp/godot/Godot_v${V}_linux.x86_64" /usr/local/bin/godot
           sudo chmod +x /usr/local/bin/godot
 
-          curl -sSL --retry 3 -o templates.tpz \
+          curl -sSL --retry 3 -o /tmp/templates.tpz \
             "https://github.com/godotengine/godot-builds/releases/download/${V}/Godot_v${V}_export_templates.tpz"
           mkdir -p "$HOME/.local/share/godot/export_templates"
-          unzip -q templates.tpz -d /tmp/tpl
+          unzip -q /tmp/templates.tpz -d /tmp/tpl
           mv /tmp/tpl/templates "$HOME/.local/share/godot/export_templates/${V%-*}.stable"
 
       # Vor dem Bauen: laeuft das Spiel ueberhaupt?
