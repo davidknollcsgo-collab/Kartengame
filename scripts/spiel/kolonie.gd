@@ -73,6 +73,32 @@ var _vorspruenge: Array[Dictionary] = []
 ## Punkt ist ein Fehler im Bild, ein Buschel ist ein Lebewesen.
 var _bewuchs: Array[Dictionary] = []
 
+## --- Was aus einer Flaeche einen Fels macht ---
+##
+## Die Wand war eine Flaeche mit vier Schichtlinien darauf, und genau so sah
+## sie aus: nicht wie Stein, sondern wie eine dunkle Form. Fels liest man an
+## drei Dingen, und keines davon ist die Farbe.
+##
+##   * **Risse.** Sie laufen quer zur Schichtung, verzweigen sich einmal und
+##     hoeren mitten im Nichts auf. Eine Wand ohne Risse ist gegossen.
+##   * **Mulden.** Ausbrueche und eingeschlossene Broecken - Flecken, die
+##     anders liegen als die Flaeche um sie herum. Sie geben der Wand eine
+##     Oberflaeche statt einer Kontur.
+##   * **Krusten.** Was auf dem Stein sitzt: Kolonien aus winzigen Punkten,
+##     die sich an die Kante draengen, wo das Wasser vorbeizieht. Sie sind
+##     der einzige Teil der Wand, der lebt.
+##
+## Alles drei liegt in Wandkoordinaten und wandert mit dem Versatz seiner
+## Ebene - sonst schwimmt die Struktur auf dem Fels statt in ihm.
+var _risse: Array[Dictionary] = []
+var _mulden: Array[Dictionary] = []
+var _krusten: Array[Dictionary] = []
+
+## Schleier: lange Faeden, die von Vorspruengen und Kanten haengen und in der
+## Stroemung stehen. Sie sind das Einzige an der Wand, das sich bewegt - und
+## Bewegung ist es, woran man Wasser erkennt.
+var _schleier: Array[Dictionary] = []
+
 ## Der Kegel, um Fels und Bewuchs von ihm anleuchten zu lassen. Gesetzt von
 ## `wache.gd`. Dieselbe `Schlund.beleuchtung()` wie ueberall - was hell
 ## gezeichnet wird, ist das Licht, das auch Schaden macht.
@@ -105,6 +131,8 @@ func _baue_waende() -> void:
 
     _baue_vorspruenge(rng)
     _baue_bewuchs(rng)
+    _baue_felsdetail(rng)
+    _baue_schleier(rng)
 
 
 ## Ein Wandprofil. `einzug` schiebt es zur Mitte, `ebene` waehlt die
@@ -183,14 +211,144 @@ func _baue_bewuchs(rng: RandomNumberGenerator) -> void:
         })
 
 
+## Risse, Mulden und Krusten - je Ebene und Seite aus der fertigen Wandkante
+## abgeleitet, damit sie wirklich **auf** dem Fels liegen und nicht daneben.
+func _baue_felsdetail(rng: RandomNumberGenerator) -> void:
+    _risse.clear()
+    _mulden.clear()
+    _krusten.clear()
+
+    for ebene in EBENEN:
+        # Hintere Ebenen bekommen weniger davon. Nicht aus Sparsamkeit: der
+        # Dunst frisst Kanten von vorn nach hinten, und was er ohnehin
+        # verschluckt, muss man nicht zeichnen.
+        var dichte := 1.0 - 0.62 * EBENE_DUNST[ebene]
+        for s in 2:
+            var wand: PackedVector2Array = _fernwaende[ebene * 2 + s]
+            var kante := wand.slice(1, wand.size() - 1)
+            var nach_innen := -SEITEN[s]
+
+            for i in range(2, kante.size() - 2):
+                var p: Vector2 = kante[i]
+
+                # Ein Riss: vier Glieder in den Fels hinein, mit einem
+                # Abzweig. Er endet mitten in der Flaeche - ein Riss, der die
+                # Wand durchquert, waere ein Spalt.
+                if rng.randf() < 0.30 * dichte:
+                    var linie := PackedVector2Array([p])
+                    var richtung := Vector2(-nach_innen, rng.randf_range(-0.5, 0.5)).normalized()
+                    var punkt := p
+                    for _g in 4:
+                        richtung = richtung.rotated(rng.randf_range(-0.5, 0.5)).normalized()
+                        punkt += richtung * rng.randf_range(9.0, 26.0)
+                        linie.append(punkt)
+                    var abzweig := PackedVector2Array()
+                    if linie.size() > 2:
+                        var ab: Vector2 = linie[2]
+                        abzweig.append(ab)
+                        abzweig.append(ab + richtung.rotated(rng.randf_range(0.6, 1.3))
+                            * rng.randf_range(10.0, 24.0))
+                    _risse.append({
+                        &"ebene": ebene, &"linie": linie, &"abzweig": abzweig,
+                        &"staerke": rng.randf_range(0.5, 1.0),
+                    })
+
+                # Platten: grosse, kantige Broecken, die die ganze Wandbreite
+                # bedecken - nicht nur einen Saum an der Kante.
+                #
+                # Zuerst waren es kleine Mulden dicht an der Kante. Das war zu
+                # wenig: die Wand nimmt fast die Haelfte des Bildes ein, und
+                # in dieser Flaeche lagen ein paar Tupfen. Fels liest man an
+                # **grossen** Formen, die einander ueberlappen; das Kleinzeug
+                # kommt erst danach und nur dort, wo man es sieht.
+                for _t in 3:
+                    if rng.randf() > 0.52 * dichte:
+                        continue
+                    var weg := rng.randf_range(6.0, 210.0)
+                    var mitte := p + Vector2(-nach_innen * weg,
+                        rng.randf_range(-28.0, 28.0))
+                    # Weiter aussen groesser: dort steht kein Detail daneben,
+                    # das den Massstab setzt, und kleine Formen wuerden dort
+                    # zu Rauschen.
+                    var r := rng.randf_range(16.0, 34.0) * (0.7 + weg / 210.0)
+                    var form := PackedVector2Array()
+                    var ecken := rng.randi_range(5, 7)
+                    var dreh := rng.randf_range(0.0, TAU)
+                    for e in ecken:
+                        var w := dreh + TAU * float(e) / float(ecken)
+                        var rr := r * rng.randf_range(0.66, 1.30)
+                        form.append(mitte + Vector2(cos(w) * rr, sin(w) * rr * 0.80))
+                    _mulden.append({
+                        &"ebene": ebene, &"form": form,
+                        &"innen": nach_innen,
+                        &"tiefer": rng.randf() < 0.5,
+                    })
+
+            # Krusten nur auf der vordersten Wand: dort, wo sie noch als
+            # Kolonie zu erkennen sind statt als Rauschen.
+            if EBENE_DUNST[ebene] > 0.01:
+                continue
+            for i in range(1, kante.size() - 1):
+                if rng.randf() > 0.34:
+                    continue
+                var q: Vector2 = kante[i]
+                var punkte := PackedVector2Array()
+                var groessen := PackedFloat32Array()
+                for _k in rng.randi_range(5, 11):
+                    punkte.append(q + Vector2(
+                        -nach_innen * rng.randf_range(1.0, 26.0),
+                        rng.randf_range(-15.0, 15.0)))
+                    groessen.append(rng.randf_range(1.1, 3.2))
+                _krusten.append({
+                    &"punkte": punkte, &"groessen": groessen,
+                    &"takt": rng.randf_range(0.5, 1.4),
+                    &"phase": rng.randf_range(0.0, TAU),
+                })
+
+
+## Schleier: Faeden, die von der vordersten Kante haengen und in der Stroemung
+## stehen. Sie sind lang, duenn und langsam - alles andere sieht aus wie Regen.
+func _baue_schleier(rng: RandomNumberGenerator) -> void:
+    _schleier.clear()
+    var kante := _wand_links.slice(1, _wand_links.size() - 1) \
+        + _wand_rechts.slice(1, _wand_rechts.size() - 1)
+    for i in range(0, kante.size(), 1):
+        if rng.randf() > 0.5:
+            continue
+        var p: Vector2 = kante[i]
+        var nach_innen := -signf(p.x)
+        # Kurz und viele, nicht lang und wenige. Bei fuenf Gliedern zu je
+        # dreissig Pixeln reichten sie quer durch das halbe Bild und sahen aus
+        # wie Kratzer auf der Linse - ein Faden, der laenger ist als der
+        # Bewuchs, an dem er haengt, liest sich nicht mehr als Bewuchs.
+        var glieder := PackedFloat32Array()
+        for _g in rng.randi_range(3, 4):
+            glieder.append(rng.randf_range(9.0, 17.0))
+        _schleier.append({
+            &"ort": p + Vector2(nach_innen * 3.0, 0.0),
+            &"innen": nach_innen,
+            &"glieder": glieder,
+            &"takt": rng.randf_range(0.3, 0.7),
+            &"phase": rng.randf_range(0.0, TAU),
+            &"weite": rng.randf_range(0.18, 0.55),
+        })
+
+
 func _draw() -> void:
     # Von hinten nach vorn. Das ist die ganze Ordnung, die Tiefe ausmacht.
     for ebene in EBENEN:
         var versatz := Vector2(0.0, -fmod(zeit * EBENE_TEMPO[ebene], 220.0))
         _zeichne_wand(_fernwaende[ebene * 2], ebene, versatz)
         _zeichne_wand(_fernwaende[ebene * 2 + 1], ebene, versatz)
+        # Erst die Mulden, dann die Risse: eine Mulde ist eine Flaeche im
+        # Fels, ein Riss laeuft darueber hinweg. Andersherum verschwaende der
+        # Riss in der Mulde, durch die er geht.
+        _zeichne_mulden(ebene, versatz)
+        _zeichne_risse(ebene, versatz)
         _zeichne_vorspruenge(ebene, versatz)
 
+    _zeichne_krusten()
+    _zeichne_schleier()
     _zeichne_bewuchs()
     _zeichne_nischen()
     _zeichne_polypen()
@@ -261,6 +419,132 @@ func _zeichne_vorspruenge(ebene: int, versatz: Vector2) -> void:
         draw_colored_polygon(punkte, fels.lightened(0.09).lerp(DUNST, dunst * 0.86))
         draw_polyline(punkte + PackedVector2Array([punkte[0]]),
             FELS_KANTE.lerp(DUNST, dunst), 1.6, true)
+
+
+## Mulden: Ausbrueche und eingeschlossene Broecken. Eine Wand hat nicht nur
+## eine Kante, sondern eine Oberflaeche - und die sieht man nur, wenn etwas
+## darauf anders liegt als der Rest.
+func _zeichne_mulden(ebene: int, versatz: Vector2) -> void:
+    var dunst := EBENE_DUNST[ebene]
+    var grund := fels.lerp(DUNST, dunst)
+    for m in _mulden:
+        if int(m[&"ebene"]) != ebene:
+            continue
+        var form := PackedVector2Array()
+        for v: Vector2 in m[&"form"]:
+            form.append(v + versatz)
+        # **Heller, nicht dunkler - beide Sorten.**
+        #
+        # Der erste Entwurf machte tiefe Mulden dunkel. Auf einem Fels, der
+        # ohnehin bei 0.055 liegt, ist dunkler aber kein Ton mehr, sondern
+        # Schwarz: im Bild standen Loecher in der Wand, als waere die
+        # Zeichnung kaputt. Nach unten ist hier kein Platz. Was eine Mulde
+        # von einem Buckel unterscheidet, ist deshalb nicht die Helligkeit
+        # der Flaeche, sondern **wo ihr heller Saum liegt** - oben bei einem
+        # Buckel, unten bei einer Mulde. Genau daran liest ein Auge Relief
+        # ab, und es funktioniert auch bei fast keinem Kontrast.
+        var tiefer := bool(m[&"tiefer"])
+        draw_colored_polygon(form, grund.lightened(0.045 if tiefer else 0.085))
+
+        # **Der Saum liegt zur Grabenmitte hin.**
+        #
+        # Im Bild gibt es genau eine Lichtquelle, und die steht unten in der
+        # Mitte: der Kegel des Waechters. Also faengt jede Flaeche, die zur
+        # Mitte zeigt, Licht, und jede, die von ihr wegzeigt, keines. Das
+        # kostet nichts und ist der einzige Grund, warum ein flaches Vieleck
+        # wie ein Brocken aussieht statt wie ein Fleck.
+        var innen: float = m[&"innen"]
+        var mitte := mitte_von(form)
+        var saum := Color(0.34, 0.62, 0.68, (0.24 if tiefer else 0.16) * (1.0 - dunst))
+        var licht := PackedVector2Array()
+        for i in form.size():
+            var a: Vector2 = form[i]
+            var b: Vector2 = form[(i + 1) % form.size()]
+            if signf((a + b).x * 0.5 - mitte.x * 2.0 + mitte.x) == innen:
+                draw_line(a, b, saum, 1.4)
+                licht.append(a)
+
+
+## Der Mittelpunkt eines Vielecks - fuer die Frage, welche Haelfte seines
+## Randes oben liegt und welche unten.
+func mitte_von(form: PackedVector2Array) -> Vector2:
+    var summe := Vector2.ZERO
+    for v in form:
+        summe += v
+    return summe / float(maxi(1, form.size()))
+
+
+## Risse: quer zur Schichtung, mit einem Abzweig, und sie hoeren mitten im
+## Fels auf. Einer, der die Wand durchquert, waere ein Spalt.
+func _zeichne_risse(ebene: int, versatz: Vector2) -> void:
+    var dunst := EBENE_DUNST[ebene]
+    if dunst > 0.9:
+        return
+    for r in _risse:
+        if int(r[&"ebene"]) != ebene:
+            continue
+        # Auch hier hell statt dunkel, und aus demselben Grund. Physikalisch
+        # stimmt es sogar besser: was man von einem Riss sieht, ist nicht der
+        # Spalt - der ist zu schmal -, sondern die aufgebrochene Kante daneben,
+        # und die faengt Licht.
+        var deckung: float = 0.24 * float(r[&"staerke"]) * (1.0 - dunst)
+        var farbe := Color(0.34, 0.60, 0.66, deckung)
+        var linie := PackedVector2Array()
+        for v: Vector2 in r[&"linie"]:
+            linie.append(v + versatz)
+        draw_polyline(linie, farbe, 1.5, true)
+        var ab: PackedVector2Array = r[&"abzweig"]
+        if ab.size() > 1:
+            draw_line(ab[0] + versatz, ab[1] + versatz, farbe, 1.1)
+
+
+## Krusten: Kolonien winziger Punkte, die sich an die Kante draengen. Sie
+## atmen von sich aus und flammen auf, wenn der Kegel darueberzieht - das
+## Einzige an der Wand, das lebt.
+func _zeichne_krusten() -> void:
+    var versatz := Vector2(0.0, -fmod(zeit * EBENE_TEMPO[EBENEN - 1], 220.0))
+    for k in _krusten:
+        var atem := 0.5 + 0.5 * sin(zeit * float(k[&"takt"]) + float(k[&"phase"]))
+        var punkte: PackedVector2Array = k[&"punkte"]
+        var groessen: PackedFloat32Array = k[&"groessen"]
+        # Das Licht einmal je Kruste, nicht je Punkt: `beleuchtung()` ist die
+        # teuerste Rechnung im Bild, und eine Kolonie steht ohnehin im selben
+        # Lichtfleck.
+        var hell := _licht_auf(punkte[0] + versatz)
+        for i in punkte.size():
+            var p: Vector2 = punkte[i] + versatz
+            draw_circle(p, groessen[i] * (0.9 + 0.1 * atem),
+                Color(0.30, 0.62, 0.66, 0.30 + 0.16 * atem + 0.50 * hell))
+
+
+## Schleier: lange Faeden von der Kante, die in der Stroemung stehen. Jedes
+## Glied haengt weiter zurueck als das vorige - so biegt sich der Faden,
+## statt zu schwingen wie eine Saite.
+func _zeichne_schleier() -> void:
+    var versatz := Vector2(0.0, -fmod(zeit * EBENE_TEMPO[EBENEN - 1], 220.0))
+    for f in _schleier:
+        var ort: Vector2 = (f[&"ort"] as Vector2) + versatz
+        var innen: float = f[&"innen"]
+        var weite: float = f[&"weite"]
+        var takt: float = f[&"takt"]
+        var phase: float = f[&"phase"]
+        var glieder: PackedFloat32Array = f[&"glieder"]
+
+        var linie := PackedVector2Array([ort])
+        var punkt := ort
+        var winkel := 0.0
+        for g in glieder.size():
+            winkel += weite * sin(zeit * takt + phase + float(g) * 0.55) \
+                / float(g + 1)
+            var richtung := Vector2(innen * sin(winkel), cos(winkel) * 0.92 + 0.08)
+            punkt += richtung * glieder[g]
+            linie.append(punkt)
+
+        var hell := _licht_auf(linie[linie.size() / 2])
+        draw_polyline(linie, Color(0.20, 0.44, 0.48,
+            0.26 + 0.34 * hell), 1.6, true)
+        draw_circle(linie[linie.size() - 1], 1.8 + 2.4 * hell,
+            Color(0.44, 0.86, 0.90, 0.24 + 0.50 * hell))
 
 
 ## Roehrenbewuchs auf der vordersten Wand. Er glimmt von sich aus und flammt
