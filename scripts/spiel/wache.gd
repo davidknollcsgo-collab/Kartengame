@@ -528,7 +528,17 @@ func _welle_geschafft() -> void:
         _bereite_welle_vor()
         return
 
+    # Eine volle Umdrehung durch den Graben ist der groessere Moment und
+    # bekommt den groesseren Bildschirm. Er stand hier einmal fuer das Ende
+    # des Spiels - seit der Graben keinen Boden hat, ist er kein Ende mehr,
+    # sondern eine Marke: sechzig Wellen tiefer, und der naechste Abstieg
+    # faengt oben wieder an, nur haerter.
+    var abgeschlossen := welle_nummer
     welle_nummer += 1
+    if abgeschlossen % Graben.ZYKLUS == 0:
+        lage = Lage.GESCHAFFT
+        _hud.zeige_ende(true, abgeschlossen, verdient)
+        return
     if welle_in_sitzung >= Graben.WELLEN_JE_SITZUNG:
         lage = Lage.SITZUNG_ENDE
         _hud.zeige_sitzungsende(welle_nummer, verdient)
@@ -720,7 +730,7 @@ func _lies_entwicklerschalter() -> void:
                 _hud.zeige_sitzungsende(welle_nummer + 1, verdient)
             2:
                 lage = Lage.GESCHAFFT
-                _hud.zeige_ende(true, Graben.ZYKLUS, verdient)
+                _hud.zeige_ende(true, Graben.ZYKLUS * 2, verdient)
             _:
                 lage = Lage.VERLOREN
                 _hud.zeige_ende(false, welle_nummer, verdient)

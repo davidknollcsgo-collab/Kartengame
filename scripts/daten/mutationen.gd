@@ -119,10 +119,27 @@ static func zahl_in(nummer: int) -> int:
 ## demselben Grund wie die Zusammensetzung der Welle selbst: der Wellenpruefer
 ## muss dieselbe Welle durchrechnen koennen, die beim Spieler ankommt, und
 ## alle Spieler sollen dieselbe Welle 137 sehen.
+## Ein Platz Gedaechtnis, und der ist noetig.
+##
+## `in_welle()` haengt an `Wellen.panzer_in()` und funf Geschwistern, und die
+## fragt das Spiel fuer **jedes Tier in jedem Bild** - zweihundert Raeuber mal
+## sechs Eigenschaften mal sechzig Bilder. Ohne diesen einen Platz baute es
+## siebzigtausend Zufallsgeneratoren in der Sekunde auf, und zwar auf einem
+## Telefon. Mehr als ein Platz braucht es nicht: es laeuft immer genau eine
+## Welle.
+static var _letzte_nummer := -1
+static var _letzte_liste := PackedInt32Array()
+
+
 static func in_welle(nummer: int) -> PackedInt32Array:
+    if nummer == _letzte_nummer:
+        return _letzte_liste
+
     var wieviele := zahl_in(nummer)
     var liste := PackedInt32Array()
     if wieviele <= 0:
+        _letzte_nummer = nummer
+        _letzte_liste = liste
         return liste
 
     var rng := RandomNumberGenerator.new()
@@ -137,6 +154,8 @@ static func in_welle(nummer: int) -> PackedInt32Array:
         liste.append(uebrig[w])
         uebrig.remove_at(w)
     liste.sort()
+    _letzte_nummer = nummer
+    _letzte_liste = liste
     return liste
 
 

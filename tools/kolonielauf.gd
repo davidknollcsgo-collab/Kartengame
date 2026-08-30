@@ -80,16 +80,6 @@ const FORTSCHRITTSMAUER := 4
 ## verliert, spielt kein Spiel mehr, sondern eine Wand.
 const TRAGBARE_FAELLE := 12
 
-## Um wie viele Stufen das Leuchtorgan den uebrigen Kammern vorausgeht. Es ist
-## die Kammer, an der die Sollkurve gemessen wird; laeuft es im Gleichschritt
-## mit den anderen, liegt es dauerhaft zwei Stufen darunter.
-##
-## Vier, nicht zwei, und die Zahl ist nicht frei: der Tiefenschacht oeffnet
-## einen Abschnitt bei `stufe_soll(letzte Welle) - SCHACHT_VORSPRUNG`. Zieht
-## das Leuchtorgan mit demselben Tempo wie der Schacht, steht es beim Betreten
-## des Abschnitts genau diese vier Stufen zu tief. Ein Spieler, der Schaden
-## zuerst baut, tut genau das - und er hat recht damit.
-const LEIT_VORSPRUNG := Kammern.SCHACHT_VORSPRUNG
 
 
 func _init() -> void:
@@ -362,18 +352,29 @@ func _baue_etwas(stand: KolonieStand, jetzt: float) -> bool:
         Kammern.Kammer.ZUCHTKAMMER,
         schacht,
     ]
+    # Das Leuchtorgan zuerst, und zwar **bis an seinen Deckel**.
+    #
+    # Ein fester Vorsprung von zwei oder vier Stufen reichte nicht: der
+    # Tiefenschacht oeffnet einen Abschnitt, wenn er `SCHACHT_VORSPRUNG` unter
+    # dessen letzter Sollstufe steht, und deckelt die anderen Kammern zugleich
+    # auf `Schacht + SCHACHT_VORSPRUNG`. Wer den Abschnitt betritt, *kann*
+    # also genau auf der Sollkurve stehen - aber nur, wenn er das Leuchtorgan
+    # bis an den Deckel zieht. Tat der simulierte Spieler das nicht, spielte
+    # er jeden neuen Abschnitt zwei bis vier Stufen zu schwach, und der
+    # Kolonielauf meldete zweiundzwanzig gefallene Sitzungen.
+    #
+    # Am Deckel angekommen faellt er von selbst auf die uebrigen Kammern
+    # zurueck - dafuer ist der Deckel da.
+    var leucht: int = Kammern.Kammer.LEUCHTORGAN
+    if stand.kann_bauen(leucht):
+        return stand.starte_bau(leucht, jetzt)
+
     var beste := -1
     var beste_stufe := Kammern.HOECHSTSTUFE + 1
     for k in reihe:
-        # Das Leuchtorgan geht mit einem Vorsprung ins Rennen - an ihm misst
-        # die Sollkurve, und ein Spieler, der verliert, baut als erstes
-        # Schaden nach.
-        var rang := stand.stufe(k)
-        if k == Kammern.Kammer.LEUCHTORGAN:
-            rang -= LEIT_VORSPRUNG
-        if stand.kann_bauen(k) and rang < beste_stufe:
+        if stand.kann_bauen(k) and stand.stufe(k) < beste_stufe:
             beste = k
-            beste_stufe = rang
+            beste_stufe = stand.stufe(k)
     if beste >= 0:
         return stand.starte_bau(beste, jetzt)
     return false

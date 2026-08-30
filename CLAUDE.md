@@ -239,3 +239,9 @@ Damit kostet ein Versuch Sekunden statt einer CI-Minute.
   untypisierten Feldern **nicht** ab. Dafür Konstanten mit `Packed…Array` und
   eigene Dateien mit `class_name` verwenden
 - Neue Assets **immer** im selben Commit in `ASSETS.md` eintragen
+- Große Zahlen im Sichtbaren durch `Zahl.kurz()`. Seit die Kolonie kein Ende
+  hat, kostet eine volle Kammerrunde auf Stufe 40 knapp fünf Milliarden —
+  sechzehn Ziffern nebeneinander sind auf einem Telefon keine Zahl mehr
+- Eigenschaften eines Räubers über `Wellen.*_in(art, welle)`, nie über
+  `Arten.*` direkt. Sonst umgeht man die Mutation, und das Tier verhält sich
+  anders, als es aussieht

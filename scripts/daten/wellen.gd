@@ -252,8 +252,21 @@ static func staerke(nummer: int) -> float:
 ## Was Abschnittsregel und Mutationen zusammen an Wirkungsgrad kosten. Eine
 ## Stelle, weil beide dasselbe bedeuten: wieviel von seiner Leistung ein
 ## Spieler in dieser Welle ueberhaupt auf die Raeuber bringt.
+##
+## Gemerkt wie bei `Mutationen.in_welle()`, und aus demselben Grund: seit der
+## Naehrstoff je Raeuber sein Anteil an der Welle ist, haengt `wert_in()` an
+## `staerke()` und damit hier. `Regeln.wirkungsgrad()` integriert dafuer ueber
+## ein Gitter von 24 mal 24 und einen vollen Dunkelzyklus - einmal je Welle
+## ist das nichts, einmal je erlegtem Tier waere es viel.
+static var _umgebung_nummer := -1
+static var _umgebung_wert := 1.0
+
+
 static func umgebung(nummer: int) -> float:
-    return Regeln.wirkungsgrad(nummer) * Mutationen.wirkungsgrad(nummer)
+    if nummer != _umgebung_nummer:
+        _umgebung_wert = Regeln.wirkungsgrad(nummer) * Mutationen.wirkungsgrad(nummer)
+        _umgebung_nummer = nummer
+    return _umgebung_wert
 
 
 ## Wie lange Raeuber eintreten. Die Welle selbst dauert laenger - der letzte

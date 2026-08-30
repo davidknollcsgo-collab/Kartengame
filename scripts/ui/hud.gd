@@ -356,10 +356,10 @@ func _endschirm(breite: float, hoehe: float) -> void:
     var mitte := Vector2(breite * 0.5, hoehe * 0.42)
 
     if _gewonnen:
-        _text(mitte, "THE TRENCH HOLDS", 30, Color(0.62, 0.98, 0.86), true)
+        _text(mitte, "A FULL DESCENT", 30, Color(0.62, 0.98, 0.86), true)
         _text(mitte + Vector2(0.0, 44.0),
-            "A full descent - %d waves" % Graben.ZYKLUS, 17,
-            Color(0.66, 0.84, 0.88), true)
+            "%d waves down. The trench turns over - deeper, not finished." % _welle,
+            15, Color(0.66, 0.84, 0.88), true)
     elif _sitzung:
         _text(mitte, "SESSION HELD", 30, Color(0.62, 0.98, 0.86), true)
         _text(mitte + Vector2(0.0, 44.0),
@@ -371,7 +371,8 @@ func _endschirm(breite: float, hoehe: float) -> void:
         _text(mitte + Vector2(0.0, 44.0), "Wave %d" % _welle, 17,
             Color(0.72, 0.72, 0.76), true)
 
-    _text(mitte + Vector2(0.0, 86.0), "%d nutrients harvested" % _verdient, 17,
+    _text(mitte + Vector2(0.0, 86.0),
+        "%s nutrients harvested" % Zahl.kurz(_verdient), 17,
         Color(0.52, 0.94, 0.80), true)
 
     # Die Wertung steht genau hier, weil sie hier wirkt: im Moment des

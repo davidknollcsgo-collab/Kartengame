@@ -1044,6 +1044,8 @@ func _test_stand_uebersteht_das_sichern() -> bool:
     stand.einstieg = 4
     stand.ziel_fortschritt[0] = 2
     stand.ziel_geholt[0] = 1
+    stand.merke_art(Arten.Art.SCHILDKORALLE)
+    stand.merke_mutation(Mutationen.Mutation.LICHTSCHEU)
 
     var zurueck := KolonieStand.aus_wort(stand.zu_wort())
     var paare := {
@@ -1063,6 +1065,9 @@ func _test_stand_uebersteht_das_sichern() -> bool:
         "Einstieg": [stand.einstieg, zurueck.einstieg],
         "Zielfortschritt": [Array(stand.ziel_fortschritt), Array(zurueck.ziel_fortschritt)],
         "Zielgeholt": [Array(stand.ziel_geholt), Array(zurueck.ziel_geholt)],
+        "Gesehene Arten": [Array(stand.gesehen), Array(zurueck.gesehen)],
+        "Gesehene Mutationen": [Array(stand.mutationen_gesehen),
+            Array(zurueck.mutationen_gesehen)],
     }
     for was in paare:
         var werte: Array = paare[was]
