@@ -309,6 +309,8 @@ func _zeichne() -> void:
 
     if _sicht == Sicht.KAMMERN:
         _schnitt(breite, y + 18.0, hoehe - FUSS - 24.0, stand, jetzt)
+    elif _sicht == Sicht.LINIEN:
+        _linienbild(breite, y + 18.0, hoehe - FUSS - 24.0, stand)
 
     if _sicht == Sicht.TAG:
         y = _zuchtkalender(breite, y + 8.0, stand)
@@ -588,6 +590,97 @@ func _schnitt(breite: float, oben: float, unten: float, stand: KolonieStand,
         var beschriftung := "%s %d" % [Kammern.name_von(k).split(" ")[0], stufe]
         _text(wo + Vector2(0.0, kammerhoch + 15.0), beschriftung, 11,
             Color(farbe.r, farbe.g, farbe.b, 0.75), true)
+
+
+## Was die tragende Brutlinie mit dem Kegel macht - als Bild.
+##
+## Die Linien stehen als drei Saetze in der Liste, und ein Satz wie "der Kegel
+## dreht schneller" laesst sich schwer mit einem anderen vergleichen. Hier
+## steht derselbe Kegel viermal nebeneinander, einmal je Linie, und man sieht
+## den Unterschied statt ihn zu lesen.
+func _linienbild(breite: float, oben: float, unten: float,
+        stand: KolonieStand) -> void:
+    var hoch := unten - oben
+    if hoch < 150.0:
+        return
+
+    _text(Vector2(RAND, oben + 12.0), "WHAT THE LINE CHANGES", 13, LEISE)
+
+    # Direkt unter die Ueberschrift, nicht in die Mitte des freien Raums: die
+    # Bilder gehoeren zu den Zeilen darueber, und dazwischen gehoert kein
+    # Loch von dreihundert Pixeln.
+    var breit := (breite - RAND * 2.0) / float(Brutlinien.zahl())
+    var kegelhoch := clampf(hoch - 96.0, 90.0, 330.0)
+    var mitte_y := oben + 40.0 + kegelhoch * 0.5
+
+    for index in Brutlinien.zahl():
+        var mitte_x := RAND + breit * (float(index) + 0.5)
+        var traegt := stand.linie == index
+        var hat := stand.hat_linie(index)
+        var farbe := Brutlinien.farbe(index)
+        var spitze := Vector2(mitte_x, mitte_y + kegelhoch * 0.5)
+
+        # Der Kegel selbst. Kaltbrand ist schmaler und heisser, Stromsinn
+        # steht schraeg - er dreht schneller, also faengt er auch, was
+        # seitlich kommt.
+        var halb := 0.30
+        var neigung := 0.0
+        var glut := 0.36
+        match index:
+            Brutlinien.Linie.STROMSINN:
+                neigung = -0.34
+            Brutlinien.Linie.KALTBRAND:
+                halb = 0.20
+                glut = 0.60
+        var achse := Vector2.UP.rotated(neigung)
+
+        var deckung := 1.0 if traegt else (0.5 if hat else 0.26)
+        for lage in 4:
+            var f := float(lage + 1) / 4.0
+            var w := halb * f
+            var ecken := PackedVector2Array([
+                spitze,
+                spitze + achse.rotated(-w) * kegelhoch,
+                spitze + achse.rotated(w) * kegelhoch,
+            ])
+            _flaeche.draw_colored_polygon(ecken,
+                Color(farbe.r, farbe.g, farbe.b,
+                    glut * 0.10 * (1.0 - f * 0.6) * deckung))
+
+        # Stromsinn: ein Pfeil, gegen den der Kegel haelt.
+        if index == Brutlinien.Linie.STROMSINN:
+            var y_pf := mitte_y - kegelhoch * 0.18
+            _flaeche.draw_line(Vector2(mitte_x - 22.0, y_pf),
+                Vector2(mitte_x + 16.0, y_pf),
+                Color(farbe.r, farbe.g, farbe.b, 0.45 * deckung), 1.6)
+            _flaeche.draw_line(Vector2(mitte_x + 16.0, y_pf),
+                Vector2(mitte_x + 8.0, y_pf - 5.0),
+                Color(farbe.r, farbe.g, farbe.b, 0.45 * deckung), 1.6)
+
+        # Nachglut: Punkte, die hinter dem Kegel weiterbrennen.
+        if index == Brutlinien.Linie.NACHGLUT:
+            for k in 4:
+                var t := float(k) / 3.0
+                var wo := spitze + achse * kegelhoch * (0.45 + 0.3 * t) \
+                    + Vector2(28.0 + 12.0 * t, 0.0)
+                _flaeche.draw_circle(wo, 3.4 - 0.7 * float(k),
+                    Color(farbe.r, farbe.g, farbe.b,
+                        (0.55 - 0.11 * float(k)) * deckung))
+
+        # Ziele als kleine Ringe: Kaltbrand hat einen weniger, aber heller.
+        var ziele := 3 if index != Brutlinien.Linie.KALTBRAND else 2
+        for k in ziele:
+            var t := (float(k) + 0.5) / float(ziele)
+            var wo := spitze + achse.rotated(lerpf(-halb * 0.55, halb * 0.55, t)) \
+                * kegelhoch * (0.44 + 0.10 * float(k % 2))
+            _flaeche.draw_arc(wo, 5.0 + 2.0 * glut, 0.0, TAU, 14,
+                Color(1.0, 0.98, 0.94, (0.30 + 0.5 * glut) * deckung), 1.4)
+
+        var beschriftung := Brutlinien.name_von(index)
+        _text(Vector2(mitte_x, spitze.y + 20.0), beschriftung, 11,
+            Color(farbe.r, farbe.g, farbe.b, 0.85 if traegt else 0.45), true)
+        if traegt:
+            _text(Vector2(mitte_x, spitze.y + 36.0), "carries", 10, NAEHR, true)
 
 
 ## Eine Art im Bestiarium.
