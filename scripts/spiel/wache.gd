@@ -35,6 +35,7 @@ const SCHUETTELN_ABKLINGEN := 7.0
 @onready var _kolonie: Node2D = $Kolonie
 @onready var _funken: Node2D = $Funken
 @onready var _vordergrund: Node2D = $Vordergrund
+@onready var _wasser: ColorRect = $Wasser/Flaeche
 @onready var _kamera: Camera2D = $Kamera
 @onready var _hud: CanvasLayer = $Hud
 @onready var _koloniebild: CanvasLayer = $Koloniebild
@@ -68,6 +69,11 @@ var _polyp_takt := PackedFloat32Array()
 ## Wieviele Treffer ohne Unterbrechung. Treibt nur die Tonhoehe.
 var _folge := 0.0
 
+## Ueberblendung zwischen zwei Abschnittsfarben.
+var _alt_abschnitt := 0
+var _ziel_abschnitt := 0
+var _farbmischung := 1.0
+
 ## Ob die laufende Welle eine Tagesstroemung ist. Wird beim Start der Welle
 ## entschieden und verbraucht - nicht bei jedem Treffer neu gefragt, sonst
 ## koennte eine einzige Welle den ganzen Tagesvorrat aufzehren.
@@ -79,6 +85,7 @@ func _ready() -> void:
     # macht. Deshalb bekommt die Kolonie den Knoten selbst, nicht eine Kopie
     # seiner Werte - eine Kopie liefe irgendwann auseinander.
     _kolonie.kegel = _kegel
+    _faerbe_abschnitt(Graben.abschnitt(welle_nummer), true)
     _koloniebild.geschlossen.connect(_kolonie_geschlossen)
     Fortschritt.stand_geaendert.connect(_stelle_ausbau_ein)
     Fortschritt.bau_fertig.connect(_bau_fertig)
@@ -208,6 +215,7 @@ func starte_welle() -> void:
     # Eine neue Regel gehoert angekuendigt. Wer in Welle 31 ploetzlich im
     # Dunkeln steht und nicht weiss warum, haelt es fuer einen Fehler.
     var a := Graben.abschnitt(welle_nummer)
+    _faerbe_abschnitt(a)
     if Regeln.neu_in(a) and welle_nummer == a * Graben.WELLEN_JE_ABSCHNITT + 1:
         _hud.zeige_abschnitt(a)
 
@@ -395,12 +403,53 @@ func _raeume_auf() -> void:
     _hud.setze_zahlen(brut, Fortschritt.stand.naehrstoffe, _offen)
 
 
+## Faerbt Wasser und Fels nach dem Abschnitt ein.
+##
+## Sechs Abschnitte, die sich unterschiedlich spielen und identisch aussahen -
+## damit fuehlte sich Welle 55 an wie Welle 5 mit mehr Tieren. Die Farben
+## stehen in `Regeln`, weil dort auch steht, was der Abschnitt *tut*: die
+## Truebe Tiefe ist wirklich truebe, das Finsterband wirklich finster.
+##
+## `sofort` setzt hart, sonst wird ueberblendet - ein Farbsprung mitten im
+## Spiel sieht aus wie ein Fehler, ein langsamer Wechsel wie ein Abstieg.
+func _faerbe_abschnitt(abschnitt: int, sofort := false) -> void:
+    _ziel_abschnitt = abschnitt
+    if sofort:
+        _farbmischung = 1.0
+        _alt_abschnitt = abschnitt
+        _schiebe_farben(1.0)
+    else:
+        _alt_abschnitt = _ziel_abschnitt if _farbmischung >= 1.0 else _alt_abschnitt
+        _farbmischung = 0.0
+
+
+func _schiebe_farben(anteil: float) -> void:
+    var stoff := _wasser.material as ShaderMaterial
+    if stoff == null:
+        return
+    var a := _alt_abschnitt
+    var b := _ziel_abschnitt
+    stoff.set_shader_parameter("tief",
+        Regeln.tief_farbe(a).lerp(Regeln.tief_farbe(b), anteil))
+    stoff.set_shader_parameter("grund",
+        Regeln.grund_farbe(a).lerp(Regeln.grund_farbe(b), anteil))
+    stoff.set_shader_parameter("schein",
+        Regeln.schein_farbe(a).lerp(Regeln.schein_farbe(b), anteil))
+    stoff.set_shader_parameter("schnee_dichte",
+        lerpf(Regeln.schnee_dichte(a), Regeln.schnee_dichte(b), anteil))
+    _kolonie.fels = Regeln.fels_farbe(a).lerp(Regeln.fels_farbe(b), anteil)
+
+
 ## Staub und Vordergrund weichen zurueck, wenn das Bild voll wird.
 ##
 ## Dieselbe Regel wie bei den Zeichenstufen im Schwarm: Stimmung ist das
 ## Erste, was geht, und die Raeuber sind das Letzte. Ein Bild, in dem man den
 ## naechsten Gegner nicht mehr findet, ist kein schoenes Bild.
 func _stimmung_nachfuehren() -> void:
+    if _farbmischung < 1.0:
+        _farbmischung = minf(1.0, _farbmischung + get_process_delta_time() * 0.55)
+        _schiebe_farben(_farbmischung)
+
     var lebende := 0
     for r in _tiere:
         if r.lebendig and r.alter >= 0.0:

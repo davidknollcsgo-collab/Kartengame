@@ -332,8 +332,11 @@ func _grabnatter(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -
     for i in range(glieder.size() - 1, -1, -1):
         var f := 1.0 - float(i) / float(maxi(1, glieder.size()))
         var dick := r * (0.35 + 0.65 * f)
+        # Gedaempft, weil sich sieben Glieder additiv aufaddieren. Bei voller
+        # Deckung je Glied wurde die Trench Adder im Licht zu einem weissen
+        # Balken, in dem man ihre Form nicht mehr sah.
         draw_circle(glieder[i], dick,
-            Color(farbe.r, farbe.g, farbe.b, 0.55 + 0.45 * hitze).darkened(0.3 * (1.0 - f)))
+            Color(farbe.r, farbe.g, farbe.b, 0.34 + 0.20 * hitze).darkened(0.3 * (1.0 - f)))
 
     var k := t.richtung
     var quer := k.orthogonal()

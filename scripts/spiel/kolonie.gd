@@ -14,6 +14,10 @@ var naehrstoffe: int = 0
 var bauphase := false
 var zeit := 0.0
 
+## Grundton des Felsens. `wache.gd` faerbt ihn je Abschnitt um - der Fels
+## nimmt die Farbe des Wassers an, in dem er steht.
+var fels := Color(0.055, 0.085, 0.110)
+
 const FELS := Color(0.055, 0.085, 0.110)
 const FELS_KANTE := Color(0.10, 0.17, 0.20)
 const BRUT_FARBE := Color(0.98, 0.80, 0.42)
@@ -215,7 +219,7 @@ func _zeichne_wand(punkte: PackedVector2Array, ebene: int, versatz: Vector2) -> 
     for v in punkte:
         verschoben.append(v + versatz)
 
-    draw_colored_polygon(verschoben, FELS.lerp(DUNST, dunst))
+    draw_colored_polygon(verschoben, fels.lerp(DUNST, dunst))
 
     var kante := verschoben.slice(1, verschoben.size() - 1)
     draw_polyline(kante, FELS_KANTE.lerp(DUNST, dunst), 2.6 * (1.0 - 0.5 * dunst), true)
@@ -254,7 +258,7 @@ func _zeichne_vorspruenge(ebene: int, versatz: Vector2) -> void:
             punkte.append(p + versatz)
         # Der Vorsprung steht etwas vor seiner Wand, faengt also etwas mehr
         # Licht - sonst verschwindet er in der Flaeche, aus der er ragt.
-        draw_colored_polygon(punkte, FELS.lightened(0.09).lerp(DUNST, dunst * 0.86))
+        draw_colored_polygon(punkte, fels.lightened(0.09).lerp(DUNST, dunst * 0.86))
         draw_polyline(punkte + PackedVector2Array([punkte[0]]),
             FELS_KANTE.lerp(DUNST, dunst), 1.6, true)
 
@@ -379,7 +383,7 @@ func _zeichne_sockel() -> void:
     var sockel := kuppe.duplicate()
     sockel.append(p + Vector2(82.0, 300.0))
     sockel.append(p + Vector2(-82.0, 300.0))
-    draw_colored_polygon(sockel, FELS.lightened(0.04))
+    draw_colored_polygon(sockel, fels.lightened(0.04))
     draw_polyline(kuppe, Color(0.18, 0.36, 0.42, 0.34), 1.4, true)
 
 

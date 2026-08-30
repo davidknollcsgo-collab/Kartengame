@@ -32,6 +32,82 @@ const HINWEISE: PackedStringArray = [
     "Everything at once - and the current runs crosswise.",
 ]
 
+## --- Wie ein Abschnitt aussieht ---
+##
+## Sechs Abschnitte, die sich unterschiedlich spielen und identisch aussahen.
+## Damit fuehlte sich Welle 55 an wie Welle 5 mit mehr Tieren - das Absteigen
+## war eine Zahl in der Kopfzeile, kein Ort.
+##
+## Jeder Abschnitt hat deshalb eine eigene Wasserfarbe, einen eigenen
+## Felston und eine eigene Schwebstoffdichte. Sie folgen dem, was der
+## Abschnitt **tut**: die Truebe Tiefe ist wirklich truebe, das Finsterband
+## wirklich finster, der Grabensturm wirklich aufgewuehlt.
+
+## Die Dunkelheit oben im Bild.
+const TIEF_FARBEN: PackedColorArray = [
+    Color(0.008, 0.018, 0.034),   ## Rim Gorge - offenes, kaltes Blau
+    Color(0.006, 0.020, 0.042),   ## Current Rift - klarer und kaelter
+    Color(0.014, 0.026, 0.020),   ## Murky Deep - gruenlicher Schlamm
+    Color(0.010, 0.008, 0.020),   ## Dark Band - fast schwarz, violett
+    Color(0.020, 0.030, 0.042),   ## Scatterlight Zone - milchig aufgehellt
+    Color(0.026, 0.014, 0.014),   ## Trench Storm - eisenrot und schwer
+]
+
+## Das Wasser in mittlerer Hoehe.
+const GRUND_FARBEN: PackedColorArray = [
+    Color(0.020, 0.062, 0.085),
+    Color(0.016, 0.058, 0.100),
+    Color(0.034, 0.066, 0.046),
+    Color(0.022, 0.018, 0.040),
+    Color(0.052, 0.078, 0.094),
+    Color(0.062, 0.032, 0.030),
+]
+
+## Der Schein der Kolonie, der von unten heraufkommt.
+const SCHEIN_FARBEN: PackedColorArray = [
+    Color(0.055, 0.180, 0.190),
+    Color(0.040, 0.170, 0.210),
+    Color(0.070, 0.170, 0.110),
+    Color(0.070, 0.050, 0.140),
+    Color(0.110, 0.170, 0.190),
+    Color(0.170, 0.080, 0.060),
+]
+
+## Wieviel Schwebstoff im Wasser haengt. Mehr heisst weniger Sicht - und in
+## der Truebe Tiefe und im Grabensturm ist das der Punkt.
+const SCHNEE_DICHTE: PackedFloat32Array = [1.0, 0.9, 1.7, 0.7, 1.3, 2.0]
+
+## Der Fels. Er nimmt die Farbe des Wassers an, in dem er steht.
+const FELS_FARBEN: PackedColorArray = [
+    Color(0.055, 0.085, 0.110),
+    Color(0.048, 0.082, 0.118),
+    Color(0.068, 0.088, 0.062),
+    Color(0.052, 0.046, 0.078),
+    Color(0.082, 0.100, 0.112),
+    Color(0.098, 0.062, 0.056),
+]
+
+
+static func tief_farbe(abschnitt: int) -> Color:
+    return TIEF_FARBEN[clampi(abschnitt, 0, TIEF_FARBEN.size() - 1)]
+
+
+static func grund_farbe(abschnitt: int) -> Color:
+    return GRUND_FARBEN[clampi(abschnitt, 0, GRUND_FARBEN.size() - 1)]
+
+
+static func schein_farbe(abschnitt: int) -> Color:
+    return SCHEIN_FARBEN[clampi(abschnitt, 0, SCHEIN_FARBEN.size() - 1)]
+
+
+static func schnee_dichte(abschnitt: int) -> float:
+    return SCHNEE_DICHTE[clampi(abschnitt, 0, SCHNEE_DICHTE.size() - 1)]
+
+
+static func fels_farbe(abschnitt: int) -> Color:
+    return FELS_FARBEN[clampi(abschnitt, 0, FELS_FARBEN.size() - 1)]
+
+
 ## --- Stroemung: der Kegel wird abgetrieben ---
 ##
 ## Zwei ueberlagerte Schwingungen mit unrundem Verhaeltnis, damit sich das
