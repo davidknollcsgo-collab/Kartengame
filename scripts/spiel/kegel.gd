@@ -109,6 +109,41 @@ func _draw() -> void:
                 farben.append(_farbe_an(spitze, p, puls))
             draw_polygon(punkte, farben)
 
+    # Ein heller Streifen entlang der Achse. Im echten Strahl ist die Mitte
+    # dichter als der Rand, weil man dort durch mehr beleuchtetes Wasser
+    # sieht - ohne ihn wirkt der Kegel wie eine gleichmaessig gefaerbte
+    # Flaeche und nicht wie ein Buendel.
+    # Der Kern des Strahls, als weiche Bahnen quer zur Achse.
+    #
+    # Ein einzelner Streifen hatte eine sichtbare Kante mitten im Kegel: an
+    # seinem Rand sprang die Deckung von voll auf null. Deshalb sechs Bahnen,
+    # deren Deckung nach aussen auf null laeuft - benachbarte Bahnen teilen
+    # sich denselben Wert an ihrer gemeinsamen Kante, und damit verschwindet
+    # die Naht.
+    const KERNBAHNEN := 6
+    var kernweite := halbwinkel * 0.66
+    for bahn in KERNBAHNEN:
+        var a0 := lerpf(-kernweite, kernweite, float(bahn) / float(KERNBAHNEN))
+        var a1 := lerpf(-kernweite, kernweite, float(bahn + 1) / float(KERNBAHNEN))
+        var d0 := 1.0 - absf(a0) / kernweite
+        var d1 := 1.0 - absf(a1) / kernweite
+        for ring in RINGE:
+            var innen := reichweite * float(ring) / float(RINGE)
+            var aussen := reichweite * float(ring + 1) / float(RINGE)
+            var ecken := PackedVector2Array([
+                spitze + richtung.rotated(a0) * innen,
+                spitze + richtung.rotated(a1) * innen,
+                spitze + richtung.rotated(a1) * aussen,
+                spitze + richtung.rotated(a0) * aussen,
+            ])
+            var anteile := PackedFloat32Array([d0, d1, d1, d0])
+            var farben := PackedColorArray()
+            for k in ecken.size():
+                var c := _farbe_an(spitze, ecken[k], puls)
+                farben.append(Color(KERN.r, KERN.g, KERN.b,
+                    c.a * 0.34 * anteile[k] * anteile[k]))
+            draw_polygon(ecken, farben)
+
     _zeichne_staub(spitze, puls)
 
     # Der Austritt am Waechter selbst - ein harter, heller Kern.

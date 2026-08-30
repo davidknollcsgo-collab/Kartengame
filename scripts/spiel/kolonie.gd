@@ -190,6 +190,10 @@ func _draw() -> void:
     _zeichne_bewuchs()
     _zeichne_nischen()
     _zeichne_polypen()
+    # Der Sockel gehoert hinter die Brut. Andersherum deckte er die Eierreihe
+    # zu - und die Brut ist das Einzige im Bild, das der Spieler die ganze
+    # Zeit sehen muss.
+    _zeichne_sockel()
     _zeichne_brut()
     _zeichne_waechter()
 
@@ -339,13 +343,44 @@ func _zeichne_brut() -> void:
         var p := Vector2(links + abstand * float(i), Graben.BRUT_Y)
         if i < brut:
             var puls := 0.5 + 0.5 * sin(zeit * 1.7 + float(i) * 0.6)
-            draw_circle(p, 12.0, Color(BRUT_FARBE.r, BRUT_FARBE.g, BRUT_FARBE.b,
-                0.10 + 0.07 * puls))
+            draw_circle(p, 14.0, Color(BRUT_FARBE.r, BRUT_FARBE.g, BRUT_FARBE.b,
+                0.07 + 0.06 * puls))
+            draw_circle(p, 9.0, Color(BRUT_FARBE.r, BRUT_FARBE.g, BRUT_FARBE.b,
+                0.16 + 0.08 * puls))
             draw_circle(p, 6.4, BRUT_FARBE)
-            draw_circle(p, 3.0, Color(1.0, 0.96, 0.86, 0.9))
+            # Ein Keim darin, der sich leicht bewegt. Ein Ei ohne etwas darin
+            # ist ein Punkt; eines mit etwas darin ist ein Grund, es zu
+            # verteidigen.
+            var keim := p + Vector2(sin(zeit * 0.9 + float(i)) * 1.4,
+                cos(zeit * 1.1 + float(i)) * 1.1)
+            draw_circle(keim, 3.0, Color(1.0, 0.96, 0.86, 0.9))
+            draw_circle(keim, 1.4, Color(1.0, 1.0, 0.96, 1.0))
         else:
-            # Zerbrochen: nur noch die leere Schale.
+            # Zerbrochen: die leere Schale und ein Rest, der noch verglimmt.
             draw_arc(p, 6.0, 0.35, PI - 0.35, 10, Color(0.34, 0.30, 0.26, 0.7), 1.6)
+            draw_line(p + Vector2(-5.0, 1.0), p + Vector2(-2.0, -4.0),
+                Color(0.30, 0.26, 0.22, 0.6), 1.2)
+            draw_line(p + Vector2(5.0, 1.0), p + Vector2(2.5, -3.5),
+                Color(0.30, 0.26, 0.22, 0.6), 1.2)
+
+
+## Der Kalkwulst, in dem der Waechter steckt. Ohne ihn schwebt er ueber der
+## Brut; mit ihm ist er festgewachsen wie alles andere hier auch.
+##
+## Nach unten laeuft er aus dem Bild - ein Sockel mit sichtbarer Unterkante
+## sieht aus wie eine Kiste, auf der jemand sitzt.
+func _zeichne_sockel() -> void:
+    var p := Graben.WAECHTER
+    var kuppe := PackedVector2Array()
+    for i in 15:
+        var w := lerpf(PI, TAU, float(i) / 14.0)
+        var welle := 1.0 + 0.09 * sin(float(i) * 2.3)
+        kuppe.append(p + Vector2(cos(w) * 74.0 * welle, sin(w) * 24.0 * welle + 52.0))
+    var sockel := kuppe.duplicate()
+    sockel.append(p + Vector2(82.0, 300.0))
+    sockel.append(p + Vector2(-82.0, 300.0))
+    draw_colored_polygon(sockel, FELS.lightened(0.04))
+    draw_polyline(kuppe, Color(0.18, 0.36, 0.42, 0.34), 1.4, true)
 
 
 func _zeichne_waechter() -> void:
@@ -370,5 +405,25 @@ func _zeichne_waechter() -> void:
         draw_line(wurzel, wurzel + Vector2(sin(zeit * 0.9 + float(i)) * 5.0, 22.0),
             Color(0.18, 0.40, 0.44, 0.7), 3.0)
 
-    draw_circle(p + Vector2(0.0, -18.0), 9.0 + puls * 1.5,
-        Color(0.70, 0.98, 1.0, 0.85))
+    # Adern im Leib, die zum Leuchtorgan laufen. Sie pulsen leicht versetzt -
+    # das ist der billigste Weg, einem stillen Koerper Leben zu geben.
+    for i in 3:
+        var s_i := lerpf(-13.0, 13.0, float(i) / 2.0)
+        var ader := PackedVector2Array([
+            p + Vector2(s_i * 1.6, 40.0),
+            p + Vector2(s_i * 1.15, 12.0),
+            p + Vector2(s_i * 0.5, -12.0),
+        ])
+        var glut := 0.5 + 0.5 * sin(zeit * 1.6 + float(i) * 1.1)
+        draw_polyline(ader, Color(0.42, 0.86, 0.94, 0.18 + 0.20 * glut), 2.0, true)
+
+    # Das Leuchtorgan selbst: Kern, Hof und ein Kranz feiner Fuehler.
+    var kopf := p + Vector2(0.0, -18.0)
+    for i in 9:
+        var w := lerpf(-PI * 0.85, -PI * 0.15, float(i) / 8.0)
+        var laenge := 13.0 + 5.0 * sin(zeit * 1.4 + float(i) * 0.9)
+        draw_line(kopf, kopf + Vector2(cos(w), sin(w)) * laenge,
+            Color(0.46, 0.88, 0.96, 0.30), 1.3)
+    draw_circle(kopf, 20.0 + puls * 3.0, Color(0.40, 0.86, 0.98, 0.10))
+    draw_circle(kopf, 9.0 + puls * 1.5, Color(0.70, 0.98, 1.0, 0.85))
+    draw_circle(kopf, 4.2, Color(1.0, 1.0, 0.98, 0.95))

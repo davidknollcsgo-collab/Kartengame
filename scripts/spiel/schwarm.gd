@@ -74,11 +74,17 @@ func _zeichne(t: Raeuber, stufe := 0) -> void:
 
     # Der Hof faellt als Erstes weg - er kostet drei Kreise je Tier und traegt
     # am wenigsten, sobald das Bild voll ist.
+    #
+    # Die Staerken sind gedaempft, seit es Randlicht gibt. Vorher trug der Hof
+    # die ganze Rueckmeldung; jetzt teilen sich beide die Aufgabe, und wenn
+    # beide voll aufdrehen, wird aus dem Tier ein weisser Klecks. Genau das
+    # war im ersten Bild zu sehen: eine beleuchtete Glutqualle war von einer
+    # beleuchteten Schildkoralle nicht mehr zu unterscheiden.
     if stufe == 0:
-        _gluehen(p, r * 2.4 * puls, farbe, 0.16 + 0.42 * hitze)
+        _gluehen(p, r * 2.2 * puls, farbe, 0.13 + 0.24 * hitze)
     elif stufe == 1:
         draw_circle(p, r * 1.6 * puls, Color(farbe.r, farbe.g, farbe.b,
-            0.10 + 0.20 * hitze))
+            0.08 + 0.13 * hitze))
 
     # Bei sehr vielen Tieren nur noch Umriss und Farbe: die Form bleibt
     # lesbar, die Zierde geht.
@@ -108,6 +114,7 @@ func _zeichne(t: Raeuber, stufe := 0) -> void:
 
     # Lebensanzeige nur bei Verletzten. Volle Balken ueber jedem Tier waeren
     # Rauschen; ein angeschlagener Gegner ist dagegen eine Entscheidung.
+    _kielwasser(p, r, farbe, t)
     _randlicht(p, r, farbe, t)
 
     if t.verletzt():
@@ -148,7 +155,7 @@ func _gluehen(p: Vector2, radius: float, farbe: Color, staerke: float) -> void:
 ## Umriss die Form, nicht die Flaeche - eine hell gefuellte Flaeche waere ein
 ## Klecks ohne Kontur.
 func _koerper(punkte: PackedVector2Array, farbe: Color, hitze: float) -> void:
-    var fuellung := Color(farbe.r, farbe.g, farbe.b, 0.20 + 0.30 * hitze)
+    var fuellung := Color(farbe.r, farbe.g, farbe.b, 0.18 + 0.20 * hitze)
     draw_colored_polygon(punkte, fuellung)
     var geschlossen := punkte + PackedVector2Array([punkte[0]])
     draw_polyline(geschlossen, Color(farbe.r, farbe.g, farbe.b,
@@ -544,7 +551,28 @@ func _randlicht(p: Vector2, r: float, farbe: Color, t: Raeuber) -> void:
 
     # Zwei Bogen: ein breiter, weicher Saum und darin eine schmale, harte
     # Kante. Der Saum macht die Rundung, die Kante den Glanzpunkt.
-    draw_arc(p, r * 1.02, w - bogen, w + bogen, 16,
-        Color(farbe.r, farbe.g, farbe.b, 0.30 * staerke), 3.4)
-    draw_arc(p, r * 0.94, w - bogen * 0.52, w + bogen * 0.52, 12,
-        Color(1.0, 0.99, 0.94, 0.42 * staerke * staerke), 1.8)
+    draw_arc(p, r * 1.04, w - bogen, w + bogen, 16,
+        Color(farbe.r, farbe.g, farbe.b, 0.26 * staerke), 2.6)
+    draw_arc(p, r * 0.96, w - bogen * 0.48, w + bogen * 0.48, 12,
+        Color(1.0, 0.99, 0.94, 0.24 * staerke * staerke), 1.5)
+
+
+## Kielwasser: eine kurze, sich verjuengende Spur hinter schnellen Tieren.
+##
+## Sie erzaehlt Geschwindigkeit, ohne dass sich etwas bewegen muss - auf einem
+## Standbild sieht man, wer schiesst und wer treibt. Traege Arten bekommen
+## keine; ein Schleppband hinter einer Schildkoralle waere eine Luege ueber
+## ihr Tempo.
+func _kielwasser(p: Vector2, r: float, farbe: Color, t: Raeuber) -> void:
+    var tempo: float = Arten.tempo(t.art)
+    if tempo < 80.0 or t.alter < 0.12:
+        return
+    var kraft := clampf((tempo - 80.0) / 90.0, 0.0, 1.0)
+    var zurueck := -t.richtung
+
+    # Drei Glieder, jedes duenner und blasser als das davor.
+    for i in 3:
+        var f := float(i + 1) / 3.0
+        var wo := p + zurueck * r * (0.9 + 2.4 * f) * kraft
+        draw_circle(wo, r * (0.62 - 0.17 * float(i)),
+            Color(farbe.r, farbe.g, farbe.b, (0.16 - 0.045 * float(i)) * kraft))

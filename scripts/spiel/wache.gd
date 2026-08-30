@@ -373,7 +373,8 @@ func _raeume_auf() -> void:
                 Wellen.wert_in(r.art, welle_nummer), _stroemung)
             Fortschritt.aendere(lohn)
             verdient += lohn
-            _funken.platzen(r.ort, Arten.farbe(r.art), Arten.radius(r.art))
+            _funken.zerfall(r.ort, Arten.farbe(r.art), Arten.radius(r.art),
+                r.richtung)
             _hud.zeige_ausbeute(r.ort, lohn)
             _folge = minf(24.0, _folge + 1.0)
             Fortschritt.melde_ziel(Tagesziel.Ziel.RAEUBER)
