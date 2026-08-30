@@ -80,6 +80,25 @@ const FORTSCHRITTSMAUER := 4
 ## verliert, spielt kein Spiel mehr, sondern eine Wand.
 const TRAGBARE_FAELLE := 12
 
+## Wie weit das Leuchtorgan hinter der Sollkurve liegen darf.
+##
+## Hier stand einmal ein Vergleich am letzten Tag: `ist < soll`, also null
+## Toleranz. Das misst aber nicht den Fortschritt, sondern die Rundung -
+## der Lauf meldete Fehler bei Stufe 74 gegen Soll 75, waehrend derselbe Lauf
+## drei gefallene Sitzungen in dreihundertsechzig hatte. Gemessen wird jetzt
+## der **groesste** Abstand ueber alle Tage.
+##
+## Und die Schwelle ist abgeleitet, nicht gewaehlt: **ein Abschnitt geht als
+## Block auf.** Der Tiefenschacht oeffnet zehn Wellen auf einmal, und ueber
+## zehn Wellen verlangt die Sollkurve gut drei Stufen mehr. Wer eintritt,
+## steht also zwangslaeufig unter der Sollstufe der letzten Welle des
+## Abschnitts und waechst waehrend des Spielens hinein - so ist es gedacht.
+## Was daran gemessen gehoert, ist nicht der Abstand, sondern ob dabei
+## Sitzungen fallen, und das zaehlt `TRAGBARE_FAELLE`.
+static func tragbarer_rueckstand() -> int:
+    return Ausbau.stufe_soll(Graben.WELLEN_JE_ABSCHNITT * 2) \
+        - Ausbau.stufe_soll(Graben.WELLEN_JE_ABSCHNITT + 1)
+
 
 
 func _init() -> void:
@@ -90,6 +109,7 @@ func _init() -> void:
     var groesste_mauer := 0.0
     var mauer_tag := 0
     var rueckstand := 0
+    var groesster_rueckstand := 0
 
     # Die zweite Art zu stecken: nicht warten, sondern verlieren. Der
     # Simulator spielt die Wellen wirklich - also weiss er es auch, wenn eine
@@ -245,8 +265,11 @@ func _init() -> void:
                 stand.naehrstoffe, Ausbau.stufe_soll(gespielt),
                 tages_faelle, tages_leerlauf / 3600.0])
 
-        if stand.stufe(Kammern.Kammer.LEUCHTORGAN) < Ausbau.stufe_soll(gespielt):
+        var abstand := Ausbau.stufe_soll(gespielt) \
+            - stand.stufe(Kammern.Kammer.LEUCHTORGAN)
+        if abstand > 0:
             rueckstand += 1
+        groesster_rueckstand = maxi(groesster_rueckstand, abstand)
 
     print("")
     var gespielt := stand.hoechste_welle
@@ -268,12 +291,15 @@ func _init() -> void:
         " bei Welle %d" % stillstand_welle if laengster_stillstand > 0 else ""])
     print("Laengster Bau der ersten Woche: %.0f min (%s)" % [laengster_bau / 60.0,
         Kammern.name_von(laengster_bau_kammer) if laengster_bau_kammer >= 0 else "keiner"])
-    print("Tage hinter der Sollkurve: %d von %d" % [rueckstand, TAGE])
+    print("Tage hinter der Sollkurve: %d von %d, hoechstens %d Stufen (tragbar %d)"
+        % [rueckstand, TAGE, groesster_rueckstand, tragbarer_rueckstand()])
 
     var fehler := PackedStringArray()
-    if ist < soll_ende:
-        fehler.append("Die Kolonie bleibt hinter der Sollkurve zurueck - der "
-            + "Wellenpruefer prueft dann ein Spiel, das niemand spielen kann.")
+    if groesster_rueckstand > tragbarer_rueckstand():
+        fehler.append("Die Kolonie faellt bis zu %d Stufen hinter die "
+            % groesster_rueckstand + "Sollkurve zurueck, tragbar sind %d - "
+            % tragbarer_rueckstand() + "der Wellenpruefer prueft dann ein "
+            + "Spiel, das niemand spielen kann.")
     if mauer_tag > 0:
         var welche := "in der ersten Woche" if mauer_tag <= EINSTIEG_TAGE else "im Aufbau"
         fehler.append("Wartemauer von %.1f h an Tag %d %s - das ist die Stelle, an "
@@ -352,21 +378,26 @@ func _baue_etwas(stand: KolonieStand, jetzt: float) -> bool:
         Kammern.Kammer.ZUCHTKAMMER,
         schacht,
     ]
-    # Das Leuchtorgan zuerst, und zwar **bis an seinen Deckel**.
+    # Das Leuchtorgan zuerst, aber nur **bis zur Sollstufe des offenen
+    # Grabens**.
     #
-    # Ein fester Vorsprung von zwei oder vier Stufen reichte nicht: der
-    # Tiefenschacht oeffnet einen Abschnitt, wenn er `SCHACHT_VORSPRUNG` unter
-    # dessen letzter Sollstufe steht, und deckelt die anderen Kammern zugleich
-    # auf `Schacht + SCHACHT_VORSPRUNG`. Wer den Abschnitt betritt, *kann*
-    # also genau auf der Sollkurve stehen - aber nur, wenn er das Leuchtorgan
-    # bis an den Deckel zieht. Tat der simulierte Spieler das nicht, spielte
-    # er jeden neuen Abschnitt zwei bis vier Stufen zu schwach, und der
-    # Kolonielauf meldete zweiundzwanzig gefallene Sitzungen.
+    # Zwei Fassungen davor waren falsch, jede auf ihre Art. Ein fester
+    # Vorsprung von zwei oder vier Stufen liess es dauerhaft unter der
+    # Sollkurve liegen - der Tiefenschacht oeffnet einen Abschnitt bei
+    # `stufe_soll(letzte Welle) - SCHACHT_VORSPRUNG`, und wer im Gleichschritt
+    # mit ihm baut, betritt jeden Abschnitt genau diese vier Stufen zu
+    # schwach: zweiundzwanzig gefallene Sitzungen. Es dagegen bis an den
+    # Kammerdeckel zu ziehen war das andere Extrem: der Deckel steigt mit dem
+    # Schacht, der Schacht steigt mit dem Leuchtorgan, und der simulierte
+    # Spieler stand an Tag 75 bei Leuchtorgan 57 und Brutkammer 38. Eine
+    # Kolonie mit einem einzigen sinnvollen Knopf - genau das, was der
+    # Schachtdeckel verhindern soll.
     #
-    # Am Deckel angekommen faellt er von selbst auf die uebrigen Kammern
-    # zurueck - dafuer ist der Deckel da.
+    # Die Sollkurve ist die richtige Grenze: bis dorthin zahlt sich Schaden
+    # aus, darueber liegt er brach, solange der Graben nicht tiefer ist.
     var leucht: int = Kammern.Kammer.LEUCHTORGAN
-    if stand.kann_bauen(leucht):
+    if stand.kann_bauen(leucht) \
+            and stand.stufe(leucht) < Ausbau.stufe_soll(stand.offene_welle()):
         return stand.starte_bau(leucht, jetzt)
 
     var beste := -1

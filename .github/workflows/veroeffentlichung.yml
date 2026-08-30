@@ -1,5 +1,16 @@
-name: APK
+name: Veroeffentlichung
 
+# Was hier herauskommt und warum es zwei Wege sind:
+#
+#   1. **Eine APK** als Anhang einer Vorabveroeffentlichung. Nicht als
+#      Artefakt: ein Artefakt ist eine ZIP-Datei hinter einer Anmeldung, und
+#      auf einem Telefon ist das keine Installation, sondern eine Bastelei.
+#      Der Anhang einer Veroeffentlichung hat eine feste Adresse, die der
+#      Browser des Telefons direkt herunterlaedt.
+#   2. **Eine Seite zum Spielen im Browser** auf GitHub Pages. Zum Testen ist
+#      das der kuerzere Weg als jede Installation - eine Adresse, dieselbe am
+#      Rechner und am Telefon, und beim naechsten Bau ist sie aktuell.
+#
 # Godot braucht fuer den Android-Export das Android SDK, und dl.google.com ist
 # aus der Entwicklungsumgebung heraus gesperrt. Der Bau gehoert deshalb
 # hierher - auf dem Runner liegt das SDK bereits.
@@ -12,20 +23,30 @@ on:
       - "scripts/**"
       - "scenes/**"
       - "shaders/**"
+      - "schriften/**"
+      - "tests/**"
+      - "tools/**"
       - "project.godot"
       - "export_presets.cfg"
-      - ".github/workflows/apk.yml"
+      - ".github/workflows/veroeffentlichung.yml"
 
 concurrency:
-  group: apk-${{ github.ref }}
+  group: veroeffentlichung-${{ github.ref }}
   cancel-in-progress: true
+
+# `contents: write` fuer die Veroeffentlichung, `pages`/`id-token` fuer die
+# Seite. Mehr nicht - ein Bauauftrag braucht keine weiteren Rechte.
+permissions:
+  contents: write
+  pages: write
+  id-token: write
 
 env:
   GODOT_VERSION: "4.5-stable"
 
 jobs:
-  apk:
-    name: Debug-APK bauen
+  bauen:
+    name: Pruefen, Web und APK bauen
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -51,8 +72,6 @@ jobs:
           mkdir -p "$HOME/.local/share/godot/export_templates"
           unzip -q templates.tpz -d /tmp/tpl
           mv /tmp/tpl/templates "$HOME/.local/share/godot/export_templates/${V%-*}.stable"
-          echo "--- Vorlagen ---"
-          ls "$HOME/.local/share/godot/export_templates/${V%-*}.stable" | grep -i android || true
 
       # Vor dem Bauen: laeuft das Spiel ueberhaupt?
       #
@@ -75,6 +94,25 @@ jobs:
             exit 1
           fi
 
+      - name: Web bauen
+        run: |
+          set -euo pipefail
+          mkdir -p docs
+          godot --headless --path . --export-release "Web" docs/index.html
+          # GitHub Pages faehrt sonst Jekyll darueber und verschluckt alles,
+          # was mit einem Unterstrich beginnt.
+          touch docs/.nojekyll
+          ls -la docs | head -20
+
+      # Dieselbe Seite, aber in einer einzigen Datei: zum Weiterreichen, zum
+      # Ablegen, zum Oeffnen ohne Server.
+      - name: Einzeldatei packen
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          python3 tools/einzeldatei.py build/nekton.html
+          ls -la build/nekton.html
+
       # Debug-Schluessel. Nur zum Sideloaden - fuer den Play Store braucht es
       # einen eigenen, dauerhaft aufbewahrten Schluessel. Geht der verloren,
       # laesst sich die App nie wieder aktualisieren.
@@ -96,11 +134,7 @@ jobs:
       # Sechs CI-Laeufe lang war das unsichtbar, weil Godot die Meldung dazu
       # verliert: `has_valid_project_configuration` ueberschreibt die
       # Fehlerzeile der vorigen Pruefung, statt sie zu ergaenzen. Uebrig bleibt
-      # "configuration errors:" mit leerer Liste. Erst derselbe Export lokal,
-      # ohne Vorlagen, hat die echten Meldungen gezeigt.
-      #
-      # Also: Godot einmal laufen lassen, damit es eine vollstaendige
-      # Einstellungsdatei anlegt - und erst dann die Werte hineinschreiben.
+      # "configuration errors:" mit leerer Liste.
       - name: Editoreinstellungen anlegen und fuellen
         shell: bash
         run: |
@@ -109,14 +143,11 @@ jobs:
 
           DATEI=$(ls "$HOME/.config/godot/"editor_settings-*.tres 2>/dev/null | head -1)
           test -n "$DATEI"
-          echo "Einstellungen: $DATEI"
 
           setze () {
             if grep -q "^$1 = " "$DATEI"; then
               sed -i "s|^$1 = .*|$1 = $2|" "$DATEI"
             else
-              # Godot kennt den Schluessel doch nicht - dann ans Ende des
-              # [resource]-Blocks haengen, bevor die Unterressourcen kommen.
               printf '%s = %s\n' "$1" "$2" >> "$DATEI"
             fi
           }
@@ -127,71 +158,91 @@ jobs:
           setze "export/android/debug_keystore_user" "\"androiddebugkey\""
           setze "export/android/debug_keystore_pass" "\"android\""
 
-          echo "--- was jetzt drinsteht ---"
           grep -n "export/android" "$DATEI"
-          echo "--- SDK-Inhalt ---"
-          ls "${ANDROID_SDK_ROOT}" | head -10
-
-      # Wo sucht Godot die Exportvorlagen wirklich? Fuenf Laeufe lang war die
-      # Fehlerliste leer - das passt zu "Vorlage nicht gefunden", und dann ist
-      # der Pfad die einzige Frage, die zaehlt.
-      - name: Wo Godot sucht
-        shell: bash
-        run: |
-          cat > /tmp/wo.gd <<'GD'
-          extends SceneTree
-          func _init() -> void:
-              print("Datenverzeichnis: ", OS.get_data_dir())
-              print("Konfigverzeichnis: ", OS.get_config_dir())
-              print("Version: ", Engine.get_version_info())
-              quit(0)
-          GD
-          godot --headless --path . --script /tmp/wo.gd 2>&1 | grep -E "verzeichnis|Version"
-          echo "--- was tatsaechlich liegt ---"
-          find "$HOME/.local/share/godot" -maxdepth 3 | head -20
-          cat "$HOME/.local/share/godot/export_templates/"*/version.txt 2>/dev/null || echo "keine version.txt"
 
       # --verbose, weil Godot im Headless-Betrieb sonst nur "configuration
       # errors" meldet und verschweigt, welcher. Raten kostet je Versuch einen
-      # ganzen CI-Lauf.
-      # Ohne `|| true` bricht die Standardshell (bash -e) am fehlgeschlagenen
-      # Godot-Aufruf ab - und zwar **vor** der Fehlerauswertung. Zwei CI-Laeufe
-      # lang habe ich deshalb geraten, statt die Meldung zu lesen.
+      # ganzen CI-Lauf. Ohne `|| true` bricht die Shell am fehlgeschlagenen
+      # Godot-Aufruf ab - und zwar **vor** der Fehlerauswertung.
       - name: APK bauen
         shell: bash
         run: |
           set -uo pipefail
           mkdir -p build
-
-          echo "::group::Editoreinstellungen"
-          cat "$HOME/.config/godot/editor_settings-4.5.tres"
-          ls -la "$HOME/debug.keystore"
-          echo "::endgroup::"
-
-          bauen () {
-            godot --headless --verbose --export-debug "Android" build/nekton.apk \
-              > export.log 2>&1 || true
-            if [ -s build/nekton.apk ]; then return 0; fi
+          godot --headless --verbose --export-debug "Android" build/nekton.apk \
+            > export.log 2>&1 || true
+          if [ ! -s build/nekton.apk ]; then
             echo "--- fehlgeschlagen, Auszug aus dem Protokoll ---"
             grep -viE "TextServer|Horipad|Nintendo|misc2|SDL|pen tablet|Unrecognized" \
               export.log | tail -45
-            return 1
-          }
-
-          if bauen; then ls -la build/; exit 0; fi
-
-          echo "Bau fehlgeschlagen."
-          exit 1
+            exit 1
+          fi
+          ls -la build/
 
       - name: APK pruefen
         run: |
           set -euo pipefail
           AAPT=$(ls "${ANDROID_SDK_ROOT}"/build-tools/*/aapt2 | tail -1)
           "$AAPT" dump badging build/nekton.apk | head -5
-          unzip -l build/nekton.apk | tail -5
 
-      - uses: actions/upload-artifact@v4
+      - name: Seite als Pages-Artefakt ablegen
+        uses: actions/upload-pages-artifact@v3
         with:
-          name: nekton-apk
-          path: build/nekton.apk
+          path: docs
+
+      - name: APK und Einzeldatei ablegen
+        uses: actions/upload-artifact@v4
+        with:
+          name: nekton
+          path: |
+            build/nekton.apk
+            build/nekton.html
           if-no-files-found: error
+
+  # Eine Vorabveroeffentlichung mit fester Marke. Sie wird bei jedem Bau
+  # ueberschrieben, damit die Adresse dieselbe bleibt - wer sie sich einmal
+  # auf dem Telefon gemerkt hat, bekommt dort immer den neuesten Stand.
+  veroeffentlichen:
+    name: Vorabveroeffentlichung aktualisieren
+    needs: bauen
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: nekton
+          path: build
+
+      - name: Marke setzen und anhaengen
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          MARKE="test-$(echo '${{ github.ref_name }}' | tr '/' '-')"
+          gh release delete "$MARKE" --yes --cleanup-tag --repo "${{ github.repository }}" || true
+          gh release create "$MARKE" \
+            --repo "${{ github.repository }}" \
+            --target "${{ github.sha }}" \
+            --title "NEKTON - Teststand ${{ github.ref_name }}" \
+            --prerelease \
+            --notes "Automatisch gebaut aus \`${{ github.ref_name }}\` (${{ github.sha }}).
+
+          * **nekton.apk** - auf dem Telefon oeffnen und installieren. Android fragt einmal nach der Erlaubnis, Apps aus dieser Quelle zu installieren.
+          * **nekton.html** - dasselbe Spiel in einer einzigen Datei, im Browser zu oeffnen.
+
+          Im Browser spielen geht auch ohne Download ueber die Seite dieses Repositorys." \
+            build/nekton.apk build/nekton.html
+
+  seite:
+    name: Seite veroeffentlichen
+    needs: bauen
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.pages.outputs.page_url }}
+    steps:
+      - name: Pages einschalten, falls noch nicht geschehen
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - id: pages
+        uses: actions/deploy-pages@v4
