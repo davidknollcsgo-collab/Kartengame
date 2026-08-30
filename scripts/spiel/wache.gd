@@ -391,16 +391,31 @@ func _raeume_auf() -> void:
         elif r.ort.y >= Graben.BRUT_Y - 0.5:
             r.lebendig = false
             _offen -= 1
+            var vorher := brut
             brut = maxi(0, brut - Arten.wucht(r.art))
-            _schuetteln = 1.0
+            _schuetteln = 1.0 + 0.5 * float(vorher - brut)
             _folge = 0.0
             Klang.spiele(Klang.Ton.BRUT_FAELLT, 1.0, 0.85)
             _funken.platzen(r.ort, Color(1.0, 0.42, 0.34), Arten.radius(r.art) * 1.6)
+            # Und je zerbrochenem Ei ein eigener Bruch an seiner Stelle. Ein
+            # Treffer an der Brut ist das Teuerste im Spiel; er darf nicht
+            # aussehen wie ein Treffer an einem Raeuber.
+            for k in range(brut, vorher):
+                _funken.ei_zerbricht(_ei_ort(k), Color(0.98, 0.80, 0.42))
             _aktualisiere_kolonie()
             if brut <= 0:
                 _verloren()
                 return
     _hud.setze_zahlen(brut, Fortschritt.stand.naehrstoffe, _offen)
+
+
+## Wo das Ei mit dieser Nummer liegt. Dieselbe Rechnung wie in `kolonie.gd` -
+## die Bruchstuecke muessen dort entstehen, wo das Ei auch gezeichnet wurde.
+func _ei_ort(index: int) -> Vector2:
+    var voll := Fortschritt.stand.brut_leben()
+    var abstand := Graben.BRUT_BREITE / float(maxi(1, voll - 1))
+    return Vector2(-Graben.BRUT_BREITE * 0.5 + abstand * float(index),
+        Graben.BRUT_Y)
 
 
 ## Faerbt Wasser und Fels nach dem Abschnitt ein.
@@ -413,14 +428,22 @@ func _raeume_auf() -> void:
 ## `sofort` setzt hart, sonst wird ueberblendet - ein Farbsprung mitten im
 ## Spiel sieht aus wie ein Fehler, ein langsamer Wechsel wie ein Abstieg.
 func _faerbe_abschnitt(abschnitt: int, sofort := false) -> void:
-    _ziel_abschnitt = abschnitt
     if sofort:
-        _farbmischung = 1.0
         _alt_abschnitt = abschnitt
+        _ziel_abschnitt = abschnitt
+        _farbmischung = 1.0
         _schiebe_farben(1.0)
-    else:
-        _alt_abschnitt = _ziel_abschnitt if _farbmischung >= 1.0 else _alt_abschnitt
-        _farbmischung = 0.0
+        return
+    if abschnitt == _ziel_abschnitt:
+        return
+
+    # Von dort weiter, wo die Ueberblendung gerade steht. Erst wurde
+    # `_ziel_abschnitt` oben gesetzt und dann als Startpunkt genommen - damit
+    # war Start gleich Ziel und die Ueberblendung hatte kein Von.
+    _alt_abschnitt = _ziel_abschnitt if _farbmischung >= 1.0 else _alt_abschnitt
+    _ziel_abschnitt = abschnitt
+    _farbmischung = 0.0
+    _vordergrund.abstieg()
 
 
 func _schiebe_farben(anteil: float) -> void:

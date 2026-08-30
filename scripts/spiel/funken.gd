@@ -162,6 +162,39 @@ func zerfall(ort: Vector2, farbe: Color, radius: float, richtung: Vector2) -> vo
         _ringe.append(ring)
 
 
+## Ein Ei zerbricht: Schalensplitter, ein warmer Blitz, eine Welle.
+##
+## Der Verlust eines Eis war bisher optisch dasselbe wie ein Treffer - ein
+## Funkenausbruch in Rot. Er ist aber das Teuerste, was im Spiel passieren
+## kann, und muss entsprechend aussehen: heller, groesser, mit Bruchstuecken
+## der Schale und einer Welle, die ueber die ganze Brutreihe laeuft.
+func ei_zerbricht(ort: Vector2, farbe: Color) -> void:
+    zerfall(ort, farbe, 30.0, Vector2.UP)
+
+    for _i in 10:
+        if _teilchen.size() >= HOECHSTZAHL:
+            break
+        var t := Teilchen.new()
+        t.ort = ort
+        # Nach oben und zur Seite, nicht rundum: die Schale platzt auf.
+        t.stoss = Vector2(randf_range(-1.0, 1.0), randf_range(-1.6, -0.2)).normalized() \
+            * randf_range(70.0, 240.0)
+        t.farbe = Color(1.0, 0.92, 0.72).lerp(farbe, randf() * 0.5)
+        t.voll = randf_range(0.6, 1.4)
+        t.leben = t.voll
+        t.groesse = randf_range(1.8, 4.2)
+        _teilchen.append(t)
+
+    if _ringe.size() < HOECHSTZAHL:
+        var ring := Ring.new()
+        ring.ort = ort
+        ring.farbe = Color(1.0, 0.72, 0.42)
+        ring.voll = 0.7
+        ring.leben = ring.voll
+        ring.weite = 190.0
+        _ringe.append(ring)
+
+
 ## Ein kurzer Lichtfaden von der Quelle zum getroffenen Tier. Macht sichtbar,
 ## *wen* der Kegel gerade fasst - der Kegel allein zeigt nur, wo Licht ist.
 func strahl(von: Vector2, nach: Vector2, farbe: Color) -> void:

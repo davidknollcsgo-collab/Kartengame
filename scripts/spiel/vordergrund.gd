@@ -28,6 +28,14 @@ const FLOCKE := Color(0.42, 0.66, 0.74)
 ## das Bild voll ist - Lesbarkeit geht vor Stimmung.
 var staerke := 1.0
 
+## Ein kurzer Sturz nach unten, wenn ein neuer Grabenabschnitt aufgeht.
+##
+## Der Spieler steht still, also kann man den Abstieg nur an dem zeigen, was
+## an ihm vorbeizieht: der Schwebstoff schiesst nach oben weg. Zusammen mit
+## dem Farbwechsel des Wassers ist das der ganze Moment - kein Schnitt, keine
+## Tafel, nur zwei Sekunden, in denen es abwaerts geht.
+var _sturz := 0.0
+
 var _zeit := 0.0
 var _schwaden: Array[Dictionary] = []
 var _flocken: Array[Dictionary] = []
@@ -68,7 +76,13 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
     _zeit += delta
+    _sturz = maxf(0.0, _sturz - delta * 0.5)
     queue_redraw()
+
+
+## Loest den Sturz aus. `wache.gd` ruft das, wenn ein Abschnitt aufgeht.
+func abstieg() -> void:
+    _sturz = 1.0
 
 
 func _draw() -> void:
@@ -109,7 +123,7 @@ func _zeichne_flocken() -> void:
     for f in _flocken:
         var y: float = Graben.FELD.position.y \
             + fmod(float(f[&"y"]) - Graben.FELD.position.y
-                + _zeit * float(f[&"tempo"]), hoehe)
+                + _zeit * float(f[&"tempo"]) * (1.0 + 7.0 * _sturz), hoehe)
         var x: float = float(f[&"x"]) \
             + sin(_zeit * float(f[&"takt"])) * float(f[&"weite"])
         var p := Vector2(x, y)
@@ -118,3 +132,11 @@ func _zeichne_flocken() -> void:
             var t := float(ring + 1) / 3.0
             draw_circle(p, r * (0.5 + 1.5 * t), Color(FLOCKE.r, FLOCKE.g, FLOCKE.b,
                 FLOCKEN_DECKUNG * staerke * (1.0 - t) * 0.5))
+
+        # Waehrend des Sturzes zieht jede Flocke einen Strich hinter sich her -
+        # dieselbe Flocke, nur so schnell, dass ein Bild sie nicht mehr als
+        # Punkt zeigt.
+        if _sturz > 0.02:
+            draw_line(p, p + Vector2(0.0, float(f[&"tempo"]) * _sturz * 0.9),
+                Color(FLOCKE.r, FLOCKE.g, FLOCKE.b,
+                    FLOCKEN_DECKUNG * staerke * _sturz * 0.6), r * 0.7)
