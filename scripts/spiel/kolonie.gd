@@ -16,9 +16,9 @@ var zeit := 0.0
 
 ## Grundton des Felsens. `wache.gd` faerbt ihn je Abschnitt um - der Fels
 ## nimmt die Farbe des Wassers an, in dem er steht.
-var fels := Color(0.055, 0.085, 0.110)
+var fels := Color(0.030, 0.050, 0.068)
 
-const FELS := Color(0.055, 0.085, 0.110)
+const FELS := Color(0.030, 0.050, 0.068)
 const FELS_KANTE := Color(0.10, 0.17, 0.20)
 const BRUT_FARBE := Color(0.98, 0.80, 0.42)
 const POLYP_FARBE := Color(0.52, 0.94, 0.80)
@@ -35,7 +35,12 @@ const POLYP_FARBE := Color(0.52, 0.94, 0.80)
 const EBENEN := 3
 
 ## Wie weit jede Ebene gegenueber der vordersten nach innen rueckt.
-const EBENE_EINZUG: PackedFloat32Array = [168.0, 84.0, 0.0]
+## **Weiter auseinander als zuerst.** Bei 168 stand die hinterste Wand bei
+## x = 138 von 360 - sie reichte also bis fast auf ein Drittel der Bildbreite
+## an die Mitte heran, und der Graben wirkte wie ein Schacht, in dem man
+## klemmt. Perspektive lebt vom Versatz, nicht von der Verengung: die Ebenen
+## duerfen sich staffeln, aber sie duerfen den Blick nicht zumauern.
+const EBENE_EINZUG: PackedFloat32Array = [92.0, 44.0, 0.0]
 
 ## Und wieviel Dunst zwischen ihr und dem Auge liegt.
 ##
@@ -49,7 +54,17 @@ const EBENE_DUNST: PackedFloat32Array = [0.86, 0.46, 0.0]
 
 ## Die Farbe, in der sich die Ferne aufloest - dieselbe, die der Wassershader
 ## in mittlerer Hoehe zeigt.
-const DUNST := Color(0.052, 0.118, 0.146)
+## **Sie muss deutlich heller sein als der Fels, sonst tut die ganze
+## Staffelung nichts.**
+##
+## Hier stand `Color(0.052, 0.118, 0.146)` gegen einen Fels von
+## `(0.055, 0.085, 0.110)` - der Unterschied lag im Hundertstel. Drei Ebenen,
+## die verschieden weit weg sein sollen, kamen damit in praktisch derselben
+## Farbe heraus: die Waende sahen flach aus, und zwar nicht, weil zu wenig
+## darauf gezeichnet war, sondern weil ihnen der Tonwert fehlte. Aerial
+## perspective ist kein Effekt, den man dazustellt - sie ist der Abstand
+## zwischen zwei Farben, und wenn der null ist, gibt es sie nicht.
+const DUNST := Color(0.088, 0.168, 0.198)
 
 ## Wie schnell eine Ebene treibt. Die hintere kriecht, die vordere zieht -
 ## dasselbe Mittel wie in jedem Seitscroller, nur senkrecht.
@@ -166,7 +181,12 @@ func _wandprofil(seite: float, einzug: float, ebene: int,
         var t := float(i) / float(schritte)
         var y := lerpf(oben, unten, t)
         # Drei ueberlagerte Wellen: Grabenform, Zerklueftung, Feinkante.
-        var tief := 306.0 - einzug \
+        #
+        # Die 330 stand einmal auf 306. Zusammen mit dem geringeren Einzug
+        # der hinteren Ebenen oeffnet das den Graben spuerbar - das Spiel
+        # findet in der Mitte statt, und die Waende sind der Rahmen, nicht
+        # der Inhalt.
+        var tief := 330.0 - einzug \
             + sin(t * 5.1 + seite * 1.7 + float(ebene) * 2.1) * 34.0 * schaerfe \
             + sin(t * 13.7 + seite * 4.2 + float(ebene) * 1.3) * 13.0 * schaerfe \
             + sin(t * 31.0 + seite * 2.9) * 5.0 * schaerfe \
@@ -187,7 +207,7 @@ func _baue_vorspruenge(rng: RandomNumberGenerator) -> void:
         var ebene := i % EBENEN
         var laenge := rng.randf_range(58.0, 132.0) * (0.55 + 0.45 * float(ebene) / 2.0)
         var hoehe := rng.randf_range(26.0, 62.0)
-        var wurzel := seite * (306.0 - EBENE_EINZUG[ebene] + 8.0)
+        var wurzel := seite * (330.0 - EBENE_EINZUG[ebene] + 8.0)
         _vorspruenge.append({
             &"ebene": ebene,
             &"punkte": PackedVector2Array([
@@ -462,7 +482,34 @@ func _zeichne_wand(punkte: PackedVector2Array, ebene: int, versatz: Vector2) -> 
     draw_colored_polygon(verschoben, fels.lerp(DUNST, dunst))
 
     var kante := verschoben.slice(1, verschoben.size() - 1)
-    draw_polyline(kante, FELS_KANTE.lerp(DUNST, dunst), 2.6 * (1.0 - 0.5 * dunst), true)
+
+    # **Die Kante ist kein Strich.**
+    #
+    # Vorher lag hier eine einzelne helle Linie um jede Wand, und genau die
+    # machte aus dem Graben eine Zeichnung: im Tiefenwasser gibt es keine
+    # scharfe Grenze zwischen Fels und Wasser, weil die Strecke dazwischen
+    # selbst streut. Was man sieht, ist ein Saum, der ueber ein paar Meter
+    # ausblutet - und je weiter weg, desto breiter und schwaecher.
+    #
+    # Also drei Striche uebereinander: aussen breit und fast durchsichtig,
+    # innen schmal und heller. Die Reihenfolge zaehlt - der breite zuerst,
+    # sonst frisst er den schmalen.
+    var breit := 9.0 + 7.0 * dunst
+    for i in 3:
+        var t := float(i) / 2.0
+        draw_polyline(kante, Color(FELS_KANTE.r, FELS_KANTE.g, FELS_KANTE.b,
+            lerpf(0.05, 0.42, t) * (1.0 - 0.55 * dunst)),
+            lerpf(breit, 1.4, t), true)
+
+    # **Und ein Dunstsaum, der in das offene Wasser hineinlaeuft.**
+    #
+    # Ohne ihn endet die ferne Wand an einer Linie, und weil sie heller ist
+    # als das tiefe Wasser dahinter, steht dort eine senkrechte Kante quer
+    # durch das Bild - im breiteren Graben faellt das sofort auf: ein
+    # schwarzer Block mit sauber gezogenem Rand. Wasser tut das nicht. Die
+    # Strecke zwischen Auge und Fels streut, also loest sich der Fels ueber
+    # ein paar Meter auf, und je weiter weg, desto weiter.
+    _zeichne_kantendunst(kante, ebene)
 
     # Schichtlinien im Fels, parallel zur Kante nach aussen versetzt. Sie
     # geben der Wand eine Struktur statt einer Flaeche - und je naeher, desto
@@ -486,6 +533,32 @@ func _zeichne_wand(punkte: PackedVector2Array, ebene: int, versatz: Vector2) -> 
             continue
         draw_circle(kante[i], 3.0 + 9.0 * hell,
             Color(0.36, 0.86, 0.98, 0.16 * hell))
+
+
+## Ein Streifen entlang der Wandkante, der nach innen auf null ausblutet.
+## `draw_polygon` nimmt eine Farbe je Eckpunkt - damit ist es ein einziger
+## Verlauf und keine Stapelung, die Streifen ergaebe.
+func _zeichne_kantendunst(kante: PackedVector2Array, ebene: int) -> void:
+    if kante.size() < 2:
+        return
+    var dunst := EBENE_DUNST[ebene]
+    # Fern heisst breit: was weiter weg liegt, hat mehr streuendes Wasser
+    # davor. Und fern heisst zugleich schwaecher, weil dort ohnehin schon
+    # alles im Dunst steht.
+    var weite := 34.0 + 96.0 * dunst
+    var farbe := fels.lerp(DUNST, dunst)
+    var voll := Color(farbe.r, farbe.g, farbe.b, 0.55 - 0.25 * dunst)
+    var leer := Color(farbe.r, farbe.g, farbe.b, 0.0)
+
+    var nach_innen := -signf(kante[0].x)
+    for i in kante.size() - 1:
+        var a: Vector2 = kante[i]
+        var b: Vector2 = kante[i + 1]
+        draw_polygon(
+            PackedVector2Array([a, b,
+                b + Vector2(nach_innen * weite, 0.0),
+                a + Vector2(nach_innen * weite, 0.0)]),
+            PackedColorArray([voll, voll, leer, leer]))
 
 
 func _zeichne_vorspruenge(ebene: int, versatz: Vector2) -> void:

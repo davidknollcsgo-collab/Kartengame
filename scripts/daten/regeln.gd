@@ -44,13 +44,21 @@ const HINWEISE: PackedStringArray = [
 ## wirklich finster, der Grabensturm wirklich aufgewuehlt.
 
 ## Die Dunkelheit oben im Bild.
+## **Dunkel darf es sein, schwarz nicht.**
+##
+## Die Werte lagen bei acht Tausendsteln, und im Bild war der obere Teil des
+## Grabens dadurch keine Tiefe, sondern ein Loch: eine schwarze Flaeche mit
+## einer sichtbaren Kante dort, wo die Wand anfing. Tiefes Wasser ist nicht
+## schwarz - es ist sehr dunkles Blau, und der Unterschied ist genau der,
+## dass man in das eine hineinsieht und auf das andere schaut. Die Abstaende
+## zwischen den Abschnitten bleiben, nur der Boden ist angehoben.
 const TIEF_FARBEN: PackedColorArray = [
-    Color(0.008, 0.018, 0.034),   ## Rim Gorge - offenes, kaltes Blau
-    Color(0.006, 0.020, 0.042),   ## Current Rift - klarer und kaelter
-    Color(0.014, 0.026, 0.020),   ## Murky Deep - gruenlicher Schlamm
-    Color(0.010, 0.008, 0.020),   ## Dark Band - fast schwarz, violett
-    Color(0.020, 0.030, 0.042),   ## Scatterlight Zone - milchig aufgehellt
-    Color(0.026, 0.014, 0.014),   ## Trench Storm - eisenrot und schwer
+    Color(0.016, 0.034, 0.058),   ## Rim Gorge - offenes, kaltes Blau
+    Color(0.012, 0.036, 0.070),   ## Current Rift - klarer und kaelter
+    Color(0.024, 0.044, 0.036),   ## Murky Deep - gruenlicher Schlamm
+    Color(0.020, 0.016, 0.038),   ## Dark Band - fast schwarz, violett
+    Color(0.034, 0.050, 0.068),   ## Scatterlight Zone - milchig aufgehellt
+    Color(0.044, 0.026, 0.024),   ## Trench Storm - eisenrot und schwer
 ]
 
 ## Das Wasser in mittlerer Hoehe.
@@ -78,13 +86,17 @@ const SCHEIN_FARBEN: PackedColorArray = [
 const SCHNEE_DICHTE: PackedFloat32Array = [1.0, 0.9, 1.7, 0.7, 1.3, 2.0]
 
 ## Der Fels. Er nimmt die Farbe des Wassers an, in dem er steht.
+## **Dunkler als zuvor, und das ist die andere Haelfte derselben Sache.**
+## Der naechste Fels muss deutlich unter dem Dunst liegen (`Kolonie.DUNST`),
+## sonst kommen ferne und nahe Wand in derselben Farbe heraus und die
+## Staffelung ist umsonst. Die Farbtoene bleiben, nur der Wert faellt.
 const FELS_FARBEN: PackedColorArray = [
-    Color(0.055, 0.085, 0.110),
-    Color(0.048, 0.082, 0.118),
-    Color(0.068, 0.088, 0.062),
-    Color(0.052, 0.046, 0.078),
-    Color(0.082, 0.100, 0.112),
-    Color(0.098, 0.062, 0.056),
+    Color(0.030, 0.050, 0.068),
+    Color(0.026, 0.048, 0.074),
+    Color(0.040, 0.054, 0.034),
+    Color(0.030, 0.026, 0.050),
+    Color(0.050, 0.062, 0.072),
+    Color(0.062, 0.036, 0.032),
 ]
 
 
