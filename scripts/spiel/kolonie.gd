@@ -128,6 +128,24 @@ var _schleier: Array[Dictionary] = []
 ## auszuweichen, sind sie es geworden, und dann gehoeren sie in den Rechenkern.
 var _treiber: Array[Dictionary] = []
 
+## --- Was auf dem Fels waechst ---
+##
+## Der Graben war grau in grau: dunkler Fels, tuerkises Wasser, ein tuerkiser
+## Kegel. Ein Bild mit einem Farbton ist eine Tonung, keine Farbgebung - und
+## ein Riff ohne Riff ist eine Felswand.
+##
+## Also Bewuchs in drei Bauarten, weil eine Form fuenfzigmal wiederholt ein
+## Muster ergibt und drei Formen ein Oekosystem: **Faecher**, die quer zur
+## Stroemung stehen; **Roehrenbuendel**, die nach oben zeigen; und
+## **Anemonen**, deren Arme sich bewegen. Alle drei in warmen und violetten
+## Toenen, denn das Blau bekommt seinen Wert erst durch das, was nicht blau
+## ist.
+var _korallen: Array[Dictionary] = []
+
+## Zeichen im Fels: kleine leuchtende Marken, die langsam atmen. Sie erzaehlen
+## nichts und tun nichts - sie geben der Wand nur etwas, das man ansieht.
+var _zeichen: Array[Dictionary] = []
+
 ## Der Kegel, um Fels und Bewuchs von ihm anleuchten zu lassen. Gesetzt von
 ## `wache.gd`. Dieselbe `Schlund.beleuchtung()` wie ueberall - was hell
 ## gezeichnet wird, ist das Licht, das auch Schaden macht.
@@ -163,6 +181,8 @@ func _baue_waende() -> void:
     _baue_felsdetail(rng)
     _baue_schleier(rng)
     _baue_treiber(rng)
+    _baue_korallen(rng)
+    _baue_zeichen(rng)
 
 
 ## Ein Wandprofil. `einzug` schiebt es zur Mitte, `ebene` waehlt die
@@ -375,21 +395,229 @@ func _baue_schleier(rng: RandomNumberGenerator) -> void:
 ## Ferne, langsam, und ohne jede Beziehung zum Spiel. Ihre Bahn ist eine
 ## Schleife: waagerecht wandern, senkrecht atmen, und wenn sie unten aus dem
 ## Bild laufen, oben wieder herein.
+## Die Farben der Treiber.
+##
+## **Nicht alles ist tuerkis.** Das Bild hatte genau einen Farbton, und ein
+## Bild mit einem Farbton ist eine Tonung, keine Farbgebung. Tiefseequallen
+## leuchten in ganz unterschiedlichen Faerbungen; ein paar warme und
+## violette dazwischen geben dem Blau erst seinen Wert.
+const TREIBER_FARBEN: PackedColorArray = [
+    Color(0.34, 0.72, 0.86),
+    Color(0.30, 0.56, 0.90),
+    Color(0.86, 0.42, 0.66),
+    Color(0.62, 0.44, 0.88),
+    Color(0.40, 0.84, 0.74),
+    Color(0.92, 0.58, 0.44),
+]
+
+
 func _baue_treiber(rng: RandomNumberGenerator) -> void:
     _treiber.clear()
-    for i in 14:
+    for i in 16:
+        # Die Groesse traegt die Entfernung: kleine treiben weit hinten und
+        # langsam, grosse naeher und schneller. Eine Groesse fuer alle waere
+        # eine Reihe gleicher Stempel.
+        var nah := rng.randf()
         _treiber.append({
-            &"x": rng.randf_range(Graben.FELD.position.x + 90.0,
-                Graben.FELD.end.x - 90.0),
+            &"x": rng.randf_range(Graben.FELD.position.x + 70.0,
+                Graben.FELD.end.x - 70.0),
             &"y": rng.randf_range(Graben.FELD.position.y, Graben.FELD.end.y),
-            &"tempo": rng.randf_range(7.0, 19.0),
-            &"quer": rng.randf_range(5.0, 16.0),
-            &"takt": rng.randf_range(0.35, 0.9),
+            &"tempo": lerpf(5.0, 17.0, nah),
+            &"quer": rng.randf_range(6.0, 20.0),
+            &"takt": rng.randf_range(0.30, 0.62),
             &"phase": rng.randf_range(0.0, TAU),
-            &"gross": rng.randf_range(4.0, 11.0),
-            &"schwarm": rng.randf() < 0.4,
-            &"zahl": rng.randi_range(3, 6),
+            &"gross": lerpf(7.0, 26.0, nah * nah),
+            &"nah": nah,
+            &"schwarm": rng.randf() < 0.28,
+            &"zahl": rng.randi_range(4, 8),
+            &"farbe": TREIBER_FARBEN[rng.randi() % TREIBER_FARBEN.size()],
+            &"faeden": rng.randi_range(5, 8),
         })
+
+
+## Die Farben des Riffs. Warm und violett gegen das Blau des Wassers - das
+## ist der ganze Zweck, den sie haben.
+const KORALL_FARBEN: PackedColorArray = [
+    Color(0.92, 0.46, 0.30),
+    Color(0.86, 0.34, 0.52),
+    Color(0.62, 0.36, 0.82),
+    Color(0.34, 0.70, 0.62),
+    Color(0.94, 0.68, 0.32),
+    Color(0.44, 0.52, 0.90),
+]
+
+
+func _baue_korallen(rng: RandomNumberGenerator) -> void:
+    _korallen.clear()
+    var kante := _wand_links.slice(1, _wand_links.size() - 1) \
+        + _wand_rechts.slice(1, _wand_rechts.size() - 1)
+    for i in kante.size():
+        if rng.randf() > 0.5:
+            continue
+        var p: Vector2 = kante[i]
+        var innen := -signf(p.x)
+        var arme := PackedFloat32Array()
+        for _a in rng.randi_range(5, 9):
+            arme.append(rng.randf_range(0.5, 1.0))
+        _korallen.append({
+            # **An der Kante, mit dem Fuss knapp im Fels.**
+            #
+            # Zuerst sass der Fuss bis zu 34 Einheiten *im* Gestein - und
+            # weil alle Arme nach innen wachsen, standen die Korallen damit
+            # groesstenteils hinter der Wand. Im Bild waren sie ein farbiger
+            # Saum am aeussersten Rand. Bewuchs sitzt dort, wo Fels und
+            # Wasser sich treffen, und ragt ins Wasser: das ist der Ort, an
+            # dem es Stroemung gibt, und der Grund, warum er dort waechst.
+            &"ort": p + Vector2(-innen * rng.randf_range(-6.0, 12.0),
+                rng.randf_range(-16.0, 16.0)),
+            &"innen": innen,
+            &"art": rng.randi() % 3,
+            &"gross": rng.randf_range(16.0, 46.0),
+            &"neigung": rng.randf_range(-0.5, 0.5),
+            &"arme": arme,
+            &"takt": rng.randf_range(0.25, 0.7),
+            &"phase": rng.randf_range(0.0, TAU),
+            &"farbe": KORALL_FARBEN[rng.randi() % KORALL_FARBEN.size()],
+        })
+
+
+func _zeichne_korallen() -> void:
+    var versatz := Vector2(0.0, -fmod(zeit * EBENE_TEMPO[EBENEN - 1], 220.0))
+    for k in _korallen:
+        var p: Vector2 = (k[&"ort"] as Vector2) + versatz
+        var innen: float = k[&"innen"]
+        var r: float = k[&"gross"]
+        var farbe: Color = k[&"farbe"]
+        var atem: float = 0.5 + 0.5 * sin(zeit * float(k[&"takt"]) + float(k[&"phase"]))
+        var arme: PackedFloat32Array = k[&"arme"]
+        var neigung: float = k[&"neigung"]
+        # Einmal je Klumpen, nicht je Arm: `beleuchtung()` ist die teuerste
+        # Rechnung im Bild.
+        var hell := _licht_auf(p)
+        var kraft := 0.42 + 0.58 * hell
+
+        match int(k[&"art"]):
+            0:
+                _koralle_faecher(p, r, farbe, kraft, innen, neigung, arme, atem)
+            1:
+                _koralle_roehren(p, r, farbe, kraft, innen, arme, atem)
+            _:
+                _koralle_anemone(p, r, farbe, kraft, innen, arme, atem)
+
+
+## Ein Faecher: Rippen von einem Fuss aus, mit einem Netz dazwischen. Er steht
+## quer zur Stroemung, weil er von ihr lebt.
+func _koralle_faecher(p: Vector2, r: float, farbe: Color, kraft: float,
+        innen: float, neigung: float, arme: PackedFloat32Array,
+        atem: float) -> void:
+    var n := arme.size()
+    var spitzen := PackedVector2Array()
+    for i in n:
+        var t := float(i) / float(maxi(1, n - 1))
+        var w := lerpf(-1.05, 1.05, t) + neigung + 0.05 * sin(zeit * 0.4 + float(i))
+        var laenge := r * (0.55 + 0.45 * sin(t * PI)) * arme[i]
+        var richtung := Vector2(innen * sin(w), -cos(w))
+        var spitze := p + richtung * laenge
+        spitzen.append(spitze)
+        draw_line(p, spitze, Color(farbe.r, farbe.g, farbe.b, 0.34 * kraft),
+            1.0 + r * 0.035)
+    # Das Netz zwischen den Rippen - daran erkennt man einen Faecher.
+    if spitzen.size() > 1:
+        for anteil in [0.55, 0.85]:
+            var bogen := PackedVector2Array()
+            for sp in spitzen:
+                bogen.append(p + (sp - p) * anteil)
+            draw_polyline(bogen, Color(farbe.r, farbe.g, farbe.b,
+                0.20 * kraft), 1.0, true)
+        draw_polyline(spitzen, Color(farbe.r, farbe.g, farbe.b,
+            0.26 * kraft), 1.0, true)
+
+
+## Roehren: ein Buendel, das nach oben zeigt, mit hellen Muendungen.
+func _koralle_roehren(p: Vector2, r: float, farbe: Color, kraft: float,
+        innen: float, arme: PackedFloat32Array, atem: float) -> void:
+    for i in arme.size():
+        var t := float(i) / float(maxi(1, arme.size() - 1))
+        var fuss := p + Vector2(innen * lerpf(-0.5, 0.5, t) * r * 0.9, 0.0)
+        var hoch := r * arme[i] * (0.85 + 0.15 * atem)
+        var spitze := fuss + Vector2(innen * 0.18 * r * (t - 0.5), -hoch)
+        draw_line(fuss, spitze, Color(farbe.r, farbe.g, farbe.b, 0.30 * kraft),
+            1.4 + r * 0.05)
+        draw_circle(spitze, 1.2 + r * 0.055,
+            Color(farbe.r, farbe.g, farbe.b, 0.42 * kraft))
+        draw_circle(spitze, 0.6 + r * 0.022,
+            Color(1.0, 0.96, 0.90, 0.30 * kraft))
+
+
+## Eine Anemone: ein Fuss und Arme, die sich einzeln bewegen.
+func _koralle_anemone(p: Vector2, r: float, farbe: Color, kraft: float,
+        innen: float, arme: PackedFloat32Array, atem: float) -> void:
+    draw_circle(p, r * 0.30 * (0.9 + 0.1 * atem),
+        Color(farbe.r, farbe.g, farbe.b, 0.20 * kraft))
+    for i in arme.size():
+        var t := float(i) / float(maxi(1, arme.size() - 1))
+        var w := lerpf(-1.25, 1.25, t)
+        var linie := PackedVector2Array([p])
+        var punkt := p
+        var richtung := Vector2(innen * sin(w), -cos(w))
+        for g in 3:
+            richtung = richtung.rotated(
+                sin(zeit * 0.9 + float(i) * 1.7 + float(g)) * 0.22)
+            punkt += richtung * r * 0.30 * arme[i]
+            linie.append(punkt)
+        draw_polyline(linie, Color(farbe.r, farbe.g, farbe.b, 0.28 * kraft),
+            1.0 + r * 0.03, true)
+        draw_circle(linie[linie.size() - 1], 1.0 + r * 0.03,
+            Color(farbe.r, farbe.g, farbe.b, 0.34 * kraft))
+
+
+## Zeichen im Fels.
+##
+## Jedes ist ein kurzer Streckenzug auf einem Gitter von drei mal drei - so
+## entstehen Marken, die aussehen, als haetten sie eine Bedeutung, ohne dass
+## eine hineingelegt werden muss. Wichtig ist nur, dass sie **kantig** sind:
+## eine runde Kritzelei liest sich als Fehler, eine eckige als Schrift.
+func _baue_zeichen(rng: RandomNumberGenerator) -> void:
+    _zeichen.clear()
+    var kante := _wand_links.slice(1, _wand_links.size() - 1) \
+        + _wand_rechts.slice(1, _wand_rechts.size() - 1)
+    for i in kante.size():
+        if rng.randf() > 0.42:
+            continue
+        var p: Vector2 = kante[i]
+        var innen := -signf(p.x)
+        var strich := PackedVector2Array()
+        var punkt := Vector2(rng.randi_range(0, 2), rng.randi_range(0, 2))
+        strich.append(punkt)
+        for _g in rng.randi_range(2, 4):
+            var richtung := Vector2(rng.randi_range(-1, 1), rng.randi_range(-1, 1))
+            if richtung == Vector2.ZERO:
+                richtung = Vector2.DOWN
+            punkt = (punkt + richtung).clamp(Vector2.ZERO, Vector2(2.0, 2.0))
+            strich.append(punkt)
+        _zeichen.append({
+            &"ort": p + Vector2(-innen * rng.randf_range(40.0, 200.0),
+                rng.randf_range(-30.0, 30.0)),
+            &"strich": strich,
+            &"gross": rng.randf_range(5.0, 11.0),
+            &"takt": rng.randf_range(0.20, 0.55),
+            &"phase": rng.randf_range(0.0, TAU),
+        })
+
+
+func _zeichne_zeichen() -> void:
+    var versatz := Vector2(0.0, -fmod(zeit * EBENE_TEMPO[EBENEN - 1], 220.0))
+    for z in _zeichen:
+        var atem: float = 0.5 + 0.5 * sin(zeit * float(z[&"takt"]) + float(z[&"phase"]))
+        var r: float = z[&"gross"]
+        var ort: Vector2 = (z[&"ort"] as Vector2) + versatz
+        var strich: PackedVector2Array = z[&"strich"]
+        var linie := PackedVector2Array()
+        for g in strich:
+            linie.append(ort + (g - Vector2.ONE) * r)
+        var a := 0.16 + 0.24 * atem
+        draw_polyline(linie, Color(0.46, 0.86, 0.82, a * 0.45), 4.4, true)
+        draw_polyline(linie, Color(0.68, 0.96, 0.90, a), 1.4, true)
 
 
 func _zeichne_treiber() -> void:
@@ -402,34 +630,86 @@ func _zeichne_treiber() -> void:
             + sin(zeit * float(d[&"takt"]) * 0.7 + float(d[&"phase"])) * float(d[&"quer"])
         var p := Vector2(x, y)
         var r: float = float(d[&"gross"])
-        # Blass und blau: sie stehen weit hinten, und Entfernung macht unter
-        # Wasser heller, nicht dunkler - dieselbe Regel wie bei den Waenden.
-        var farbe := Color(0.30, 0.56, 0.66, 0.20)
+        var nah: float = d[&"nah"]
+        var farbe: Color = d[&"farbe"]
+
+        # Nah heisst kraeftig, fern heisst blass und blau - dieselbe Regel wie
+        # bei den Waenden. Ohne sie schwimmen alle in derselben Ebene.
+        var kraft := 0.22 + 0.55 * nah
+        farbe = farbe.lerp(DUNST, 0.55 * (1.0 - nah))
 
         if bool(d[&"schwarm"]):
-            # Ein Schwaermchen: ein paar Punkte, die umeinander kreisen.
             for k in int(d[&"zahl"]):
                 var w := TAU * float(k) / float(d[&"zahl"]) + zeit * 0.5
-                draw_circle(p + Vector2(cos(w), sin(w) * 0.6) * r,
-                    1.5, Color(farbe.r, farbe.g, farbe.b, 0.26))
+                var q := p + Vector2(cos(w), sin(w) * 0.6) * r
+                draw_circle(q, 2.4 * (0.6 + 0.6 * nah),
+                    Color(farbe.r, farbe.g, farbe.b, 0.30 * kraft))
+                draw_circle(q, 1.1, Color(farbe.r, farbe.g, farbe.b, 0.55 * kraft))
             continue
 
-        # Eine Qualle: Schirm, der sich zusammenzieht, und Faeden dahinter.
-        var schirm := PackedVector2Array()
-        var breit := r * (1.15 - 0.25 * atem)
-        var hochziehen := r * (0.62 + 0.30 * atem)
-        for k in 11:
-            var w := lerpf(PI, TAU, float(k) / 10.0)
-            schirm.append(p + Vector2(cos(w) * breit, sin(w) * hochziehen))
-        draw_colored_polygon(schirm, Color(farbe.r, farbe.g, farbe.b, 0.13))
-        draw_polyline(schirm, Color(farbe.r, farbe.g, farbe.b, 0.30), 1.2, true)
-        for k in 4:
-            var s := lerpf(-0.7, 0.7, float(k) / 3.0)
-            var wurzel := p + Vector2(s * breit, 0.0)
-            draw_line(wurzel, wurzel + Vector2(
-                sin(zeit * 0.8 + float(k) + float(d[&"phase"])) * r * 0.25,
-                r * (1.1 + 0.5 * atem)),
-                Color(farbe.r, farbe.g, farbe.b, 0.18), 1.1)
+        _zeichne_qualle(p, r, farbe, kraft, atem, float(d[&"phase"]),
+            int(d[&"faeden"]))
+
+
+## Eine Qualle.
+##
+## **Was sie ausmacht, sind die Faeden, nicht der Schirm.** Der erste Entwurf
+## hatte vier gerade Striche unter einem Halbkreis - im Bild ein Pilz. Ein
+## Faden haengt nicht, er **schleppt**: jedes Glied folgt dem vorigen mit
+## Verzoegerung, und weil der Schirm sich rhythmisch zusammenzieht, laeuft
+## eine Welle daran entlang. Das ist die ganze Bewegung, und sie kostet eine
+## Sinusfunktion je Glied.
+##
+## Dazu ein Schirm aus drei ineinanderliegenden Kuppeln statt einer Flaeche -
+## eine Qualle ist durchsichtig, und Durchsichtigkeit sieht man nur dort, wo
+## sich etwas ueberlagert.
+func _zeichne_qualle(p: Vector2, r: float, farbe: Color, kraft: float,
+        atem: float, phase: float, faeden: int) -> void:
+    var breit := r * (1.10 - 0.20 * atem)
+    var hoch := r * (0.66 + 0.26 * atem)
+
+    # Der Hof. Eine Qualle leuchtet nicht nur, sie steht in ihrem eigenen
+    # Licht - das ist der Unterschied zwischen einer Zeichnung und einem
+    # Lebewesen im Wasser.
+    draw_circle(p, r * 1.7, Color(farbe.r, farbe.g, farbe.b, 0.05 * kraft))
+
+    # Die Faeden zuerst, damit der Schirm ueber ihren Ansaetzen liegt.
+    for k in faeden:
+        var s := lerpf(-0.86, 0.86, float(k) / float(maxi(1, faeden - 1)))
+        var wurzel := p + Vector2(s * breit * 0.82, hoch * 0.3)
+        var linie := PackedVector2Array([wurzel])
+        var punkt := wurzel
+        var glieder := 7
+        for g in glieder:
+            var t := float(g + 1) / float(glieder)
+            # Die Welle laeuft nach unten weg: der Versatz je Glied haengt an
+            # `t`, also hinkt jedes Glied dem darueber hinterher.
+            var schwung := sin(zeit * 1.4 - t * 3.4 + phase + s * 2.0) \
+                * r * 0.16 * t
+            punkt += Vector2(schwung + s * r * 0.06, r * 0.34)
+            linie.append(punkt)
+        draw_polyline(linie, Color(farbe.r, farbe.g, farbe.b,
+            (0.30 - 0.16 * absf(s)) * kraft), 1.0 + r * 0.045, true)
+
+    # Der Schirm: drei Kuppeln, aussen weit und blass, innen eng und kraeftig.
+    for i in 3:
+        var t := float(i) / 2.0
+        var kuppe := PackedVector2Array()
+        var bb := breit * lerpf(1.0, 0.52, t)
+        var hh := hoch * lerpf(1.0, 0.62, t)
+        for k in 15:
+            var w := lerpf(PI, TAU, float(k) / 14.0)
+            kuppe.append(p + Vector2(cos(w) * bb, sin(w) * hh))
+        draw_colored_polygon(kuppe, Color(farbe.r, farbe.g, farbe.b,
+            (0.07 + 0.05 * t) * kraft))
+
+    # Und ein Saum an der Glocke - dort ist das Gewebe am dichtesten.
+    var rand := PackedVector2Array()
+    for k in 17:
+        var w := lerpf(PI, TAU, float(k) / 16.0)
+        rand.append(p + Vector2(cos(w) * breit, sin(w) * hoch))
+    draw_polyline(rand, Color(farbe.r, farbe.g, farbe.b, 0.34 * kraft),
+        1.2 + r * 0.03, true)
 
 
 func _draw() -> void:
@@ -448,7 +728,9 @@ func _draw() -> void:
     # Zwischen die hinteren Waende und den Bewuchs: die Treiber stehen im
     # offenen Wasser, also vor dem Fels und hinter allem, was am Fels sitzt.
     _zeichne_treiber()
+    _zeichne_zeichen()
     _zeichne_krusten()
+    _zeichne_korallen()
     _zeichne_schleier()
     _zeichne_bewuchs()
     _zeichne_nischen()
