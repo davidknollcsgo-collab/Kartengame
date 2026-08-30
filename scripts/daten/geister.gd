@@ -61,17 +61,19 @@ static func tiefe(index: int) -> int:
     # Der Spielraum faellt von 0.25 in den ersten Sitzungen auf 1.00 in den
     # letzten. Wer Staerke s hat, kommt bis dorthin, wo der Spielraum s
     # erreicht - danach wird es fuer ihn zu eng.
-    for n in range(1, Graben.WELLEN_GESAMT + 1):
+    for n in range(1, Graben.TIEFSTE + 1):
         if _noetige_staerke(n) > s:
             return maxi(1, n - 1)
-    return Graben.WELLEN_GESAMT
+    return Graben.TIEFSTE
 
 
 ## Welchen Anteil des Sollausbaus Welle `nummer` mindestens verlangt.
 ## Naeherung an die Kurve, die der Wellenpruefer misst.
 static func _noetige_staerke(nummer: int) -> float:
-    var t := float(clampi(nummer, 1, Graben.WELLEN_GESAMT) - 1) \
-        / float(maxi(1, Graben.WELLEN_GESAMT - 1))
+    # Ueber die erste Umdrehung von 0.25 auf 1.05, danach weiter mit
+    # derselben Steigung - ein Nachbar mit Staerke 1.4 kommt eben tiefer als
+    # einer mit 1.0, und der Graben hoert nicht auf.
+    var t := float(maxi(1, nummer) - 1) / float(Graben.ZYKLUS - 1)
     return lerpf(0.25, 1.05, t)
 
 
@@ -88,7 +90,7 @@ static func rangliste(eigene_tiefe: int) -> Array[Dictionary]:
         })
     liste.append({
         &"name": "Your colony",
-        &"tiefe": clampi(eigene_tiefe, 1, Graben.WELLEN_GESAMT),
+        &"tiefe": clampi(eigene_tiefe, 1, Graben.TIEFSTE),
         &"selbst": true,
     })
 

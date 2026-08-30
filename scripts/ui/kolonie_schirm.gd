@@ -24,6 +24,10 @@ const BAND_KANTE := Color(0.16, 0.38, 0.44)
 const SCHRIFT := Color(0.82, 0.94, 0.96)
 const LEISE := Color(0.46, 0.64, 0.70)
 const NAEHR := Color(0.52, 0.94, 0.80)
+
+## Die Farbe der Mutationen - dieselbe wie im Wellenkopf, damit die Tafel im
+## Spiel und der Eintrag im Nachschlagewerk erkennbar dasselbe meinen.
+const MUTATION := Color(0.94, 0.66, 0.88)
 const SPERRE := Color(0.62, 0.52, 0.48)
 
 ## Eine Farbe je Kammer, in der Reihenfolge von `Kammern.Kammer`. Sie taucht
@@ -52,7 +56,7 @@ var _reiter: Array[Rect2] = []
 ## Vier Ansichten statt einer langen Liste: fuenf Kammern, drei Linien, acht
 ## Arten und der Tag nebeneinander waeren auf einem Telefon zwanzig gedraengte
 ## Zeilen.
-enum Sicht { KAMMERN, LINIEN, ARTEN, TAG }
+enum Sicht { KAMMERN, LINIEN, ARTEN, ZUEGE, TAG }
 var _sicht := Sicht.KAMMERN
 
 ## Tippziele der Tagesansicht, in Bildschirmkoordinaten.
@@ -278,6 +282,8 @@ func _zeichne() -> void:
         anzahl = Brutlinien.zahl() - 1
     elif _sicht == Sicht.ARTEN:
         anzahl = Arten.zahl()
+    elif _sicht == Sicht.ZUEGE:
+        anzahl = Mutationen.Mutation.size()
     elif _sicht == Sicht.TAG:
         anzahl = Tagesziel.zahl()
     var oben := KOPF + 58.0
@@ -285,6 +291,12 @@ func _zeichne() -> void:
     var passt := BAND
     var gebraucht := float(anzahl) * (BAND + LUECKE)
     if gebraucht > verfuegbar:
+        passt = verfuegbar / float(anzahl) - LUECKE
+        gebraucht = verfuegbar
+    elif _sicht == Sicht.ZUEGE:
+        # Unter den Zuegen steht kein Bild, das den Rest fuellen koennte -
+        # sechs Baender in Normalhoehe liessen das untere Drittel leer, und
+        # das sieht nach fehlendem Inhalt aus statt nach sechs Eintraegen.
         passt = verfuegbar / float(anzahl) - LUECKE
         gebraucht = verfuegbar
 
@@ -301,6 +313,8 @@ func _zeichne() -> void:
                 _brutlinie(kasten, k + 1, stand)
             Sicht.ARTEN:
                 _artband(kasten, k, stand)
+            Sicht.ZUEGE:
+                _mutationsband(kasten, k, stand)
             Sicht.TAG:
                 _tagesziel(kasten, k, stand)
             _:
@@ -399,14 +413,14 @@ func _schwebstoff(breite: float, hoehe: float) -> void:
 
 func _kopfzeile(breite: float, stand: KolonieStand) -> void:
     _text(Vector2(RAND, 34.0), "COLONY", 21, SCHRIFT)
-    _text(Vector2(RAND, 58.0), "Deepest wave %d of %d  ·  rank %d of %d"
-        % [stand.hoechste_welle, Graben.WELLEN_GESAMT,
+    _text(Vector2(RAND, 58.0), "Deepest wave %d  ·  rank %d of %d"
+        % [stand.hoechste_welle,
            Geister.platz(stand.hoechste_welle), Geister.zahl() + 1], 14, LEISE)
 
     var rechts := breite - RAND
-    _text(Vector2(rechts, 34.0), str(stand.naehrstoffe), 21, NAEHR, false, true)
+    _text(Vector2(rechts, 34.0), Zahl.kurz(stand.naehrstoffe), 21, NAEHR, false, true)
     var strom := stand.je_stunde()
-    var zeile := "Nutrients" if strom <= 0.0 else "Nutrients  +%d/h" % int(strom)
+    var zeile := "Nutrients" if strom <= 0.0 else "Nutrients  +%s/h" % Zahl.kurz(int(strom))
     _text(Vector2(rechts, 58.0), zeile, 13, LEISE, false, true)
 
     if stand.linie != Brutlinien.Linie.KEINE:
@@ -419,7 +433,8 @@ func _kopfzeile(breite: float, stand: KolonieStand) -> void:
 
 ## Die Umschaltzeile: drei Reiter, der aktive hell.
 func _umschalterzeile(breite: float) -> void:
-    const BESCHRIFTUNG: PackedStringArray = ["CHAMBERS", "LINES", "SPECIES", "DAY"]
+    const BESCHRIFTUNG: PackedStringArray = ["CHAMBERS", "LINES", "SPECIES",
+        "TRAITS", "DAY"]
     var y := KOPF + 12.0
     var anzahl := BESCHRIFTUNG.size()
     var breit := (breite - RAND * 2.0 - 8.0 * float(anzahl - 1)) / float(anzahl)
@@ -730,6 +745,79 @@ func _artband(kasten: Rect2, index: int, stand: KolonieStand) -> void:
         Color(farbe.r, farbe.g, farbe.b, 0.9), false, true)
 
 
+## Eine Mutation im Nachschlagewerk. Dieselbe Bauform wie ein Artband, aus
+## demselben Grund: was einen im Graben umbringt, muss man nachlesen koennen.
+## Was man noch nie gesehen hat, bleibt verdeckt - eine Liste, die alles
+## vorwegnimmt, nimmt jeder Begegnung ihren Moment.
+func _mutationsband(kasten: Rect2, index: int, stand: KolonieStand) -> void:
+    var kennt := stand.kennt_mutation(index)
+    var farbe := MUTATION if kennt else Color(0.34, 0.44, 0.50)
+
+    _flaeche.draw_rect(kasten, Color(BAND_FARBE.r, BAND_FARBE.g, BAND_FARBE.b,
+        0.88 if kennt else 0.52))
+    _flaeche.draw_rect(kasten, Color(farbe.r, farbe.g, farbe.b, 0.28), false, 1.4)
+    _flaeche.draw_rect(Rect2(kasten.position, Vector2(3.0, kasten.size.y)),
+        Color(farbe.r, farbe.g, farbe.b, 0.85 if kennt else 0.30))
+
+    var mitte_y := kasten.position.y + kasten.size.y * 0.5
+    _mutationssinnbild(Vector2(kasten.position.x + 46.0, mitte_y), 22.0, index,
+        farbe, kennt)
+
+    var links := kasten.position.x + 84.0
+    _text(Vector2(links, mitte_y - 6.0),
+        Mutationen.name_von(index) if kennt else "Not yet encountered", 17,
+        SCHRIFT if kennt else LEISE)
+    _text(Vector2(links, mitte_y + 18.0),
+        Mutationen.hinweis(index) if kennt
+            else "Waves start to mutate in trench depth II",
+        12, LEISE if kennt else Color(0.34, 0.44, 0.50))
+
+
+## Ein Zeichen je Mutation - gerechnet wie alles andere. Sechs Ringe, und was
+## die Mutation tut, tut auch das Zeichen: der gepanzerte ist doppelt, der
+## lichtscheue halb ausgeblendet, der unstete versetzt.
+func _mutationssinnbild(p: Vector2, r: float, index: int, farbe: Color,
+        kennt: bool) -> void:
+    var puls := 0.5 + 0.5 * sin(_zeit * 1.5 + float(index))
+    _flaeche.draw_circle(p, r * 1.2, Color(farbe.r, farbe.g, farbe.b,
+        0.06 + 0.06 * puls))
+    if not kennt:
+        _flaeche.draw_arc(p, r * 0.8, 0.0, TAU, 20,
+            Color(farbe.r, farbe.g, farbe.b, 0.35), 1.2)
+        _text(p + Vector2(0.0, 6.0), "?", 18, Color(farbe.r, farbe.g, farbe.b,
+            0.55), true)
+        return
+
+    var hell := Color(farbe.r, farbe.g, farbe.b, 0.9)
+    match index:
+        Mutationen.Mutation.PANZERUNG:
+            _flaeche.draw_arc(p, r * 0.86, 0.0, TAU, 24, hell, 2.2)
+            _flaeche.draw_arc(p, r * 0.58, 0.0, TAU, 20, hell, 1.4)
+        Mutationen.Mutation.LICHTSCHEU:
+            _flaeche.draw_arc(p, r * 0.8, -PI * 0.5, PI * 0.5, 16, hell, 2.0)
+            _flaeche.draw_arc(p, r * 0.8, PI * 0.5, PI * 1.5, 16,
+                Color(hell.r, hell.g, hell.b, 0.2), 2.0)
+        Mutationen.Mutation.UNSTET:
+            for i in 3:
+                var v := (float(i) - 1.0) * r * 0.62
+                _flaeche.draw_line(p + Vector2(v - r * 0.3, -r * 0.7),
+                    p + Vector2(v + r * 0.3, r * 0.7), hell, 1.8)
+        Mutationen.Mutation.SCHUB:
+            for i in 3:
+                var y := p.y + (float(i) - 1.0) * r * 0.6
+                var b := r * (0.3 + 0.28 * float(i))
+                _flaeche.draw_line(Vector2(p.x - b, y), Vector2(p.x + b, y),
+                    hell, 1.8)
+        Mutationen.Mutation.HAST:
+            for i in 3:
+                var y := p.y + (float(i) - 1.0) * r * 0.5
+                _flaeche.draw_line(Vector2(p.x - r * 0.8, y),
+                    Vector2(p.x + r * 0.8 - float(i) * r * 0.2, y), hell, 1.8)
+        Mutationen.Mutation.AUFGEDUNSEN:
+            _flaeche.draw_circle(p, r * 0.72, Color(hell.r, hell.g, hell.b, 0.28))
+            _flaeche.draw_arc(p, r * 0.72, 0.0, TAU, 24, hell, 1.8)
+
+
 ## Ein Zeichen je Art. Wie bei den Kammern: gezeichnet, keine Bilddatei - und
 ## jedes zeigt die Eigenart, nicht nur den Umriss.
 func _artsinnbild(p: Vector2, r: float, index: int, farbe: Color, kennt: bool) -> void:
@@ -852,7 +940,7 @@ func _grabenwertung(breite: float, y: float, stand: KolonieStand) -> float:
 ## Schaltet die Ansicht um. Nur fuer die Entwicklerschalter - im Spiel tippt
 ## man die Reiter an.
 func zeige_reiter(welche: int) -> void:
-    _sicht = clampi(welche, 0, 2) as Sicht
+    _sicht = clampi(welche, 0, Sicht.size() - 1) as Sicht
 
 
 ## Sieben Kaesten in einer Reihe. Der letzte traegt keine Zahl, sondern eine
@@ -983,7 +1071,7 @@ func _brutlinie(kasten: Rect2, index: int, stand: KolonieStand) -> void:
         var preis := Brutlinien.kosten(index)
         var reicht := frei and stand.naehrstoffe >= preis
         _text(Vector2(rechts, mitte_y - 6.0), "breed", 13, LEISE, false, true)
-        _text(Vector2(rechts, mitte_y + 16.0), str(preis) if frei else "locked", 18,
+        _text(Vector2(rechts, mitte_y + 16.0), Zahl.kurz(preis) if frei else "locked", 18,
             NAEHR if reicht else SPERRE, false, true)
 
 
@@ -1050,8 +1138,10 @@ func _kammer(kasten: Rect2, k: int, stand: KolonieStand, jetzt: float) -> void:
     var zweite := Kammern.zweck(k)
     var zweite_farbe := LEISE
     if k == Kammern.Kammer.TIEFENSCHACHT and stand.naechste_tiefe() > 0:
-        var naechster := Graben.abschnitt(stand.offene_welle()) + 1
-        zweite = "%s opens at level %d" % [Regeln.name_von(naechster),
+        var naechste_welle := stand.offene_welle() + 1
+        zweite = "%s opens at level %d" % [
+            Regeln.name_von(Graben.abschnitt(naechste_welle))
+                + Graben.tiefe_zeichen(naechste_welle),
             stand.naechste_tiefe()]
         if stand.graben_haelt():
             zweite_farbe = NAEHR
@@ -1074,7 +1164,7 @@ func _kammer(kasten: Rect2, k: int, stand: KolonieStand, jetzt: float) -> void:
         var preis := stand.preis(k)
         var reicht := stand.naehrstoffe >= preis
         _text(Vector2(rechts, mitte_y - 6.0), "Level %d" % (stufe + 1), 13, LEISE, false, true)
-        _text(Vector2(rechts, mitte_y + 16.0), str(preis), 18,
+        _text(Vector2(rechts, mitte_y + 16.0), Zahl.kurz(preis), 18,
             NAEHR if reicht else SPERRE, false, true)
 
 

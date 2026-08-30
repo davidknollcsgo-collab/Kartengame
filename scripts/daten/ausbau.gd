@@ -72,10 +72,36 @@ static func durchsatz(nummer: int) -> float:
 ## in `kammern.gd` sind so gewaehlt, dass beide Seiten bei voller Stufe genau
 ## denselben Wert liefern - `_test_kammern_treffen_die_sollkurve` prueft das
 ## ueber die ganze Strecke.
+## Wie viele Kammerstufen eine volle Umdrehung durch den Graben verlangt.
+##
+## **Das ist die einzige Entwurfszahl des ganzen Fortschritts.** Sie war
+## frueher `Kammern.HOECHSTSTUFE`, weil Welle 60 zugleich das Ende war. Seit
+## der Graben keinen Boden mehr hat, sind das zwei verschiedene Dinge: hier
+## steht das Tempo, dort die oberste Stufe, die es ueberhaupt gibt.
+const STUFEN_JE_ZYKLUS := 20
+
+
+## Die Kurve endet, wo die Kammern enden. Ohne diesen Deckel verlangte sie ab
+## Welle 241 eine Stufe 81, die es auf keiner Kammer gibt - und der
+## Wellenpruefer haette wieder einen Waechter durchgerechnet, den niemand
+## bauen kann. Der Graben laeuft trotzdem weiter; was ihn ab dort
+## unterscheidet, sind Abschnittsregeln und Mutationen, nicht mehr Leistung.
+## Dieselbe Kurve ohne Rundung. Wer eine Welle *stetig* mitwachsen lassen
+## will - die Zaehigkeit der Raeuber etwa -, braucht sie ungerundet, sonst
+## springt sie alle drei Wellen und steht dazwischen still.
+static func stufe_kurve(nummer: int) -> float:
+    var t := float(maxi(1, nummer) - 1) / float(Graben.ZYKLUS - 1)
+    return minf(float(Kammern.HOECHSTSTUFE), t * float(STUFEN_JE_ZYKLUS))
+
+
 static func stufe_soll(nummer: int) -> int:
-    var t := float(clampi(nummer, 1, Graben.WELLEN_GESAMT) - 1) \
-        / float(maxi(1, Graben.WELLEN_GESAMT - 1))
-    return int(round(t * float(Kammern.HOECHSTSTUFE)))
+    return mini(Kammern.HOECHSTSTUFE, int(round(stufe_kurve(nummer))))
+
+
+## Ab welcher Welle die Sollkurve am Deckel steht - ab dort waechst nicht mehr
+## die Leistung, sondern nur noch die Vielfalt.
+static func deckelwelle() -> int:
+    return 1 + (Kammern.HOECHSTSTUFE * (Graben.ZYKLUS - 1)) / STUFEN_JE_ZYKLUS
 
 
 # --- Grabentiefe: was den naechsten Abschnitt oeffnet ----------------------
@@ -102,11 +128,16 @@ static func schacht_fuer_abschnitt(abschnitt_nr: int) -> int:
         - Kammern.SCHACHT_VORSPRUNG)
 
 
-## Die tiefste Welle, die bei diesem Schachtstand offen steht.
+## Bis zu welcher Welle der Graben bei diesem Schachtstand offen ist.
+##
+## Frueher eine Schleife ueber die sechs Abschnitte; jetzt eine Umkehrung der
+## Ableitung oben, weil es keine feste Zahl von Abschnitten mehr gibt.
 static func offene_welle(schacht: int) -> int:
-    var offen := Graben.WELLEN_JE_ABSCHNITT
-    for a in range(1, Graben.ABSCHNITTE):
-        if schacht < schacht_fuer_abschnitt(a):
+    var nr := 0
+    while nr < 4096:
+        if schacht < schacht_fuer_abschnitt(nr + 1):
             break
-        offen = Graben.letzte_welle(a)
-    return mini(offen, Graben.WELLEN_GESAMT)
+        nr += 1
+    return Graben.letzte_welle(nr)
+
+

@@ -37,6 +37,10 @@ const TESTS: PackedStringArray = [
     "_test_bahn_bleibt_im_bild_und_sinkt",
     "_test_haut_schluckt_schwache_quellen",
     "_test_leitwesen_stehen_an_den_abschnittsenden",
+    "_test_mutationen_tabelle_vollstaendig",
+    "_test_mutationen_erst_ab_der_zweiten_umdrehung",
+    "_test_mutationen_sind_reproduzierbar",
+    "_test_mutierte_werte_bleiben_im_rahmen",
     "_test_wellen_wachsen",
     "_test_wellen_sind_reproduzierbar",
     "_test_wellen_bleiben_im_feld",
@@ -49,6 +53,9 @@ const TESTS: PackedStringArray = [
     "_test_kammern_treffen_die_sollkurve",
     "_test_kammern_tabelle_vollstaendig",
     "_test_kammerkosten_und_zeiten_steigen",
+    "_test_einkommen_haelt_mit_den_kosten_schritt",
+    "_test_bau_passt_zwischen_zwei_besuche",
+    "_test_grosse_zahlen_bleiben_lesbar",
     "_test_erste_woche_ohne_wartemauer",
     "_test_schacht_deckelt_die_kolonie",
     "_test_grabentiefe_folgt_der_sollkurve",
@@ -276,7 +283,7 @@ func _test_laufzeit() -> bool:
 # --- Arten -----------------------------------------------------------------
 
 func _test_arten_tabelle_vollstaendig() -> bool:
-    var felder: PackedStringArray = ["name", "leben", "tempo", "radius", "wert",
+    var felder: PackedStringArray = ["name", "leben", "tempo", "radius",
         "wucht", "schlaengel", "takt", "farbe", "ab_welle", "regel", "kennung"]
     if not _melde(Arten.TABELLE.size() == Arten.Art.size(),
             "TABELLE und enum Art muessen gleich gross sein"):
@@ -328,7 +335,7 @@ func _test_arten_erst_ab_ihrer_welle() -> bool:
     if not _melde(leitwesen == 1, "es muss genau ein Leitwesen geben, nicht %d" % leitwesen):
         return false
 
-    var spaet := Arten.verfuegbar(Graben.WELLEN_GESAMT)
+    var spaet := Arten.verfuegbar(Graben.ZYKLUS)
     return _melde(spaet.size() == Arten.zahl() - leitwesen,
         "in der letzten Welle muessen alle wuerfelbaren Arten verfuegbar sein")
 
@@ -361,6 +368,95 @@ func _test_arten_verhalten_bleibt_im_rahmen() -> bool:
             Arten.panzer(i), Arten.mindest_licht(i))
         if not _melde(voll > 0.0, "%s: der Grundkegel kommt gar nicht durch" % name):
             return false
+    return true
+
+
+func _test_mutationen_tabelle_vollstaendig() -> bool:
+    var laengen := {
+        "NAMEN": Mutationen.NAMEN.size(),
+        "HINWEISE": Mutationen.HINWEISE.size(),
+        "WIRKUNGSGRAD": Mutationen.WIRKUNGSGRAD.size(),
+    }
+    for was in laengen:
+        if not _melde(laengen[was] == Mutationen.Mutation.size(),
+                "%s hat %d Eintraege, das enum %d"
+                % [was, laengen[was], Mutationen.Mutation.size()]):
+            return false
+    for m in Mutationen.Mutation.size():
+        if not _melde(not Mutationen.name_von(m).is_empty()
+                and not Mutationen.hinweis(m).is_empty(),
+                "Mutation %d braucht Namen und Hinweis" % m):
+            return false
+        # Ohne Kopplung an die Wellenstaerke ist jede Mutation eine Wand -
+        # dieselbe Lehre wie bei den Abschnittsregeln, wo genau dieses
+        # Versaeumnis fuenf gefallene Sitzungen ab Welle 36 gekostet hat.
+        var w := Mutationen.WIRKUNGSGRAD[m]
+        if not _melde(w > 0.5 and w <= 1.0,
+                "%s hat einen Wirkungsgrad von %.2f - das ist keine Kurve mehr"
+                % [Mutationen.name_von(m), w]):
+            return false
+    return true
+
+
+func _test_mutationen_erst_ab_der_zweiten_umdrehung() -> bool:
+    # Wer die Arten noch nicht kennt, kann nicht sehen, was an ihnen anders
+    # ist. Eine Mutation in der Lernphase waere keine Abwechslung, sondern
+    # eine unerklaerliche Niederlage.
+    for n in range(1, Graben.ZYKLUS + 1):
+        if not _melde(Mutationen.in_welle(n).is_empty(),
+                "Welle %d traegt schon eine Mutation" % n):
+            return false
+    if not _melde(not Mutationen.in_welle(Graben.ZYKLUS + 1).is_empty(),
+            "die zweite Umdrehung muss mutieren, sonst aendert sich nie etwas"):
+        return false
+    return _melde(Mutationen.zahl_in(Graben.ZYKLUS * 9) == Mutationen.HOECHSTENS,
+        "tief unten muessen es %d Zuege sein" % Mutationen.HOECHSTENS)
+
+
+func _test_mutationen_sind_reproduzierbar() -> bool:
+    # Derselbe Grund wie bei der Zusammensetzung der Welle: der Wellenpruefer
+    # muss dieselbe Welle durchrechnen koennen, die beim Spieler ankommt, und
+    # alle Spieler sollen dieselbe Welle 137 sehen.
+    for n in range(Graben.ZYKLUS, Graben.ZYKLUS * 4, 7):
+        var a := Mutationen.in_welle(n)
+        var b := Mutationen.in_welle(n)
+        if not _melde(a == b, "Welle %d mutiert zweimal verschieden" % n):
+            return false
+        if not _melde(a.size() <= Mutationen.HOECHSTENS,
+                "Welle %d traegt %d Zuege" % [n, a.size()]):
+            return false
+        var gesehen := PackedInt32Array()
+        for m in a:
+            if not _melde(not gesehen.has(m),
+                    "Welle %d traegt %s doppelt" % [n, Mutationen.name_von(m)]):
+                return false
+            gesehen.append(m)
+    return true
+
+
+func _test_mutierte_werte_bleiben_im_rahmen() -> bool:
+    # Eine Mutation, die den Panzer ueber die Leistung des Kegels hebt, macht
+    # die Welle unbesiegbar - und zwar lautlos: `Schlund.schaden_an` gibt
+    # dann einfach null zurueck.
+    for n in range(Graben.ZYKLUS + 1, Graben.ZYKLUS * 5, 13):
+        var kegel := Graben.LEISTUNG * Ausbau.leistung_faktor(n)
+        for i in Arten.zahl():
+            var name := Arten.name_von(i)
+            if not _melde(Wellen.panzer_in(i, n) < kegel * 0.6,
+                    "%s in Welle %d: Panzer %.1f gegen Kegel %.1f"
+                    % [name, n, Wellen.panzer_in(i, n), kegel]):
+                return false
+            if not _melde(Wellen.mindest_licht_in(i, n) < 1.0,
+                    "%s in Welle %d braucht Helligkeit %.2f - die gibt es nicht"
+                    % [name, n, Wellen.mindest_licht_in(i, n)]):
+                return false
+            if not _melde(Wellen.stoss_in(i, n) <= Schlund.STOSS_DECKEL,
+                    "%s in Welle %d stoesst ueber den Deckel" % [name, n]):
+                return false
+            if not _melde(Wellen.tempo_in(i, n) > 0.0
+                    and Wellen.radius_in(i, n) > 0.0,
+                    "%s in Welle %d hat Tempo oder Radius <= 0" % [name, n]):
+                return false
     return true
 
 
@@ -419,7 +515,7 @@ func _test_leitwesen_stehen_an_den_abschnittsenden() -> bool:
     if not _melde(leit >= 0, "es gibt kein Leitwesen"):
         return false
 
-    for n in range(1, Graben.WELLEN_GESAMT + 1):
+    for n in range(1, Graben.ZYKLUS + 1):
         var zahl := 0
         for a in Wellen.auftritte(n):
             if int(a[&"art"]) == leit:
@@ -431,7 +527,7 @@ func _test_leitwesen_stehen_an_den_abschnittsenden() -> bool:
 
     # Und es waechst mit der Welle, statt spaeter zur Randnotiz zu werden.
     var frueh := Wellen.leben_in(leit, Graben.WELLEN_JE_ABSCHNITT)
-    var spaet := Wellen.leben_in(leit, Graben.WELLEN_GESAMT)
+    var spaet := Wellen.leben_in(leit, Graben.ZYKLUS)
     if not _melde(spaet > frueh * 2.0,
             "das Leitwesen muss ueber 60 Wellen deutlich zulegen"):
         return false
@@ -446,7 +542,7 @@ func _test_wellen_wachsen() -> bool:
     # Regel dem Spieler Leistung abzieht - Welle 21 hat weniger Leben als
     # Welle 20 und ist trotzdem schwerer. Wer hier die rohe Staerke prueft,
     # zwingt die Wellen dazu, die Regeln zu ignorieren.
-    for n in range(1, Graben.WELLEN_GESAMT):
+    for n in range(1, Graben.ZYKLUS):
         var jetzt := Wellen.staerke(n) / maxf(0.0001, Regeln.wirkungsgrad(n))
         var danach := Wellen.staerke(n + 1) / maxf(0.0001, Regeln.wirkungsgrad(n + 1))
         if not _melde(danach > jetzt,
@@ -455,7 +551,7 @@ func _test_wellen_wachsen() -> bool:
 
     # Ueber die ganze Strecke muss auch die rohe Zahl deutlich steigen -
     # sonst waeren die Abschnitte das einzige Wachstum.
-    return _melde(Wellen.staerke(Graben.WELLEN_GESAMT) > Wellen.staerke(1) * 8.0,
+    return _melde(Wellen.staerke(Graben.ZYKLUS) > Wellen.staerke(1) * 8.0,
         "die letzte Welle muss um ein Vielfaches groesser sein als die erste")
 
 
@@ -474,7 +570,7 @@ func _test_wellen_sind_reproduzierbar() -> bool:
 
 
 func _test_wellen_bleiben_im_feld() -> bool:
-    for n in range(1, Graben.WELLEN_GESAMT + 1):
+    for n in range(1, Graben.ZYKLUS + 1):
         for a in Wellen.auftritte(n):
             var x: float = a[&"x"]
             if absf(x) > Graben.EINTRITT_SEITE + 0.001:
@@ -486,7 +582,7 @@ func _test_wellen_bleiben_im_feld() -> bool:
 
 
 func _test_wellen_zeiten_sortiert() -> bool:
-    for n in range(1, Graben.WELLEN_GESAMT + 1):
+    for n in range(1, Graben.ZYKLUS + 1):
         var liste := Wellen.auftritte(n)
         for i in range(1, liste.size()):
             if liste[i][&"zeit"] < liste[i - 1][&"zeit"]:
@@ -497,7 +593,7 @@ func _test_wellen_zeiten_sortiert() -> bool:
 func _test_wellen_dauer_im_rahmen() -> bool:
     # Im Konzept steht: 40 bis 70 Sekunden je Welle. Steht es nur dort und
     # nicht im Code, weicht es irgendwann ab.
-    for n in range(1, Graben.WELLEN_GESAMT + 1):
+    for n in range(1, Graben.ZYKLUS + 1):
         var d := Wellen.dauer(n)
         if d < 40.0 or d > 70.0:
             return _melde(false, "Welle %d dauert %.1f s, erlaubt sind 40-70" % [n, d])
@@ -505,7 +601,7 @@ func _test_wellen_dauer_im_rahmen() -> bool:
 
 
 func _test_wellen_treffen_ihr_budget() -> bool:
-    for n in range(1, Graben.WELLEN_GESAMT + 1):
+    for n in range(1, Graben.ZYKLUS + 1):
         var summe := Wellen.lebenssumme(n)
         var soll := Wellen.staerke(n)
         if not _melde(summe > 0.0, "Welle %d ist leer" % n):
@@ -521,7 +617,7 @@ func _test_wellen_treffen_ihr_budget() -> bool:
 
 
 func _test_zaehigkeit_steigt() -> bool:
-    for n in range(1, Graben.WELLEN_GESAMT):
+    for n in range(1, Graben.ZYKLUS):
         if not _melde(Wellen.zaehigkeit(n + 1) > Wellen.zaehigkeit(n),
                 "Zaehigkeit faellt zwischen Welle %d und %d" % [n, n + 1]):
             return false
@@ -530,11 +626,11 @@ func _test_zaehigkeit_steigt() -> bool:
 
 
 func _test_druck_steigt_und_bleibt_im_rahmen() -> bool:
-    for n in range(1, Graben.WELLEN_GESAMT + 1):
+    for n in range(1, Graben.ZYKLUS + 1):
         var d := Wellen.druck(n)
         if d <= 0.0 or d > 1.0:
             return _melde(false, "Druck in Welle %d liegt bei %.2f" % [n, d])
-    return _melde(Wellen.druck(Graben.WELLEN_GESAMT) > Wellen.druck(1) * 2.0,
+    return _melde(Wellen.druck(Graben.ZYKLUS) > Wellen.druck(1) * 2.0,
         "der Druck muss ueber 60 Wellen deutlich anziehen")
 
 
@@ -542,7 +638,7 @@ func _test_ausbau_verschlechtert_nie() -> bool:
     # Dieselbe Zusicherung wie bei den HYPHA-Myzelknoten, nur eine Ebene
     # hoeher: kein Wert der Sollkurve darf mit der Wellennummer fallen. Sonst
     # waere die geprueft Ueberstehbarkeit spaeterer Wellen wertlos.
-    for n in range(1, Graben.WELLEN_GESAMT):
+    for n in range(1, Graben.ZYKLUS):
         var paare := {
             "Leistung": [Ausbau.leistung_faktor(n), Ausbau.leistung_faktor(n + 1)],
             "Ziele": [float(Ausbau.ziele(n)), float(Ausbau.ziele(n + 1))],
@@ -575,7 +671,7 @@ func _test_abschnitt() -> bool:
             "letzte Welle des ersten Abschnitts gehoert noch in Abschnitt 0") \
         and _melde(Graben.abschnitt(Graben.WELLEN_JE_ABSCHNITT + 1) == 1,
             "danach beginnt Abschnitt 1") \
-        and _melde(Graben.abschnitt(Graben.WELLEN_GESAMT) == 5,
+        and _melde(Graben.abschnitt(Graben.ZYKLUS) == 5,
             "die letzte Welle gehoert in Abschnitt 5")
 
 
@@ -618,7 +714,7 @@ func _test_kammern_treffen_die_sollkurve() -> bool:
     # Waechter bei Welle n sein soll; die Kammern sagen, wie er dorthin kommt.
     # Laufen beide auseinander, prueft der Wellenpruefer ein Spiel, das
     # niemand spielen kann.
-    for n in range(1, Graben.WELLEN_GESAMT + 1):
+    for n in range(1, Graben.ZYKLUS + 1):
         var stufe := Ausbau.stufe_soll(n)
 
         # Rundung auf ganze Stufen erlaubt hoechstens einen halben Schritt
@@ -643,14 +739,15 @@ func _test_kammern_treffen_die_sollkurve() -> bool:
             return _melde(false, "Ziele weichen bei Welle %d ab: Kammer %d, Soll %d"
                 % [n, Kammern.ziele(stufe), Ausbau.ziele(n)])
 
-    # An den Enden muss es exakt aufgehen, nicht nur ungefaehr.
+    # Und an den Enden einer Umdrehung muss es exakt aufgehen. Frueher stand
+    # hier die Hoechststufe; seit der Graben keinen Boden hat, ist die
+    # Hoechststufe nur noch ein Deckel und `STUFEN_JE_ZYKLUS` das Tempo.
     return _melde(is_equal_approx(Kammern.leistung_faktor(0), Ausbau.leistung_faktor(1)),
             "Stufe 0 muss den Grundwerten entsprechen") \
-        and _melde(is_equal_approx(Kammern.leistung_faktor(Kammern.HOECHSTSTUFE),
-                Ausbau.leistung_faktor(Graben.WELLEN_GESAMT)),
-            "Hoechststufe muss das Ende der Sollkurve treffen") \
-        and _melde(Kammern.ziele(Kammern.HOECHSTSTUFE) == Ausbau.ziele(Graben.WELLEN_GESAMT),
-            "Zielzahl muss am Ende uebereinstimmen")
+        and _melde(Ausbau.stufe_soll(Graben.ZYKLUS) == Ausbau.STUFEN_JE_ZYKLUS,
+            "eine volle Umdrehung muss genau STUFEN_JE_ZYKLUS Stufen verlangen") \
+        and _melde(Kammern.HOECHSTSTUFE > Ausbau.STUFEN_JE_ZYKLUS,
+            "der Kammerdeckel muss ueber eine Umdrehung hinausreichen")
 
 
 func _test_kammern_tabelle_vollstaendig() -> bool:
@@ -678,6 +775,77 @@ func _test_kammerkosten_und_zeiten_steigen() -> bool:
                 return _melde(false, "%s baut auf Stufe %d kuerzer als davor"
                     % [Kammern.name_von(i), stufe + 1])
     return true
+
+
+func _test_einkommen_haelt_mit_den_kosten_schritt() -> bool:
+    # **Der Fehler, an dem der endlose Graben zuerst gescheitert ist.**
+    #
+    # Kammern kosten geometrisch, das Filterbecken lieferte aber nur 1.26 je
+    # Stufe und der Wellenertrag wuchs bloss linear. Zwei Kurven, von denen
+    # eine geometrisch und die andere linear waechst, holen einander nie
+    # wieder ein: bei Welle 45 kostete eine volle Kammerrunde fuenf Tage
+    # Ertrag, bei Welle 120 dreitausend. Der Kolonielauf meldete dazu
+    # sechs neue Kammerstufen zwischen Tag 40 und Tag 120 - ein Spiel, das
+    # stehenbleibt.
+    #
+    # Geprueft wird deshalb nicht eine Zahl, sondern ihr Verhaeltnis: wie
+    # viele Tage ein voller Kammerschritt kostet. Die Zahl darf sich ueber
+    # hunderte Wellen nicht davonmachen.
+    var kleinster := 99.0
+    var groesster := 0.0
+    for n in range(10, 400, 10):
+        var stufe := Ausbau.stufe_soll(n)
+        var aus_wellen := Wellen.ertrag(n) * float(Graben.WELLEN_JE_TAG)
+        var aus_filter := Kammern.filter_je_stunde(stufe) * 24.0
+        var tage := Kammern.rundenkosten(stufe) / maxf(1.0, aus_wellen + aus_filter)
+        kleinster = minf(kleinster, tage)
+        groesster = maxf(groesster, tage)
+        if not _melde(tage < 4.0,
+                "Welle %d: eine Kammerrunde kostet %.1f Tage Ertrag" % [n, tage]):
+            return false
+    return _melde(groesster / maxf(0.01, kleinster) < 5.0,
+        "die Kurve laeuft auseinander: zwischen %.2f und %.2f Tagen je Runde"
+        % [kleinster, groesster])
+
+
+func _test_bau_passt_zwischen_zwei_besuche() -> bool:
+    # Ein Bau, der laenger dauert als der Abstand zwischen zwei Besuchen,
+    # verschiebt sich um eine ganze Sitzung: der Spieler kommt, es ist nichts
+    # fertig, und er geht wieder. Bei genau acht Stunden Deckel und acht
+    # Stunden Abstand meldete der Kolonielauf dafuer bis zu sechzehn Stunden
+    # leere Sitzungen am Tag - bei voll laufender Kolonie.
+    var abstand := 86400.0 / float(Graben.SITZUNGEN_JE_TAG)
+    if not _melde(Kammern.ZEIT_DECKEL < abstand,
+            "der Bauzeitdeckel (%.0f s) muss unter dem Sitzungsabstand (%.0f s) liegen"
+            % [Kammern.ZEIT_DECKEL, abstand]):
+        return false
+    for i in Kammern.zahl():
+        var z := Kammern.bauzeit(i, Kammern.HOECHSTSTUFE - 1)
+        if not _melde(z < abstand,
+                "%s baut auf der hoechsten Stufe %.0f s - laenger als eine Sitzung"
+                % [Kammern.name_von(i), z]):
+            return false
+    return true
+
+
+func _test_grosse_zahlen_bleiben_lesbar() -> bool:
+    var paare := {
+        0: "0", 42: "42", 9999: "9999",
+        10000: "10.0K", 123456: "123K", 1234567: "1.23M",
+        -2500000: "-2.50M",
+    }
+    for wert in paare:
+        var soll: String = paare[wert]
+        if not _melde(Zahl.kurz(wert) == soll,
+                "Zahl.kurz(%d) ergab \"%s\", erwartet \"%s\""
+                % [wert, Zahl.kurz(wert), soll]):
+            return false
+    # Und keine Zahl des Spiels darf die Anzeige sprengen: acht Zeichen sind
+    # die Breite, die im Kopf des Koloniebildschirms Platz hat.
+    var hoechste := int(Kammern.rundenkosten(Kammern.HOECHSTSTUFE))
+    return _melde(Zahl.kurz(hoechste).length() <= 8,
+        "die groesste Zahl des Spiels wird %d Zeichen breit: %s"
+        % [Zahl.kurz(hoechste).length(), Zahl.kurz(hoechste)])
 
 
 func _test_erste_woche_ohne_wartemauer() -> bool:
@@ -749,15 +917,17 @@ func _test_grabentiefe_folgt_der_sollkurve() -> bool:
                 "Schacht %d oeffnet weniger als %d" % [schacht, schacht - 1]):
             return false
         offen = jetzt
-    return _melde(Ausbau.offene_welle(Kammern.HOECHSTSTUFE) == Graben.WELLEN_GESAMT,
-        "der volle Schacht muss den ganzen Graben oeffnen")
+    # Der volle Schacht muss ueber die erste Umdrehung hinaus oeffnen - sonst
+    # waere der Graben doch wieder zu Ende.
+    return _melde(Ausbau.offene_welle(Kammern.HOECHSTSTUFE) > Graben.ZYKLUS,
+        "der volle Schacht muss tiefer reichen als eine Umdrehung")
 
 
 func _test_grabentiefe_deckelt_den_fortschritt() -> bool:
     # Der Fortschritt darf ueber den offenen Graben hinauszeigen - gespielt
     # wird trotzdem nur, was offen ist.
     var stand := KolonieStand.new()
-    stand.hoechste_welle = Graben.WELLEN_GESAMT
+    stand.hoechste_welle = Graben.ZYKLUS
     if not _melde(stand.naechste_welle() == Graben.WELLEN_JE_ABSCHNITT,
             "ohne Schacht darf nur der erste Abschnitt offen sein"):
         return false
@@ -768,13 +938,14 @@ func _test_grabentiefe_deckelt_den_fortschritt() -> bool:
         return false
 
     stand.stufen[Kammern.Kammer.TIEFENSCHACHT] = Kammern.HOECHSTSTUFE
-    if not _melde(stand.naechste_welle() == Graben.WELLEN_GESAMT,
-            "mit vollem Schacht muss der ganze Graben offen sein"):
+    if not _melde(stand.naechste_welle() == Graben.ZYKLUS,
+            "der Fortschritt darf nie ueber das Erreichte hinausgehen"):
         return false
-    if not _melde(not stand.graben_haelt(), "der volle Schacht darf nichts halten"):
+    if not _melde(not stand.graben_haelt(), "der volle Schacht darf hier nichts halten"):
         return false
-    return _melde(stand.naechste_tiefe() == 0,
-        "am Ende des Grabens gibt es keine naechste Tiefe mehr")
+    # Und es gibt immer eine naechste Tiefe: der Graben hat keinen Boden.
+    return _melde(stand.naechste_tiefe() > 0,
+        "unter jedem Abschnitt muss ein weiterer liegen")
 
 
 func _test_tagesstroemung_ist_je_tag_gedeckelt() -> bool:
@@ -913,7 +1084,7 @@ func _test_stand_uebersteht_das_sichern() -> bool:
     return _melde(boese.stufe(0) == Kammern.HOECHSTSTUFE
             and boese.stufe(1) == 0
             and boese.naehrstoffe == 0
-            and boese.hoechste_welle == Graben.WELLEN_GESAMT
+            and boese.hoechste_welle == Graben.TIEFSTE
             and boese.linie == Brutlinien.Linie.KEINE
             and boese.bau_kammer == -1
             and boese.stroemung_offen == Tagesstroemung.JE_TAG,
@@ -948,7 +1119,7 @@ func _test_kammerausbau_verschlechtert_nie() -> bool:
 # --- Grabenabschnitte ------------------------------------------------------
 
 func _test_jeder_abschnitt_hat_namen_und_hinweis() -> bool:
-    var abschnitte := Graben.abschnitt(Graben.WELLEN_GESAMT) + 1
+    var abschnitte := Graben.ABSCHNITTE
     if not _melde(Regeln.NAMEN.size() == abschnitte,
             "%d Abschnitte, aber %d Namen" % [abschnitte, Regeln.NAMEN.size()]):
         return false
@@ -983,7 +1154,7 @@ func _test_erster_abschnitt_bleibt_ruhig() -> bool:
 
 
 func _test_regeln_bleiben_in_ihren_grenzen() -> bool:
-    for n in range(1, Graben.WELLEN_GESAMT + 1):
+    for n in range(1, Graben.ZYKLUS + 1):
         for i in 60:
             var t := float(i) * 0.83
             var s := Regeln.stroemung(n, t)
@@ -1021,16 +1192,16 @@ func _test_wirkungsgrad_faellt_mit_den_regeln() -> bool:
         if w > vorher + 0.001:
             return _melde(false, "Abschnitt %d ist leichter als der davor" % (a + 1))
         vorher = w
-    return _melde(Regeln.wirkungsgrad(Graben.WELLEN_GESAMT) < 0.75,
+    return _melde(Regeln.wirkungsgrad(Graben.ZYKLUS) < 0.75,
         "der letzte Abschnitt muss spuerbar kosten, war %.3f"
-        % Regeln.wirkungsgrad(Graben.WELLEN_GESAMT))
+        % Regeln.wirkungsgrad(Graben.ZYKLUS))
 
 
 func _test_wellenstaerke_folgt_dem_wirkungsgrad() -> bool:
     # Ohne diese Kopplung wurde jeder neue Abschnitt zur Wand: der
     # Wellenpruefer meldete nach Einfuehrung der Regeln fuenf gefallene
     # Sitzungen ab Welle 36.
-    for n in range(1, Graben.WELLEN_GESAMT + 1):
+    for n in range(1, Graben.ZYKLUS + 1):
         var erwartet := Ausbau.durchsatz(n) * Wellen.WIRKUNGSGRAD \
             * Regeln.wirkungsgrad(n) * Wellen.fenster(n) * Wellen.druck(n)
         if not is_equal_approx(Wellen.staerke(n), erwartet):
@@ -1051,7 +1222,7 @@ func _test_geister_stehen_gestaffelt() -> bool:
         if not _melde(Geister.tiefe(i + 1) > Geister.tiefe(i),
                 "Nachbar %d kommt nicht tiefer als %d" % [i + 1, i]):
             return false
-    return _melde(Geister.tiefe(Geister.zahl() - 1) == Graben.WELLEN_GESAMT,
+    return _melde(Geister.tiefe(Geister.zahl() - 1) >= Graben.ZYKLUS,
         "der staerkste Nachbar muss den ganzen Graben schaffen")
 
 
@@ -1073,7 +1244,7 @@ func _test_geisterleiter_beginnt_frueh() -> bool:
 
 func _test_eigener_platz_folgt_der_tiefe() -> bool:
     var vorher := Geister.zahl() + 2
-    for tiefe in [1, 5, 12, 25, 40, 55, Graben.WELLEN_GESAMT]:
+    for tiefe in [1, 5, 12, 25, 40, 55, Graben.ZYKLUS]:
         var platz := Geister.platz(tiefe)
         if not _melde(platz >= 1 and platz <= Geister.zahl() + 1,
                 "Platz %d bei Tiefe %d liegt ausserhalb" % [platz, tiefe]):
@@ -1083,5 +1254,5 @@ func _test_eigener_platz_folgt_der_tiefe() -> bool:
                 % [platz, vorher]):
             return false
         vorher = platz
-    return _melde(Geister.platz(Graben.WELLEN_GESAMT) == 1,
+    return _melde(Geister.platz(Graben.TIEFSTE) == 1,
         "wer den ganzen Graben schafft, steht oben")

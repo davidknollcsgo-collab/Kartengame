@@ -44,6 +44,12 @@ var _kolonieknopf := Rect2()
 var _abschnitt := -1
 var _abschnitt_leben := 0.0
 
+## Die Mutationen der laufenden Welle. `wache.gd` setzt sie; der Kopf zeigt
+## sie als Band unter der Wellennummer. Eine Mutation, die man erst merkt,
+## wenn die Brut faellt, ist keine Abwechslung, sondern eine Falle.
+var mutationen := PackedInt32Array()
+var _neue_mutation := -1
+
 ## Einstieg. Ein Satz zur Zeit, mitten im Spiel statt als Textwand davor -
 ## wer eine Anleitung lesen muss, bevor er etwas anfassen darf, faengt bei
 ## einem Einminutenspiel gar nicht erst an.
@@ -106,6 +112,14 @@ func zeige_abschnitt(abschnitt: int) -> void:
 ## bei der Brut steht, keine Regel, sondern eine Falle.
 func zeige_art(art: int) -> void:
     _neue_art = art
+    _neue_mutation = -1
+    _abschnitt_leben = 5.0
+
+
+## Kuendigt eine Mutation an, die zum ersten Mal auftritt. Dieselbe Tafel.
+func zeige_mutation(m: int) -> void:
+    _neue_mutation = m
+    _neue_art = -1
     _abschnitt_leben = 5.0
 
 
@@ -218,6 +232,11 @@ func _abschnittstafel(breite: float, hoehe: float) -> void:
         zeile = Arten.regel(_neue_art)
         rahmen = Color(a.r, a.g, a.b, 0.45 * f)
         farbe = Color(a.r, a.g, a.b, f)
+    elif _neue_mutation >= 0:
+        titel = "MUTATION: %s" % Mutationen.name_von(_neue_mutation).to_upper()
+        zeile = Mutationen.hinweis(_neue_mutation)
+        rahmen = Color(0.94, 0.62, 0.86, 0.45 * f)
+        farbe = Color(0.96, 0.72, 0.90, f)
 
     _flaeche.draw_rect(kasten, Color(0.02, 0.06, 0.09, 0.72 * f))
     _flaeche.draw_rect(kasten, rahmen, false, 1.4)
@@ -237,8 +256,18 @@ func _kopfzeile(breite: float) -> void:
         _text(Vector2(RAND, 64.0), "CURRENT x%d" % int(Tagesstroemung.FAKTOR),
             14, Color(0.52, 0.94, 0.80))
     else:
-        _text(Vector2(RAND, 64.0), Regeln.name_von(Graben.abschnitt(_welle)),
-            14, Color(0.44, 0.66, 0.72))
+        _text(Vector2(RAND, 64.0), Regeln.name_von(Graben.abschnitt(_welle))
+            + Graben.tiefe_zeichen(_welle), 14, Color(0.44, 0.66, 0.72))
+
+    # Das Mutationsband. Es steht dort, wo sonst nichts steht, und ist die
+    # einzige Stelle, an der man vor dem Ziehen sieht, was diese Welle anders
+    # macht als die davor.
+    if not mutationen.is_empty() and not _ende:
+        var teile := PackedStringArray()
+        for m in mutationen:
+            teile.append(Mutationen.name_von(m).to_upper())
+        _text(Vector2(RAND, 108.0), " / ".join(teile), 13,
+            Color(0.94, 0.66, 0.88, 0.9))
 
     var mitte := breite * 0.5
     _text(Vector2(mitte - 40.0, 40.0), "BROOD", 13, Color(0.62, 0.52, 0.38))
@@ -247,7 +276,7 @@ func _kopfzeile(breite: float) -> void:
 
     _text(Vector2(breite - RAND - 120.0, 40.0), "NUTRIENTS", 13,
         Color(0.40, 0.66, 0.60))
-    _text(Vector2(breite - RAND - 120.0, 66.0), str(_naehrstoffe), 19,
+    _text(Vector2(breite - RAND - 120.0, 66.0), Zahl.kurz(_naehrstoffe), 19,
         Color(0.52, 0.94, 0.80))
 
     if not _bauphase and not _ende:
@@ -275,8 +304,10 @@ func _schwebende_zahlen() -> void:
         ort.x = clampf(ort.x, RAND + 12.0, _flaeche.size.x - RAND - 12.0)
         # Unter die Kopfzeile, nicht hinein: dort standen die Zahlen sonst
         # auf "BROOD" und "WAVE".
-        ort.y = maxf(ort.y, 132.0)
-        _text(ort, "+%d" % a[&"wert"], 15,
+        # Unter das Mutationsband, nicht darauf: dort stand die Ausbeute
+        # sonst auf "PLATED" und beides war unlesbar.
+        ort.y = maxf(ort.y, 152.0)
+        _text(ort, "+" + Zahl.kurz(a[&"wert"]), 15,
             Color(0.52, 0.94, 0.80, f), true)
 
 
@@ -306,11 +337,12 @@ func _bauhinweis(breite: float, hoehe: float) -> void:
 
     var frei := _gebaut < Graben.NISCHEN.size()
     var kann := frei and _naehrstoffe >= _preis
-    var zeile := "Tap a niche: guard polyp for %d" % _preis
+    var zeile := "Tap a niche: guard polyp for %s" % Zahl.kurz(_preis)
     if not frei:
         zeile = "Every niche taken"
     elif not kann:
-        zeile = "Guard polyp costs %d - %d short" % [_preis, _preis - _naehrstoffe]
+        zeile = "Guard polyp costs %s - %s short" % [Zahl.kurz(_preis),
+            Zahl.kurz(_preis - _naehrstoffe)]
 
     _text(kasten.position + Vector2(18.0, 32.0), zeile, 16,
         Color(0.62, 0.90, 0.86) if kann else Color(0.50, 0.60, 0.66))
@@ -326,7 +358,7 @@ func _endschirm(breite: float, hoehe: float) -> void:
     if _gewonnen:
         _text(mitte, "THE TRENCH HOLDS", 30, Color(0.62, 0.98, 0.86), true)
         _text(mitte + Vector2(0.0, 44.0),
-            "All %d waves survived" % Graben.WELLEN_GESAMT, 17,
+            "A full descent - %d waves" % Graben.ZYKLUS, 17,
             Color(0.66, 0.84, 0.88), true)
     elif _sitzung:
         _text(mitte, "SESSION HELD", 30, Color(0.62, 0.98, 0.86), true)

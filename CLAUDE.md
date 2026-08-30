@@ -33,18 +33,26 @@ mv "/tmp/g/Godot_v${V}_linux.x86_64" /usr/local/bin/godot && chmod +x /usr/local
 ```bash
 godot --headless --import                                     # class_name-Registry
 godot --headless --path . --script tests/run_tests.gd         # ~3 s, Exitcode 1 bei Fehler
-godot --headless --path . --script tools/wellenpruefer.gd     # alle 60 Wellen, ~2 min
+godot --headless --path . --script tools/wellenpruefer.gd     # 4 Umdrehungen, ~6 min
 godot --headless --path . --script tools/wellenpruefer.gd -- --spielraum
-godot --headless --path . --script tools/kolonielauf.gd      # 50 Tage Kolonie, ~1 min
+godot --headless --path . --script tools/kolonielauf.gd      # 120 Tage Kolonie, ~4 min
 ```
 
 Der Kolonielauf ist das Werkzeug, das die meisten Fehler gefunden hat. Er
 **spielt die Wellen wirklich durch** — mit dem Koloniestand, den ein normaler
 Spieler zu diesem Zeitpunkt hat, nicht mit der Sollkurve. Er meldet drei Dinge:
-gefallene Sitzungen, eine Wartemauer (Bauzeit, die den Tag blockiert) und eine
-Fortschrittsmauer (ein Tag ohne neue Welle **und** ohne neue Kammerstufe).
-Die Wellenzahl allein ist kein Fortschrittsmaß — wer heute keine neue Welle
-sieht, aber seine Kolonie hebt, steckt nicht fest.
+gefallene Sitzungen, eine Wartemauer und eine Fortschrittsmauer (ein Tag ohne
+neue Welle **und** ohne neue Kammerstufe). Die Wellenzahl allein ist kein
+Fortschrittsmaß — wer heute keine neue Welle sieht, aber seine Kolonie hebt,
+steckt nicht fest.
+
+**Die Wartemauer zählt leere Sitzungen, keine Wartesekunden.** Der Simulator
+setzt sich nicht mehr vor einen laufenden Bau — er schaut dreimal am Tag
+herein, im Abstand von `Graben.SITZUNGEN_JE_TAG`, und entweder ist etwas zu
+tun oder nicht. Leer ist eine Sitzung, in der weder ein Bau fertig wurde noch
+einer begann noch eine neue Welle fiel. Vorher wartete er bis zu acht Stunden
+vor einem laufenden Bau und meldete das als Mauer: vierundzwanzig Stunden am
+Tag, obwohl die Kolonie durchgehend baute.
 
 ```bash
 godot --headless --path . --quit-after 120            # startet das Spiel wirklich
@@ -86,7 +94,7 @@ xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 720x1280 \
 | `--zeit <s>` | rechnet n Sekunden Welle mit festem Takt vor |
 | `--polypen <n>` | stellt n Wehrpolypen auf |
 | `--bauen` | nimmt die Bauphase auf, statt die Welle zu starten |
-| `--kolonie <n>` | öffnet den Koloniebildschirm: 0 Kammern, 1 Linien, 2 Arten, 3 Tag |
+| `--kolonie <n>` | öffnet den Koloniebildschirm: 0 Kammern, 1 Linien, 2 Arten, 3 Züge, 4 Tag |
 | `--endschirm <n>` | 0 gefallen, 1 Sitzung gehalten, 2 Graben durchgestanden |
 | `--stufen <n>` | setzt alle Kammern auf Stufe n |
 
@@ -108,6 +116,12 @@ unter einer strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
    `Wellen.leben_in`. Der einzige erlaubte Unterschied ist, wer zielt: dort
    eine Rechnung, hier ein Daumen. Bei HYPHA hatten Sucher und Prüfer getrennte
    Rechnungen und kamen zu verschiedenen Ergebnissen.
+
+   Dazu gehören seit den Mutationen auch die **Eigenschaften**: `Arten.panzer`
+   ist der Grundwert, `Wellen.panzer_in(art, welle)` der Wert, der gilt.
+   Ebenso `mindest_licht_in`, `drift_in`, `stoss_in`, `tempo_in`, `radius_in`.
+   Wer eine Eigenschaft direkt bei `Arten` holt, umgeht die Mutation — und
+   zeichnet dann ein Tier, das sich anders verhält, als es aussieht.
 2. **Was hell gezeichnet wird, macht Schaden.** `kegel.gd` fragt für jeden
    Eckpunkt dieselbe `Schlund.beleuchtung()`, die auch den Schaden bestimmt.
    Ein Kegel, der anders aussieht als er wirkt, ist unlernbar.
@@ -116,11 +130,18 @@ unter einer strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
    Wachstumszahl ergab 55 Wellen ohne einen einzigen Verlust und dann
    Totalverlust in Welle 56.
 4. **Kein Ausbau darf etwas verschlechtern.** Ein Test hält das fest.
-5. **Die Abschnittsregeln stehen im Rechenkern, nicht nur im Spiel.**
-   `Regeln.stroemung`, `Regeln.helligkeit`, `Regeln.rand_kern`,
-   `Regeln.tiefe_kern` — und ihr Wirkungsgrad geht in `Wellen.staerke()` ein.
-   Ohne diese Kopplung wurde jeder neue Abschnitt zur Wand: der Wellenprüfer
-   meldete fünf gefallene Sitzungen ab Welle 36.
+5. **Was die Welle schwerer macht, geht in `Wellen.staerke()` ein.**
+   `Regeln.wirkungsgrad` und `Mutationen.wirkungsgrad`, zusammengefasst in
+   `Wellen.umgebung()`. Ohne diese Kopplung wurde jeder neue Abschnitt zur
+   Wand: der Wellenprüfer meldete fünf gefallene Sitzungen ab Welle 36. Bei
+   den Mutationen ist es genauso ausgegangen — jede gefallene Sitzung lag auf
+   einer Welle mit `AUFGEDUNSEN`, der einzigen, der ich keinen Wirkungsgrad
+   zugetraut hatte.
+
+   Und das Leitwesen zählt mit: sein Leben ist `(Kegel · Umgebung − Panzer) ·
+   Sekunden`. `LEIT_SEKUNDEN` heißt „so lange soll es dauern"; wird der
+   Gegenwind nicht herausgerechnet, dauert es länger, und zwar genau dort, wo
+   ohnehin der Höhepunkt steht.
 6. **Es gibt keine Audiodatei und nur eine Bilddatei.** Der Ton entsteht in
    `klang.gd`, das App-Symbol in `tools/symbol.gd` — beide zur Laufzeit
    gerechnet. Das ist der Copyright-Nachweis, nicht nur ein Stil.
@@ -137,7 +158,32 @@ unter einer strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
    das Spiel tat es nicht — dort trug die Brut ihren Schaden über beliebig
    viele Wellen weiter und einmal gesetzte Polypen standen für immer. Gemessen
    wurde damit ein anderes Spiel als gespielt.
-9. **Der Graben öffnet sich am Tiefenschacht.** `Ausbau.schacht_fuer_abschnitt`
+9. **Einkommen und Kosten wachsen mit derselben Rate.** Kammern kosten
+   geometrisch; ein Einkommen, das linear oder auch nur langsamer geometrisch
+   wächst, holt das nie wieder ein. Deshalb sind **beide Einkommensquellen aus
+   den Kosten abgeleitet**: `Kammern.filter_je_stunde()` und `Wellen.ertrag()`
+   rechnen aus `Kammern.rundenkosten()`, geteilt durch `TAGE_JE_RUNDE`. Vorher
+   stand dort `FILTER_WACHSTUM := 1.26` gegen Kosten von 1.49 bis 1.58 — der
+   Kolonielauf meldete zwischen Tag 40 und Tag 120 sechs neue Kammerstufen und
+   250 000 ungenutzten Nährstoff. Ein Test hält das Verhältnis über 400 Wellen
+   fest.
+
+10. **Kein Bau dauert länger als der Abstand zwischen zwei Besuchen.**
+   `Kammern.ZEIT_DECKEL` ist aus `Graben.SITZUNGEN_JE_TAG` abgeleitet, mit
+   Sicherheitsabstand nach unten. Bei zwei Tagen Deckel lagen ab Stufe 24 alle
+   fünf Kammern daran, eine Runde kostete zehn Tage, und der Kolonielauf
+   meldete an Tag 79 vierundzwanzig Stunden Leerlauf. Bei *genau* acht Stunden
+   wurde ein Bau sieben Minuten nach dem nächsten Besuch fertig — der Spieler
+   kam jedes zweite Mal umsonst.
+
+11. **Die Sollkurve endet, wo die Kammern enden.** `Ausbau.stufe_soll()` ist
+   auf `Kammern.HOECHSTSTUFE` gedeckelt, ebenso die Zähigkeit über
+   `Ausbau.stufe_kurve()`. Der Graben läuft weiter; was ihn ab dort
+   unterscheidet, sind Abschnittsregeln und Mutationen, nicht mehr Leistung.
+   Ohne den Deckel verlangte die Kurve ab Welle 241 eine Stufe, die es auf
+   keiner Kammer gibt.
+
+12. **Der Graben öffnet sich am Tiefenschacht.** `Ausbau.schacht_fuer_abschnitt`
    leitet aus der Sollkurve ab, welche Schachtstufe einen Abschnitt aufmacht;
    `KolonieStand.naechste_welle()` ist der einzige Weg, an die zu spielende
    Welle zu kommen. Ohne diese Kopplung stand der Spieler an Tag 6 in Welle 36,

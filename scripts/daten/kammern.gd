@@ -19,9 +19,25 @@ enum Kammer {
     TIEFENSCHACHT,  ## Deckelt alle anderen Kammern
 }
 
-## Hoechste Stufe jeder Kammer. Deckt zugleich den Inhalt von Stufe 1 ab: mehr
-## gibt es erst, wenn es mehr Wellen gibt.
-const HOECHSTSTUFE := 20
+## Hoechste Stufe jeder Kammer.
+##
+## Das war einmal dieselbe Zahl wie das Ende des Grabens - Welle 60, Stufe 20,
+## fertig. Seit der Graben keinen Boden hat, sind es zwei verschiedene Dinge:
+## `Ausbau.STUFEN_JE_ZYKLUS` sagt, wie schnell die Kolonie waechst, und hier
+## steht, wo sie aufhoert.
+##
+## Warum ueberhaupt ein Ende, wenn der Graben keines hat? Weil Kosten
+## geometrisch wachsen und eine ganze Zahl irgendwann ueberlaeuft. Bei 1.58 je
+## Stufe steht die Zuchtkammer auf Stufe 80 bei rund 10^17 - noch bequem
+## innerhalb eines 64-Bit-Werts, auf Stufe 100 nicht mehr. Der Deckel liegt
+## also dort, wo die Zahlen noch stimmen.
+##
+## Was danach weitergeht, ist nicht die Zahl, sondern das Spiel:
+## `Ausbau.stufe_soll()` bleibt hier stehen, die Wellen laufen weiter, und was
+## sie unterscheidet, sind Abschnittsregeln und Mutationen - nicht mehr
+## Leistung. Eine ausgebaute Kolonie hoert nicht auf zu spielen, sie hoert auf
+## zu wachsen.
+const HOECHSTSTUFE := 80
 
 ## Der Tiefenschacht deckelt die uebrigen Kammern. Ohne diesen Deckel liesse
 ## sich das Leuchtorgan allein hochziehen und alles andere ignorieren - eine
@@ -45,7 +61,24 @@ const ZEIT_GRUND := 16.0
 ## an der Spieler aufhoeren. 1.56 haelt die spaeten Stufen bedeutsam, ohne den
 ## Tag zu blockieren.
 const ZEIT_WACHSTUM := 1.50
-const ZEIT_DECKEL := 172800.0   ## zwei Tage
+
+## Laenger als der Abstand zwischen zwei Besuchen darf kein Bau dauern.
+##
+## Hier stand einmal `172800.0` - zwei Tage, wie es der Plan fuer den
+## Tiefenschacht vorsah. Das war die Zahl, an der der endlose Graben starb:
+## von Stufe 24 an lagen alle fuenf Kammern am Deckel, eine volle Runde
+## kostete zehn Tage Bauzeit, und der Kolonielauf meldete an Tag 79 vierund-
+## zwanzig Stunden Leerlauf. Ein Aufbauspiel lebt von Wartezeit, aber nur von
+## solcher, die zwischen zwei Besuchen vergeht. Wer dreimal am Tag
+## hereinschaut und dreimal dasselbe halbfertige Bild sieht, kommt nicht
+## wieder - deshalb ist der Deckel abgeleitet und nicht gewaehlt.
+##
+## Und deshalb liegt er *unter* dem Abstand, nicht genau darauf. Bei genau
+## acht Stunden wurde ein Bau, der eine Sitzung lang lief, erst sieben Minuten
+## nach dem naechsten Besuch fertig - der Spieler kam also jedes zweite Mal
+## umsonst. Der Kolonielauf meldete dafuer acht bis sechzehn Stunden leere
+## Sitzungen am Tag, bei voll laufender Kolonie.
+const ZEIT_DECKEL := 0.9 * 86400.0 / float(Graben.SITZUNGEN_JE_TAG)
 
 ## Ab dieser Stufe wird aus Sekunden echte Wartezeit. Vorher deckelt
 ## `ZEIT_SANFT` die Bauzeit auf etwas, das man aussitzen kann.
@@ -160,9 +193,40 @@ const POLYP_RABATT_DECKEL := 0.55
 ## Brutkammer: ein Ei alle zwei Stufen.
 const STUFEN_JE_EI := 2
 
-## Filterbecken.
-const FILTER_GRUND := 7.0
-const FILTER_WACHSTUM := 1.26
+## --- Filterbecken ---
+##
+## **Hier lag der Fehler, an dem der endlose Graben scheiterte.** Kammern
+## kosten geometrisch - 1.49 bis 1.58 je Stufe -, das Filterbecken lieferte
+## aber nur 1.26 je Stufe. Jede Stufe dauerte also rund ein Fuenftel laenger
+## als die davor, und was sich fuenfzig Stufen lang um zwanzig Prozent
+## verlaengert, ist keine Kurve mehr, sondern eine Wand: der Kolonielauf
+## meldete zwischen Tag 40 und Tag 120 ganze sechs neue Kammerstufen.
+##
+## Jetzt ist das Einkommen nicht mehr gewaehlt, sondern **aus den Kosten
+## abgeleitet**: ein Filterbecken auf Stufe n traegt `FILTER_ANTEIL` einer
+## vollen Kammerrunde in `TAGE_JE_RUNDE` Tagen bei. Damit kann es gar nicht
+## mehr auseinanderlaufen - egal, wie jemand spaeter an den Kostenzahlen
+## dreht.
+
+## Wie lange eine volle Runde dauern soll: alle fuenf Kammern eine Stufe
+## hoeher. Das ist der Taktgeber der ganzen Kolonie. Die Bauzeit einer Runde
+## liegt bei 4.55 * ZEIT_DECKEL, also rund 1.5 Tagen - der Naehrstoff soll
+## knapp davor liegen, damit gebaut und nicht gewartet wird.
+const TAGE_JE_RUNDE := 1.4
+
+## Welchen Teil einer Runde das Filterbecken traegt. Der Rest kommt aus den
+## Wellen (`Wellen.ertrag`). Die Kernschleife muss die groessere Haelfte
+## bleiben - sonst ist das Spiel ein Bildschirm, den man zumacht.
+const FILTER_ANTEIL := 0.38
+
+
+## Was eine volle Runde kostet: jede Kammer einen Schritt von `stufe` aufwaerts.
+static func rundenkosten(stufe: int) -> float:
+    var summe := 0.0
+    for i in TABELLE.size():
+        var k := TABELLE[i]
+        summe += float(k[&"kosten"]) * pow(float(k[&"wachstum"]), float(maxi(0, stufe)))
+    return summe
 
 
 static func leistung_faktor(leuchtorgan: int) -> float:
@@ -200,4 +264,4 @@ static func brut_leben(brutkammer: int) -> int:
 static func filter_je_stunde(filterbecken: int) -> float:
     if filterbecken <= 0:
         return 0.0
-    return FILTER_GRUND * pow(FILTER_WACHSTUM, filterbecken - 1)
+    return FILTER_ANTEIL * rundenkosten(filterbecken - 1) / (TAGE_JE_RUNDE * 24.0)

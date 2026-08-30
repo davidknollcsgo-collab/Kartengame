@@ -21,9 +21,16 @@ extends SceneTree
 ## begann. Grund: seit der Graben an den Tiefenschacht gekoppelt ist, reicht
 ## der Inhalt ueber einen Monat hinaus - und ein Werkzeug, das vor dem Ende
 ## des Spiels aufhoert zu messen, prueft die letzten zehn Wellen nie.
-const TAGE := 50
-const SITZUNGEN_JE_TAG := 3
-const TAKT := 60.0            ## Sekunden je Rechenschritt
+const TAGE := 120
+
+## Nicht mehr die eigene Zahl des Werkzeugs: sie steht jetzt in `Graben`, weil
+## die Wirtschaft mit ihr rechnet. Ein Messwerkzeug, das von drei Sitzungen am
+## Tag ausgeht, waehrend der Ertrag fuer vier ausgelegt ist, misst ein anderes
+## Spiel als das gespielte.
+const SITZUNGEN_JE_TAG := Graben.SITZUNGEN_JE_TAG
+
+## Abstand zwischen zwei Besuchen.
+const SITZUNGSABSTAND := 86400.0 / float(SITZUNGEN_JE_TAG)
 
 ## Was eine Sitzung an Naehrstoff einbringt - gemessen, nicht geraten: der
 ## Simulator spielt die Wellen wirklich durch.
@@ -44,8 +51,18 @@ const EINSTIEG_TAGE := 7
 ## Kammerstufe 8" - eine Dreiviertelstunde Bauzeit, verteilt auf drei
 ## Sitzungen, haelt dieses Versprechen. Was es nicht halten wuerde, faengt die
 ## schaerfere Zusage darunter ab.
-const MAUER_EINSTIEG := 1.5
-const MAUER_SPAETER := 12.0
+## Gemessen wird jetzt in ganzen Sitzungen, nicht in Wartesekunden. Grund: das
+## Werkzeug liess den simulierten Spieler frueher bis zu acht Stunden vor
+## einem laufenden Bau sitzen und zaehlte das als Leerlauf - so kam die
+## gemeldete Wartemauer von vierundzwanzig Stunden zustande, obwohl im
+## Hintergrund die ganze Zeit gebaut wurde. Kein Mensch tut das. Er schaut
+## herein, und entweder ist etwas zu tun oder nicht.
+##
+## Leer ist eine Sitzung, in der **nichts** geschah: keine neue Welle, kein Bau
+## fertig, kein Bau begonnen. Eine solche Sitzung ist die Stelle, an der
+## jemand das Spiel zumacht - eine, in der ein Bau laeuft, ist es nicht.
+const MAUER_EINSTIEG := 8.0
+const MAUER_SPAETER := 16.0
 
 ## Die eigentliche Zusage fuer die erste Woche: **kein einzelner Bau laenger
 ## als eine Stunde**. Ein Tagesdeckel allein wuerde einen Sechs-Stunden-Bau
@@ -62,6 +79,17 @@ const FORTSCHRITTSMAUER := 4
 ## Kurve, die nie jemanden umwirft, zieht nicht an. Aber wer dreimal am Tag
 ## verliert, spielt kein Spiel mehr, sondern eine Wand.
 const TRAGBARE_FAELLE := 12
+
+## Um wie viele Stufen das Leuchtorgan den uebrigen Kammern vorausgeht. Es ist
+## die Kammer, an der die Sollkurve gemessen wird; laeuft es im Gleichschritt
+## mit den anderen, liegt es dauerhaft zwei Stufen darunter.
+##
+## Vier, nicht zwei, und die Zahl ist nicht frei: der Tiefenschacht oeffnet
+## einen Abschnitt bei `stufe_soll(letzte Welle) - SCHACHT_VORSPRUNG`. Zieht
+## das Leuchtorgan mit demselben Tempo wie der Schacht, steht es beim Betreten
+## des Abschnitts genau diese vier Stufen zu tief. Ein Spieler, der Schaden
+## zuerst baut, tut genau das - und er hat recht damit.
+const LEIT_VORSPRUNG := Kammern.SCHACHT_VORSPRUNG
 
 
 func _init() -> void:
@@ -100,6 +128,8 @@ func _init() -> void:
     print("  Tag | Welle | offen | Leucht Zucht Brut Filter Schacht | Vorrat | Soll | Faelle | Leerlauf")
     print("  ----+-------+-------+----------------------------------+--------+------+--------+---------")
 
+    var letzte_gutschrift := 0.0
+
     for tag in TAGE:
         # Der Tageswechsel von Hand - `pruefe_tag()` fragt die Systemuhr, und
         # die laeuft hier nicht mit.
@@ -109,7 +139,20 @@ func _init() -> void:
         var welle_am_morgen := stand.hoechste_welle
         var stufen_am_morgen := stand.stufen.duplicate()
 
-        for _s in SITZUNGEN_JE_TAG:
+        for sitzung in SITZUNGEN_JE_TAG:
+            # Morgens, mittags, abends - nicht dreimal hintereinander. Der
+            # Abstand zwischen zwei Besuchen ist der einzige Grund, warum ein
+            # Bau ueberhaupt Zeit hat, fertig zu werden.
+            zeit = maxf(zeit, float(tag) * 86400.0 + float(sitzung) * SITZUNGSABSTAND)
+            stand.naehrstoffe += int(stand.je_stunde()
+                * maxf(0.0, zeit - letzte_gutschrift) / 3600.0)
+            letzte_gutschrift = zeit
+
+            var baute_vorher := stand.baut()
+            stand.hole_bau_ab(zeit)
+            var wurde_fertig := baute_vorher and not stand.baut()
+            var welle_vor_sitzung := stand.hoechste_welle
+
             # 1. Spielen: die naechsten Wellen mit dem *tatsaechlichen*
             #    Koloniestand, nicht mit der Sollkurve.
             var z := Simulation.Zustand.new()
@@ -139,30 +182,29 @@ func _init() -> void:
                     break
                 bewaeltigt = maxi(bewaeltigt, nummer)
                 stand.hoechste_welle = clampi(maxi(stand.hoechste_welle, nummer + 1),
-                    1, Graben.WELLEN_GESAMT)
+                    1, Graben.TIEFSTE)
 
             stand.naehrstoffe += z.naehrstoffe
 
             # 2. Bauen, solange etwas geht.
+            var begann := false
             while _baue_etwas(stand, zeit):
+                begann = true
                 if tag < EINSTIEG_TAGE and stand.restzeit(zeit) > laengster_bau:
                     laengster_bau = stand.restzeit(zeit)
                     laengster_bau_kammer = stand.bau_kammer
 
-            # 3. Warten, bis der Bau fertig ist - hoechstens bis zum naechsten
-            #    Spielabschnitt. Genau hier entsteht die Wartemauer.
-            var wartete := 0.0
-            while stand.baut() and wartete < 8.0 * 3600.0:
-                zeit += TAKT
-                wartete += TAKT
-                stand.hole_bau_ab(zeit)
-            tages_leerlauf += wartete
-            zeit += 600.0
+            # 3. War diese Sitzung leer? Dann zaehlt sie ganz.
+            if not (wurde_fertig or begann
+                    or stand.hoechste_welle > welle_vor_sitzung):
+                tages_leerlauf += SITZUNGSABSTAND
 
-        # 4. Der Rest des Tages: Filterbecken sammelt, Bau laeuft weiter.
-        var rest := 86400.0 - fmod(zeit, 86400.0)
-        stand.naehrstoffe += int(stand.je_stunde() * rest / 3600.0)
-        zeit += rest
+        # 4. Tagesende: Naehrstoff bis Mitternacht gutschreiben.
+        var mitternacht := float(tag + 1) * 86400.0
+        zeit = maxf(zeit, mitternacht)
+        stand.naehrstoffe += int(stand.je_stunde()
+            * maxf(0.0, zeit - letzte_gutschrift) / 3600.0)
+        letzte_gutschrift = zeit
         stand.hole_bau_ab(zeit)
 
         var schwelle := MAUER_EINSTIEG if tag < EINSTIEG_TAGE else MAUER_SPAETER
@@ -174,7 +216,7 @@ func _init() -> void:
 
         # Am Ende angekommen zaehlt kein Stillstand mehr - dort ist der Inhalt
         # zu Ende, nicht der Fortschritt versperrt.
-        var am_ende := bewaeltigt >= Graben.WELLEN_GESAMT
+        var am_ende := false
         if am_ende and tag_am_ende == 0:
             tag_am_ende = tag + 1
 
@@ -201,30 +243,28 @@ func _init() -> void:
                 laengster_stillstand = stillstand
                 stillstand_welle = stand.hoechste_welle
 
-        var gespielt := mini(stand.hoechste_welle, Graben.WELLEN_GESAMT)
-        print("  %3d | %5d | %5d | %6d %5d %4d %6d %7d | %6d | %4d | %6d | %.1f h" % [
-            tag + 1, gespielt, stand.offene_welle(),
-            stand.stufe(Kammern.Kammer.LEUCHTORGAN),
-            stand.stufe(Kammern.Kammer.ZUCHTKAMMER),
-            stand.stufe(Kammern.Kammer.BRUTKAMMER),
-            stand.stufe(Kammern.Kammer.FILTERBECKEN),
-            stand.stufe(Kammern.Kammer.TIEFENSCHACHT),
-            stand.naehrstoffe, Ausbau.stufe_soll(gespielt),
-            tages_faelle, tages_leerlauf / 3600.0])
+        var gespielt := stand.hoechste_welle
+        if tag % 5 == 4 or tag == TAGE - 1:
+            print("  %3d | %5d | %5d | %6d %5d %4d %6d %7d | %6d | %4d | %6d | %.1f h" % [
+                tag + 1, gespielt, stand.offene_welle(),
+                stand.stufe(Kammern.Kammer.LEUCHTORGAN),
+                stand.stufe(Kammern.Kammer.ZUCHTKAMMER),
+                stand.stufe(Kammern.Kammer.BRUTKAMMER),
+                stand.stufe(Kammern.Kammer.FILTERBECKEN),
+                stand.stufe(Kammern.Kammer.TIEFENSCHACHT),
+                stand.naehrstoffe, Ausbau.stufe_soll(gespielt),
+                tages_faelle, tages_leerlauf / 3600.0])
 
         if stand.stufe(Kammern.Kammer.LEUCHTORGAN) < Ausbau.stufe_soll(gespielt):
             rueckstand += 1
 
     print("")
-    var gespielt := mini(stand.hoechste_welle, Graben.WELLEN_GESAMT)
+    var gespielt := stand.hoechste_welle
     var soll_ende := Ausbau.stufe_soll(gespielt)
     var ist := stand.stufe(Kammern.Kammer.LEUCHTORGAN)
     print("Nach %d Tagen: Welle %d, Leuchtorgan Stufe %d (Soll %d)"
         % [TAGE, gespielt, ist, soll_ende])
-    if tag_am_ende > 0:
-        print("Welle %d erreicht an Tag %d" % [Graben.WELLEN_GESAMT, tag_am_ende])
-    else:
-        print("Welle %d in %d Tagen nicht erreicht" % [Graben.WELLEN_GESAMT, TAGE])
+    print("Volle Umdrehungen durch den Graben: %d" % Graben.zyklus(gespielt))
     if mauer_tag > 0:
         print("Groesste Wartemauer ueber der Schwelle: %.1f h an Tag %d"
             % [groesste_mauer / 3600.0, mauer_tag])
@@ -283,9 +323,16 @@ func _baue_etwas(stand: KolonieStand, jetzt: float) -> bool:
     # stand mit Leuchtorgan 0 in Welle 21 - drei gefallene Sitzungen am
     # Stueck. Wer den Graben aufmacht, ohne stark genug zu sein, macht sich
     # bloss ein Loch auf.
+    #
+    # Gemessen wird an der **ersten** Welle hinter dem heutigen Ende, nicht am
+    # heutigen Ende selbst: wer graebt, spielt als naechstes dort weiter. Die
+    # letzte Welle des neuen Abschnitts zu verlangen waere zu viel - ein
+    # Abschnitt ist zehn Wellen lang und damit gut drei Kammerstufen, in die
+    # man waehrend des Spielens hineinwaechst. Der Versuch stand hier: die
+    # Kolonie blieb bei Welle 21 stehen und grub zehn Tage lang nicht.
     var schacht: int = Kammern.Kammer.TIEFENSCHACHT
     var stark_genug := stand.stufe(Kammern.Kammer.LEUCHTORGAN) \
-        >= Ausbau.stufe_soll(stand.offene_welle())
+        >= Ausbau.stufe_soll(stand.offene_welle() + 1)
     if stand.graben_haelt() and stark_genug and stand.kann_bauen(schacht):
         return stand.starte_bau(schacht, jetzt)
     var gebremst := 0
@@ -295,16 +342,38 @@ func _baue_etwas(stand: KolonieStand, jetzt: float) -> bool:
     if gebremst >= 2 and stand.kann_bauen(schacht):
         return stand.starte_bau(schacht, jetzt)
 
-    # Sonst: das Leuchtorgan hat Vorrang, danach was am billigsten ist. Das
-    # Filterbecken zieht frueh mit, weil es sich selbst bezahlt.
+    # Sonst: die Kammer, die am weitesten zurueckliegt.
+    #
+    # Hier stand eine feste Reihenfolge mit dem Leuchtorgan an erster Stelle -
+    # und die war richtig, solange Naehrstoff knapp war: dann kam ohnehin
+    # jeder mal dran. Seit das Einkommen mit den Kosten mitwaechst, ist immer
+    # genug fuer die erste Kammer der Liste da, und der simulierte Spieler
+    # baute hundertzwanzig Tage lang nichts als Leuchtorgan, Filterbecken und
+    # Schacht. Zuchtkammer und Brutkammer standen am Ende des Laufs noch auf
+    # Stufe 0 - gemessen wurde eine Kolonie, die niemand so spielen wuerde.
+    #
+    # Die niedrigste zuerst, bei Gleichstand nach Wichtigkeit. Damit bleiben
+    # die Kammern beieinander, und das ist auch die Runde, aus der das
+    # Einkommen abgeleitet ist.
     var reihe: PackedInt32Array = [
         Kammern.Kammer.LEUCHTORGAN,
         Kammern.Kammer.FILTERBECKEN,
-        Kammern.Kammer.ZUCHTKAMMER,
         Kammern.Kammer.BRUTKAMMER,
+        Kammern.Kammer.ZUCHTKAMMER,
         schacht,
     ]
+    var beste := -1
+    var beste_stufe := Kammern.HOECHSTSTUFE + 1
     for k in reihe:
-        if stand.kann_bauen(k):
-            return stand.starte_bau(k, jetzt)
+        # Das Leuchtorgan geht mit einem Vorsprung ins Rennen - an ihm misst
+        # die Sollkurve, und ein Spieler, der verliert, baut als erstes
+        # Schaden nach.
+        var rang := stand.stufe(k)
+        if k == Kammern.Kammer.LEUCHTORGAN:
+            rang -= LEIT_VORSPRUNG
+        if stand.kann_bauen(k) and rang < beste_stufe:
+            beste = k
+            beste_stufe = rang
+    if beste >= 0:
+        return stand.starte_bau(beste, jetzt)
     return false

@@ -65,7 +65,7 @@ func _draw() -> void:
 func _zeichne(t: Raeuber, stufe := 0) -> void:
     var p := t.ort
     var farbe: Color = Arten.farbe(t.art)
-    var r: float = Arten.radius(t.art)
+    var r: float = Wellen.radius_in(t.art, t.welle)
 
     # Wer im Licht steht, glueht auf. Das ist die einzige Rueckmeldung, die
     # der Spieler zum Zielen braucht - ohne sie sieht er nicht, wen er fasst.
@@ -567,7 +567,7 @@ func _randlicht(p: Vector2, r: float, farbe: Color, t: Raeuber) -> void:
 ## keine; ein Schleppband hinter einer Schildkoralle waere eine Luege ueber
 ## ihr Tempo.
 func _kielwasser(p: Vector2, r: float, farbe: Color, t: Raeuber) -> void:
-    var tempo: float = Arten.tempo(t.art)
+    var tempo: float = Wellen.tempo_in(t.art, t.welle)
     if tempo < 80.0 or t.alter < 0.12:
         return
     var kraft := clampf((tempo - 80.0) / 90.0, 0.0, 1.0)

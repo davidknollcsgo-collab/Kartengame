@@ -70,6 +70,10 @@ var _polyp_takt := PackedFloat32Array()
 var _folge := 0.0
 
 ## Ueberblendung zwischen zwei Abschnittsfarben.
+## Die Mutationen der laufenden Welle. Steht im Kopf, damit man vor dem
+## Ziehen weiss, womit man es zu tun hat.
+var _mutationen := PackedInt32Array()
+
 var _alt_abschnitt := 0
 var _ziel_abschnitt := 0
 var _farbmischung := 1.0
@@ -189,6 +193,7 @@ func starte_welle() -> void:
     for a in Wellen.auftritte(welle_nummer):
         var r := Raeuber.new()
         r.art = a[&"art"]
+        r.welle = welle_nummer
         r.eintritt = a[&"zeit"]
         r.start_x = a[&"x"]
         r.phase = a[&"phase"]
@@ -227,8 +232,22 @@ func starte_welle() -> void:
     for r in _tiere:
         if Fortschritt.stand.merke_art(r.art) and neu < 0:
             neu = r.art
+
+    # Und dasselbe fuer eine Mutation, die zum ersten Mal auftritt. Sie
+    # kommt nach der Art, weil ein unbekanntes Tier die groessere Neuigkeit
+    # ist - zwei Tafeln uebereinander liest niemand.
+    var neue_mutation := -1
+    _mutationen = Mutationen.in_welle(welle_nummer)
+    for m in _mutationen:
+        if Fortschritt.stand.merke_mutation(m) and neue_mutation < 0:
+            neue_mutation = m
+
+    _hud.mutationen = _mutationen
     if neu >= 0:
         _hud.zeige_art(neu)
+        Fortschritt.sichere()
+    elif neue_mutation >= 0:
+        _hud.zeige_mutation(neue_mutation)
         Fortschritt.sichere()
 
 
@@ -286,8 +305,9 @@ func _bewege(delta: float) -> void:
         var art := Arten.art(r.art)
         var vorher := r.ort
         r.ort = Schlund.bahn(Vector2(r.start_x, Graben.EINTRITT_Y), Graben.BRUT_Y,
-            art[&"tempo"], art[&"schlaengel"], art[&"takt"], r.phase, r.alter,
-            Arten.drift(r.art), Arten.stoss(r.art))
+            Wellen.tempo_in(r.art, r.welle), art[&"schlaengel"], art[&"takt"],
+            r.phase, r.alter,
+            Wellen.drift_in(r.art, r.welle), Wellen.stoss_in(r.art, r.welle))
 
         var weg := r.ort - vorher
         if weg.length_squared() > 0.0001:
@@ -299,8 +319,10 @@ func _bewege(delta: float) -> void:
                 var t := maxf(0.0, r.alter - float(k + 1) * NATTER_ABSTAND)
                 r.rueckweg.append(Schlund.bahn(
                     Vector2(r.start_x, Graben.EINTRITT_Y), Graben.BRUT_Y,
-                    art[&"tempo"], art[&"schlaengel"], art[&"takt"], r.phase, t,
-                    Arten.drift(r.art), Arten.stoss(r.art)))
+                    Wellen.tempo_in(r.art, r.welle), art[&"schlaengel"],
+                    art[&"takt"], r.phase, t,
+                    Wellen.drift_in(r.art, r.welle),
+                    Wellen.stoss_in(r.art, r.welle)))
 
         r.hitze = maxf(0.0, r.hitze - delta * HITZE_ABKLINGEN)
 
@@ -335,13 +357,14 @@ func _verbrenne(delta: float) -> void:
         for r in sichtbar:
             if r.glut > 0.0:
                 r.glut = maxf(0.0, r.glut - delta)
-                r.leben -= maxf(0.0, glut - Arten.panzer(r.art)) * delta
+                r.leben -= maxf(0.0, glut - Wellen.panzer_in(r.art, r.welle)) * delta
                 r.hitze = maxf(r.hitze, 0.35)
 
     for i in Schlund.brennende(hell, ziele()):
         var r := sichtbar[i]
         r.leben -= Schlund.schaden_an(leistung(), hell[i],
-            Arten.panzer(r.art), Arten.mindest_licht(r.art)) * delta
+            Wellen.panzer_in(r.art, r.welle),
+            Wellen.mindest_licht_in(r.art, r.welle)) * delta
         r.hitze = 1.0
         r.glut = glut_dauer
         if randf() < hell[i] * delta * 26.0:
@@ -363,7 +386,7 @@ func _polypen_feuern(delta: float) -> void:
             # Der Panzer gilt auch hier - genau das macht ihn aus: ein
             # Wehrpolyp kratzt an einer Schildkoralle kaum noch.
             r.leben -= maxf(0.0, Fortschritt.stand.polyp_leistung()
-                - Arten.panzer(r.art)) * delta
+                - Wellen.panzer_in(r.art, r.welle)) * delta
             r.hitze = maxf(r.hitze, 0.45)
             if _polyp_takt[n] <= 0.0:
                 _polyp_takt[n] = 0.22
@@ -382,7 +405,7 @@ func _raeume_auf() -> void:
                 Wellen.wert_in(r.art, welle_nummer), _stroemung)
             Fortschritt.aendere(lohn)
             verdient += lohn
-            _funken.zerfall(r.ort, Arten.farbe(r.art), Arten.radius(r.art),
+            _funken.zerfall(r.ort, Arten.farbe(r.art), Wellen.radius_in(r.art, r.welle),
                 r.richtung)
             _hud.zeige_ausbeute(r.ort, lohn)
             _folge = minf(24.0, _folge + 1.0)
@@ -397,7 +420,8 @@ func _raeume_auf() -> void:
             _schuetteln = 1.0 + 0.5 * float(vorher - brut)
             _folge = 0.0
             Klang.spiele(Klang.Ton.BRUT_FAELLT, 1.0, 0.85)
-            _funken.platzen(r.ort, Color(1.0, 0.42, 0.34), Arten.radius(r.art) * 1.6)
+            _funken.platzen(r.ort, Color(1.0, 0.42, 0.34),
+                Wellen.radius_in(r.art, r.welle) * 1.6)
             # Und je zerbrochenem Ei ein eigener Bruch an seiner Stelle. Ein
             # Treffer an der Brut ist das Teuerste im Spiel; er darf nicht
             # aussehen wie ein Treffer an einem Raeuber.
@@ -493,11 +517,6 @@ func _welle_geschafft() -> void:
     Fortschritt.melde_ziel(Tagesziel.Ziel.WELLEN)
     _einstieg_weiter(2)
     Fortschritt.merke_welle(welle_nummer + 1)
-    if welle_nummer >= Graben.WELLEN_GESAMT:
-        lage = Lage.GESCHAFFT
-        _hud.zeige_ende(true, welle_nummer, verdient)
-        return
-
     # Der Graben gibt nur her, was der Tiefenschacht geoeffnet hat. Wer am
     # Ende des Abschnitts steht, spielt ihn weiter - und erfaehrt, woran es
     # liegt. Eine Wand ohne Grund ist ein Fehler; eine mit Grund ist ein Ziel.
@@ -667,7 +686,8 @@ func _lies_entwicklerschalter() -> void:
                 stufen = int(argumente[i + 1]) if i + 1 < argumente.size() else 0
             "--kolonie":
                 # Auch der Koloniebildschirm muss sich ansehen lassen, ohne
-                # ihn von Hand aufzutippen. 0 Kammern, 1 Linien, 2 Tag.
+                # ihn von Hand aufzutippen. 0 Kammern, 1 Linien, 2 Arten,
+                # 3 Zuege, 4 Tag.
                 reiter = int(argumente[i + 1]) if i + 1 < argumente.size() else 0
             "--messen":
                 if i + 1 < argumente.size():
@@ -679,11 +699,11 @@ func _lies_entwicklerschalter() -> void:
         var st := clampi(stufen, 0, Kammern.HOECHSTSTUFE)
         for k in Kammern.zahl():
             Fortschritt.stand.stufen[k] = st
-        Fortschritt.stand.hoechste_welle = Graben.WELLEN_GESAMT
+        Fortschritt.stand.hoechste_welle = Graben.ZYKLUS
         _stelle_ausbau_ein()
 
     if welle > 0:
-        welle_nummer = clampi(welle, 1, Graben.WELLEN_GESAMT)
+        welle_nummer = clampi(welle, 1, Graben.TIEFSTE)
     for p in mini(polypenzahl, Graben.NISCHEN.size()):
         polypen.append(Graben.NISCHEN[p])
     if welle > 0 or polypenzahl > 0:
@@ -700,7 +720,7 @@ func _lies_entwicklerschalter() -> void:
                 _hud.zeige_sitzungsende(welle_nummer + 1, verdient)
             2:
                 lage = Lage.GESCHAFFT
-                _hud.zeige_ende(true, Graben.WELLEN_GESAMT, verdient)
+                _hud.zeige_ende(true, Graben.ZYKLUS, verdient)
             _:
                 lage = Lage.VERLOREN
                 _hud.zeige_ende(false, welle_nummer, verdient)

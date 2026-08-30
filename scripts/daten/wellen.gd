@@ -24,7 +24,13 @@ const WIRKUNGSGRAD := 0.42
 ## abrufen muss. Steigt von bequem auf knapp. **Das ist der einzige Regler fuer
 ## die Schwierigkeitskurve** - alles andere ergibt sich daraus.
 const DRUCK_ANFANG := 0.34
-const DRUCK_ENDE := 0.97
+
+## Hier stand 0.97, und das war zu dicht am Rand. Der Spielraumlauf zeigte es:
+## ab Welle 66 trug nur noch der volle Sollausbau, ein Achtel darunter fiel
+## die Sitzung. Eine Kurve, die keinen Schritt Rueckstand verzeiht, ist keine
+## Kurve - der Kolonielauf meldete dazu zweiundzwanzig gefallene Sitzungen bei
+## einem Leuchtorgan, das im Schnitt eine einzige Stufe hinter dem Soll lag.
+const DRUCK_ENDE := 0.90
 const DRUCK_KRUEMMUNG := 0.85
 
 const FENSTER_GRUND := 34.0
@@ -46,13 +52,10 @@ const SAAT := 0x4e454b
 ## haette bei gleichbleibendem Leben ueber zweitausend Raeuber enthalten. Auf
 ## einem Telefonbildschirm ist das kein Kampf mehr, sondern Rauschen. Mit der
 ## Zaehigkeit bleibt die Zahl lesbar und der einzelne Treffer schwerer.
-const ZAEHIGKEIT_JE_WELLE := 0.10
-
-## Wie stark der Naehrstoffertrag der Zaehigkeit folgt. Voll gekoppelt (1.0)
-## ueberschwemmte den Kolonielauf: Welle 60 schon an Tag 23 und 315000
-## Naehrstoff ungenutzt auf dem Konto. Knapp die Haelfte laesst den Ertrag
-## mitwachsen, ohne den Vorrat bedeutungslos zu machen.
-const WERT_ANTEIL := 0.56
+## Sie haengt an der Sollkurve, nicht an der blossen Wellennummer. Damit hoert
+## sie dort auf zu wachsen, wo auch die Kolonie aufhoert - sonst stuenden in
+## Welle 500 zwei unbezwingbar zaehe Brocken statt eines lesbaren Schwarms.
+const ZAEHIGKEIT_JE_STUFE := 0.295
 
 ## Sicherung gegen eine Endlosschleife, falls jemand an der Staerke oder den
 ## Lebenswerten dreht.
@@ -61,33 +64,120 @@ const HOECHSTZAHL := 260
 
 ## Lebensmultiplikator der Raeuber in dieser Welle.
 static func zaehigkeit(nummer: int) -> float:
-    return 1.0 + ZAEHIGKEIT_JE_WELLE * maxi(0, nummer - 1)
+    return 1.0 + ZAEHIGKEIT_JE_STUFE * Ausbau.stufe_kurve(nummer)
 
 
-## Welchen Anteil einer Welle das Leitwesen allein ausmacht.
+## Wie lange volles Feuer auf **ein** Ziel braucht, um ein Leitwesen zu
+## toeten - am Anfang einer Umdrehung und an ihrem Ende.
 ##
-## Abgeleitet statt fest: ein Leitwesen mit fester Lebenszahl waere in Welle 10
-## die halbe Welle und in Welle 60 eine Randnotiz. So bleibt es an jedem der
-## sechs Abschnittsenden derselbe Brocken - und die Wellenstaerke bleibt die
-## einzige Stellschraube fuer die Schwierigkeit.
+## **Das war zuerst ein Anteil an der Wellenstaerke, und das war falsch.** Die
+## Wellenstaerke faellt aus dem *Gesamtdurchsatz*, und der waechst mit der
+## Zahl der gleichzeitig gefassten Ziele. Gegen ein einzelnes Leitwesen hilft
+## ein zusaetzliches Ziel aber gar nichts. Also wuchs sein Leben schneller als
+## der Schaden, den man ihm zufuegen kann: bei Welle 60 waren es 16 Sekunden
+## volles Feuer, bei Welle 70 schon 38 - und der Wellenpruefer meldete genau
+## dort seine erste Wand.
 ##
-## **Der Wert ist gemessen, nicht gewaehlt.** Bei 0.32 sah der Wellenpruefer
-## gut aus - alle 60 Wellen ueberstanden, mit sichtbaren Verlusten an den
-## Abschnittsenden. Der Kolonielauf sagte etwas anderes: 112 gefallene
-## Sitzungen in 50 Tagen, weil ein Spieler dort scheitert, wo er noch nicht
-## genau auf der Sollkurve steht - und die letzte Welle eines Abschnitts ist
-## zugleich die, die er bestehen muss, um weiterzukommen. Bei 0.20 sind es
-## sieben, der Spielraum steigt glatt von 0.25 auf 0.85, und nirgends steht
-## eine 1.00.
-const LEIT_ANTEIL := 0.20
+## Jetzt haengt es an dem, was wirklich auf ein Ziel geht. Die Zeit steigt
+## ueber die erste Umdrehung und bleibt danach stehen; was das Leitwesen
+## spaeter schwerer macht, ist die Umgebung, nicht seine Zahl.
+const LEIT_SEKUNDEN_ANFANG := 5.0
+const LEIT_SEKUNDEN_ENDE := 16.0
 
+## Untergrenze, damit ein Leitwesen nie zur Zielscheibe wird, falls Panzer und
+## Umgebung zusammen einmal alles wegnehmen.
+const LEIT_MINDEST_ANTEIL := 0.25
+
+
+## --- Was ein Raeuber in **dieser** Welle mitbringt ---
+##
+## Sieben Funktionen, und alle sieben aus demselben Grund: seit es Mutationen
+## gibt, gehoert eine Eigenschaft nicht mehr der Art allein, sondern dem Paar
+## aus Art und Welle. `Arten.panzer()` ist der Grundwert, `panzer_in()` der
+## Wert, der wirklich gilt.
+##
+## **Spiel und Wellenpruefer fragen ausschliesslich hier.** Frueher haben
+## beide `Arten.*` gefragt, und das ging gut, solange es nichts zu mutieren
+## gab. Zwei Stellen, die dieselbe Eigenschaft aus verschiedenen Quellen
+## holen, sind der Fehler, an dem bei HYPHA Sucher und Pruefer auseinander-
+## liefen.
 
 ## Lebenspunkte, die ein Raeuber der Art `art` in Welle `nummer` mitbringt.
 ## Einzige Quelle fuer diesen Wert - Wellenbau, Pruefer und Spiel fragen hier.
 static func leben_in(art: int, nummer: int) -> float:
     if Arten.ist_leitwesen(art):
-        return staerke(nummer) * LEIT_ANTEIL / Arten.aufwand(art)
-    return Arten.leben(art) * zaehigkeit(nummer)
+        var t := clampf(float(maxi(1, nummer) - 1) / float(Graben.ZYKLUS - 1),
+            0.0, 1.0)
+        var sekunden := lerpf(LEIT_SEKUNDEN_ANFANG, LEIT_SEKUNDEN_ENDE, t)
+
+        # `sekunden` heisst: so lange soll es dauern. Also wird das Leben aus
+        # dem gerechnet, was in dieser Sekunde wirklich ankommt - nach der
+        # Umgebung und **nach seinem eigenen Panzer**. Vorher stand hier der
+        # rohe Kegelwert, und beides zaehlte doppelt: die Umgebung machte den
+        # Rest der Welle kleiner und das Leitwesen nicht, und sein Panzer von
+        # 3.0 verlaengerte die geplanten sechzehn Sekunden ungezaehlt. Auf
+        # Welle 70 kam eine Mutation dazu, die noch einmal Panzer auflegt -
+        # der Wellenpruefer meldete die Wand punktgenau dort.
+        var kegel := Graben.LEISTUNG * Ausbau.leistung_faktor(nummer)
+        var wirksam := maxf(kegel * LEIT_MINDEST_ANTEIL,
+            kegel * umgebung(nummer) - panzer_in(art, nummer))
+        return wirksam * sekunden
+    var roh := Arten.leben(art) * zaehigkeit(nummer)
+    if Mutationen.hat(nummer, Mutationen.Mutation.AUFGEDUNSEN):
+        roh *= Mutationen.AUFGEDUNSEN_LEBEN
+    return roh
+
+
+## Panzer: was von jedem Schadensschritt abgezogen wird.
+##
+## Der Zuschlag ist ein Anteil der Leistung, die der Kegel auf der Sollstufe
+## bei voller Helligkeit auf ein Ziel bringt - abgeleitet wie das Leben eines
+## Leitwesens. Eine feste Zahl waere in Welle 70 eine Wand und in Welle 700
+## nicht mehr zu bemerken.
+static func panzer_in(art: int, nummer: int) -> float:
+    var roh := Arten.panzer(art)
+    if Mutationen.hat(nummer, Mutationen.Mutation.PANZERUNG):
+        roh += Mutationen.PANZER_ANTEIL * Graben.LEISTUNG \
+            * Ausbau.leistung_faktor(nummer)
+    return roh
+
+
+static func mindest_licht_in(art: int, nummer: int) -> float:
+    var roh := Arten.mindest_licht(art)
+    if Mutationen.hat(nummer, Mutationen.Mutation.LICHTSCHEU):
+        roh = maxf(roh, Mutationen.LICHT_SCHWELLE)
+    return roh
+
+
+static func drift_in(art: int, nummer: int) -> float:
+    var roh := Arten.drift(art)
+    if Mutationen.hat(nummer, Mutationen.Mutation.UNSTET):
+        roh += Mutationen.DRIFT_ZUSATZ
+    return roh
+
+
+static func stoss_in(art: int, nummer: int) -> float:
+    var roh := Arten.stoss(art)
+    if Mutationen.hat(nummer, Mutationen.Mutation.SCHUB):
+        roh += Mutationen.STOSS_ZUSATZ
+    return minf(roh, Schlund.STOSS_DECKEL)
+
+
+static func tempo_in(art: int, nummer: int) -> float:
+    var roh := Arten.tempo(art)
+    if Mutationen.hat(nummer, Mutationen.Mutation.HAST):
+        roh *= Mutationen.HAST_FAKTOR
+    return roh
+
+
+## Nur Anzeige - der Radius entscheidet nichts am Schaden, aber ein
+## aufgedunsener Raeuber muss auch aufgedunsen aussehen. Eine Mutation, die
+## man nicht sieht, ist keine.
+static func radius_in(art: int, nummer: int) -> float:
+    var roh := Arten.radius(art)
+    if Mutationen.hat(nummer, Mutationen.Mutation.AUFGEDUNSEN):
+        roh *= Mutationen.AUFGEDUNSEN_RADIUS
+    return roh
 
 
 ## Ob in dieser Welle ein Leitwesen steht: am Ende jedes Grabenabschnitts.
@@ -105,22 +195,48 @@ static func aufwand_in(art: int, nummer: int) -> float:
     return leben_in(art, nummer) * Arten.aufwand(art)
 
 
-## Naehrstoff, den er einbringt.
+## Naehrstoff, den eine ganze Welle einbringt, wenn man sie raeumt.
 ##
-## Waechst mit derselben Zaehigkeit wie sein Leben. Ohne diese Kopplung stieg
-## der Ertrag ueber 60 Wellen nur um das Siebenfache - allein dadurch, dass
-## mehr Tiere kommen -, waehrend die Kammerkosten um ein Vielfaches stiegen.
-## Der Kolonielauf zeigte die Folge: dreissig von dreissig Tagen hinter der
-## Sollkurve. Ein zaeherer Raeuber muss mehr wert sein.
+## **Abgeleitet aus dem, was eine Kammerstufe kostet** - so wie die
+## Wellenstaerke aus dem Durchsatz abgeleitet ist und nicht frei gewaehlt.
+##
+## Vorher war der Ertrag eine feste Zahl je Art, die mit der Zaehigkeit
+## mitwuchs: linear. Die Kammern kosten geometrisch. Zwei Kurven, von denen
+## eine linear und die andere geometrisch waechst, laufen nicht auseinander -
+## die eine holt die andere nie wieder ein. Der Kolonielauf zeigte genau das:
+## bei Welle 45 kostete eine volle Kammerrunde fuenf Tage Ertrag, bei Welle 75
+## vierundsiebzig, bei Welle 120 dreitausend. Ein Spiel, das dauerhaft laufen
+## soll, kann sich das nicht leisten.
+##
+## Jetzt gilt: was ein Tag an Wellen hergibt, traegt `1 - FILTER_ANTEIL` einer
+## vollen Kammerrunde in `TAGE_JE_RUNDE` Tagen. Der Rest kommt aus dem
+## Filterbecken. Beide zusammen ergeben eine Runde je Takt - fuer immer, weil
+## beide Seiten aus derselben Kostenzahl fallen.
+static func ertrag(nummer: int) -> float:
+    return (1.0 - Kammern.FILTER_ANTEIL) \
+        * Kammern.rundenkosten(Ausbau.stufe_soll(nummer)) \
+        / (Kammern.TAGE_JE_RUNDE * float(Graben.WELLEN_JE_TAG))
+
+
+## Naehrstoff, den ein einzelner Raeuber einbringt: sein Anteil am Aufwand der
+## Welle.
+##
+## Damit bringt eine geraeumte Welle genau `ertrag()` ein, gleich wie sie
+## zusammengesetzt ist - und wer den zaehen Brocken erlegt statt der drei
+## Schleier, bekommt auch dafuer, was er gekostet hat. Eine eigene Wertzahl je
+## Art gibt es deshalb nicht mehr: der Aufwand *ist* der Wert.
 static func wert_in(art: int, nummer: int) -> int:
-    return maxi(1, int(round(Arten.wert(art)
-        * (1.0 + WERT_ANTEIL * (zaehigkeit(nummer) - 1.0)))))
+    var anteil := aufwand_in(art, nummer) / maxf(1.0, staerke(nummer))
+    return maxi(1, int(round(ertrag(nummer) * anteil)))
 
 
 ## Wie hoch der Anteil der eigenen Leistung ist, den diese Welle abverlangt.
+## Der Druck steigt ueber die erste Umdrehung von bequem auf knapp und
+## bleibt dann dort. Weiter kann er nicht: er ist der Anteil der eigenen
+## Leistung, den die Welle abverlangt, und ueber hundert Prozent gibt es
+## nichts. Was danach noch waechst, ist die Sollkurve selbst.
 static func druck(nummer: int) -> float:
-    var t := float(clampi(nummer, 1, Graben.WELLEN_GESAMT) - 1) \
-        / float(maxi(1, Graben.WELLEN_GESAMT - 1))
+    var t := clampf(float(maxi(1, nummer) - 1) / float(Graben.ZYKLUS - 1), 0.0, 1.0)
     return lerpf(DRUCK_ANFANG, DRUCK_ENDE, pow(t, DRUCK_KRUEMMUNG))
 
 
@@ -129,8 +245,15 @@ static func druck(nummer: int) -> float:
 ## Abgeleitet aus dem, was ein Spieler auf dieser Stufe leisten kann - nicht
 ## aus einer freien Wachstumszahl. Siehe die Begruendung in `ausbau.gd`.
 static func staerke(nummer: int) -> float:
-    return Ausbau.durchsatz(nummer) * WIRKUNGSGRAD * Regeln.wirkungsgrad(nummer) \
+    return Ausbau.durchsatz(nummer) * WIRKUNGSGRAD * umgebung(nummer) \
         * fenster(nummer) * druck(nummer)
+
+
+## Was Abschnittsregel und Mutationen zusammen an Wirkungsgrad kosten. Eine
+## Stelle, weil beide dasselbe bedeuten: wieviel von seiner Leistung ein
+## Spieler in dieser Welle ueberhaupt auf die Raeuber bringt.
+static func umgebung(nummer: int) -> float:
+    return Regeln.wirkungsgrad(nummer) * Mutationen.wirkungsgrad(nummer)
 
 
 ## Wie lange Raeuber eintreten. Die Welle selbst dauert laenger - der letzte

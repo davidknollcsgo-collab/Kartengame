@@ -85,7 +85,7 @@ func aendere(betrag: int) -> void:
 
 func merke_welle(nummer: int) -> void:
     if nummer > stand.hoechste_welle:
-        stand.hoechste_welle = clampi(nummer, 1, Graben.WELLEN_GESAMT)
+        stand.hoechste_welle = clampi(nummer, 1, Graben.TIEFSTE)
         stand_geaendert.emit()
         sichere()
 

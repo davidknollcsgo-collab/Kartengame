@@ -50,7 +50,6 @@ const TABELLE: Array[Dictionary] = [
         &"leben": 22.0,
         &"tempo": 92.0,
         &"radius": 17.0,
-        &"wert": 3,
         &"wucht": 1,
         &"schlaengel": 14.0,
         &"takt": 1.7,
@@ -64,7 +63,6 @@ const TABELLE: Array[Dictionary] = [
         &"leben": 8.0,
         &"tempo": 168.0,
         &"radius": 12.0,
-        &"wert": 2,
         &"wucht": 1,
         &"schlaengel": 26.0,
         &"takt": 3.1,
@@ -78,7 +76,6 @@ const TABELLE: Array[Dictionary] = [
         &"leben": 74.0,
         &"tempo": 54.0,
         &"radius": 25.0,
-        &"wert": 8,
         &"wucht": 3,
         &"schlaengel": 6.0,
         &"takt": 0.9,
@@ -92,7 +89,6 @@ const TABELLE: Array[Dictionary] = [
         &"leben": 34.0,
         &"tempo": 104.0,
         &"radius": 15.0,
-        &"wert": 5,
         &"wucht": 2,
         &"schlaengel": 82.0,
         &"takt": 2.2,
@@ -106,7 +102,6 @@ const TABELLE: Array[Dictionary] = [
         &"leben": 58.0,
         &"tempo": 44.0,
         &"radius": 24.0,
-        &"wert": 11,
         &"wucht": 3,
         &"schlaengel": 5.0,
         &"takt": 0.6,
@@ -122,7 +117,6 @@ const TABELLE: Array[Dictionary] = [
         &"leben": 38.0,
         &"tempo": 60.0,
         &"radius": 21.0,
-        &"wert": 9,
         &"wucht": 2,
         &"schlaengel": 20.0,
         &"takt": 1.0,
@@ -138,7 +132,6 @@ const TABELLE: Array[Dictionary] = [
         &"leben": 44.0,
         &"tempo": 56.0,
         &"radius": 19.0,
-        &"wert": 9,
         &"wucht": 2,
         &"schlaengel": 9.0,
         &"takt": 1.3,
@@ -154,7 +147,6 @@ const TABELLE: Array[Dictionary] = [
         &"leben": 28.0,
         &"tempo": 118.0,
         &"radius": 14.0,
-        &"wert": 7,
         &"wucht": 2,
         &"schlaengel": 28.0,
         &"takt": 2.6,
@@ -177,7 +169,6 @@ const TABELLE: Array[Dictionary] = [
         # sah sie im Bild aus wie ein weiteres mittleres Tier - ein
         # Hoehepunkt, den man erst am Lebensbalken erkennt, ist keiner.
         &"radius": 60.0,
-        &"wert": 60,
         # Bei Wucht 6 kam der Wellenpruefer in Welle 40 mit 1 von 12 Brut
         # durch: dort dunkelt der Abschnitt den Kegel ab, die Schlundmutter
         # erreicht die Brut, und ein einziger Treffer nahm die Haelfte. Ein
@@ -219,8 +210,6 @@ static func radius(index: int) -> float:
     return art(index)[&"radius"]
 
 
-static func wert(index: int) -> int:
-    return art(index)[&"wert"]
 
 
 static func wucht(index: int) -> int:

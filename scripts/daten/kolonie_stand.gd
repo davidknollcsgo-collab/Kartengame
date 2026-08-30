@@ -46,6 +46,10 @@ var strecke := 0
 ## Bestiariums - und der Ankuendigung, wenn eine zum ersten Mal kommt.
 var gesehen := PackedInt32Array()
 
+## Und welche Mutationen. Dieselbe Begruendung: eine gepanzerte Welle, die
+## niemand erklaert hat, ist keine Abwechslung, sondern ein Fehler im Spiel.
+var mutationen_gesehen := PackedInt32Array()
+
 ## Zuchtkalender: wie viele Tage schon abgeholt sind und an welchem Kalendertag
 ## zuletzt. Er laeuft genau einmal durch - siehe `Zuchtkalender`.
 var kalender := 0
@@ -88,7 +92,7 @@ func offene_welle() -> int:
 ## Die Welle, die als naechstes gespielt wird. Der Fortschritt darf ueber den
 ## offenen Graben hinauszeigen - gespielt wird trotzdem nur, was offen ist.
 func naechste_welle() -> int:
-    return clampi(mini(hoechste_welle, offene_welle()), 1, Graben.WELLEN_GESAMT)
+    return clampi(mini(hoechste_welle, offene_welle()), 1, Graben.TIEFSTE)
 
 
 ## Ob der Graben den Fortschritt gerade aufhaelt.
@@ -99,10 +103,8 @@ func graben_haelt() -> bool:
 ## Welche Schachtstufe den naechsten Abschnitt oeffnet - 0, wenn keiner mehr
 ## aussteht.
 func naechste_tiefe() -> int:
-    var offen := offene_welle()
-    if offen >= Graben.WELLEN_GESAMT:
-        return 0
-    return Ausbau.schacht_fuer_abschnitt(Graben.abschnitt(offen) + 1)
+    # Es gibt immer einen naechsten Abschnitt - der Graben hat keinen Boden.
+    return Ausbau.schacht_fuer_abschnitt(Graben.abschnitt_gesamt(offene_welle()) + 1)
 
 
 # --- Bauen -----------------------------------------------------------------
@@ -237,6 +239,18 @@ func merke_art(art: int) -> bool:
     if art < 0 or art >= Arten.zahl() or gesehen.has(art):
         return false
     gesehen.append(art)
+    return true
+
+
+func kennt_mutation(m: int) -> bool:
+    return mutationen_gesehen.has(m)
+
+
+## Merkt sich eine Mutation. Gibt zurueck, ob sie neu war.
+func merke_mutation(m: int) -> bool:
+    if m < 0 or m >= Mutationen.Mutation.size() or mutationen_gesehen.has(m):
+        return false
+    mutationen_gesehen.append(m)
     return true
 
 
@@ -426,6 +440,7 @@ func zu_wort() -> Dictionary:
         &"strecke": strecke,
         &"stroemung_offen": stroemung_offen,
         &"gesehen": Array(gesehen),
+        &"mutationen_gesehen": Array(mutationen_gesehen),
         &"kalender": kalender,
         &"kalender_tag": kalender_tag,
         &"einstieg": einstieg,
@@ -451,7 +466,7 @@ static func aus_wort(wort: Dictionary) -> KolonieStand:
         s.linie = Brutlinien.Linie.KEINE
 
     s.naehrstoffe = maxi(0, int(wort.get(&"naehrstoffe", START_NAEHRSTOFF)))
-    s.hoechste_welle = clampi(int(wort.get(&"hoechste_welle", 1)), 1, Graben.WELLEN_GESAMT)
+    s.hoechste_welle = clampi(int(wort.get(&"hoechste_welle", 1)), 1, Graben.TIEFSTE)
     s.bau_kammer = int(wort.get(&"bau_kammer", -1))
     if s.bau_kammer < 0 or s.bau_kammer >= Kammern.zahl():
         s.bau_kammer = -1
@@ -462,6 +477,13 @@ static func aus_wort(wort: Dictionary) -> KolonieStand:
     s.strecke = maxi(0, int(wort.get(&"strecke", 0)))
     s.stroemung_offen = clampi(int(wort.get(&"stroemung_offen", Tagesstroemung.JE_TAG)),
         0, Tagesstroemung.JE_TAG)
+    var rohe_mut: Array = wort.get(&"mutationen_gesehen", [])
+    for roh_m in rohe_mut:
+        var m := int(roh_m)
+        if m >= 0 and m < Mutationen.Mutation.size() \
+                and not s.mutationen_gesehen.has(m):
+            s.mutationen_gesehen.append(m)
+
     var rohe_arten: Array = wort.get(&"gesehen", [])
     for wert in rohe_arten:
         var a := int(wert)

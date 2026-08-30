@@ -20,6 +20,19 @@ extends SceneTree
 ## Kurve anzieht oder ob 60 Wellen lang nichts passiert.
 const LEITER: PackedFloat32Array = [1.0, 0.85, 0.7, 0.55, 0.45, 0.35, 0.25]
 
+## Wie tief geprueft wird.
+##
+## Frueher war das `Graben.WELLEN_GESAMT` - es gab ja ein Ende. Seit der
+## Graben keinen Boden mehr hat, ist die Zahl eine Entscheidung des Werkzeugs.
+##
+## Vier volle Umdrehungen, und zwar nicht willkuerlich: `Mutationen` legt mit
+## jeder Umdrehung einen Zug drauf, bis `HOECHSTENS`. Bei zwei Umdrehungen
+## haette der Pruefer nie eine Welle mit drei Mutationen gesehen - also genau
+## den Fall nicht, in dem sie sich gegenseitig verstaerken. Tiefer zu pruefen
+## bringt nichts mehr: dort wiederholt sich alles, weil die Sollkurve am
+## Kammerdeckel steht.
+const BIS := Graben.ZYKLUS * 4
+
 
 func _init() -> void:
     var verstaerkung := 1.0
@@ -36,7 +49,7 @@ func _init() -> void:
         return
 
     print("Wellenpruefer - Verstaerkung %.2f gegenueber dem Sollausbau, %d Wellen"
-        % [verstaerkung, Graben.WELLEN_GESAMT])
+        % [verstaerkung, BIS])
     print("")
 
     var gefallen := 0
@@ -45,7 +58,7 @@ func _init() -> void:
     var knappste_welle := 0
 
     var start := 1
-    while start <= Graben.WELLEN_GESAMT:
+    while start <= BIS:
         var lauf := Simulation.sitzung(start, verstaerkung)
         var zeile := "Sitzung %2d (Welle %2d-%2d) " % [
             (start - 1) / Graben.WELLEN_JE_SITZUNG + 1,
@@ -73,7 +86,7 @@ func _init() -> void:
 
     print("")
     if gefallen == 0:
-        print("Alle %d Wellen mit Grundwerten ueberstanden." % Graben.WELLEN_GESAMT)
+        print("Alle %d Wellen mit Grundwerten ueberstanden." % BIS)
         print("Knappster Ausgang: Welle %d mit %d/%d Brut."
             % [knappste_welle, knappste, Graben.BRUT_LEBEN])
         quit(0)
@@ -88,7 +101,7 @@ func _spielraum() -> void:
     print("Spielraum je Sitzung - niedrigster Ausbaustand, der noch traegt")
     print("")
     var start := 1
-    while start <= Graben.WELLEN_GESAMT:
+    while start <= BIS:
         var tiefster := 0.0
         for stufe in LEITER:
             var lauf := Simulation.sitzung(start, stufe)

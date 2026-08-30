@@ -57,6 +57,10 @@ class Zustand extends RefCounted:
 
 class Tier extends RefCounted:
     var art: int = 0
+
+    ## Aus welcher Welle - dieselbe Begruendung wie bei `Raeuber.welle`:
+    ## Mutationen gehoeren dem Paar aus Art und Welle, nicht der Art allein.
+    var welle: int = 1
     var eintritt: float = 0.0
     var x: float = 0.0
     var phase: float = 0.0
@@ -70,8 +74,8 @@ class Tier extends RefCounted:
             return Vector2(x, Graben.EINTRITT_Y)
         var a := Arten.art(art)
         return Schlund.bahn(Vector2(x, Graben.EINTRITT_Y), Graben.BRUT_Y,
-            a[&"tempo"], a[&"schlaengel"], a[&"takt"], phase, seit,
-            Arten.drift(art), Arten.stoss(art))
+            Wellen.tempo_in(art, welle), a[&"schlaengel"], a[&"takt"], phase, seit,
+            Wellen.drift_in(art, welle), Wellen.stoss_in(art, welle))
 
 
 ## Baut Wehrpolypen, solange Naehrstoffe reichen. Genau das tut ein Spieler
@@ -96,6 +100,7 @@ static func welle(nummer: int, z: Zustand) -> Ergebnis:
     for a in Wellen.auftritte(nummer):
         var t := Tier.new()
         t.art = a[&"art"]
+        t.welle = nummer
         t.eintritt = a[&"zeit"]
         t.x = a[&"x"]
         t.phase = a[&"phase"]
@@ -164,7 +169,8 @@ static func welle(nummer: int, z: Zustand) -> Ergebnis:
         for i in Schlund.brennende(hell, z.ziele()):
             var opfer := lebende[i]
             opfer.leben -= Schlund.schaden_an(z.leistung(), hell[i],
-                Arten.panzer(opfer.art), Arten.mindest_licht(opfer.art)) * TAKT
+                Wellen.panzer_in(opfer.art, nummer),
+                Wellen.mindest_licht_in(opfer.art, nummer)) * TAKT
 
         # 4. Polypen. Jeder greift ein Ziel in seiner Reichweite an.
         for n in z.polypen:
@@ -173,7 +179,7 @@ static func welle(nummer: int, z: Zustand) -> Ergebnis:
                     # Der Panzer gilt auch hier - genau das macht ihn aus: ein
                     # Wehrpolyp kratzt an einer Schildkoralle kaum noch.
                     lebende[i].leben -= maxf(0.0, Graben.POLYP_LEISTUNG
-                        - Arten.panzer(lebende[i].art)) * TAKT
+                        - Wellen.panzer_in(lebende[i].art, nummer)) * TAKT
                     break
 
         # 5. Tote zaehlen, Ankunft an der Brut abrechnen.

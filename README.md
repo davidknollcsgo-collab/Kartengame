@@ -23,15 +23,16 @@ werden.
 
 | Bereich | Stand |
 |---|---|
-| Rechenkern (`Schlund`) | Lichtkegel, Bahnen, Zielauswahl — 53 Tests grün |
-| Wellen 1–60 | aus der Ausbaukurve abgeleitet, alle 60 geprüft |
+| Rechenkern (`Schlund`) | Lichtkegel, Bahnen, Zielauswahl — 61 Tests grün |
+| Endloser Graben | die Wellen hören nicht auf; vier volle Umdrehungen sind durchgerechnet |
 | Neun Räuberarten | vier mit eigener Regel: Panzer, Mindestlicht, Querdrift, Schub |
-| Leitwesen | die Schlundmutter am Ende jedes Abschnitts — sechs Höhepunkte statt sechzig gleicher Wellen |
+| Leitwesen | die Schlundmutter am Ende jedes Abschnitts — ein Höhepunkt alle zehn Wellen |
+| Mutationen | ab der zweiten Umdrehung tragen Wellen eigene Züge: gepanzert, lichtscheu, unstet, stoßweise, hastig, aufgedunsen |
 | Bestiarium | jede begegnete Art mit ihrer Regel; unbekannte zeigen nur, ab wann sie kommen |
 | Grafische Tiefe | drei Wandebenen mit Wasserdunst, Staub im Lichtkegel, Randlicht auf jedem Tier, Schlick im Vordergrund |
 | Sechs Grabenabschnitte | eigene Regel **und** eigene Farbe je Abschnitt: Strömung, Trübung, Dunkelphasen, Streulicht |
 | Grabentiefe | der Tiefenschacht öffnet die Abschnitte — abgeleitet aus der Sollkurve |
-| Kolonie | fünf Kammern mit Stufen, Kosten und Bauzeiten; 50 Tage gemessen, keine gefallene Sitzung |
+| Kolonie | fünf Kammern mit Stufen, Kosten und Bauzeiten; 120 Tage gemessen, ohne Warte- und ohne Fortschrittsmauer |
 | Brutlinien | drei Linien, gezüchtet statt gezogen — kein Zufall, keine Kiste |
 | Tagesziel | drei Aufgaben, Anwesenheitszähler, Lohn wächst mit dem Fortschritt |
 | Ton | vollständig synthetisiert, keine Audiodatei |
@@ -57,7 +58,7 @@ wieder aktualisieren.
 ```bash
 godot --headless --import                                  # Registry aufbauen
 godot --headless --path . --script tests/run_tests.gd      # Tests
-godot --headless --path . --script tools/wellenpruefer.gd  # alle 60 Wellen
+godot --headless --path . --script tools/wellenpruefer.gd  # vier Umdrehungen
 ```
 
 Weitere Werkzeuge, Screenshot-Schalter und die Zusicherungen, die nicht

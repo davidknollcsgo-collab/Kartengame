@@ -12,6 +12,12 @@ extends RefCounted
 
 var art: int = 0
 
+## Aus welcher Welle es kommt. Seit es Mutationen gibt, gehoert eine
+## Eigenschaft nicht mehr der Art allein: dieselbe Grabnatter ist in Welle 63
+## gepanzert und in Welle 64 nicht. Wer das Tier zeichnet oder ihm Schaden
+## zufuegt, braucht deshalb beides - `Wellen.panzer_in(art, welle)`.
+var welle: int = 1
+
 ## Sekunden ab Wellenbeginn, zu denen das Tier eintritt.
 var eintritt: float = 0.0
 var start_x: float = 0.0
