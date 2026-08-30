@@ -238,17 +238,39 @@ jobs:
           Im Browser spielen geht auch ohne Download ueber die Seite dieses Repositorys." \
             build/nekton.apk build/nekton.html
 
+  # **Dieser Auftrag darf scheitern, ohne den Bau zu faellen.**
+  #
+  # Pages laesst sich vom Bauauftrag aus nicht einschalten: das Token einer
+  # Werkbank darf eine bestehende Seite bespielen, aber keine anlegen
+  # ("Resource not accessible by integration"). Das ist ein einmaliger
+  # Handgriff in den Einstellungen des Repositorys - und bis er getan ist,
+  # soll deswegen nicht die APK als fehlgeschlagen dastehen. Sie ist die
+  # Fassung, um die es geht; die Seite ist die Abkuerzung zum Nachsehen.
   seite:
     name: Seite veroeffentlichen
     needs: bauen
     runs-on: ubuntu-latest
+    continue-on-error: true
     environment:
       name: github-pages
       url: ${{ steps.pages.outputs.page_url }}
     steps:
       - name: Pages einschalten, falls noch nicht geschehen
+        id: einschalten
+        continue-on-error: true
         uses: actions/configure-pages@v5
         with:
           enablement: true
+
+      - name: Hinweis, falls Pages noch aus ist
+        if: steps.einschalten.outcome != 'success'
+        run: |
+          echo "::warning::GitHub Pages ist fuer dieses Repository noch nicht"\
+            " eingeschaltet. Einmalig unter Settings -> Pages -> Build and"\
+            " deployment -> Source: GitHub Actions setzen; ab dem naechsten"\
+            " Bau steht die Seite. Die APK haengt unabhaengig davon an der"\
+            " Vorabveroeffentlichung."
+
       - id: pages
+        if: steps.einschalten.outcome == 'success'
         uses: actions/deploy-pages@v4
