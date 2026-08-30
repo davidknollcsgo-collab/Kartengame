@@ -104,6 +104,21 @@ static func schnee_dichte(abschnitt: int) -> float:
     return SCHNEE_DICHTE[clampi(abschnitt, 0, SCHNEE_DICHTE.size() - 1)]
 
 
+## Wie stark der Schein der Kolonie in Saeulen steht, und wie eng sich das
+## Bild zu den Seiten schliesst. Beides folgt dem Abschnitt: der Grabensturm
+## ist aufgewuehlt und bedrueckend, die Randschlucht offen und ruhig.
+const SAEULEN: PackedFloat32Array = [0.75, 0.55, 1.35, 0.35, 1.6, 1.9]
+const ENGE: PackedFloat32Array = [0.0, 0.10, 0.45, 0.30, 0.20, 0.70]
+
+
+static func saeulen(abschnitt: int) -> float:
+    return SAEULEN[clampi(abschnitt, 0, SAEULEN.size() - 1)]
+
+
+static func enge(abschnitt: int) -> float:
+    return ENGE[clampi(abschnitt, 0, ENGE.size() - 1)]
+
+
 static func fels_farbe(abschnitt: int) -> Color:
     return FELS_FARBEN[clampi(abschnitt, 0, FELS_FARBEN.size() - 1)]
 

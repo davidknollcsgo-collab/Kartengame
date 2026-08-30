@@ -18,6 +18,14 @@ uniform vec3 schein : source_color = vec3(0.055, 0.180, 0.190);
 uniform float zeit_tempo : hint_range(0.0, 2.0) = 0.28;
 uniform float schnee_dichte : hint_range(0.0, 2.0) = 1.0;
 
+// Wie stark die Saeulen aus dem Koloniescheins nach oben stehen. Im Sturm
+// mehr, in der Randschlucht kaum - `wache.gd` setzt es je Abschnitt.
+uniform float saeulen : hint_range(0.0, 2.0) = 1.0;
+
+// Wie weit sich das Bild zu den Seiten schliesst. Enger heisst bedrueckender,
+// und der Grabensturm soll bedrueckend sein.
+uniform float enge : hint_range(0.0, 1.0) = 0.0;
+
 float hash(vec2 p) {
     p = fract(p * vec2(233.34, 851.73));
     p += dot(p, p + 23.45);
@@ -65,6 +73,15 @@ float schnee(vec2 uv, float groesse, float tempo, float t) {
     return smoothstep(0.09, 0.0, d) * (0.35 + 0.65 * hash(zelle + 1.3));
 }
 
+// Verzerrtes Rauschen: das Rauschen wird mit sich selbst versetzt abgetastet.
+// Das kostet einen zweiten Aufruf und macht aus gleichmaessigem Flimmern
+// Straehnen, die sich umeinander legen - so sieht bewegtes Wasser aus.
+float schlieren(vec2 p, float t) {
+    vec2 versatz = vec2(fbm(p + vec2(0.0, t * 0.35)),
+                        fbm(p + vec2(4.7, 1.3 - t * 0.22)));
+    return fbm(p + versatz * 1.6);
+}
+
 void fragment() {
     vec2 uv = UV;
     float t = TIME * zeit_tempo;
@@ -74,21 +91,34 @@ void fragment() {
     vec3 farbe = mix(tief, grund, tiefe);
     farbe += schein * pow(smoothstep(0.62, 1.0, uv.y), 2.2) * 0.9;
 
-    // Zu den Seiten hin dunkler - das lenkt den Blick in die Mitte, wo
-    // gespielt wird, ohne dass eine Vignette darueber liegen muss.
-    float seitlich = smoothstep(0.5, 0.02, abs(uv.x - 0.5));
-    farbe *= 0.42 + 0.58 * seitlich;
+    // 2. Saeulen aus dem Schein der Kolonie.
+    //
+    // Der Schein kommt von unten und steht in Straehnen nach oben - so, wie
+    // Licht in truebem Wasser steht, wenn etwas darin schwebt. Ohne sie ist
+    // der Grund ein Farbverlauf; mit ihnen ist er eine Lichtquelle.
+    float saeule = fbm(vec2(uv.x * 5.5 + sin(t * 0.11) * 0.4, uv.y * 0.5 - t * 0.03));
+    saeule = pow(max(saeule - 0.42, 0.0) * 2.6, 1.7);
+    farbe += schein * saeule * pow(smoothstep(1.06, 0.18, uv.y), 1.4)
+             * 0.55 * saeulen;
 
-    // 2. Traege Schlieren.
-    float schliere = fbm(vec2(uv.x * 2.4, uv.y * 1.6 - t * 0.09));
-    farbe += vec3(0.010, 0.030, 0.038) * (schliere - 0.45) * 1.6;
+    // 3. Traege Schlieren, verzerrt.
+    float schliere = schlieren(vec2(uv.x * 2.4, uv.y * 1.6 - t * 0.09), t);
+    farbe += vec3(0.010, 0.030, 0.038) * (schliere - 0.45) * 2.0;
 
-    // 3. Meeresschnee in drei Ebenen.
+    // 4. Meeresschnee in drei Ebenen.
     float flocken = 0.0;
     flocken += schnee(uv, 34.0, 0.020, t) * 0.30;
     flocken += schnee(uv, 20.0, 0.045, t) * 0.55;
     flocken += schnee(uv, 11.0, 0.085, t) * 0.85;
     farbe += vec3(0.44, 0.66, 0.72) * flocken * 0.22;
+
+    // 5. Zu den Seiten hin dunkler - das lenkt den Blick in die Mitte, wo
+    // gespielt wird. **Zuletzt**, nicht wie vorher vor allem anderen: sonst
+    // leuchteten Saeulen und Flocken am Rand ungedaempft weiter und hoben die
+    // Fuehrung wieder auf.
+    float rand = mix(0.5, 0.30, enge);
+    float seitlich = smoothstep(rand, 0.02, abs(uv.x - 0.5));
+    farbe *= mix(0.42, 0.22, enge) + (0.58 - 0.18 * enge) * seitlich;
 
     COLOR = vec4(farbe, 1.0);
 }

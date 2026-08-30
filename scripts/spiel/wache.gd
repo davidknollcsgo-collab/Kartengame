@@ -437,6 +437,10 @@ func _schiebe_farben(anteil: float) -> void:
         Regeln.schein_farbe(a).lerp(Regeln.schein_farbe(b), anteil))
     stoff.set_shader_parameter("schnee_dichte",
         lerpf(Regeln.schnee_dichte(a), Regeln.schnee_dichte(b), anteil))
+    stoff.set_shader_parameter("saeulen",
+        lerpf(Regeln.saeulen(a), Regeln.saeulen(b), anteil))
+    stoff.set_shader_parameter("enge",
+        lerpf(Regeln.enge(a), Regeln.enge(b), anteil))
     _kolonie.fels = Regeln.fels_farbe(a).lerp(Regeln.fels_farbe(b), anteil)
 
 
