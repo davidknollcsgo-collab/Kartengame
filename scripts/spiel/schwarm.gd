@@ -92,10 +92,17 @@ func _zeichne(t: Raeuber, stufe := 0) -> void:
     # Das Zittern haengt an der Wellenzeit und nicht am Alter des Tieres -
     # sonst zittern alle im Gleichtakt, und ein Schwarm im Gleichtakt sieht
     # aus wie ein Maschinenteil.
+    #
+    # **Und leise.** Der erste Anlauf zitterte mit 41 Hertz und einem Neuntel
+    # des Koerperradius - bei zwanzig brennenden Tieren gleichzeitig war das
+    # kein Zappeln mehr, sondern Rauschen ueber dem halben Bild. Das Spiel
+    # soll man in Ruhe spielen koennen; eine Rueckmeldung, die den Blick
+    # zerhackt, arbeitet gegen genau das. Halb so schnell, ein Drittel so
+    # weit - man sieht es, ohne dass es sticht.
     if hitze > 0.01:
         var quer := t.richtung.orthogonal()
-        p += quer * sin(_zeit * 41.0 + t.phase * 6.0) * hitze * r * 0.11
-        r *= 1.0 + 0.07 * hitze
+        p += quer * sin(_zeit * 19.0 + t.phase * 6.0) * hitze * r * 0.04
+        r *= 1.0 + 0.04 * hitze
 
     # Der Hof faellt als Erstes weg - er kostet drei Kreise je Tier und traegt
     # am wenigsten, sobald das Bild voll ist.
@@ -142,13 +149,23 @@ func _zeichne(t: Raeuber, stufe := 0) -> void:
     _kielwasser(p, r, farbe, t)
     _randlicht(p, r, farbe, t)
 
-    if t.verletzt():
-        var anteil := t.anteil()
-        var breite := r * 1.8
-        var oben := p + Vector2(-breite * 0.5, -r - 9.0)
-        draw_rect(Rect2(oben, Vector2(breite, 2.4)), Color(0.0, 0.0, 0.0, 0.55))
-        draw_rect(Rect2(oben, Vector2(breite * anteil, 2.4)),
-            farbe.lerp(Color(1.0, 0.42, 0.34), 1.0 - anteil))
+    # Die Lebensanzeige erst, wenn es etwas zu entscheiden gibt.
+    #
+    # Vorher stand ueber jedem angekratzten Tier ein Balken - bei zwanzig
+    # Raeubern im Bild zwanzig kleine Rechtecke, und das ist genau die Art
+    # Unruhe, die einem das Spiel aus der Hand nimmt. Wer noch fast voll ist,
+    # sagt einem nichts; interessant wird es unter zwei Dritteln. Und ein
+    # Strich mit runden Enden liest sich als Teil des Tieres, ein Rechteck
+    # als Bedienoberflaeche.
+    var anteil := t.anteil()
+    if anteil < 0.66:
+        var breite := r * 1.5
+        var y := p.y - r - 9.0
+        var links := p.x - breite * 0.5
+        draw_line(Vector2(links, y), Vector2(links + breite, y),
+            Color(0.0, 0.0, 0.0, 0.42), 3.0)
+        draw_line(Vector2(links, y), Vector2(links + breite * anteil, y),
+            farbe.lerp(Color(1.0, 0.46, 0.38), 1.0 - anteil), 2.6)
 
 
 ## Sparfassung: ein Leib, ein Umriss, kein Beiwerk. Wird erst gezeichnet, wenn
@@ -179,14 +196,68 @@ func _gluehen(p: Vector2, radius: float, farbe: Color, staerke: float) -> void:
 ## Leib: gedaempfte Fuellung, heller Umriss. Bei additivem Zeichnen macht der
 ## Umriss die Form, nicht die Flaeche - eine hell gefuellte Flaeche waere ein
 ## Klecks ohne Kontur.
+## Ein Leib.
+##
+## **Zwei Dinge, und sie gelten fuer alle neun Arten**, weil fast jede diese
+## Funktion aufruft. Das ist der Grund, warum sie hier stehen und nicht
+## neunmal einzeln.
+##
+## **Erstens: rund.** Die Umrisse sind als Vielecke mit sechs bis neun Ecken
+## gebaut - gut zu rechnen, aber im Bild sind es Sechsecke mit Streifen, und
+## bei voller Aufloesung sieht man jede Facette. Zwei Durchgaenge
+## Eckenschneiden machen daraus eine Kurve. Es ist derselbe Umriss, nur ohne
+## die Ecken, die niemand gemeint hat.
+##
+## **Zweitens: Fuelle.** Eine Flaeche in einer Farbe ist ein Aufkleber. Drei
+## ineinanderliegende Fassungen mit steigender Deckung geben demselben Umriss
+## eine Mitte - das ist der billigste Weg zu einem Koerper, der eine
+## Vorderseite hat.
 func _koerper(punkte: PackedVector2Array, farbe: Color, hitze: float) -> void:
-    var fuellung := Color(farbe.r, farbe.g, farbe.b, 0.18 + 0.20 * hitze)
-    draw_colored_polygon(punkte, fuellung)
-    var geschlossen := punkte + PackedVector2Array([punkte[0]])
+    var rund := _rund(_rund(punkte))
+    var mitte := _mitte(rund)
+
+    for i in 3:
+        var t := float(i) / 2.0
+        var schrumpf := lerpf(1.0, 0.52, t)
+        var lage := PackedVector2Array()
+        for v in rund:
+            lage.append(mitte + (v - mitte) * schrumpf)
+        draw_colored_polygon(lage, Color(farbe.r, farbe.g, farbe.b,
+            (0.10 + 0.09 * t) + (0.10 + 0.07 * t) * hitze))
+
+    var geschlossen := rund + PackedVector2Array([rund[0]])
     draw_polyline(geschlossen, Color(farbe.r, farbe.g, farbe.b,
-        0.30 + 0.30 * hitze), 3.2, true)
+        0.26 + 0.28 * hitze), 3.4, true)
     draw_polyline(geschlossen, farbe.lerp(Color(1.0, 0.98, 0.94),
         0.45 + 0.45 * hitze), 1.3, true)
+
+
+## Eckenschneiden nach Chaikin: jede Kante gibt zwei Punkte auf einem Viertel
+## und drei Vierteln ihrer Laenge her. Zweimal angewandt wird aus einem
+## Siebeneck eine Kurve aus achtundzwanzig Punkten.
+##
+## Warum nicht gleich runde Umrisse zeichnen? Weil die Formen aus Richtung und
+## Querachse des Tieres gebaut werden und dabei lesbar bleiben sollen - ein
+## Siebeneck mit sprechenden Ecken ist im Quelltext zu verstehen, eine
+## Bezierkurve mit vierzehn Stuetzpunkten nicht.
+func _rund(punkte: PackedVector2Array) -> PackedVector2Array:
+    var n := punkte.size()
+    if n < 3:
+        return punkte
+    var aus := PackedVector2Array()
+    for i in n:
+        var a: Vector2 = punkte[i]
+        var b: Vector2 = punkte[(i + 1) % n]
+        aus.append(a + (b - a) * 0.25)
+        aus.append(a + (b - a) * 0.75)
+    return aus
+
+
+func _mitte(punkte: PackedVector2Array) -> Vector2:
+    var summe := Vector2.ZERO
+    for v in punkte:
+        summe += v
+    return summe / float(maxi(1, punkte.size()))
 
 
 ## Das Auge ist ein Leuchtpunkt mit Hof. Kein dunkler Kern - siehe `_ready()`.

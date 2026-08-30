@@ -260,13 +260,26 @@ func _test_schlieren_bleiben_schmuck() -> bool:
 
     # Und der Umlauf muss nahtlos sein. `flackern` laeuft mit fmod(..., TAU)
     # um; bei einem krummen Vielfachen springt das Argument bei jedem Umlauf
-    # und ein Riss laeuft durch den Kegel. Die Faktoren stehen als ganze
-    # Zahlen im Quelltext - hier wird nachgesehen, dass das so bleibt.
+    # um einen Bruchteil der Periode, und ein Riss laeuft durch den Kegel.
+    #
+    # Geprueft wird die **Eigenschaft**, nicht der Wortlaut: hier stand
+    # zuerst eine Liste erwarteter Zeichenketten, und die schlug fehl, sobald
+    # jemand einen Faktor von 2.0 auf 1.0 setzte - also bei einer Aenderung,
+    # die genau nichts kaputtmacht. Ein Test, der beim Aufraeumen rot wird,
+    # wird beim naechsten Mal abgeschaltet statt gelesen.
     var quelle := FileAccess.get_file_as_string("res://scripts/spiel/kegel.gd")
-    for teil in ["flackern * 2.0", "flackern * 1.0"]:
-        if not _melde(quelle.contains(teil),
-                "die Schlieren muessen ein ganzzahliges Vielfaches von "
-                + "flackern nehmen, sonst springt der Umlauf (%s fehlt)" % teil):
+    var suche := RegEx.new()
+    suche.compile("flackern\\s*\\*\\s*([0-9]+\\.?[0-9]*)")
+    var treffer := suche.search_all(quelle)
+    if not _melde(treffer.size() >= 2,
+            "in kegel.gd steht kein Vielfaches von flackern mehr - dann "
+            + "prueft dieser Test nichts"):
+        return false
+    for t in treffer:
+        var faktor := float(t.get_string(1))
+        if not _melde(is_equal_approx(faktor, roundf(faktor)),
+                "flackern * %s ist kein ganzes Vielfaches - der Umlauf springt"
+                % t.get_string(1)):
             return false
     return true
 

@@ -27,7 +27,13 @@ const HITZE_ABKLINGEN := 5.0
 const NATTER_GLIEDER := 7
 const NATTER_ABSTAND := 0.055
 
-const SCHUETTELN_ABKLINGEN := 7.0
+## **Kurz und flach.** Ein Bild, das bei jedem Treffer springt, laesst sich
+## nicht mehr entspannt spielen - und genau das soll dieses Spiel sein: eine
+## Minute, in der man einen Lichtkegel zieht, nicht ein Ruettelbrett. Der
+## Ausschlag ist deshalb halbiert und klingt schneller ab; was die Nachricht
+## traegt, ist der farbige Rand, nicht das Wackeln.
+const SCHUETTELN_ABKLINGEN := 9.5
+const SCHUETTELN_WEITE := 3.4
 
 
 @onready var _kegel: Node2D = $Kegel
@@ -38,6 +44,23 @@ const SCHUETTELN_ABKLINGEN := 7.0
 @onready var _vordergrund: Node2D = $Vordergrund
 @onready var _wasser: ColorRect = $Wasser/Flaeche
 @onready var _kamera: Camera2D = $Kamera
+
+## Wie weit die Brut ueber der Unterkante steht - in Entwurfseinheiten, also
+## bei einem Bild von 720 mal 1280.
+##
+## **Daran haengt die ganze Komposition auf einem echten Telefon.** Der
+## Entwurf steht auf 16:9; ein heutiges Handy hat 20:9 und mehr. Bei
+## `stretch/aspect=expand` waechst dabei die sichtbare Hoehe, und weil Brut
+## und Waechter feste Weltpunkte sind, rutschen sie nach oben: auf 1080 mal
+## 2400 stand der Waechter hinter dem Bedienfeld, und unter der Brut klaffte
+## ein Viertel des Bildes leer.
+##
+## Die Kamera wird deshalb nicht auf den Ursprung gesetzt, sondern so, dass
+## dieser Abstand stimmt - egal wie hoch das Bild ist. Was auf einem langen
+## Telefon dazukommt, kommt dann **oben** dazu, und dort gehoert es auch hin:
+## mehr Graben, aus dem die Raeuber kommen.
+const UNTERKANTE := 154.0
+
 @onready var _hud: CanvasLayer = $Hud
 @onready var _koloniebild: CanvasLayer = $Koloniebild
 
@@ -91,6 +114,9 @@ func _ready() -> void:
     # seiner Werte - eine Kopie liefe irgendwann auseinander.
     _kolonie.kegel = _kegel
     _waechter.kegel = _kegel
+
+    _richte_kamera()
+    get_viewport().size_changed.connect(_richte_kamera)
     _faerbe_abschnitt(Graben.abschnitt(welle_nummer), true)
     _koloniebild.geschlossen.connect(_kolonie_geschlossen)
     Fortschritt.stand_geaendert.connect(_stelle_ausbau_ein)
@@ -287,12 +313,21 @@ func _zeitlupe_fuehren(delta: float) -> void:
     Engine.time_scale = lerpf(1.0, ZEITLUPE_TIEFE, pow(t, 0.6))
 
 
+## Setzt die Kamera so, dass die Brut immer `UNTERKANTE` ueber dem unteren
+## Bildrand steht. Beim Entwurfsbild von 1280 Einheiten Hoehe kommt dabei
+## genau der Ursprung heraus - so, wie es vorher fest eingetragen war.
+func _richte_kamera() -> void:
+    var hoehe := get_viewport_rect().size.y
+    _kamera.position.y = Graben.BRUT_Y + UNTERKANTE - hoehe * 0.5
+
+
 func _process(delta: float) -> void:
     _zeitlupe_fuehren(delta)
     _stimmung_nachfuehren()
     _schuetteln = maxf(0.0, _schuetteln - delta * SCHUETTELN_ABKLINGEN)
     _kamera.offset = Vector2(
-        randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * _schuetteln * 7.0
+        randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) \
+        * _schuetteln * SCHUETTELN_WEITE
 
     if lage == Lage.WELLE:
         _fuehre_kegel(delta)
@@ -455,14 +490,14 @@ func _raeume_auf() -> void:
             # Ruckeln - deshalb nur hier.
             if Arten.ist_leitwesen(r.art):
                 _zeitlupe = ZEITLUPE_DAUER
-                _schuetteln = maxf(_schuetteln, 1.6)
+                _schuetteln = maxf(_schuetteln, 1.1)
                 _hud.blitze(Color(0.62, 0.98, 0.86), 0.7)
         elif r.ort.y >= Graben.BRUT_Y - 0.5:
             r.lebendig = false
             _offen -= 1
             var vorher := brut
             brut = maxi(0, brut - Arten.wucht(r.art))
-            _schuetteln = 1.0 + 0.5 * float(vorher - brut)
+            _schuetteln = 0.8 + 0.3 * float(vorher - brut)
             _folge = 0.0
             Klang.spiele(Klang.Ton.BRUT_FAELLT, 1.0, 0.85)
             # Der Waechter zuckt, und das Bild bekommt einen roten Rand. Wer

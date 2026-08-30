@@ -230,10 +230,15 @@ func _draw() -> void:
         draw_polyline(punkte + PackedVector2Array([punkte[0]]),
             Color(sp.farbe.r, sp.farbe.g, sp.farbe.b, 0.70 * f), 1.3, true)
 
+    # **Ein Ring, nicht zwei.**
+    #
+    # Der zweite, innere Ring war als Nachhall gedacht. Bei zwanzig Toden im
+    # selben Augenblick standen dadurch vierzig Kreise im Bild, alle in
+    # verschiedenen Groessen, und daraus wurde ein Muster statt einer
+    # Rueckmeldung. Was eine Druckwelle sagt, sagt sie mit einem Ring - und
+    # der darf dafuer duenner sein und schneller vergehen.
     for ring in _ringe:
         var f := ring.leben / ring.voll
         var r := ring.weite * (1.0 - f * f)
         draw_arc(ring.ort, r, 0.0, TAU, 26,
-            Color(1.0, 0.98, 0.92, 0.42 * f * f), 2.2 * f + 0.6, true)
-        draw_arc(ring.ort, r * 0.72, 0.0, TAU, 22,
-            Color(ring.farbe.r, ring.farbe.g, ring.farbe.b, 0.26 * f), 1.4, true)
+            Color(1.0, 0.98, 0.92, 0.30 * f * f), 1.8 * f + 0.5, true)

@@ -261,7 +261,7 @@ func _blitzschleier(breite: float, hoehe: float) -> void:
     var f := pow(clampf(_blitz / _blitz_voll, 0.0, 1.0), 0.7)
     var c := _blitz_farbe
     var tiefe := 130.0
-    var voll := Color(c.r, c.g, c.b, 0.30 * f)
+    var voll := Color(c.r, c.g, c.b, 0.21 * f)
     var leer := Color(c.r, c.g, c.b, 0.0)
 
     # **Ein Verlauf je Kante, nicht sieben gestapelte Rechtecke.**
