@@ -99,6 +99,20 @@ var _krusten: Array[Dictionary] = []
 ## Bewegung ist es, woran man Wasser erkennt.
 var _schleier: Array[Dictionary] = []
 
+## --- Leben, das nicht mitspielt ---
+##
+## Zwischen den Waenden stand bisher Wasser und sonst nichts. Das ist die
+## groesste Flaeche im Bild, und sie war leer - kein Wunder, dass der Graben
+## unbewohnt wirkte: das einzige Lebendige darin waren die Raeuber, die einen
+## umbringen wollen, und das eigene Tier.
+##
+## Also Treiber: kleine Quallen und Schwaermchen weit hinten, die ihre eigenen
+## Bahnen ziehen. Sie treffen nichts und werden von nichts getroffen -
+## **sie sind ausdruecklich keine Spielfiguren**, und darum stehen sie hier
+## und nicht in `schwarm.gd`. Wenn sie irgendwann anfangen, dem Kegel
+## auszuweichen, sind sie es geworden, und dann gehoeren sie in den Rechenkern.
+var _treiber: Array[Dictionary] = []
+
 ## Der Kegel, um Fels und Bewuchs von ihm anleuchten zu lassen. Gesetzt von
 ## `wache.gd`. Dieselbe `Schlund.beleuchtung()` wie ueberall - was hell
 ## gezeichnet wird, ist das Licht, das auch Schaden macht.
@@ -133,6 +147,7 @@ func _baue_waende() -> void:
     _baue_bewuchs(rng)
     _baue_felsdetail(rng)
     _baue_schleier(rng)
+    _baue_treiber(rng)
 
 
 ## Ein Wandprofil. `einzug` schiebt es zur Mitte, `ebene` waehlt die
@@ -334,6 +349,69 @@ func _baue_schleier(rng: RandomNumberGenerator) -> void:
         })
 
 
+## Treiber: Quallen und Schwaermchen im offenen Wasser.
+##
+## Sie liegen auf einer eigenen, sehr fernen Ebene - hell und blau wie alles
+## Ferne, langsam, und ohne jede Beziehung zum Spiel. Ihre Bahn ist eine
+## Schleife: waagerecht wandern, senkrecht atmen, und wenn sie unten aus dem
+## Bild laufen, oben wieder herein.
+func _baue_treiber(rng: RandomNumberGenerator) -> void:
+    _treiber.clear()
+    for i in 14:
+        _treiber.append({
+            &"x": rng.randf_range(Graben.FELD.position.x + 90.0,
+                Graben.FELD.end.x - 90.0),
+            &"y": rng.randf_range(Graben.FELD.position.y, Graben.FELD.end.y),
+            &"tempo": rng.randf_range(7.0, 19.0),
+            &"quer": rng.randf_range(5.0, 16.0),
+            &"takt": rng.randf_range(0.35, 0.9),
+            &"phase": rng.randf_range(0.0, TAU),
+            &"gross": rng.randf_range(4.0, 11.0),
+            &"schwarm": rng.randf() < 0.4,
+            &"zahl": rng.randi_range(3, 6),
+        })
+
+
+func _zeichne_treiber() -> void:
+    var hoch := Graben.FELD.size.y + 200.0
+    for d in _treiber:
+        var atem: float = 0.5 + 0.5 * sin(zeit * float(d[&"takt"]) + float(d[&"phase"]))
+        var y: float = fposmod(float(d[&"y"]) + zeit * float(d[&"tempo"])
+            - Graben.FELD.position.y, hoch) + Graben.FELD.position.y - 100.0
+        var x: float = float(d[&"x"]) \
+            + sin(zeit * float(d[&"takt"]) * 0.7 + float(d[&"phase"])) * float(d[&"quer"])
+        var p := Vector2(x, y)
+        var r: float = float(d[&"gross"])
+        # Blass und blau: sie stehen weit hinten, und Entfernung macht unter
+        # Wasser heller, nicht dunkler - dieselbe Regel wie bei den Waenden.
+        var farbe := Color(0.30, 0.56, 0.66, 0.20)
+
+        if bool(d[&"schwarm"]):
+            # Ein Schwaermchen: ein paar Punkte, die umeinander kreisen.
+            for k in int(d[&"zahl"]):
+                var w := TAU * float(k) / float(d[&"zahl"]) + zeit * 0.5
+                draw_circle(p + Vector2(cos(w), sin(w) * 0.6) * r,
+                    1.5, Color(farbe.r, farbe.g, farbe.b, 0.26))
+            continue
+
+        # Eine Qualle: Schirm, der sich zusammenzieht, und Faeden dahinter.
+        var schirm := PackedVector2Array()
+        var breit := r * (1.15 - 0.25 * atem)
+        var hochziehen := r * (0.62 + 0.30 * atem)
+        for k in 11:
+            var w := lerpf(PI, TAU, float(k) / 10.0)
+            schirm.append(p + Vector2(cos(w) * breit, sin(w) * hochziehen))
+        draw_colored_polygon(schirm, Color(farbe.r, farbe.g, farbe.b, 0.13))
+        draw_polyline(schirm, Color(farbe.r, farbe.g, farbe.b, 0.30), 1.2, true)
+        for k in 4:
+            var s := lerpf(-0.7, 0.7, float(k) / 3.0)
+            var wurzel := p + Vector2(s * breit, 0.0)
+            draw_line(wurzel, wurzel + Vector2(
+                sin(zeit * 0.8 + float(k) + float(d[&"phase"])) * r * 0.25,
+                r * (1.1 + 0.5 * atem)),
+                Color(farbe.r, farbe.g, farbe.b, 0.18), 1.1)
+
+
 func _draw() -> void:
     # Von hinten nach vorn. Das ist die ganze Ordnung, die Tiefe ausmacht.
     for ebene in EBENEN:
@@ -347,6 +425,9 @@ func _draw() -> void:
         _zeichne_risse(ebene, versatz)
         _zeichne_vorspruenge(ebene, versatz)
 
+    # Zwischen die hinteren Waende und den Bewuchs: die Treiber stehen im
+    # offenen Wasser, also vor dem Fels und hinter allem, was am Fels sitzt.
+    _zeichne_treiber()
     _zeichne_krusten()
     _zeichne_schleier()
     _zeichne_bewuchs()

@@ -29,7 +29,12 @@ werden.
 | Leitwesen | die Schlundmutter am Ende jedes Abschnitts — ein Höhepunkt alle zehn Wellen |
 | Mutationen | ab der zweiten Umdrehung tragen Wellen eigene Züge: gepanzert, lichtscheu, unstet, stoßweise, hastig, aufgedunsen |
 | Bestiarium | jede begegnete Art mit ihrer Regel; unbekannte zeigen nur, ab wann sie kommen |
-| Grafische Tiefe | drei Wandebenen mit Wasserdunst, Staub im Lichtkegel, Randlicht auf jedem Tier, Schlick im Vordergrund |
+| Grafische Tiefe | drei Wandebenen mit Wasserdunst, Staub und wandernde Schlieren im Lichtkegel, Randlicht auf jedem Tier, Schlick im Vordergrund |
+| Der Fels | Platten, Risse, Krusten und Schleier auf jeder Wandebene — alle hellen Kanten zur Grabenmitte, weil dort die einzige Lichtquelle steht |
+| Der Wächter | eigene Figur vor dem Kegel: Haftwurzeln, atmende Kiemen, Adernetz und ein Organ, das beim Feuern aufflammt. Er zuckt, wenn die Brut getroffen wird |
+| Die Brut | ein Gelege statt einer Punktreihe: die Eier stecken zwischen Bett und Lippe der Membran |
+| Leben im Wasser | treibende Quallen und Schwärmchen weit hinten — ausdrücklich keine Spielfiguren |
+| Rückmeldung | Zittern bei Treffern, farbiger Bildrand beim Verlust eines Eis, Zeitlupe auf das erlegte Leitwesen |
 | Sechs Grabenabschnitte | eigene Regel **und** eigene Farbe je Abschnitt: Strömung, Trübung, Dunkelphasen, Streulicht |
 | Grabentiefe | der Tiefenschacht öffnet die Abschnitte — abgeleitet aus der Sollkurve |
 | Kolonie | fünf Kammern mit Stufen, Kosten und Bauzeiten; 120 Tage gemessen, ohne Warte- und ohne Fortschrittsmauer |
