@@ -357,7 +357,8 @@ func _draw() -> void:
     # Zeit sehen muss.
     _zeichne_sockel()
     _zeichne_brut()
-    _zeichne_waechter()
+    # Der Waechter steht nicht mehr hier. Er wird **ueber** dem Kegel
+    # gezeichnet - siehe `waechter.gd`.
 
 
 ## Wie hell der Kegel diesen Punkt trifft. 0.0, solange kein Kegel gesetzt
@@ -659,59 +660,17 @@ func _zeichne_brut() -> void:
 ## sieht aus wie eine Kiste, auf der jemand sitzt.
 func _zeichne_sockel() -> void:
     var p := Graben.WAECHTER
+    # Derselbe Massstab wie das Tier darin - sonst waechst der Waechter aus
+    # seinem Wulst heraus.
+    var g := Graben.WAECHTER_GROESSE
     var kuppe := PackedVector2Array()
     for i in 15:
         var w := lerpf(PI, TAU, float(i) / 14.0)
         var welle := 1.0 + 0.09 * sin(float(i) * 2.3)
-        kuppe.append(p + Vector2(cos(w) * 74.0 * welle, sin(w) * 24.0 * welle + 52.0))
+        kuppe.append(p + Vector2(cos(w) * 74.0 * welle,
+            sin(w) * 24.0 * welle + 52.0) * g)
     var sockel := kuppe.duplicate()
-    sockel.append(p + Vector2(82.0, 300.0))
-    sockel.append(p + Vector2(-82.0, 300.0))
+    sockel.append(p + Vector2(82.0, 300.0) * g)
+    sockel.append(p + Vector2(-82.0, 300.0) * g)
     draw_colored_polygon(sockel, fels.lightened(0.04))
     draw_polyline(kuppe, Color(0.18, 0.36, 0.42, 0.34), 1.4, true)
-
-
-func _zeichne_waechter() -> void:
-    var p := Graben.WAECHTER
-    var puls := 0.5 + 0.5 * sin(zeit * 1.1)
-
-    # Ein festgewachsener Koerper mit dem Leuchtorgan obenauf. Kein Gesicht,
-    # keine Gliedmassen - das Tier soll wie Teil der Kolonie wirken.
-    var leib := PackedVector2Array([
-        Vector2(-34.0, 44.0), Vector2(-20.0, -8.0), Vector2(-9.0, -22.0),
-        Vector2(9.0, -22.0), Vector2(20.0, -8.0), Vector2(34.0, 44.0),
-    ])
-    var verschoben := PackedVector2Array()
-    for v in leib:
-        verschoben.append(p + v)
-    draw_colored_polygon(verschoben, Color(0.10, 0.22, 0.26))
-    draw_polyline(verschoben, Color(0.26, 0.52, 0.58, 0.9), 2.0, true)
-
-    for i in 5:
-        var s := lerpf(-24.0, 24.0, float(i) / 4.0)
-        var wurzel := p + Vector2(s, 40.0)
-        draw_line(wurzel, wurzel + Vector2(sin(zeit * 0.9 + float(i)) * 5.0, 22.0),
-            Color(0.18, 0.40, 0.44, 0.7), 3.0)
-
-    # Adern im Leib, die zum Leuchtorgan laufen. Sie pulsen leicht versetzt -
-    # das ist der billigste Weg, einem stillen Koerper Leben zu geben.
-    for i in 3:
-        var s_i := lerpf(-13.0, 13.0, float(i) / 2.0)
-        var ader := PackedVector2Array([
-            p + Vector2(s_i * 1.6, 40.0),
-            p + Vector2(s_i * 1.15, 12.0),
-            p + Vector2(s_i * 0.5, -12.0),
-        ])
-        var glut := 0.5 + 0.5 * sin(zeit * 1.6 + float(i) * 1.1)
-        draw_polyline(ader, Color(0.42, 0.86, 0.94, 0.18 + 0.20 * glut), 2.0, true)
-
-    # Das Leuchtorgan selbst: Kern, Hof und ein Kranz feiner Fuehler.
-    var kopf := p + Vector2(0.0, -18.0)
-    for i in 9:
-        var w := lerpf(-PI * 0.85, -PI * 0.15, float(i) / 8.0)
-        var laenge := 13.0 + 5.0 * sin(zeit * 1.4 + float(i) * 0.9)
-        draw_line(kopf, kopf + Vector2(cos(w), sin(w)) * laenge,
-            Color(0.46, 0.88, 0.96, 0.30), 1.3)
-    draw_circle(kopf, 20.0 + puls * 3.0, Color(0.40, 0.86, 0.98, 0.10))
-    draw_circle(kopf, 9.0 + puls * 1.5, Color(0.70, 0.98, 1.0, 0.85))
-    draw_circle(kopf, 4.2, Color(1.0, 1.0, 0.98, 0.95))

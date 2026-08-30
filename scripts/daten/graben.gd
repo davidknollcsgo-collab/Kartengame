@@ -57,6 +57,14 @@ const NISCHEN: PackedVector2Array = [
     Vector2(-244.0, 306.0), Vector2(244.0, 336.0),
 ]
 
+## Wie gross der Waechter und sein Kalkwulst gezeichnet werden.
+##
+## Steht hier und nicht in einer der beiden Zeichendateien, weil **beide** sie
+## brauchen: das Tier zeichnet `waechter.gd`, den Sockel darunter
+## `kolonie.gd`, und die zwei muessen zusammenpassen. Zwei Zahlen, die
+## dasselbe bedeuten, laufen auseinander.
+const WAECHTER_GROESSE := 1.45
+
 ## --- Sitzung ---
 
 const WELLEN_JE_SITZUNG := 5

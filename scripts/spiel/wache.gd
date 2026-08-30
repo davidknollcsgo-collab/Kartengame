@@ -33,6 +33,7 @@ const SCHUETTELN_ABKLINGEN := 7.0
 @onready var _kegel: Node2D = $Kegel
 @onready var _schwarm: Node2D = $Schwarm
 @onready var _kolonie: Node2D = $Kolonie
+@onready var _waechter: Node2D = $Waechter
 @onready var _funken: Node2D = $Funken
 @onready var _vordergrund: Node2D = $Vordergrund
 @onready var _wasser: ColorRect = $Wasser/Flaeche
@@ -89,6 +90,7 @@ func _ready() -> void:
     # macht. Deshalb bekommt die Kolonie den Knoten selbst, nicht eine Kopie
     # seiner Werte - eine Kopie liefe irgendwann auseinander.
     _kolonie.kegel = _kegel
+    _waechter.kegel = _kegel
     _faerbe_abschnitt(Graben.abschnitt(welle_nummer), true)
     _koloniebild.geschlossen.connect(_kolonie_geschlossen)
     Fortschritt.stand_geaendert.connect(_stelle_ausbau_ein)
