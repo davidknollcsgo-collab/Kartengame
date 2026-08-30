@@ -69,7 +69,9 @@ Grafikprogramm, weil es keines braucht.
 
 **Keine einzige Audiodatei im Projekt.** Alles entsteht zur Laufzeit in
 `scripts/spiel/klang.gd` als `AudioStreamWAV` mit von Hand gefüllten Puffern:
-Treffer, Tod, Fall der Brut, Wehrpolyp, fertige Kammer, Wellenbeginn, Tippen.
+Treffer, Tod, Fall der Brut, Wehrpolyp, fertige Kammer, Wellenbeginn, Tippen —
+und der Grundton des Grabens, sechs Sekunden in Schleife, je Abschnitt ein
+eigener.
 Null Audiodateien heißt null Lizenzrisiko.
 
 | Datei | Herkunft | Autor | Lizenz | Quelle | Datum |

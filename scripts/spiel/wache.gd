@@ -216,6 +216,7 @@ func starte_welle() -> void:
     # Dunkeln steht und nicht weiss warum, haelt es fuer einen Fehler.
     var a := Graben.abschnitt(welle_nummer)
     _faerbe_abschnitt(a)
+    Klang.setze_abschnitt(a)
     if Regeln.neu_in(a) and welle_nummer == a * Graben.WELLEN_JE_ABSCHNITT + 1:
         _hud.zeige_abschnitt(a)
 

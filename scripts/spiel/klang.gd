@@ -28,6 +28,21 @@ var _stimmen: Array[AudioStreamPlayer] = []
 var _naechste := 0
 var _vorrat := {}
 
+## --- Grundton des Grabens ---
+##
+## Zwischen den Wellen war es still, und Stille ist im Wasser das Einzige, was
+## es nicht gibt. Ein tiefer, sehr leiser Grundton laeuft deshalb immer - und
+## er wechselt mit dem Grabenabschnitt: tiefer, je weiter unten, und rauer,
+## wo das Wasser aufgewuehlt ist.
+##
+## Es ist derselbe Weg wie bei allen anderen Toenen - ein gerechneter Puffer,
+## keine Datei. Nur laeuft dieser in Schleife.
+const GRUND_LAENGE := 6.0
+const GRUND_LAUT := 0.16
+
+var _grundton: AudioStreamPlayer
+var _grund_abschnitt := -1
+
 
 func _ready() -> void:
     process_mode = Node.PROCESS_MODE_ALWAYS
@@ -44,12 +59,90 @@ func _ready() -> void:
     _vorrat[Ton.KAMMER] = _kammer()
     _vorrat[Ton.WELLE] = _welle()
     _vorrat[Ton.TIPP] = _tipp()
+
+    _grundton = AudioStreamPlayer.new()
+    _grundton.bus = &"Master"
+    _grundton.volume_db = linear_to_db(GRUND_LAUT)
+    add_child(_grundton)
+    setze_abschnitt(0)
+
     _bus_setzen()
+
+
+## Stellt den Grundton auf einen Grabenabschnitt um.
+##
+## Wird beim Wellenstart gerufen. Der Puffer wird nur neu gerechnet, wenn sich
+## der Abschnitt wirklich aendert - sechs Sekunden Ton zu erzeugen kostet
+## genug, um es nicht je Welle zu tun.
+func setze_abschnitt(abschnitt: int) -> void:
+    if abschnitt == _grund_abschnitt or _grundton == null:
+        return
+    _grund_abschnitt = abschnitt
+    var strom := _grund(abschnitt)
+    strom.loop_mode = AudioStreamWAV.LOOP_FORWARD
+    strom.loop_begin = 0
+    strom.loop_end = strom.data.size() / 2 - 1
+    _grundton.stream = strom
+    if laut > 0.001:
+        _grundton.play()
 
 
 func _bus_setzen() -> void:
     var db := -80.0 if laut <= 0.001 else linear_to_db(laut)
     AudioServer.set_bus_volume_db(0, db)
+    if _grundton == null:
+        return
+    # Bei Ton aus wird der Grundton wirklich angehalten, nicht nur leise
+    # gedreht: ein Spieler, der den Ton ausschaltet, will keinen Puffer, der
+    # im Hintergrund weiterlaeuft und Strom kostet.
+    if laut <= 0.001:
+        _grundton.stop()
+    elif not _grundton.playing and _grundton.stream != null:
+        _grundton.play()
+
+
+## Der Grundton eines Abschnitts.
+##
+## Zwei tiefe Sinuswellen mit leicht unreinem Verhaeltnis - dadurch schwebt
+## der Ton, statt zu stehen - und darueber gefiltertes Rauschen als Stroemung.
+## Anfang und Ende werden ineinandergeblendet, sonst knackt die Schleife an
+## der Nahtstelle.
+static func _grund(abschnitt: int) -> AudioStreamWAV:
+    var laenge := int(RATE * GRUND_LAENGE)
+    var m := PackedFloat32Array()
+    m.resize(laenge)
+
+    # Je tiefer der Abschnitt, desto tiefer der Ton und desto mehr Stroemung.
+    var t_ab := float(clampi(abschnitt, 0, 5)) / 5.0
+    var f0 := lerpf(48.0, 31.0, t_ab)
+    var f1 := f0 * 1.503
+    var rauschen_anteil := lerpf(0.16, 0.42, t_ab)
+
+    var rng := RandomNumberGenerator.new()
+    rng.seed = 0x4e454b40 + abschnitt
+    var glatt := 0.0
+    var p0 := 0.0
+    var p1 := 0.0
+
+    for i in laenge:
+        var t := float(i) / float(laenge)
+        p0 += TAU * f0 / float(RATE)
+        p1 += TAU * f1 / float(RATE)
+        glatt = lerpf(glatt, rng.randf_range(-1.0, 1.0), 0.012)
+        # Ein langsames Atmen ueber die ganze Schleife, damit sie sich nicht
+        # als Schleife anhoert.
+        var atem := 0.72 + 0.28 * sin(t * TAU)
+        m[i] = (sin(p0) * 0.62 + sin(p1) * 0.24
+            + glatt * rauschen_anteil) * atem * 0.5
+
+    # Naht schliessen: die letzten Zehntel ueber den Anfang blenden.
+    var blende := int(RATE * 0.25)
+    for i in blende:
+        var f := float(i) / float(blende)
+        var j := laenge - blende + i
+        m[j] = lerpf(m[j], m[i], f)
+
+    return _stream(m)
 
 
 ## Spielt einen Ton. `hoehe` verschiebt die Tonhoehe - damit klingt der
