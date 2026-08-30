@@ -40,10 +40,36 @@ var _zeit := 0.0
 var _schwaden: Array[Dictionary] = []
 var _flocken: Array[Dictionary] = []
 
+## Das Riff in den unteren Ecken. Siehe `_zeichne_riff()`.
+var _riff: Array[Dictionary] = []
+
+const RIFF_FARBEN: PackedColorArray = [
+    Color(0.92, 0.46, 0.30),
+    Color(0.86, 0.34, 0.52),
+    Color(0.58, 0.40, 0.86),
+    Color(0.36, 0.76, 0.68),
+]
+
 
 func _ready() -> void:
     var rng := RandomNumberGenerator.new()
     rng.seed = 0x4e454b33
+
+    # Das Riff: wenige, grosse Stoecke je Ecke. Viele kleine waeren wieder
+    # Rauschen, und Rauschen ist genau das, was der Vordergrund nicht sein
+    # darf - er liegt vor allem anderen.
+    for seite: float in [-1.0, 1.0]:
+        for i in 4:
+            var arme := PackedFloat32Array()
+            for _a in rng.randi_range(5, 8):
+                arme.append(rng.randf_range(0.55, 1.0))
+            _riff.append({
+                &"seite": seite,
+                &"rand": rng.randf_range(300.0, 372.0),
+                &"gross": rng.randf_range(110.0, 230.0),
+                &"arme": arme,
+                &"farbe": RIFF_FARBEN[rng.randi() % RIFF_FARBEN.size()],
+            })
 
     for i in SCHWADEN:
         var punkte := PackedVector2Array()
@@ -89,7 +115,67 @@ func _draw() -> void:
     if staerke <= 0.01:
         return
     _zeichne_schwaden()
+    _zeichne_riff()
     _zeichne_flocken()
+
+
+## Das Riff im Vordergrund.
+##
+## **Es rahmt, es spielt nicht mit.** Ein Bild braucht eine unterste Ebene,
+## sonst schwebt alles darin gleich weit weg - und die untersten Ecken sind
+## der einzige Platz, an dem etwas stehen darf, ohne dem Spieler die Sicht auf
+## den Schlund zu nehmen. Deshalb: nur in den Ecken, nur nach innen wachsend,
+## und **fast schwarz**. Was im Vordergrund steht, ist naeher an der Kamera
+## als jede Lichtquelle; es ist eine Silhouette. Nur die Spitzen bekommen
+## Farbe, und die ist gedaempft.
+##
+## Verankert wird es am unteren Bildrand und nicht an einem Weltpunkt: die
+## Kamera richtet sich nach der Bildhoehe (siehe `wache.gd::UNTERKANTE`), und
+## ein Riff, das an einer festen Welthoehe klebt, waere auf einem langen
+## Telefon in der Bildmitte.
+func _zeichne_riff() -> void:
+    var sicht := get_viewport_rect().size
+    var unten := get_global_transform_with_canvas().affine_inverse() \
+        * Vector2(sicht.x * 0.5, sicht.y)
+    for f in _riff:
+        var seite: float = f[&"seite"]
+        var fuss := Vector2(seite * float(f[&"rand"]), unten.y + 30.0)
+        var r: float = f[&"gross"]
+        var farbe: Color = f[&"farbe"]
+        var arme: PackedFloat32Array = f[&"arme"]
+        var n := arme.size()
+
+        # Der Stamm - dunkel und breit, damit die Ecke Gewicht bekommt.
+        var stamm := PackedVector2Array()
+        for i in 9:
+            var t := float(i) / 8.0
+            var w := lerpf(-1.15, 1.15, t)
+            stamm.append(fuss + Vector2(sin(w) * r * 0.55 * -seite,
+                -cos(w) * r * 0.30 - r * 0.10))
+        stamm.append(fuss + Vector2(seite * r * 0.7, 60.0))
+        stamm.append(fuss + Vector2(-seite * r * 0.7, 60.0))
+        draw_colored_polygon(stamm, Color(0.014, 0.030, 0.042, 0.95))
+
+        for i in n:
+            var t := float(i) / float(maxi(1, n - 1))
+            # Nach innen und nach oben, weg von der Ecke.
+            var w := lerpf(0.15, 1.35, t) * -seite
+            var laenge := r * arme[i]
+            var linie := PackedVector2Array([fuss])
+            var punkt := fuss
+            var richtung := Vector2(sin(w), -cos(w))
+            for g in 4:
+                richtung = richtung.rotated(
+                    sin(_zeit * 0.35 + float(i) * 1.3 + float(g)) * 0.06
+                    + (0.16 * -seite))
+                punkt += richtung * laenge * 0.25
+                linie.append(punkt)
+            draw_polyline(linie, Color(0.016, 0.036, 0.050, 0.95),
+                5.5 - 0.5 * float(i % 3), true)
+            # Nur die Spitze traegt Farbe, und leise.
+            var spitze: Vector2 = linie[linie.size() - 1]
+            draw_circle(spitze, 3.4, Color(farbe.r, farbe.g, farbe.b, 0.16))
+            draw_circle(spitze, 1.5, Color(farbe.r, farbe.g, farbe.b, 0.30))
 
 
 ## Schlickschwaden. Sie steigen langsam, weil der Spieler in den Graben

@@ -18,7 +18,14 @@ const RINGE := 9            ## Aufloesung in der Tiefe
 ## wie Nebel; Licht braucht Saettigung, nicht nur Helligkeit.
 const FARBE := Color(0.24, 0.86, 1.0)
 const KERN := Color(0.82, 1.0, 0.96)
-const STAERKE := 0.52
+## **Der Keil ist leiser geworden, die Funken lauter.**
+##
+## Der Kegel war eine geschlossene helle Flaeche mit ein paar Punkten darin -
+## im Bild ein Scheinwerfer. Was ihn zu Licht *im Wasser* macht, ist nicht die
+## Flaeche, sondern das, was darin schwebt und funkelt: der Strahl selbst ist
+## unsichtbar, man sieht nur, was er trifft. Also der Keil zurueck und dafuer
+## dreimal so viel Staub, in mehr Groessen.
+const STAERKE := 0.33
 
 ## --- Staub im Strahl ---
 ##
@@ -29,7 +36,7 @@ const STAERKE := 0.52
 ## Die Koerner stehen fest im Grabenraum und sinken langsam - sie gehoeren dem
 ## Wasser, nicht dem Kegel. Wer den Kegel schwenkt, sieht deshalb andere
 ## Koerner aufleuchten, und genau daran liest man die Bewegung ab.
-const STAUB := 220
+const STAUB := 460
 const STAUB_SINKEN := 16.0
 const STAUB_HELL := 0.90
 
@@ -75,7 +82,10 @@ func _streue_staub() -> void:
         _staub[i] = Vector2(
             rng.randf_range(Graben.FELD.position.x, Graben.FELD.end.x),
             rng.randf_range(Graben.FELD.position.y - 200.0, Graben.FELD.end.y))
-        _staub_groesse[i] = rng.randf_range(0.7, 2.3)
+        # Groessenspanne statt Einheitskorn: die wenigen grossen sind es,
+        # die im Strahl aufblitzen, und die vielen kleinen sind das Wasser
+        # dazwischen. Bei einer Spanne von 0.7 bis 2.3 sah alles gleich aus.
+        _staub_groesse[i] = pow(rng.randf(), 2.2) * 3.6 + 0.5
         _staub_takt[i] = rng.randf_range(0.3, 1.4)
 
 
@@ -175,8 +185,12 @@ func _zeichne_staub(spitze: Vector2, puls: float) -> void:
         var funkeln := 0.55 + 0.45 * sin(flackern * _staub_takt[i] * 3.1 + float(i))
         var r := _staub_groesse[i] * (0.8 + 1.5 * hell) * puls
         var deckung := hell * hell * STAUB_HELL * funkeln
-        draw_circle(p, r * 2.6, Color(FARBE.r, FARBE.g, FARBE.b, deckung * 0.22))
-        draw_circle(p, r, Color(KERN.r, KERN.g, KERN.b, deckung))
+        # Drei Kreise statt zwei: ein weiter Hof, ein Koerper, ein harter Kern.
+        # Der Hof ist es, der aus einem Punkt ein Licht macht - ohne ihn sieht
+        # ein Staubkorn aus wie ein Pixelfehler.
+        draw_circle(p, r * 4.2, Color(FARBE.r, FARBE.g, FARBE.b, deckung * 0.10))
+        draw_circle(p, r * 1.9, Color(FARBE.r, FARBE.g, FARBE.b, deckung * 0.26))
+        draw_circle(p, r * 0.72, Color(KERN.r, KERN.g, KERN.b, deckung))
 
 
 func _farbe_an(spitze: Vector2, punkt: Vector2, puls: float) -> Color:

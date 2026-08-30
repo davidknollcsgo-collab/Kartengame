@@ -316,8 +316,14 @@ func _baue_felsdetail(rng: RandomNumberGenerator) -> void:
                 # in dieser Flaeche lagen ein paar Tupfen. Fels liest man an
                 # **grossen** Formen, die einander ueberlappen; das Kleinzeug
                 # kommt erst danach und nur dort, wo man es sieht.
-                for _t in 3:
-                    if rng.randf() > 0.52 * dichte:
+                # Nur auf den fernen Ebenen. Die vorderste Wand ist die
+                # dunkelste und die naechste - sie traegt die Silhouette, und
+                # eine Silhouette wird durch Struktur nicht besser, sondern
+                # unruhiger.
+                if ebene >= EBENEN - 1:
+                    continue
+                for _t in 2:
+                    if rng.randf() > 0.40 * dichte:
                         continue
                     var weg := rng.randf_range(6.0, 210.0)
                     var mitte := p + Vector2(-nach_innen * weg,
@@ -452,12 +458,12 @@ func _baue_korallen(rng: RandomNumberGenerator) -> void:
     var kante := _wand_links.slice(1, _wand_links.size() - 1) \
         + _wand_rechts.slice(1, _wand_rechts.size() - 1)
     for i in kante.size():
-        if rng.randf() > 0.5:
+        if rng.randf() > 0.34:
             continue
         var p: Vector2 = kante[i]
         var innen := -signf(p.x)
         var arme := PackedFloat32Array()
-        for _a in rng.randi_range(5, 9):
+        for _a in rng.randi_range(6, 11):
             arme.append(rng.randf_range(0.5, 1.0))
         _korallen.append({
             # **An der Kante, mit dem Fuss knapp im Fels.**
@@ -472,7 +478,7 @@ func _baue_korallen(rng: RandomNumberGenerator) -> void:
                 rng.randf_range(-16.0, 16.0)),
             &"innen": innen,
             &"art": rng.randi() % 3,
-            &"gross": rng.randf_range(16.0, 46.0),
+            &"gross": rng.randf_range(34.0, 98.0),
             &"neigung": rng.randf_range(-0.5, 0.5),
             &"arme": arme,
             &"takt": rng.randf_range(0.25, 0.7),
@@ -582,7 +588,7 @@ func _baue_zeichen(rng: RandomNumberGenerator) -> void:
     var kante := _wand_links.slice(1, _wand_links.size() - 1) \
         + _wand_rechts.slice(1, _wand_rechts.size() - 1)
     for i in kante.size():
-        if rng.randf() > 0.42:
+        if rng.randf() > 0.26:
             continue
         var p: Vector2 = kante[i]
         var innen := -signf(p.x)
@@ -599,7 +605,7 @@ func _baue_zeichen(rng: RandomNumberGenerator) -> void:
             &"ort": p + Vector2(-innen * rng.randf_range(40.0, 200.0),
                 rng.randf_range(-30.0, 30.0)),
             &"strich": strich,
-            &"gross": rng.randf_range(5.0, 11.0),
+            &"gross": rng.randf_range(10.0, 20.0),
             &"takt": rng.randf_range(0.20, 0.55),
             &"phase": rng.randf_range(0.0, TAU),
         })
@@ -727,12 +733,16 @@ func _draw() -> void:
 
     # Zwischen die hinteren Waende und den Bewuchs: die Treiber stehen im
     # offenen Wasser, also vor dem Fels und hinter allem, was am Fels sitzt.
+    # **Hier standen einmal sechs Lagen Kleinkram uebereinander:** Krusten,
+    # Schleier, Roehrenbewuchs, Zeichen, Korallen, Treiber. Jede fuer sich
+    # war begruendet, zusammen ergaben sie ein Rauschen, in dem der Spieler
+    # die Raeuber suchen musste. Ein Bild wird nicht reicher, indem man mehr
+    # hineinlegt - es wird reicher, wenn das, was drin ist, groesser ist und
+    # Platz hat. Uebrig sind drei: Treiber im Wasser, Zeichen im Fels,
+    # Korallen an der Kante.
     _zeichne_treiber()
     _zeichne_zeichen()
-    _zeichne_krusten()
     _zeichne_korallen()
-    _zeichne_schleier()
-    _zeichne_bewuchs()
     _zeichne_nischen()
     _zeichne_polypen()
     # Der Sockel gehoert hinter die Brut. Andersherum deckte er die Eierreihe
@@ -1163,14 +1173,58 @@ func _zeichne_sockel() -> void:
     # Derselbe Massstab wie das Tier darin - sonst waechst der Waechter aus
     # seinem Wulst heraus.
     var g := Graben.WAECHTER_GROESSE
-    var kuppe := PackedVector2Array()
-    for i in 15:
-        var w := lerpf(PI, TAU, float(i) / 14.0)
-        var welle := 1.0 + 0.09 * sin(float(i) * 2.3)
-        kuppe.append(p + Vector2(cos(w) * 74.0 * welle,
-            sin(w) * 24.0 * welle + 52.0) * g)
-    var sockel := kuppe.duplicate()
-    sockel.append(p + Vector2(82.0, 300.0) * g)
-    sockel.append(p + Vector2(-82.0, 300.0) * g)
-    draw_colored_polygon(sockel, fels.lightened(0.04))
-    draw_polyline(kuppe, Color(0.18, 0.36, 0.42, 0.34), 1.4, true)
+
+    # **Eine geschnitzte Saeule, kein Kasten.**
+    #
+    # Der Sockel war ein dunkles Trapez, das nach unten aus dem Bild lief -
+    # richtig gedacht (einer mit sichtbarer Unterkante sieht aus wie eine
+    # Kiste, auf der jemand sitzt), aber leer ausgefuehrt. Was eine Saeule
+    # zur Saeule macht, ist ihr Profil: eine ueberstehende Deckplatte, ein
+    # eingezogener Schaft, ein Fuss, der sich wieder oeffnet. Und darin
+    # leuchtet der Kern der Kolonie durch - die Begruendung dafuer, warum der
+    # Waechter hier steht und nicht anderswo.
+    var schaft := PackedVector2Array()
+    var stufen := 22
+    for seite: float in SEITEN:
+        for i in stufen + 1:
+            var t := float(i) / float(stufen)
+            if seite > 0.0:
+                t = 1.0 - t
+            schaft.append(p + Vector2(seite * _sockelbreite(t), _sockelhoehe(t)) * g)
+    draw_colored_polygon(schaft, fels.lightened(0.05))
+
+    # Der Kern liegt tief im Schaft, nicht hinter dem Tier: hoeher angesetzt
+    # legte er einen Hof um den Waechter und sah aus wie ein zweites Organ.
+    for i in 4:
+        var t := float(i) / 3.0
+        var mitte := p + Vector2(0.0, lerpf(268.0, 150.0, t)) * g
+        draw_circle(mitte, lerpf(24.0, 9.0, t) * g,
+            Color(0.34, 0.82, 0.84, 0.05 + 0.055 * t))
+
+    var kante := schaft.slice(1, schaft.size() - 1)
+    draw_polyline(kante, Color(0.24, 0.46, 0.52, 0.40), 1.8, true)
+
+    for i in 5:
+        var t := lerpf(0.30, 0.86, float(i) / 4.0)
+        var halb := _sockelbreite(t) * 0.88
+        var y := _sockelhoehe(t)
+        draw_line(p + Vector2(-halb, y) * g, p + Vector2(halb, y) * g,
+            Color(0.20, 0.40, 0.46, 0.26), 1.6)
+
+
+## Das Profil des Sockels. `t` laeuft von 0 an der Deckplatte bis 1 am Fuss,
+## der unten aus dem Bild laeuft.
+## **Schmal.** Der erste Anlauf stand bei 80 Einheiten Halbbreite - das sind
+## 232 im Bild, und damit war die Saeule breiter als der Waechter hoch ist:
+## ein Keil, der ihn verschluckte, statt eines Sockels, auf dem er steht. Was
+## eine Saeule traegt, ist ihre Schlankheit; ein breiter Klotz ist ein Fundament.
+func _sockelbreite(t: float) -> float:
+    if t < 0.14:
+        # Die Deckplatte steht ueber - daran erkennt man eine Saeule.
+        return lerpf(58.0, 44.0, t / 0.14)
+    var u := (t - 0.14) / 0.86
+    return 44.0 - 14.0 * sin(u * PI * 0.85) + 30.0 * pow(u, 3.0)
+
+
+func _sockelhoehe(t: float) -> float:
+    return lerpf(50.0, 330.0, t)
