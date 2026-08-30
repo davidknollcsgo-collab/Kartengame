@@ -36,9 +36,28 @@ const STAERKE := 0.33
 ## Die Koerner stehen fest im Grabenraum und sinken langsam - sie gehoeren dem
 ## Wasser, nicht dem Kegel. Wer den Kegel schwenkt, sieht deshalb andere
 ## Koerner aufleuchten, und genau daran liest man die Bewegung ab.
-const STAUB := 460
+##
+## **Fein, nicht dick.** Der erste Anlauf gab jedem Korn einen Hof vom
+## Vierfachen seines Radius und liess den Radius bis auf neun Pixel wachsen -
+## ein Hof von neununddreissig Pixeln, und das viermalhundertsechzigfach. Im
+## Bild war das kein Staub mehr, sondern ein Feld aus Ringen, jeder so gross
+## wie ein Raeuber. Wer den Bildschirm ansah, zaehlte fuenfzig Kreise und
+## suchte darin die zwoelf Tiere. Das ist genau die Unuebersichtlichkeit, die
+## das Spiel unspielbar macht - und sie kam nicht von der Welle, sondern vom
+## Schmuck.
+##
+## Ein Schwebstoffkorn ist ein **Punkt**. Es darf funkeln, es darf einen
+## Hauch von Hof haben, aber es darf nie so gross werden, dass man es fuer
+## ein Lebewesen haelt. Deshalb: der Kern bleibt unter zwei Pixeln, der Hof
+## unter sieben, und die Anzahl darf hoch bleiben - viele winzige Punkte sind
+## Wasser, wenige grosse sind Unrat.
+const STAUB := 420
 const STAUB_SINKEN := 16.0
-const STAUB_HELL := 0.90
+const STAUB_HELL := 0.85
+
+## Groesster Kernradius eines Korns in Pixeln. Alles hier haengt daran.
+const KORN_GROESSTE := 1.7
+const KORN_HOF := 3.6
 
 
 var richtung := Vector2.UP
@@ -85,7 +104,7 @@ func _streue_staub() -> void:
         # Groessenspanne statt Einheitskorn: die wenigen grossen sind es,
         # die im Strahl aufblitzen, und die vielen kleinen sind das Wasser
         # dazwischen. Bei einer Spanne von 0.7 bis 2.3 sah alles gleich aus.
-        _staub_groesse[i] = pow(rng.randf(), 2.2) * 3.6 + 0.5
+        _staub_groesse[i] = pow(rng.randf(), 2.2) * KORN_GROESSTE + 0.28
         _staub_takt[i] = rng.randf_range(0.3, 1.4)
 
 
@@ -183,14 +202,16 @@ func _zeichne_staub(spitze: Vector2, puls: float) -> void:
         if hell <= 0.06:
             continue
         var funkeln := 0.55 + 0.45 * sin(flackern * _staub_takt[i] * 3.1 + float(i))
-        var r := _staub_groesse[i] * (0.8 + 1.5 * hell) * puls
+        # Die Helligkeit geht in die **Deckung**, nicht mehr in den Radius.
+        # Vorher wuchs ein Korn im Kernstrahl auf das Zweieinhalbfache - und
+        # weil der Kern des Kegels genau dort steht, wo der Spieler hinsieht,
+        # wurden ausgerechnet die Koerner am groessten, die am meisten stoeren.
+        var r := _staub_groesse[i] * puls
         var deckung := hell * hell * STAUB_HELL * funkeln
-        # Drei Kreise statt zwei: ein weiter Hof, ein Koerper, ein harter Kern.
-        # Der Hof ist es, der aus einem Punkt ein Licht macht - ohne ihn sieht
-        # ein Staubkorn aus wie ein Pixelfehler.
-        draw_circle(p, r * 4.2, Color(FARBE.r, FARBE.g, FARBE.b, deckung * 0.10))
-        draw_circle(p, r * 1.9, Color(FARBE.r, FARBE.g, FARBE.b, deckung * 0.26))
-        draw_circle(p, r * 0.72, Color(KERN.r, KERN.g, KERN.b, deckung))
+        # Zwei Kreise: ein knapper Hof und ein harter Kern. Der dritte war der
+        # weite Hof - er hat aus jedem Punkt eine Scheibe gemacht.
+        draw_circle(p, r * KORN_HOF, Color(FARBE.r, FARBE.g, FARBE.b, deckung * 0.11))
+        draw_circle(p, r, Color(KERN.r, KERN.g, KERN.b, deckung))
 
 
 func _farbe_an(spitze: Vector2, punkt: Vector2, puls: float) -> Color:

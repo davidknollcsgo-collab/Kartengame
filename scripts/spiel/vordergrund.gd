@@ -152,8 +152,12 @@ func _zeichne_riff() -> void:
             var w := lerpf(-1.15, 1.15, t)
             stamm.append(fuss + Vector2(sin(w) * r * 0.55 * -seite,
                 -cos(w) * r * 0.30 - r * 0.10))
-        stamm.append(fuss + Vector2(seite * r * 0.7, 60.0))
+        # **Die Umlaufrichtung muss stimmen.** Der Bogen laeuft von `-seite`
+        # nach `+seite`; standen die beiden Bodenpunkte danach in derselben
+        # Reihenfolge, schloss sich das Vieleck ueber Kreuz. Godot meldete das
+        # jede einzelne Bildwiederholung mit "triangulation failed".
         stamm.append(fuss + Vector2(-seite * r * 0.7, 60.0))
+        stamm.append(fuss + Vector2(seite * r * 0.7, 60.0))
         draw_colored_polygon(stamm, Color(0.014, 0.030, 0.042, 0.95))
 
         for i in n:
@@ -189,17 +193,37 @@ func _zeichne_schwaden() -> void:
         var x: float = float(s[&"x"]) \
             + sin(_zeit * float(s[&"takt"])) * float(s[&"weite"])
         var mitte := Vector2(x, y)
+        _wolke(mitte, s[&"punkte"], SCHLICK, SCHWADEN_DECKUNG * staerke)
 
-        # Drei ineinandergelegte Stufen statt einer harten Kante: eine
-        # Schlickwolke hat keinen Umriss.
-        var punkte: PackedVector2Array = s[&"punkte"]
-        for stufe in 3:
-            var wuchs := 1.0 - 0.26 * float(stufe)
-            var flaeche := PackedVector2Array()
-            for p in punkte:
-                flaeche.append(mitte + p * wuchs)
-            draw_colored_polygon(flaeche, Color(SCHLICK.r, SCHLICK.g, SCHLICK.b,
-                SCHWADEN_DECKUNG * staerke * (0.32 + 0.34 * float(stufe))))
+
+## Eine Wolke ohne Rand.
+##
+## **Drei gestapelte Vielecke sind keine Wolke, sondern drei Vielecke.** Genau
+## das stand hier: eine Schlickflaeche in drei Groessen uebereinander, jede
+## mit fester Deckung. Der Kommentar daneben behauptete, damit habe sie keinen
+## Umriss - sie hatte drei. Im Bild waren es breite Sechsecke, die quer durch
+## den offenen Graben zogen, mit sauber gezogener Kante und sichtbarem
+## Deckungssprung an jeder Stufe. Sie waren das Groesste im Bild und das
+## Einzige, was aussah wie ein Fehler.
+##
+## Ein Verlauf kann, was eine Stapelung nicht kann: in der Mitte voll und am
+## Rand **genau null** sein. `draw_polygon` nimmt eine Farbe je Eckpunkt, also
+## wird die Wolke als Faecher aus Dreiecken gezeichnet - Mitte gedeckt, Rand
+## durchsichtig. Ein Dreieck je Ecke, neun Ecken, fuenf Wolken: fuenfundvierzig
+## Dreiecke fuer eine Flaeche, die vorher aus fuenfzehn Vielecken mit harten
+## Kanten bestand.
+func _wolke(mitte: Vector2, punkte: PackedVector2Array, farbe: Color,
+        deckung: float) -> void:
+    if deckung <= 0.002 or punkte.size() < 3:
+        return
+    var voll := Color(farbe.r, farbe.g, farbe.b, deckung)
+    var leer := Color(farbe.r, farbe.g, farbe.b, 0.0)
+    var n := punkte.size()
+    for i in n:
+        var a: Vector2 = mitte + punkte[i]
+        var b: Vector2 = mitte + punkte[(i + 1) % n]
+        draw_polygon(PackedVector2Array([mitte, a, b]),
+            PackedColorArray([voll, leer, leer]))
 
 
 ## Nahe Flocken. Gross und weich - sie sind ausserhalb der Schaerfe, und genau

@@ -874,42 +874,68 @@ func _zeichne_vorspruenge(ebene: int, versatz: Vector2) -> void:
 func _zeichne_mulden(ebene: int, versatz: Vector2) -> void:
     var dunst := EBENE_DUNST[ebene]
     var grund := fels.lerp(DUNST, dunst)
+
+    # **Der Kontrast einer Platte ist ein Anteil ihres Grundes, kein Betrag.**
+    #
+    # Hier stand `grund.lightened(0.085)`. `lightened` mischt gegen Weiss,
+    # also hebt es einen dunklen Ton um fast den vollen Betrag - auf einem
+    # Fels mit dem Wert 0.15 sind das +0.078, die Haelfte obendrauf. Im Bild
+    # waren das keine Platten mehr, sondern helle Sechsecke, die mitten im
+    # Wasser schwebten: flach, hartkantig, wie ausgeschnittenes Papier. Und
+    # ausgerechnet auf den **fernen** Ebenen fiel es am meisten auf, weil der
+    # Dunst dort den Fels aufhellt und ihn damit dem Wasser angleicht - eine
+    # Platte mit festem Aufschlag steht dann allein im Bild.
+    #
+    # Ein Faktor tut, was ein Betrag nicht kann: er waechst mit dem Grund und
+    # verschwindet mit ihm. Und weil der Dunst mit der Entfernung auch die
+    # Struktur frisst und nicht nur die Farbe, geht er hier ein zweites Mal
+    # ein - das ist Luftperspektive, konsequent zu Ende gedacht.
+    var wirkung := 1.0 - 0.72 * dunst
+
     for m in _mulden:
         if int(m[&"ebene"]) != ebene:
             continue
         var form := PackedVector2Array()
         for v: Vector2 in m[&"form"]:
             form.append(v + versatz)
-        # **Heller, nicht dunkler - beide Sorten.**
-        #
-        # Der erste Entwurf machte tiefe Mulden dunkel. Auf einem Fels, der
-        # ohnehin bei 0.055 liegt, ist dunkler aber kein Ton mehr, sondern
-        # Schwarz: im Bild standen Loecher in der Wand, als waere die
-        # Zeichnung kaputt. Nach unten ist hier kein Platz. Was eine Mulde
-        # von einem Buckel unterscheidet, ist deshalb nicht die Helligkeit
-        # der Flaeche, sondern **wo ihr heller Saum liegt** - oben bei einem
-        # Buckel, unten bei einer Mulde. Genau daran liest ein Auge Relief
-        # ab, und es funktioniert auch bei fast keinem Kontrast.
-        var tiefer := bool(m[&"tiefer"])
-        draw_colored_polygon(form, grund.lightened(0.045 if tiefer else 0.085))
 
-        # **Der Saum liegt zur Grabenmitte hin.**
+        # **Kein flacher Ton, sondern ein Verlauf ueber die Platte.**
         #
-        # Im Bild gibt es genau eine Lichtquelle, und die steht unten in der
-        # Mitte: der Kegel des Waechters. Also faengt jede Flaeche, die zur
-        # Mitte zeigt, Licht, und jede, die von ihr wegzeigt, keines. Das
-        # kostet nichts und ist der einzige Grund, warum ein flaches Vieleck
-        # wie ein Brocken aussieht statt wie ein Fleck.
+        # Es gibt genau eine Lichtquelle im Bild - den Kegel unten in der
+        # Mitte. Also ist die Seite, die zur Grabenmitte zeigt, die helle,
+        # und die abgewandte laeuft auf den Fels zurueck. Damit hat die
+        # Platte an ihrer Rueckseite **gar keine Kante mehr**: sie geht dort
+        # in die Wand ueber, statt an einer Linie aufzuhoeren. Genau das war
+        # der Grund, warum eine Platte wie ein Aufkleber aussah.
+        var tiefer := bool(m[&"tiefer"])
+        var hub := (0.11 if tiefer else 0.19) * wirkung
         var innen: float = m[&"innen"]
         var mitte := mitte_von(form)
-        var saum := Color(0.34, 0.62, 0.68, (0.24 if tiefer else 0.16) * (1.0 - dunst))
-        var licht := PackedVector2Array()
+        var weite := 1.0
+        for v in form:
+            weite = maxf(weite, absf(v.x - mitte.x))
+
+        var farben := PackedColorArray()
+        for v in form:
+            # 0 an der abgewandten Kante, 1 an der zur Mitte zeigenden.
+            var t := clampf(0.5 + 0.5 * (v.x - mitte.x) * innen / weite, 0.0, 1.0)
+            var k := hub * t * t
+            farben.append(Color(grund.r * (1.0 + k), grund.g * (1.0 + k),
+                grund.b * (1.0 + k * 0.86)))
+        draw_polygon(form, farben)
+
+        # Eine Mulde von einem Buckel unterscheidet nicht die Helligkeit der
+        # Flaeche, sondern wo ihr heller Saum liegt. Er bleibt - aber leise,
+        # und nur dort, wo ueberhaupt noch Licht ankommt.
+        if dunst > 0.5:
+            continue
+        var saum := Color(0.34, 0.62, 0.68,
+            (0.13 if tiefer else 0.09) * (1.0 - dunst))
         for i in form.size():
             var a: Vector2 = form[i]
             var b: Vector2 = form[(i + 1) % form.size()]
-            if signf((a + b).x * 0.5 - mitte.x * 2.0 + mitte.x) == innen:
+            if signf((a + b).x * 0.5 - mitte.x) == innen:
                 draw_line(a, b, saum, 1.4)
-                licht.append(a)
 
 
 ## Der Mittelpunkt eines Vielecks - fuer die Frage, welche Haelfte seines
