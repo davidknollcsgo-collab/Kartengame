@@ -1150,9 +1150,11 @@ func _kammer(kasten: Rect2, k: int, stand: KolonieStand, jetzt: float) -> void:
     # Stufenpunkte statt einer Zahl: man sieht auf einen Blick, wieviel noch
     # geht, ohne rechnen zu muessen.
     var deckel := Kammern.deckel(k, stand.schacht())
-    _stufenreihe(Vector2(links, kasten.position.y + 76.0), stufe, deckel, farbe)
-
     var rechts := kasten.end.x - 12.0
+    # Die Reihe endet vor der Preisspalte, nicht am Kastenrand - sonst laeuft
+    # sie unter die Zahl.
+    _stufenreihe(Vector2(links, kasten.position.y + 76.0),
+        maxf(40.0, rechts - links - 96.0), stufe, deckel, farbe)
     if baut_hier:
         _baufortschritt(kasten, stand, jetzt, farbe)
     elif stand.baut():
@@ -1185,8 +1187,41 @@ func _baufortschritt(kasten: Rect2, stand: KolonieStand, jetzt: float,
         _dauer(rest), 16, farbe, false, true)
 
 
-func _stufenreihe(wo: Vector2, stufe: int, deckel: int, farbe: Color) -> void:
-    var abstand := 9.0
+## Die Stufenreihe: ein Punkt je Stufe, gefuellt fuer erreichte, offen fuer
+## erlaubte, klein fuer das, was der Tiefenschacht noch verschlossen haelt.
+##
+## **Sie zeichnete `Kammern.HOECHSTSTUFE` Punkte, und das war einmal 20.**
+## Seit der Graben keinen Boden mehr hat, sind es 80 - die Reihe lief also
+## rechts aus dem Bild, mitsamt dem Preis, der dahinter steht. Ein Fehler, den
+## kein Test findet, weil er nur im Bild existiert, und den ich mir selbst
+## eingebaut habe, als ich die Hoechststufe angehoben habe.
+##
+## Jetzt richtet sich der Abstand nach dem Platz, und unter einer Mindestweite
+## wird zusammengefasst: was nicht mehr als Punktreihe lesbar ist, ist als
+## Balken ehrlicher. Achtzig Punkte nebeneinander sind ohnehin keine Anzahl
+## mehr, die jemand abliest.
+const REIHE_PUNKT := 9.0
+const REIHE_ENG := 4.0
+
+func _stufenreihe(wo: Vector2, breite: float, stufe: int, deckel: int,
+        farbe: Color) -> void:
+    var abstand := minf(REIHE_PUNKT, breite / float(maxi(1, Kammern.HOECHSTSTUFE)))
+
+    if abstand < REIHE_ENG:
+        # Balken: erreicht, erlaubt, verschlossen - dieselbe Auskunft, nur
+        # ohne den Anspruch, sie zaehlen zu koennen.
+        var hoehe := 5.0
+        var anteil := float(stufe) / float(maxi(1, Kammern.HOECHSTSTUFE))
+        var bis_deckel := float(deckel) / float(maxi(1, Kammern.HOECHSTSTUFE))
+        _flaeche.draw_rect(Rect2(wo - Vector2(0.0, hoehe * 0.5),
+            Vector2(breite, hoehe)), Color(0.34, 0.36, 0.38, 0.28))
+        _flaeche.draw_rect(Rect2(wo - Vector2(0.0, hoehe * 0.5),
+            Vector2(breite * bis_deckel, hoehe)),
+            Color(farbe.r, farbe.g, farbe.b, 0.30))
+        _flaeche.draw_rect(Rect2(wo - Vector2(0.0, hoehe * 0.5),
+            Vector2(breite * anteil, hoehe)), farbe)
+        return
+
     for i in Kammern.HOECHSTSTUFE:
         var p := wo + Vector2(abstand * float(i) + 3.0, 0.0)
         if i < stufe:
