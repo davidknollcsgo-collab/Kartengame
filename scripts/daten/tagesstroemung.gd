@@ -40,4 +40,4 @@ static func ausbeute(grund: int, mit_stroemung: bool) -> int:
 static func hinweis(offen: int) -> String:
     if offen <= 0:
         return ""
-    return "Tagesstroemung x%d - noch %d" % [int(FAKTOR), offen]
+    return "Day current x%d - %d left" % [int(FAKTOR), offen]

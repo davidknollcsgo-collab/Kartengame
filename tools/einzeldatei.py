@@ -96,12 +96,12 @@ kopf = '''<title>%(name)s</title>
   @media (prefers-reduced-motion: reduce) { #fuellung { transition: none; } }
 </style>
 
-<canvas id="canvas">Dein Browser unterstützt kein Canvas.</canvas>
+<canvas id="canvas">Your browser does not support canvas.</canvas>
 
 <div id="laden">
   <h1>%(kopfname)s</h1>
   <div id="balken"><div id="fuellung"></div></div>
-  <div id="stand">wird vorbereitet …</div>
+  <div id="stand">preparing …</div>
   <div id="fehler"></div>
 </div>
 ''' % {
@@ -163,13 +163,13 @@ fuss = r'''
     for (var i = 0; i < bloecke.length; i++) {
       var b = bloecke[i];
       var name = b.dataset.name;
-      melde("entpacke " + name + " …", i / bloecke.length);
+      melde("unpacking " + name + " …", i / bloecke.length);
       await new Promise(function (r) { setTimeout(r, 0); });
       teile[name] = await entpacke(b.textContent.trim());
       typen[name] = b.dataset.typ;
       b.textContent = "";
     }
-    melde("startet …", 1);
+    melde("starting …", 1);
 
     function finde(url) {
       var s = String(url);
@@ -222,7 +222,7 @@ fuss = r'''
     document.body.appendChild(s);
 
     if (typeof Engine === "undefined") {
-      scheitere("Der Lader konnte nicht ausgeführt werden.");
+      scheitere("The loader could not be executed.");
       return;
     }
 
@@ -251,14 +251,14 @@ fuss = r'''
     await motor.startGame({
       canvas: document.getElementById("canvas"),
       onProgress: function (geladen, gesamt) {
-        if (gesamt > 0) melde("startet …", geladen / gesamt);
+        if (gesamt > 0) melde("starting …", geladen / gesamt);
       }
     });
     laden.remove();
   }
 
   start().catch(function (e) {
-    scheitere("Start fehlgeschlagen: " + (e && e.message ? e.message : e));
+    scheitere("Start failed: " + (e && e.message ? e.message : e));
     console.error(e);
   });
 })();

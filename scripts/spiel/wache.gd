@@ -113,7 +113,7 @@ func _bau_fertig(kammer: int) -> void:
         _funken.platzen(Graben.WAECHTER + Vector2(0.0, -40.0),
             Color(0.62, 0.94, 1.0), 26.0)
     Klang.spiele(Klang.Ton.KAMMER, 1.0, 0.7)
-    _hud.melde("%s fertig" % Kammern.name_von(kammer))
+    _hud.melde("%s finished" % Kammern.name_von(kammer))
 
     # Ein Schacht, der einen Abschnitt oeffnet, ist mehr als eine Stufe mehr:
     # er gibt den Weg frei, auf dem der Spieler gerade steht.
@@ -198,7 +198,7 @@ func starte_welle() -> void:
     Klang.spiele(Klang.Ton.WELLE, 1.0, 0.55)
     _hud.zeige_welle(welle_nummer, brut, Fortschritt.stand.naehrstoffe, _tiere.size())
     if _stroemung:
-        _hud.melde("Tagesstroemung - doppelte Ausbeute")
+        _hud.melde("Day current - double yield")
 
     # Eine neue Regel gehoert angekuendigt. Wer in Welle 31 ploetzlich im
     # Dunkeln steht und nicht weiss warum, haelt es fuer einen Fehler.
@@ -396,7 +396,7 @@ func _welle_geschafft() -> void:
     # liegt. Eine Wand ohne Grund ist ein Fehler; eine mit Grund ist ein Ziel.
     var stand: KolonieStand = Fortschritt.stand
     if welle_nummer + 1 > stand.offene_welle():
-        _hud.melde("Der Graben endet hier - Tiefenschacht Stufe %d graebt weiter"
+        _hud.melde("The trench ends here - deep shaft level %d digs on"
             % stand.naechste_tiefe())
         welle_in_sitzung = 0
         _bereite_welle_vor()

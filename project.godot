@@ -4,7 +4,7 @@ config_version=5
 [application]
 
 config/name="Nekton"
-config/description="Schlundwache: ein Lichtkegel am Finger gegen alles, was aus dem Graben kommt."
+config/description="Maw Watch: a cone of light on your fingertip against everything that rises from the trench."
 config/version="0.1.0"
 run/main_scene="res://scenes/schlund.tscn"
 config/icon="res://symbol.png"

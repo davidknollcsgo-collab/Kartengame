@@ -41,5 +41,5 @@ static func naehrstoff(index: int, hoechste_welle: int) -> int:
 ## Was in dem kleinen Kasten des Tages steht.
 static func kurz(index: int, hoechste_welle: int) -> String:
     if ist_linientag(index):
-        return "LINIE"
+        return "LINE"
     return "+%d" % naehrstoff(index, hoechste_welle)

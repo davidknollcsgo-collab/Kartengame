@@ -125,14 +125,14 @@ func am_deckel(kammer: int) -> bool:
 ## dorthin, wo er entsteht, nicht in die Anzeige.
 func hindernis(kammer: int) -> String:
     if baut():
-        return "Es wird schon gegraben"
+        return "Already digging"
     if am_deckel(kammer):
         if kammer == Kammern.Kammer.TIEFENSCHACHT:
-            return "Tiefster Punkt erreicht"
-        return "Der Tiefenschacht muss tiefer"
+            return "Deepest point reached"
+        return "The deep shaft must go deeper"
     var fehlt := preis(kammer) - naehrstoffe
     if fehlt > 0:
-        return "Es fehlen %d Naehrstoff" % fehlt
+        return "%d nutrients short" % fehlt
     return ""
 
 
@@ -306,13 +306,13 @@ func hat_linie(index: int) -> bool:
 ## Warum sich eine Linie gerade nicht zuechten laesst. Leer heisst: sie geht.
 func linie_hindernis(index: int) -> String:
     if hat_linie(index):
-        return "Bereits gezuechtet"
+        return "Already bred"
     var davor := Brutlinien.voraussetzung(index)
     if not hat_linie(davor):
-        return "Erst %s zuechten" % Brutlinien.name_von(davor)
+        return "Breed %s first" % Brutlinien.name_von(davor)
     var fehlt := Brutlinien.kosten(index) - naehrstoffe
     if fehlt > 0:
-        return "Es fehlen %d Naehrstoff" % fehlt
+        return "%d nutrients short" % fehlt
     return ""
 
 

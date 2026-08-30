@@ -15,17 +15,17 @@ enum Ziel { WELLEN, RAEUBER, AUSBAU }
 
 const TABELLE: Array[Dictionary] = [
     {
-        &"name": "Drei Wellen halten",
+        &"name": "Hold three waves",
         &"menge": 3,
         &"lohn": 120,
     },
     {
-        &"name": "Sechzig Raeuber verbrennen",
+        &"name": "Burn sixty raiders",
         &"menge": 60,
         &"lohn": 150,
     },
     {
-        &"name": "Eine Kammer ausbauen",
+        &"name": "Upgrade one chamber",
         &"menge": 1,
         &"lohn": 200,
     },

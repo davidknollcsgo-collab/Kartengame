@@ -23,8 +23,8 @@ extends RefCounted
 ## Namen der Nachbarkolonien. Erfunden nach demselben Muster wie alles andere
 ## hier: deutsche Wortbildungen aus der Tiefseewelt.
 const NAMEN: PackedStringArray = [
-    "Aschenschlund", "Kaltbett", "Tiefmoor", "Salzader", "Nachtriff",
-    "Graulicht", "Steinlunge", "Trueblauf", "Schwarzwehr", "Eisgrund",
+    "Ashmaw", "Coldbed", "Deepmire", "Saltvein", "Nightreef",
+    "Greylight", "Stonelung", "Murkrun", "Blackward", "Icefloor",
 ]
 
 ## Koennensgrade der Nachbarn, als Anteil des Sollausbaus.
@@ -87,7 +87,7 @@ static func rangliste(eigene_tiefe: int) -> Array[Dictionary]:
             &"selbst": false,
         })
     liste.append({
-        &"name": "Deine Kolonie",
+        &"name": "Your colony",
         &"tiefe": clampi(eigene_tiefe, 1, Graben.WELLEN_GESAMT),
         &"selbst": true,
     })

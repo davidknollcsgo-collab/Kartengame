@@ -25,26 +25,26 @@ enum Linie {
 ## Schaden macht, waere kein Entwurf, sondern eine Zahl.
 const TABELLE: Array[Dictionary] = [
     {
-        &"name": "Ohne Linie",
-        &"wirkung": "Die Grundwerte des Waechters.",
+        &"name": "No Line",
+        &"wirkung": "The guardian at base values.",
         &"kosten": 0,
         &"farbe": Color(0.62, 0.72, 0.78),
     },
     {
-        &"name": "Stromsinn",
-        &"wirkung": "Der Kegel dreht schneller und die Stroemung zerrt schwaecher.",
+        &"name": "Currentsense",
+        &"wirkung": "The cone turns faster and the current pulls weaker.",
         &"kosten": 900,
         &"farbe": Color(0.48, 0.86, 1.00),
     },
     {
-        &"name": "Nachglut",
-        &"wirkung": "Getroffene brennen kurz weiter, auch ausserhalb des Lichts.",
+        &"name": "Afterglow",
+        &"wirkung": "Anything hit keeps burning briefly, even outside the light.",
         &"kosten": 2400,
         &"farbe": Color(1.00, 0.68, 0.42),
     },
     {
-        &"name": "Kaltbrand",
-        &"wirkung": "Ein Ziel weniger, dafuer trifft jedes deutlich haerter.",
+        &"name": "Coldburn",
+        &"wirkung": "One target fewer, but each one hits far harder.",
         &"kosten": 6000,
         &"farbe": Color(0.78, 0.62, 1.00),
     },

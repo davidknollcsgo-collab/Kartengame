@@ -48,11 +48,11 @@ var _abschnitt_leben := 0.0
 ## wer eine Anleitung lesen muss, bevor er etwas anfassen darf, faengt bei
 ## einem Einminutenspiel gar nicht erst an.
 const EINSTIEG: PackedStringArray = [
-    "Halte den Finger auf dem Bild und schwenke den Lichtkegel.",
-    "Was im Licht steht, verbrennt. Der Kegel fasst nur wenige zugleich.",
-    "Lass nichts zur Brut durch - die Eier unten sind, was du huetest.",
-    "Zwischen den Wellen: Nischen antippen fuer Wehrpolypen.",
-    "Und im Graben darunter waechst deine Kolonie.",
+    "Hold your finger on the screen and sweep the light cone.",
+    "Whatever stands in the light burns. The cone holds only a few at once.",
+    "Let nothing reach the brood - those eggs below are what you guard.",
+    "Between waves: tap the niches to place guard polyps.",
+    "And in the trench below, your colony grows.",
 ]
 var _einstieg := -1
 
@@ -214,7 +214,7 @@ func _abschnittstafel(breite: float, hoehe: float) -> void:
     var farbe := Color(0.72, 0.96, 1.0, f)
     if _neue_art >= 0:
         var a := Arten.farbe(_neue_art)
-        titel = "NEU: %s" % Arten.name_von(_neue_art).to_upper()
+        titel = "NEW: %s" % Arten.name_von(_neue_art).to_upper()
         zeile = Arten.regel(_neue_art)
         rahmen = Color(a.r, a.g, a.b, 0.45 * f)
         farbe = Color(a.r, a.g, a.b, f)
@@ -232,26 +232,26 @@ func _kopfzeile(breite: float) -> void:
     _flaeche.draw_line(Vector2(0.0, 84.0), Vector2(breite, 84.0),
         Color(0.24, 0.56, 0.62, 0.35), 1.5)
 
-    _text(Vector2(RAND, 36.0), "WELLE %d" % _welle, 20, Color(0.72, 0.94, 0.98))
+    _text(Vector2(RAND, 36.0), "WAVE %d" % _welle, 20, Color(0.72, 0.94, 0.98))
     if stroemung and not _bauphase and not _ende:
-        _text(Vector2(RAND, 64.0), "STROEMUNG x%d" % int(Tagesstroemung.FAKTOR),
+        _text(Vector2(RAND, 64.0), "CURRENT x%d" % int(Tagesstroemung.FAKTOR),
             14, Color(0.52, 0.94, 0.80))
     else:
         _text(Vector2(RAND, 64.0), Regeln.name_von(Graben.abschnitt(_welle)),
             14, Color(0.44, 0.66, 0.72))
 
     var mitte := breite * 0.5
-    _text(Vector2(mitte - 40.0, 40.0), "BRUT", 13, Color(0.62, 0.52, 0.38))
+    _text(Vector2(mitte - 40.0, 40.0), "BROOD", 13, Color(0.62, 0.52, 0.38))
     _text(Vector2(mitte - 40.0, 66.0), "%d / %d"
         % [_brut, Fortschritt.stand.brut_leben()], 19, Color(0.98, 0.80, 0.42))
 
-    _text(Vector2(breite - RAND - 120.0, 40.0), "NAEHRSTOFF", 13,
+    _text(Vector2(breite - RAND - 120.0, 40.0), "NUTRIENTS", 13,
         Color(0.40, 0.66, 0.60))
     _text(Vector2(breite - RAND - 120.0, 66.0), str(_naehrstoffe), 19,
         Color(0.52, 0.94, 0.80))
 
     if not _bauphase and not _ende:
-        _text(Vector2(breite - RAND - 120.0, 108.0), "noch %d" % _offen, 15,
+        _text(Vector2(breite - RAND - 120.0, 108.0), "%d left" % _offen, 15,
             Color(0.62, 0.74, 0.80, 0.8))
     elif _bauphase and not _ende:
         # Derselbe Platz, andere Auskunft: in der Bauphase steht dort, was der
@@ -269,6 +269,11 @@ func _schwebende_zahlen() -> void:
         var f: float = a[&"leben"] / 0.9
         var ort: Vector2 = wandel * (a[&"ort"] as Vector2)
         ort.y -= (1.0 - f) * 34.0
+        # In den Rand hinein, nicht darueber hinaus. Ein Raeuber, der an der
+        # Grabenwand stirbt, hinterliess sonst ein halbes "+4" am Bildrand -
+        # im Bild sah es aus wie ein Textfehler.
+        ort.x = clampf(ort.x, RAND + 12.0, _flaeche.size.x - RAND - 12.0)
+        ort.y = maxf(ort.y, 96.0)
         _text(ort, "+%d" % a[&"wert"], 15,
             Color(0.52, 0.94, 0.80, f), true)
 
@@ -284,7 +289,7 @@ func _kolonieknopf_zeichnen(breite: float, hoehe: float) -> void:
     _flaeche.draw_rect(_kolonieknopf, Color(0.05, 0.14, 0.18, 0.82))
     _flaeche.draw_rect(_kolonieknopf, Color(0.42, 0.86, 0.92, 0.28 + 0.2 * puls),
         false, 1.5)
-    _text(_kolonieknopf.get_center() + Vector2(0.0, 6.0), "KOLONIE AUSBAUEN",
+    _text(_kolonieknopf.get_center() + Vector2(0.0, 6.0), "BUILD THE COLONY",
         17, Color(0.72, 0.94, 0.98), true)
 
 
@@ -299,16 +304,16 @@ func _bauhinweis(breite: float, hoehe: float) -> void:
 
     var frei := _gebaut < Graben.NISCHEN.size()
     var kann := frei and _naehrstoffe >= _preis
-    var zeile := "Nische antippen: Wehrpolyp fuer %d" % _preis
+    var zeile := "Tap a niche: guard polyp for %d" % _preis
     if not frei:
-        zeile = "Alle Nischen besetzt"
+        zeile = "Every niche taken"
     elif not kann:
-        zeile = "Wehrpolyp kostet %d - noch %d fehlen" % [_preis, _preis - _naehrstoffe]
+        zeile = "Guard polyp costs %d - %d short" % [_preis, _preis - _naehrstoffe]
 
     _text(kasten.position + Vector2(18.0, 32.0), zeile, 16,
         Color(0.62, 0.90, 0.86) if kann else Color(0.50, 0.60, 0.66))
     _text(kasten.position + Vector2(18.0, 62.0),
-        "Irgendwo sonst tippen startet Welle %d" % _welle, 15,
+        "Tap anywhere else to start wave %d" % _welle, 15,
         Color(0.78, 0.94, 0.98, 0.55 + 0.45 * puls))
 
 
@@ -317,22 +322,22 @@ func _endschirm(breite: float, hoehe: float) -> void:
     var mitte := Vector2(breite * 0.5, hoehe * 0.42)
 
     if _gewonnen:
-        _text(mitte, "DER GRABEN HAELT", 30, Color(0.62, 0.98, 0.86), true)
+        _text(mitte, "THE TRENCH HOLDS", 30, Color(0.62, 0.98, 0.86), true)
         _text(mitte + Vector2(0.0, 44.0),
-            "Alle %d Wellen ueberstanden" % Graben.WELLEN_GESAMT, 17,
+            "All %d waves survived" % Graben.WELLEN_GESAMT, 17,
             Color(0.66, 0.84, 0.88), true)
     elif _sitzung:
-        _text(mitte, "SITZUNG GEHALTEN", 30, Color(0.62, 0.98, 0.86), true)
+        _text(mitte, "SESSION HELD", 30, Color(0.62, 0.98, 0.86), true)
         _text(mitte + Vector2(0.0, 44.0),
-            "%d Wellen am Stueck - weiter bei Welle %d"
+            "%d waves in a row - next up is wave %d"
             % [Graben.WELLEN_JE_SITZUNG, _welle], 17,
             Color(0.66, 0.84, 0.88), true)
     else:
-        _text(mitte, "DIE BRUT IST GEFALLEN", 30, Color(1.0, 0.52, 0.44), true)
-        _text(mitte + Vector2(0.0, 44.0), "Welle %d" % _welle, 17,
+        _text(mitte, "THE BROOD HAS FALLEN", 30, Color(1.0, 0.52, 0.44), true)
+        _text(mitte + Vector2(0.0, 44.0), "Wave %d" % _welle, 17,
             Color(0.72, 0.72, 0.76), true)
 
-    _text(mitte + Vector2(0.0, 86.0), "%d Naehrstoff geerntet" % _verdient, 17,
+    _text(mitte + Vector2(0.0, 86.0), "%d nutrients harvested" % _verdient, 17,
         Color(0.52, 0.94, 0.80), true)
 
     # Die Wertung steht genau hier, weil sie hier wirkt: im Moment des
@@ -340,8 +345,8 @@ func _endschirm(breite: float, hoehe: float) -> void:
     _grabenwertung(mitte + Vector2(0.0, 122.0))
 
     var puls := 0.5 + 0.5 * sin(_zeit * 2.6)
-    var weiter := "Tippen setzt die Wache fort" if _sitzung \
-        else "Tippen fuer einen neuen Anlauf"
+    var weiter := "Tap to continue the watch" if _sitzung \
+        else "Tap for another run"
     # 196 und nicht 148: die Wertung darueber ist zwei Zeilen hoch, und die
     # zweite lag genau hier. Auf dem Bild sah es aus wie ein Schriftfehler.
     _text(mitte + Vector2(0.0, 196.0), weiter, 17,
@@ -353,18 +358,18 @@ func _grabenwertung(wo: Vector2) -> void:
     var tiefe: int = Fortschritt.stand.hoechste_welle
     var platz := Geister.platz(tiefe)
     var gesamt := Geister.zahl() + 1
-    _text(wo, "Platz %d von %d im Graben" % [platz, gesamt], 16,
+    _text(wo, "Rank %d of %d in the trench" % [platz, gesamt], 16,
         Color(0.72, 0.86, 0.92), true)
 
     var vor := Geister.naechster_vor(tiefe)
     var name: String = vor[&"name"]
     if name.is_empty():
-        _text(wo + Vector2(0.0, 24.0), "Niemand ist tiefer gekommen.", 14,
+        _text(wo + Vector2(0.0, 24.0), "Nobody has gone deeper.", 14,
             Color(0.62, 0.92, 0.84), true)
         return
     var abstand: int = int(vor[&"tiefe"]) - tiefe
     _text(wo + Vector2(0.0, 24.0),
-        "%s liegt %d Wellen vor dir" % [name, maxi(1, abstand)], 14,
+        "%s is %d waves ahead of you" % [name, maxi(1, abstand)], 14,
         Color(0.56, 0.74, 0.80), true)
 
 

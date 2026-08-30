@@ -277,10 +277,27 @@ func _test_laufzeit() -> bool:
 
 func _test_arten_tabelle_vollstaendig() -> bool:
     var felder: PackedStringArray = ["name", "leben", "tempo", "radius", "wert",
-        "wucht", "schlaengel", "takt", "farbe", "ab_welle", "regel"]
+        "wucht", "schlaengel", "takt", "farbe", "ab_welle", "regel", "kennung"]
     if not _melde(Arten.TABELLE.size() == Arten.Art.size(),
             "TABELLE und enum Art muessen gleich gross sein"):
         return false
+
+    # Und in derselben **Reihenfolge**. Gleiche Groesse allein hat nicht
+    # gereicht: die Schlundmutter stand in der Tabelle vor dem Sprungaal und
+    # im enum dahinter. Jeder Zugriff ueber `Arten.Art.SPRUNGAAL` traf danach
+    # die Schlundmutter - im Bestiarium ein leeres Zeichen, im Spiel das
+    # falsche Tier.
+    #
+    # Verglichen wird die Kennung, nicht der angezeigte Name: der steht in
+    # der Sprache des Spielers, die Bezeichner bleiben deutsch.
+    var schluessel := Arten.Art.keys()
+    for i in Arten.zahl():
+        var erwartet := String(schluessel[i])
+        var kennung := String(Arten.art(i)[&"kennung"])
+        if not _melde(kennung == erwartet,
+                "Platz %d traegt die Kennung %s, das enum sagt %s"
+                % [i, kennung, erwartet]):
+            return false
     for i in Arten.TABELLE.size():
         for f in felder:
             if not Arten.TABELLE[i].has(StringName(f)):

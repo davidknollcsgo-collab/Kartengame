@@ -5,6 +5,9 @@ leuchtende Kreaturen — und ein Lichtkegel am Daumen.
 
 Godot 4.5 · Hochformat · Android · derzeit im Aufbau
 
+Die Spieloberfläche ist **englisch**; Bezeichner und Kommentare im Quelltext
+bleiben deutsch.
+
 ## Die Kernschleife: Schlundwache
 
 Am Eingang der Kolonie sitzt ein Wächter. Aus der Dunkelheit sinken Räuber in

@@ -15,21 +15,21 @@ extends RefCounted
 ## Reine Datenschicht: keine Szenen-, keine Autoload-Bezuege.
 
 const NAMEN: PackedStringArray = [
-    "Randschlucht",
-    "Stroemungsspalte",
-    "Truebe Tiefe",
-    "Finsterband",
-    "Streulichtzone",
-    "Grabensturm",
+    "Rim Gorge",
+    "Current Rift",
+    "Murky Deep",
+    "Dark Band",
+    "Scatterlight Zone",
+    "Trench Storm",
 ]
 
 const HINWEISE: PackedStringArray = [
-    "Ruhiges Wasser. Der Kegel gehorcht.",
-    "Eine Stroemung zerrt am Licht. Halte dagegen.",
-    "Truebes Wasser schluckt die Reichweite. Lass sie naeher kommen.",
-    "Das Leuchtorgan setzt aus. Zaehle die Pausen mit.",
-    "Nur die Mitte des Kegels brennt noch. Ziele genau.",
-    "Alles zugleich - und die Stroemung steht quer.",
+    "Calm water. The cone obeys.",
+    "A current tugs at the light. Hold against it.",
+    "Murky water swallows the range. Let them come closer.",
+    "The light organ cuts out. Count the pauses.",
+    "Only the middle of the cone still burns. Aim precisely.",
+    "Everything at once - and the current runs crosswise.",
 ]
 
 ## --- Stroemung: der Kegel wird abgetrieben ---

@@ -151,10 +151,10 @@ func _eingabe(ereignis: InputEvent) -> void:
             if _loeschen_sicher:
                 Fortschritt.von_vorn()
                 _loeschen_sicher = false
-                _zeige("Kolonie neu gegruendet")
+                _zeige("Colony founded anew")
             else:
                 _loeschen_sicher = true
-                _zeige("Noch einmal tippen loescht wirklich")
+                _zeige("Tap again to really delete")
             Klang.spiele(Klang.Ton.TIPP, 0.6)
             return
 
@@ -187,7 +187,7 @@ func _versuche_ausbau(kammer: int) -> void:
         Klang.spiele(Klang.Ton.POLYP, 0.8)
         Fortschritt.sichere()
         Fortschritt.stand_geaendert.emit()
-        _zeige("%s wird gegraben" % Kammern.name_von(kammer))
+        _zeige("Digging the %s" % Kammern.name_von(kammer))
 
 
 func _hole_kalender() -> void:
@@ -199,18 +199,18 @@ func _hole_kalender() -> void:
     Fortschritt.stand_geaendert.emit()
     if lohn.has(&"linie"):
         Klang.spiele(Klang.Ton.KAMMER, 1.5, 0.85)
-        _zeige("%s gezuechtet - sie uebernimmt die Wache"
+        _zeige("%s bred - it takes over the watch"
             % Brutlinien.name_von(int(lohn[&"linie"])))
     else:
         Klang.spiele(Klang.Ton.KAMMER, 1.2, 0.7)
-        _zeige("+%d Naehrstoff" % int(lohn[&"naehrstoff"]))
+        _zeige("+%d nutrients" % int(lohn[&"naehrstoff"]))
 
 
 func _hole_ziel(index: int) -> void:
     var stand: KolonieStand = Fortschritt.stand
     if not stand.ziel_erfuellt(index):
         Klang.spiele(Klang.Ton.TIPP, 0.6, 0.5)
-        _zeige("Noch %d von %d" % [stand.ziel_fortschritt[index],
+        _zeige("%d of %d so far" % [stand.ziel_fortschritt[index],
             Tagesziel.menge(index)])
         return
     var lohn := stand.hole_ziel(index)
@@ -218,9 +218,9 @@ func _hole_ziel(index: int) -> void:
         Klang.spiele(Klang.Ton.KAMMER, 1.2, 0.7)
         Fortschritt.sichere()
         Fortschritt.stand_geaendert.emit()
-        _zeige("+%d Naehrstoff" % lohn)
+        _zeige("+%d nutrients" % lohn)
     else:
-        _zeige("Schon abgeholt")
+        _zeige("Already collected")
 
 
 ## Zuechten oder, wenn schon gezuechtet, auswaehlen.
@@ -228,12 +228,12 @@ func _versuche_linie(index: int) -> void:
     var stand: KolonieStand = Fortschritt.stand
     if stand.hat_linie(index):
         if stand.linie == index:
-            _zeige("%s traegt bereits" % Brutlinien.name_von(index))
+            _zeige("%s already carries the watch" % Brutlinien.name_von(index))
         elif stand.waehle_linie(index):
             Klang.spiele(Klang.Ton.POLYP, 0.9)
             Fortschritt.sichere()
             Fortschritt.stand_geaendert.emit()
-            _zeige("%s uebernimmt die Wache" % Brutlinien.name_von(index))
+            _zeige("%s takes over the watch" % Brutlinien.name_von(index))
         return
 
     var grund := stand.linie_hindernis(index)
@@ -245,7 +245,7 @@ func _versuche_linie(index: int) -> void:
         Klang.spiele(Klang.Ton.KAMMER, 1.1, 0.7)
         Fortschritt.sichere()
         Fortschritt.stand_geaendert.emit()
-        _zeige("%s gezuechtet" % Brutlinien.name_von(index))
+        _zeige("%s bred" % Brutlinien.name_von(index))
 
 
 func _zeige(was: String) -> void:
@@ -343,15 +343,15 @@ func _grabenwand(breite: float, hoehe: float) -> void:
 
 
 func _kopfzeile(breite: float, stand: KolonieStand) -> void:
-    _text(Vector2(RAND, 34.0), "KOLONIE", 21, SCHRIFT)
-    _text(Vector2(RAND, 58.0), "Tiefste Welle %d von %d  ·  Platz %d von %d"
+    _text(Vector2(RAND, 34.0), "COLONY", 21, SCHRIFT)
+    _text(Vector2(RAND, 58.0), "Deepest wave %d of %d  ·  rank %d of %d"
         % [stand.hoechste_welle, Graben.WELLEN_GESAMT,
            Geister.platz(stand.hoechste_welle), Geister.zahl() + 1], 14, LEISE)
 
     var rechts := breite - RAND
     _text(Vector2(rechts, 34.0), str(stand.naehrstoffe), 21, NAEHR, false, true)
     var strom := stand.je_stunde()
-    var zeile := "Naehrstoff" if strom <= 0.0 else "Naehrstoff  +%d/h" % int(strom)
+    var zeile := "Nutrients" if strom <= 0.0 else "Nutrients  +%d/h" % int(strom)
     _text(Vector2(rechts, 58.0), zeile, 13, LEISE, false, true)
 
     if stand.linie != Brutlinien.Linie.KEINE:
@@ -364,7 +364,7 @@ func _kopfzeile(breite: float, stand: KolonieStand) -> void:
 
 ## Die Umschaltzeile: drei Reiter, der aktive hell.
 func _umschalterzeile(breite: float) -> void:
-    const BESCHRIFTUNG: PackedStringArray = ["KAMMERN", "LINIEN", "ARTEN", "TAG"]
+    const BESCHRIFTUNG: PackedStringArray = ["CHAMBERS", "LINES", "SPECIES", "DAY"]
     var y := KOPF + 12.0
     var anzahl := BESCHRIFTUNG.size()
     var breit := (breite - RAND * 2.0 - 8.0 * float(anzahl - 1)) / float(anzahl)
@@ -414,10 +414,10 @@ func _tagesziel(kasten: Rect2, index: int, stand: KolonieStand) -> void:
 
     var rechts := kasten.end.x - 14.0
     if geholt:
-        _text(Vector2(rechts, kasten.get_center().y + 5.0), "geholt", 14, LEISE,
+        _text(Vector2(rechts, kasten.get_center().y + 5.0), "collected", 14, LEISE,
             false, true)
     elif erfuellt:
-        _text(Vector2(rechts, kasten.get_center().y - 4.0), "abholen", 13, NAEHR,
+        _text(Vector2(rechts, kasten.get_center().y - 4.0), "collect", 13, NAEHR,
             false, true)
         _text(Vector2(rechts, kasten.get_center().y + 18.0),
             "+%d" % Tagesziel.lohn(index, stand.hoechste_welle), 17, NAEHR,
@@ -450,22 +450,27 @@ func _artband(kasten: Rect2, index: int, stand: KolonieStand) -> void:
 
     var links := kasten.position.x + 84.0
     _text(Vector2(links, kasten.position.y + 32.0),
-        Arten.name_von(index) if kennt else "Noch nicht begegnet", 17,
+        Arten.name_von(index) if kennt else "Not yet encountered", 17,
         SCHRIFT if kennt else LEISE)
     _text(Vector2(links, kasten.position.y + 56.0),
-        Arten.regel(index) if kennt else "Taucht ab Welle %d auf" % Arten.art(index)[&"ab_welle"],
+        Arten.regel(index) if kennt else "Appears from wave %d on" % Arten.art(index)[&"ab_welle"],
         12, LEISE if kennt else Color(0.34, 0.44, 0.50))
 
     if not kennt:
         return
 
     # Die Zahlen, die man beim Zielen wirklich braucht - und nur die.
-    var zeile := "Leben %d  ·  Tempo %d  ·  Wucht %d" % [
-        int(Arten.leben(index)), int(Arten.tempo(index)), Arten.wucht(index)]
+    # Das Leben aus der aktuellen Welle, nicht der Grundwert: die
+    # Schlundmutter hat gar keinen: ihres faellt aus der Wellenstaerke, und
+    # "Leben 1" waere schlicht falsch.
+    var tiefe := maxi(1, stand.hoechste_welle)
+    var zeile := "Health %d  ·  speed %d  ·  impact %d" % [
+        int(Wellen.leben_in(index, tiefe)), int(Arten.tempo(index)),
+        Arten.wucht(index)]
     _text(Vector2(links, kasten.end.y - 16.0), zeile, 11, Color(0.40, 0.54, 0.60))
 
     var rechts := kasten.end.x - 14.0
-    _text(Vector2(rechts, mitte_y - 6.0), "ab Welle", 12, LEISE, false, true)
+    _text(Vector2(rechts, mitte_y - 6.0), "from wave", 12, LEISE, false, true)
     _text(Vector2(rechts, mitte_y + 16.0), str(Arten.art(index)[&"ab_welle"]), 18,
         Color(farbe.r, farbe.g, farbe.b, 0.9), false, true)
 
@@ -530,6 +535,20 @@ func _artsinnbild(p: Vector2, r: float, index: int, farbe: Color, kennt: bool) -
                 p + Vector2(r * 0.2, r * 0.2), p + Vector2(r * 0.9, -r * 0.5),
             ])
             _flaeche.draw_polyline(zack, farbe, 2.2)
+        Arten.Art.SCHLUNDMUTTER:
+            # Breiter Mantel und ein Kranz aus Augen - dieselbe Silhouette wie
+            # im Schlund, nur klein.
+            _flaeche.draw_arc(p + Vector2(0.0, r * 0.24), r * 0.94, PI, TAU, 22,
+                farbe, 2.4)
+            for i in 5:
+                var w := lerpf(-PI * 0.62, PI * 0.62, float(i) / 4.0)
+                _flaeche.draw_circle(p + Vector2(sin(w), -cos(w) * 0.5) * r * 0.58,
+                    r * 0.11, Color(1.0, 0.94, 0.86, 0.85))
+            for i in 4:
+                var x := lerpf(-r * 0.62, r * 0.62, float(i) / 3.0)
+                _flaeche.draw_line(p + Vector2(x, r * 0.3),
+                    p + Vector2(x * 1.2, r * 0.92),
+                    Color(farbe.r, farbe.g, farbe.b, 0.42), 1.4)
 
 
 ## Die Grabenwertung: wo man zwischen den Nachbarkolonien steht.
@@ -542,15 +561,15 @@ func _grabenwertung(breite: float, y: float, stand: KolonieStand) -> float:
     var eigen := Geister.platz(stand.hoechste_welle) - 1
     var erste := clampi(eigen - 2, 0, maxi(0, liste.size() - ZEIGEN))
 
-    _text(Vector2(RAND, y + 14.0), "GRABENWERTUNG", 13, LEISE)
+    _text(Vector2(RAND, y + 14.0), "TRENCH STANDINGS", 13, LEISE)
     var vor := Geister.naechster_vor(stand.hoechste_welle)
     if not String(vor[&"name"]).is_empty():
         var abstand := int(vor[&"tiefe"]) - stand.hoechste_welle
         _text(Vector2(breite - RAND, y + 14.0),
-            "%d Wellen bis %s" % [maxi(0, abstand), vor[&"name"]], 12, LEISE,
+            "%d waves to %s" % [maxi(0, abstand), vor[&"name"]], 12, LEISE,
             false, true)
     else:
-        _text(Vector2(breite - RAND, y + 14.0), "tiefster Graben", 12, NAEHR,
+        _text(Vector2(breite - RAND, y + 14.0), "deepest in the trench", 12, NAEHR,
             false, true)
 
     var zeile_y := y + 24.0
@@ -587,15 +606,15 @@ func _zuchtkalender(breite: float, y: float, stand: KolonieStand) -> float:
     var fertig := stand.kalender >= Zuchtkalender.TAGE
     var offen := stand.kalender_offen()
 
-    var kopf := "ZUCHTKALENDER"
+    var kopf := "BREEDING CALENDAR"
     var kopffarbe := LEISE
     if fertig:
-        kopf = "ZUCHTKALENDER  ·  durchgelaufen"
+        kopf = "BREEDING CALENDAR  ·  complete"
     elif offen:
-        kopf = "ZUCHTKALENDER  ·  Tag %d abholen" % (stand.kalender + 1)
+        kopf = "BREEDING CALENDAR  ·  collect day %d" % (stand.kalender + 1)
         kopffarbe = NAEHR
     else:
-        kopf = "ZUCHTKALENDER  ·  Tag %d von %d" % [stand.kalender, Zuchtkalender.TAGE]
+        kopf = "BREEDING CALENDAR  ·  day %d of %d" % [stand.kalender, Zuchtkalender.TAGE]
     _text(Vector2(RAND, y + 16.0), kopf, 13, kopffarbe)
 
     var reihe_y := y + 28.0
@@ -641,14 +660,14 @@ func _zuchtkalender(breite: float, y: float, stand: KolonieStand) -> float:
 
 ## Unter den Zielen: Anwesenheit, Lautstaerke, Lizenzen, Neuanfang.
 func _tagesfuss(breite: float, y: float, stand: KolonieStand) -> void:
-    var tage := "1 Tag" if stand.strecke == 1 else "%d Tage" % stand.strecke
-    _text(Vector2(RAND, y + 22.0), "%s in Folge im Graben" % tage,
+    var tage := "1 day" if stand.strecke == 1 else "%d days" % stand.strecke
+    _text(Vector2(RAND, y + 22.0), "%s in the trench in a row" % tage,
         15, Color(0.72, 0.88, 0.92))
 
     # Lautstaerke in Schritten statt als Schieber: einen Schieber trifft man
     # mit dem Daumen schlecht, zwei Knoepfe immer.
     var zeile := y + 44.0
-    _text(Vector2(RAND, zeile + 24.0), "Ton  %d%%" % int(round(Klang.laut * 100.0)),
+    _text(Vector2(RAND, zeile + 24.0), "Sound  %d%%" % int(round(Klang.laut * 100.0)),
         15, LEISE)
     _leiser = Rect2(breite - RAND - 96.0, zeile, 44.0, 34.0)
     _lauter = Rect2(breite - RAND - 44.0, zeile, 44.0, 34.0)
@@ -662,9 +681,9 @@ func _tagesfuss(breite: float, y: float, stand: KolonieStand) -> void:
     # unter SIL OFL, und beide verlangen, dass der Text mit ausgeliefert wird.
     var lz := zeile + 46.0
     _text(Vector2(RAND, lz + 16.0),
-        "Godot Engine (MIT) - Schriften SIL OFL 1.1", 12, Color(0.40, 0.52, 0.58))
+        "Godot Engine (MIT) - fonts SIL OFL 1.1", 12, Color(0.40, 0.52, 0.58))
     _text(Vector2(RAND, lz + 34.0),
-        "Grafik und Ton in diesem Spiel selbst erzeugt", 12, Color(0.40, 0.52, 0.58))
+        "All graphics and sound generated by this game itself", 12, Color(0.40, 0.52, 0.58))
 
     _loeschen = Rect2(RAND, lz + 46.0, breite - RAND * 2.0, 34.0)
     var warnfarbe := Color(1.0, 0.52, 0.44) if _loeschen_sicher else Color(0.44, 0.36, 0.36)
@@ -672,7 +691,7 @@ func _tagesfuss(breite: float, y: float, stand: KolonieStand) -> void:
     _flaeche.draw_rect(_loeschen, Color(warnfarbe.r, warnfarbe.g, warnfarbe.b, 0.4),
         false, 1.3)
     _text(_loeschen.get_center() + Vector2(0.0, 5.0),
-        "WIRKLICH LOESCHEN?" if _loeschen_sicher else "Kolonie neu gruenden",
+        "REALLY DELETE?" if _loeschen_sicher else "Found the colony anew",
         14, warnfarbe, true)
 
 
@@ -701,15 +720,15 @@ func _brutlinie(kasten: Rect2, index: int, stand: KolonieStand) -> void:
 
     var rechts := kasten.end.x - 12.0
     if traegt:
-        _text(Vector2(rechts, mitte_y + 5.0), "traegt", 15, farbe, false, true)
+        _text(Vector2(rechts, mitte_y + 5.0), "carries", 15, farbe, false, true)
     elif hat:
-        _text(Vector2(rechts, mitte_y + 5.0), "waehlen", 15, LEISE, false, true)
+        _text(Vector2(rechts, mitte_y + 5.0), "select", 15, LEISE, false, true)
     else:
         var frei := stand.hat_linie(Brutlinien.voraussetzung(index))
         var preis := Brutlinien.kosten(index)
         var reicht := frei and stand.naehrstoffe >= preis
-        _text(Vector2(rechts, mitte_y - 6.0), "zuechten", 13, LEISE, false, true)
-        _text(Vector2(rechts, mitte_y + 16.0), str(preis) if frei else "gesperrt", 18,
+        _text(Vector2(rechts, mitte_y - 6.0), "breed", 13, LEISE, false, true)
+        _text(Vector2(rechts, mitte_y + 16.0), str(preis) if frei else "locked", 18,
             NAEHR if reicht else SPERRE, false, true)
 
 
@@ -777,7 +796,7 @@ func _kammer(kasten: Rect2, k: int, stand: KolonieStand, jetzt: float) -> void:
     var zweite_farbe := LEISE
     if k == Kammern.Kammer.TIEFENSCHACHT and stand.naechste_tiefe() > 0:
         var naechster := Graben.abschnitt(stand.offene_welle()) + 1
-        zweite = "%s oeffnet bei Stufe %d" % [Regeln.name_von(naechster),
+        zweite = "%s opens at level %d" % [Regeln.name_von(naechster),
             stand.naechste_tiefe()]
         if stand.graben_haelt():
             zweite_farbe = NAEHR
@@ -792,14 +811,14 @@ func _kammer(kasten: Rect2, k: int, stand: KolonieStand, jetzt: float) -> void:
     if baut_hier:
         _baufortschritt(kasten, stand, jetzt, farbe)
     elif stand.baut():
-        _text(Vector2(rechts, mitte_y + 5.0), "wartet", 14, LEISE, false, true)
+        _text(Vector2(rechts, mitte_y + 5.0), "waiting", 14, LEISE, false, true)
     elif stufe >= deckel:
-        var was := "voll" if k == Kammern.Kammer.TIEFENSCHACHT else "gesperrt"
+        var was := "full" if k == Kammern.Kammer.TIEFENSCHACHT else "locked"
         _text(Vector2(rechts, mitte_y + 5.0), was, 14, SPERRE, false, true)
     else:
         var preis := stand.preis(k)
         var reicht := stand.naehrstoffe >= preis
-        _text(Vector2(rechts, mitte_y - 6.0), "Stufe %d" % (stufe + 1), 13, LEISE, false, true)
+        _text(Vector2(rechts, mitte_y - 6.0), "Level %d" % (stufe + 1), 13, LEISE, false, true)
         _text(Vector2(rechts, mitte_y + 16.0), str(preis), 18,
             NAEHR if reicht else SPERRE, false, true)
 
@@ -841,7 +860,7 @@ func _fusszeile(breite: float, hoehe: float) -> void:
     _flaeche.draw_rect(_schliessen, Color(0.08, 0.20, 0.24, 0.9))
     _flaeche.draw_rect(_schliessen, Color(0.42, 0.86, 0.92, 0.30 + 0.25 * puls),
         false, 1.6)
-    _text(_schliessen.get_center() + Vector2(0.0, 6.0), "ZURUECK ZUM SCHLUND",
+    _text(_schliessen.get_center() + Vector2(0.0, 6.0), "BACK TO THE MAW",
         17, Color(0.82, 0.96, 1.0), true)
 
 

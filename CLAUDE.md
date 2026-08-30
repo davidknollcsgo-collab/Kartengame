@@ -164,7 +164,11 @@ Damit kostet ein Versuch Sekunden statt einer CI-Minute.
 
 ## Konventionen
 
-- Bezeichner und Kommentare auf Deutsch
+- **Bezeichner und Kommentare auf Deutsch, alles Sichtbare auf Englisch.**
+  Die Trennung ist Absicht: der Store ist englischsprachig, der Quelltext
+  bleibt es, wie er ist. Ein Wächter hält das zusammen —
+  `_test_arten_tabelle_vollstaendig` vergleicht `&"kennung"` (deutsch, fest)
+  mit dem Enum, nicht den angezeigten Namen (englisch, frei)
 - Einrückung: 4 Leerzeichen
 - `scripts/kern/` und `scripts/daten/` bleiben frei von Szenen- und
   Autoload-Bezügen — nur so sind sie headless testbar
