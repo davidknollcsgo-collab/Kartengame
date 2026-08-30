@@ -22,6 +22,33 @@ const SEITEN: PackedFloat32Array = [-1.0, 1.0]
 
 var zeit := 0.0
 
+## --- Womit er antwortet ---
+##
+## Ein Tier, das auf nichts reagiert, ist eine Kulisse. Zwei Regungen genuegen,
+## und beide haengen an etwas, das der Spieler ohnehin verfolgt: er zuckt,
+## wenn die Brut getroffen wird, und sein Organ flammt auf, wenn er etwas
+## erlegt. Mehr waere Zappeln.
+
+## Sekunden Restzucken, und wie tief. Er zieht sich zusammen und faehrt
+## langsamer wieder aus, als er eingefahren ist - genau darin liegt der
+## Unterschied zwischen erschrecken und wackeln.
+var _zucken := 0.0
+const ZUCK_DAUER := 0.55
+
+## Restglut eines Abschusses. Kurz und hell.
+var _glut := 0.0
+const GLUT_DAUER := 0.30
+
+
+## Die Brut ist getroffen worden. `wucht` ist die Zahl der verlorenen Eier.
+func zucke(wucht: int) -> void:
+    _zucken = ZUCK_DAUER * clampf(0.6 + 0.2 * float(wucht), 0.6, 1.4)
+
+
+## Ein Raeuber ist gefallen. Das Organ flammt auf.
+func feuer() -> void:
+    _glut = GLUT_DAUER
+
 ## Der Kegel, um am Tier ablesen zu koennen, wie hell es gerade brennt.
 ## Gesetzt von `wache.gd`.
 var kegel: Node2D = null
@@ -39,7 +66,18 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
     zeit += delta
+    _zucken = maxf(0.0, _zucken - delta)
+    _glut = maxf(0.0, _glut - delta)
     queue_redraw()
+
+
+## Wie stark er gerade zusammengezogen ist: schnell hinein, langsam heraus.
+func _einzug() -> float:
+    if _zucken <= 0.0:
+        return 0.0
+    var t := _zucken / ZUCK_DAUER
+    # Die erste Fuenftel der Zeit faehrt er ein, den Rest wieder aus.
+    return t if t > 0.8 else pow(t / 0.8, 1.6)
 
 
 ## Der Waechter.
@@ -65,11 +103,18 @@ func _draw() -> void:
     if kegel != null:
         brennt = clampf(kegel.schein, 0.0, 1.0)
 
+    # Zusammengezogen sinkt er in seinen Wulst und wird breiter - dasselbe,
+    # was eine Seeanemone tut, wenn man sie anfasst. Nur nach unten zu
+    # verschieben sieht aus, als raege jemand am Bild.
+    var einzug := _einzug()
+    var p_zuck := p + Vector2(0.0, 9.0 * einzug)
+    var brennt_gesamt := clampf(brennt + _glut / GLUT_DAUER, 0.0, 1.6)
+
     _wurzeln(p)
-    _kiemen(p, atem)
-    _leib(p, brennt)
-    _adern(p, brennt)
-    _organ(p, puls, brennt)
+    _kiemen(p_zuck, atem * (1.0 - 0.7 * einzug))
+    _leib(p_zuck, brennt_gesamt, einzug)
+    _adern(p_zuck, brennt_gesamt)
+    _organ(p_zuck, puls, brennt_gesamt)
 
 
 ## Wurzeln: was ihn im Kalkwulst haelt. Sie liegen hinter allem anderen und
@@ -124,7 +169,7 @@ func _kiemen(p: Vector2, atem: float) -> void:
 ## Lichtrichtung wie am Fels. Das Innere ist ein weicher Schein, der vom Organ
 ## nach unten in den Leib faellt und ihn von innen fuellt. Rippen gibt es
 ## nur noch drei, kurz und oben, wo der Koerper sich verjuengt.
-func _leib(p: Vector2, brennt: float) -> void:
+func _leib(p: Vector2, brennt: float, einzug: float) -> void:
     # **Die Kontur kommt aus einer Kurve, nicht aus neun Ecken.**
     #
     # Mit neun gesetzten Punkten wurde daraus ein Trapez - in der Lupe ein
@@ -142,7 +187,13 @@ func _leib(p: Vector2, brennt: float) -> void:
             var t := float(i) / float(stufen)
             if seite > 0.0:
                 t = 1.0 - t
-            verschoben.append(p + Vector2(seite * _halbbreite(t), _hoehe(t)))
+            # Beim Zusammenziehen staucht er sich der Hoehe nach und quillt
+            # dabei in die Breite - was Volumen behaelt, wird beim Stauchen
+            # dicker. Ohne das schrumpft er einfach, und das sieht nach einem
+            # Fehler in der Skalierung aus.
+            verschoben.append(p + Vector2(
+                seite * _halbbreite(t) * (1.0 + 0.16 * einzug),
+                _hoehe(t) * (1.0 - 0.24 * einzug)))
     # **Dunkler als das Wasser dahinter, nicht gleich hell.**
     #
     # Genau hier stand der dritte Fehlversuch. Der Waechter sitzt an der

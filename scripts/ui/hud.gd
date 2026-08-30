@@ -50,6 +50,24 @@ var _abschnitt_leben := 0.0
 var mutationen := PackedInt32Array()
 var _neue_mutation := -1
 
+## --- Der Blitz ---
+##
+## Ein kurzer Schleier ueber dem ganzen Bild. Er ist die einzige Rueckmeldung,
+## die man auch dann noch mitbekommt, wenn der Daumen die halbe untere
+## Bildhaelfte verdeckt - und genau dort steht die Brut.
+##
+## Sparsam einsetzen: was bei jedem Treffer blitzt, blitzt nach zehn Sekunden
+## gar nicht mehr, weil das Auge es wegrechnet. Nur die Brut ist es wert.
+var _blitz := 0.0
+var _blitz_voll := 0.001
+var _blitz_farbe := Color(1.0, 0.42, 0.34)
+
+
+func blitze(farbe: Color, dauer: float) -> void:
+    _blitz_farbe = farbe
+    _blitz_voll = maxf(0.05, dauer)
+    _blitz = _blitz_voll
+
 ## Einstieg. Ein Satz zur Zeit, mitten im Spiel statt als Textwand davor -
 ## wer eine Anleitung lesen muss, bevor er etwas anfassen darf, faengt bei
 ## einem Einminutenspiel gar nicht erst an.
@@ -84,6 +102,8 @@ func _process(delta: float) -> void:
         _meldung_leben -= delta
     if _abschnitt_leben > 0.0:
         _abschnitt_leben -= delta
+    if _blitz > 0.0:
+        _blitz -= delta
     for i in range(_ausbeuten.size() - 1, -1, -1):
         _ausbeuten[i][&"leben"] -= delta
         if _ausbeuten[i][&"leben"] <= 0.0:
@@ -207,6 +227,10 @@ func _zeichne() -> void:
     var breite := _flaeche.size.x
     var hoehe := _flaeche.size.y
 
+    # Der Blitz zuerst, damit die Kopfzeile darueber lesbar bleibt.
+    if _blitz > 0.0:
+        _blitzschleier(breite, hoehe)
+
     _kopfzeile(breite)
     _schwebende_zahlen()
 
@@ -227,6 +251,39 @@ func _zeichne() -> void:
         _abschnittstafel(breite, hoehe)
     elif _einstieg >= 0 and not _ende:
         _einstiegszeile(breite, hoehe)
+
+
+## Kein flaechiger Farbschleier, sondern ein Rand, der nach innen ausblutet.
+## Ein gleichmaessiger Schleier ueber dem ganzen Bild nimmt einem die Sicht
+## genau in dem Augenblick, in dem man sie am dringendsten braucht - der Rand
+## sagt dasselbe und laesst die Mitte frei.
+func _blitzschleier(breite: float, hoehe: float) -> void:
+    var f := pow(clampf(_blitz / _blitz_voll, 0.0, 1.0), 0.7)
+    var c := _blitz_farbe
+    var tiefe := 130.0
+    var voll := Color(c.r, c.g, c.b, 0.30 * f)
+    var leer := Color(c.r, c.g, c.b, 0.0)
+
+    # **Ein Verlauf je Kante, nicht sieben gestapelte Rechtecke.**
+    #
+    # Gestapelt ergab das im Bild sichtbare Streifen und an den Ecken, wo sich
+    # zwei Stapel ueberlagerten, einen doppelt so hellen Klotz. `draw_polygon`
+    # nimmt eine Farbe **je Eckpunkt** - damit ist der Verlauf eine einzige
+    # Flaeche, und an den Ecken addieren sich zwei Dreiecke, die dort beide
+    # schon fast durchsichtig sind.
+    var kanten: Array[PackedVector2Array] = [
+        PackedVector2Array([Vector2(0.0, 0.0), Vector2(breite, 0.0),
+            Vector2(breite, tiefe), Vector2(0.0, tiefe)]),
+        PackedVector2Array([Vector2(0.0, hoehe), Vector2(breite, hoehe),
+            Vector2(breite, hoehe - tiefe), Vector2(0.0, hoehe - tiefe)]),
+        PackedVector2Array([Vector2(0.0, 0.0), Vector2(0.0, hoehe),
+            Vector2(tiefe, hoehe), Vector2(tiefe, 0.0)]),
+        PackedVector2Array([Vector2(breite, 0.0), Vector2(breite, hoehe),
+            Vector2(breite - tiefe, hoehe), Vector2(breite - tiefe, 0.0)]),
+    ]
+    var farben := PackedColorArray([voll, voll, leer, leer])
+    for k in kanten:
+        _flaeche.draw_polygon(k, farben)
 
 
 ## Ein Satz, unten, ohne Kasten. Er soll begleiten, nicht unterbrechen.

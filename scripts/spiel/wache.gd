@@ -255,7 +255,40 @@ func starte_welle() -> void:
 
 # --- Schleife --------------------------------------------------------------
 
+## Wie lange die Zeit nach einem erlegten Leitwesen langsamer laeuft, und wie
+## langsam. Kurz: eine Zeitlupe, die man abwarten muss, ist keine Belohnung
+## mehr, sondern eine Pause.
+const ZEITLUPE_DAUER := 0.42
+const ZEITLUPE_TIEFE := 0.35
+
+var _zeitlupe := 0.0
+
+
+## **Die Restzeit wird in echter Zeit gezaehlt, nicht in gespielter.**
+##
+## `delta` kommt bereits mit `Engine.time_scale` multipliziert herein. Zieht
+## man es ungeteilt ab, dauert die Zeitlupe genau um den Faktor laenger, um
+## den sie verlangsamt - bei 0.35 also dreimal so lang wie eingestellt, und
+## die eingestellte Zahl bedeutet nichts mehr.
+## Sicherung: `Engine.time_scale` ist global. Wer diese Szene mitten in einer
+## Zeitlupe verlaesst, laesst sonst das ganze Spiel im Schneckentempo zurueck.
+func _exit_tree() -> void:
+    Engine.time_scale = 1.0
+
+
+func _zeitlupe_fuehren(delta: float) -> void:
+    if _zeitlupe <= 0.0:
+        if not is_equal_approx(Engine.time_scale, 1.0):
+            Engine.time_scale = 1.0
+        return
+    _zeitlupe = maxf(0.0, _zeitlupe - delta / maxf(0.05, Engine.time_scale))
+    # Am Ende wieder herausfahren statt zurueckzuspringen.
+    var t := clampf(_zeitlupe / ZEITLUPE_DAUER, 0.0, 1.0)
+    Engine.time_scale = lerpf(1.0, ZEITLUPE_TIEFE, pow(t, 0.6))
+
+
 func _process(delta: float) -> void:
+    _zeitlupe_fuehren(delta)
     _stimmung_nachfuehren()
     _schuetteln = maxf(0.0, _schuetteln - delta * SCHUETTELN_ABKLINGEN)
     _kamera.offset = Vector2(
@@ -414,6 +447,16 @@ func _raeume_auf() -> void:
             Fortschritt.melde_ziel(Tagesziel.Ziel.RAEUBER)
             _einstieg_weiter(1)
             Klang.spiele(Klang.Ton.TOD, 0.82 + _folge * 0.025, 0.5)
+            _waechter.feuer()
+
+            # Ein Leitwesen ist der Hoehepunkt eines Abschnitts, und ein
+            # Hoehepunkt braucht einen Augenblick, in dem die Zeit stehen
+            # bleibt. Bei einem gewoehnlichen Raeuber waere dasselbe ein
+            # Ruckeln - deshalb nur hier.
+            if Arten.ist_leitwesen(r.art):
+                _zeitlupe = ZEITLUPE_DAUER
+                _schuetteln = maxf(_schuetteln, 1.6)
+                _hud.blitze(Color(0.62, 0.98, 0.86), 0.7)
         elif r.ort.y >= Graben.BRUT_Y - 0.5:
             r.lebendig = false
             _offen -= 1
@@ -422,6 +465,11 @@ func _raeume_auf() -> void:
             _schuetteln = 1.0 + 0.5 * float(vorher - brut)
             _folge = 0.0
             Klang.spiele(Klang.Ton.BRUT_FAELLT, 1.0, 0.85)
+            # Der Waechter zuckt, und das Bild bekommt einen roten Rand. Wer
+            # den Daumen auf der unteren Bildhaelfte hat, sieht von der Brut
+            # nichts - dann ist der Rand die einzige Nachricht, die ankommt.
+            _waechter.zucke(vorher - brut)
+            _hud.blitze(Color(1.0, 0.38, 0.30), 0.55)
             _funken.platzen(r.ort, Color(1.0, 0.42, 0.34),
                 Wellen.radius_in(r.art, r.welle) * 1.6)
             # Und je zerbrochenem Ei ein eigener Bruch an seiner Stelle. Ein

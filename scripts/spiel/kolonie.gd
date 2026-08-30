@@ -617,40 +617,104 @@ func _zeichne_polypen() -> void:
             Color(POLYP_FARBE.r, POLYP_FARBE.g, POLYP_FARBE.b, 0.10 + 0.05 * puls))
 
 
+## Die Brut: das Einzige im Bild, das der Spieler die ganze Zeit sehen muss.
+##
+## Sie war eine Reihe Punkte auf einem Balken. Was daran fehlte, ist das, was
+## Eier ueberhaupt zu Eiern macht: sie liegen in etwas. Jetzt liegt darunter
+## ein Gelege - eine Membran, die sich zwischen den Eiern durchzieht und an
+## den Raendern ausduennt -, und die Eier stehen unterschiedlich hoch darin,
+## als waeren sie hineingesunken statt aufgereiht worden.
+##
+## Jedes Ei ist ein Lebenspunkt. Dadurch braucht es keine Zahl, um zu sehen,
+## wie es steht - und einen Verlust sieht man an der Luecke, nicht an einem
+## Zaehler.
 func _zeichne_brut() -> void:
-    # Die Brut ist eine Reihe Eier. Jedes steht fuer einen Lebenspunkt -
-    # dadurch braucht es keine Zahl, um zu sehen, wie es steht.
     var breite := Graben.BRUT_BREITE
     var links := -breite * 0.5
     var abstand := breite / float(maxi(1, brut_voll - 1))
 
-    draw_line(Vector2(links - 30.0, Graben.BRUT_Y + 26.0),
-        Vector2(-links + 30.0, Graben.BRUT_Y + 26.0),
-        Color(0.14, 0.26, 0.28, 0.8), 5.0)
+    # **Erst das Bett, dann die Eier, dann die Lippe darueber.**
+    #
+    # Die dritte Lage ist die, auf die es ankommt: ein schmaler Saum, der
+    # ueber die untere Kante jedes Eis laeuft. Ohne ihn liegen die Eier
+    # *auf* der Membran wie Muenzen auf einem Tisch; mit ihm stecken sie
+    # darin. Es ist derselbe Trick, mit dem ein Maler einen Stein ins Wasser
+    # setzt - nicht der Stein macht es, sondern die Linie davor.
+    _zeichne_gelege(links, breite, false)
 
     for i in brut_voll:
-        var p := Vector2(links + abstand * float(i), Graben.BRUT_Y)
+        # Leicht versetzt statt auf einer Linie. Eine schnurgerade Reihe ist
+        # eine Anzeige; eine leicht unruhige ist ein Gelege.
+        var hub := sin(float(i) * 2.4) * 3.0
+        var p := Vector2(links + abstand * float(i), Graben.BRUT_Y + hub)
         if i < brut:
-            var puls := 0.5 + 0.5 * sin(zeit * 1.7 + float(i) * 0.6)
-            draw_circle(p, 14.0, Color(BRUT_FARBE.r, BRUT_FARBE.g, BRUT_FARBE.b,
-                0.07 + 0.06 * puls))
-            draw_circle(p, 9.0, Color(BRUT_FARBE.r, BRUT_FARBE.g, BRUT_FARBE.b,
-                0.16 + 0.08 * puls))
-            draw_circle(p, 6.4, BRUT_FARBE)
-            # Ein Keim darin, der sich leicht bewegt. Ein Ei ohne etwas darin
-            # ist ein Punkt; eines mit etwas darin ist ein Grund, es zu
-            # verteidigen.
-            var keim := p + Vector2(sin(zeit * 0.9 + float(i)) * 1.4,
-                cos(zeit * 1.1 + float(i)) * 1.1)
-            draw_circle(keim, 3.0, Color(1.0, 0.96, 0.86, 0.9))
-            draw_circle(keim, 1.4, Color(1.0, 1.0, 0.96, 1.0))
+            _zeichne_ei(p, i)
         else:
-            # Zerbrochen: die leere Schale und ein Rest, der noch verglimmt.
-            draw_arc(p, 6.0, 0.35, PI - 0.35, 10, Color(0.34, 0.30, 0.26, 0.7), 1.6)
-            draw_line(p + Vector2(-5.0, 1.0), p + Vector2(-2.0, -4.0),
-                Color(0.30, 0.26, 0.22, 0.6), 1.2)
-            draw_line(p + Vector2(5.0, 1.0), p + Vector2(2.5, -3.5),
-                Color(0.30, 0.26, 0.22, 0.6), 1.2)
+            _zeichne_schale(p)
+
+    _zeichne_gelege(links, breite, true)
+
+
+## Die Membran unter den Eiern. Sie ist der Grund, warum die Reihe wie ein
+## Gelege aussieht und nicht wie eine Fortschrittsleiste.
+func _zeichne_gelege(links: float, breite: float, vorn: bool) -> void:
+    var y := Graben.BRUT_Y
+    var oben := PackedVector2Array()
+    var unten := PackedVector2Array()
+    var stufen := 44
+    # Die Lippe liegt hoeher als das Bett - so weit, dass sie das untere
+    # Drittel eines Eis deckt und den Keim darin frei laesst.
+    var hoehe := (y + 3.0) if vorn else (y + 9.0)
+    for i in stufen + 1:
+        var t := float(i) / float(stufen)
+        var x := links + breite * t
+        # An den Enden duenn, in der Mitte dick - und zwei Wellen darauf,
+        # eine langsame und eine kurze, damit die Kante nicht gezeichnet
+        # aussieht.
+        var dicke := (8.0 + 4.0 * sin(t * 9.0 + zeit * 0.5)
+            + 2.5 * sin(t * 23.0 - zeit * 0.8)) * sin(t * PI)
+        oben.append(Vector2(x, hoehe - dicke * (0.42 if vorn else 1.0)))
+        unten.append(Vector2(x, y + 22.0 + dicke * 0.6))
+
+    var haut := oben.duplicate()
+    for i in range(unten.size() - 1, -1, -1):
+        haut.append(unten[i])
+    draw_colored_polygon(haut, Color(0.13, 0.10, 0.06, 0.62 if vorn else 0.50))
+    draw_polyline(oben, Color(0.46, 0.35, 0.20, 0.50 if vorn else 0.34), 1.5, true)
+
+
+## Ein Ei: Hof, Schale, Keim. Der Keim bewegt sich - ein Ei ohne etwas darin
+## ist ein Punkt, eines mit etwas darin ist ein Grund, es zu verteidigen.
+func _zeichne_ei(p: Vector2, i: int) -> void:
+    var puls := 0.5 + 0.5 * sin(zeit * 1.7 + float(i) * 0.6)
+    var f := BRUT_FARBE
+    # Nicht alle gleich gross. Zwoelf gleiche Kreise sind eine Skala.
+    var r := 6.6 * (0.88 + 0.12 * sin(float(i) * 1.9 + 0.7))
+    draw_circle(p, r * 2.3, Color(f.r, f.g, f.b, 0.06 + 0.05 * puls))
+    draw_circle(p, r * 1.5, Color(f.r, f.g, f.b, 0.15 + 0.07 * puls))
+    draw_circle(p, r, f)
+
+    # Ein heller Fleck oben links: die Stelle, an der das Licht des Waechters
+    # auf die Schale trifft. Ohne ihn ist ein Kreis eine Scheibe.
+    draw_circle(p + Vector2(-r * 0.3, -r * 0.34), r * 0.30,
+        Color(1.0, 0.94, 0.78, 0.55))
+
+    var keim := p + Vector2(sin(zeit * 0.9 + float(i)) * 1.4,
+        cos(zeit * 1.1 + float(i)) * 1.1)
+    draw_circle(keim, 3.0, Color(1.0, 0.96, 0.86, 0.9))
+    draw_circle(keim, 1.4, Color(1.0, 1.0, 0.96, 1.0))
+
+
+## Eine zerbrochene Schale. Sie bleibt liegen - was verloren ist, verschwindet
+## nicht, es liegt da.
+func _zeichne_schale(p: Vector2) -> void:
+    draw_arc(p, 6.0, 0.35, PI - 0.35, 10, Color(0.34, 0.30, 0.26, 0.7), 1.6)
+    draw_line(p + Vector2(-5.0, 1.0), p + Vector2(-2.0, -4.0),
+        Color(0.30, 0.26, 0.22, 0.6), 1.2)
+    draw_line(p + Vector2(5.0, 1.0), p + Vector2(2.5, -3.5),
+        Color(0.30, 0.26, 0.22, 0.6), 1.2)
+    # Ein Rest, der noch verglimmt.
+    draw_circle(p + Vector2(0.0, 2.0), 1.6, Color(0.52, 0.38, 0.20, 0.35))
 
 
 ## Der Kalkwulst, in dem der Waechter steckt. Ohne ihn schwebt er ueber der
