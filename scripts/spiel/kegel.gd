@@ -185,4 +185,32 @@ func _farbe_an(spitze: Vector2, punkt: Vector2, puls: float) -> Color:
     if hell <= 0.0:
         return Color(FARBE.r, FARBE.g, FARBE.b, 0.0)
     var mische := FARBE.lerp(KERN, hell * hell)
-    return Color(mische.r, mische.g, mische.b, hell * STAERKE * puls)
+    return Color(mische.r, mische.g, mische.b,
+        hell * STAERKE * puls * _schlieren(spitze, punkt))
+
+
+## Wanderndes Streiflicht im Strahl.
+##
+## **Nur optisch, und das ist hier die ganze Kunst.** `Schlund.beleuchtung()`
+## bestimmt den Schaden, und was hell gezeichnet wird, muss Schaden machen -
+## also darf hier nichts hinein, was diese Zahl veraendert. Der Faktor
+## schwankt deshalb eng um 1.0 und mittelt sich ueber die Kegelflaeche
+## heraus: es ist Wasser vor dem Licht, nicht mehr Licht.
+##
+## Was man sieht, sind zwei Schwebungen unterschiedlicher Laenge, die nach
+## aussen wandern - so, wie Licht durch bewegtes Wasser faellt. Eine allein
+## sieht aus wie eine Zielscheibe.
+## **Die Vielfachen von `flackern` sind ganzzahlig, und das ist kein Zufall.**
+## `flackern` laeuft mit `fmod(..., TAU)` um. Bei einem krummen Faktor - 1.9
+## etwa - springt das Argument bei jedem Umlauf um 1.9*TAU, also nicht um ein
+## Vielfaches der Periode: alle 2.7 Sekunden liefe ein Riss durch den Kegel.
+## Bei 2.0 und 1.0 ist der Umlauf nahtlos.
+const SCHLIEREN_TIEFE := 0.13
+const SCHLIEREN_TIEFE_FEIN := 0.07
+
+
+func _schlieren(spitze: Vector2, punkt: Vector2) -> float:
+    var weit := spitze.distance_to(punkt)
+    return 1.0 \
+        + SCHLIEREN_TIEFE * sin(weit * 0.034 - flackern * 2.0) \
+        + SCHLIEREN_TIEFE_FEIN * sin(weit * 0.091 - flackern * 1.0 + 2.1)

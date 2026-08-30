@@ -30,6 +30,14 @@ const SEITEN: PackedFloat32Array = [-1.0, 1.0]
 ## Wird von `wache.gd` gesetzt.
 var tiere: Array[Raeuber] = []
 
+## Wellenzeit, fuer alles, was zappeln soll, ohne mit dem Alter des einzelnen
+## Tieres zu laufen.
+var _zeit := 0.0
+
+
+func _process(delta: float) -> void:
+    _zeit += delta
+
 
 func _ready() -> void:
     # Additiv. In der Tiefsee leuchtet jedes Tier selbst - es wird nicht
@@ -71,6 +79,23 @@ func _zeichne(t: Raeuber, stufe := 0) -> void:
     # der Spieler zum Zielen braucht - ohne sie sieht er nicht, wen er fasst.
     var hitze := t.hitze
     var puls := 1.0 + 0.18 * hitze
+
+    # **Was brennt, zappelt.**
+    #
+    # Ein getroffenes Tier glomm bisher nur heller - es hing weiter still im
+    # Strahl, als waere nichts. Das nimmt dem Treffen jede Wucht: der Spieler
+    # sieht eine Farbe wechseln, aber nichts geschehen. Zwei Zeilen aendern
+    # das, und zwar fuer alle neun Arten auf einmal, weil sie **vor** der
+    # Verzweigung stehen: das Tier zittert quer zu seiner Bahn und blaeht sich
+    # dabei leicht auf.
+    #
+    # Das Zittern haengt an der Wellenzeit und nicht am Alter des Tieres -
+    # sonst zittern alle im Gleichtakt, und ein Schwarm im Gleichtakt sieht
+    # aus wie ein Maschinenteil.
+    if hitze > 0.01:
+        var quer := t.richtung.orthogonal()
+        p += quer * sin(_zeit * 41.0 + t.phase * 6.0) * hitze * r * 0.11
+        r *= 1.0 + 0.07 * hitze
 
     # Der Hof faellt als Erstes weg - er kostet drei Kreise je Tier und traegt
     # am wenigsten, sobald das Bild voll ist.

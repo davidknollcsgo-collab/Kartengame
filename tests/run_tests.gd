@@ -26,6 +26,7 @@ const TESTS: PackedStringArray = [
     "_test_brennende_laesst_dunkles_aus",
     "_test_brennende_entartet",
     "_test_kegel_wird_nicht_staerker_durch_masse",
+    "_test_schlieren_bleiben_schmuck",
     "_test_zielrichtung",
     "_test_drehung_begrenzt",
     "_test_drehung_erreicht_ziel",
@@ -239,6 +240,35 @@ func _test_kegel_wird_nicht_staerker_durch_masse() -> bool:
         "nie mehr als %d Ziele, waren %d und %d" % [Graben.ZIELE, a, b]) \
         and _melde(b == Graben.ZIELE,
             "bei Ueberangebot muessen alle Ziele belegt sein, waren %d" % b)
+
+
+func _test_schlieren_bleiben_schmuck() -> bool:
+    # Die zweite Zusicherung des Projekts lautet: was hell gezeichnet wird,
+    # macht Schaden. `kegel.gd::_schlieren()` legt ein wanderndes Streiflicht
+    # darueber - Wasser vor dem Licht, nicht mehr Licht. Damit das eine
+    # Verzierung bleibt und keine zweite Wahrheit, muss es zwei Dinge tun:
+    # eng um 1.0 schwanken und sich ueber die Flaeche zu null mitteln.
+    #
+    # Geprueft wird an den Konstanten, nicht am Bild: der Kegel ist ein
+    # Szenenknoten und laeuft im Testlauf nicht.
+    var kegel := load("res://scripts/spiel/kegel.gd")
+    var tiefe: float = kegel.SCHLIEREN_TIEFE + kegel.SCHLIEREN_TIEFE_FEIN
+    if not _melde(tiefe <= 0.20,
+            "die Schlieren aendern die Deckung um %.0f %% - ueber 20 %% ist "
+            % (tiefe * 100.0) + "das keine Verzierung mehr"):
+        return false
+
+    # Und der Umlauf muss nahtlos sein. `flackern` laeuft mit fmod(..., TAU)
+    # um; bei einem krummen Vielfachen springt das Argument bei jedem Umlauf
+    # und ein Riss laeuft durch den Kegel. Die Faktoren stehen als ganze
+    # Zahlen im Quelltext - hier wird nachgesehen, dass das so bleibt.
+    var quelle := FileAccess.get_file_as_string("res://scripts/spiel/kegel.gd")
+    for teil in ["flackern * 2.0", "flackern * 1.0"]:
+        if not _melde(quelle.contains(teil),
+                "die Schlieren muessen ein ganzzahliges Vielfaches von "
+                + "flackern nehmen, sonst springt der Umlauf (%s fehlt)" % teil):
+            return false
+    return true
 
 
 func _test_zielrichtung() -> bool:

@@ -125,6 +125,13 @@ unter einer strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
 2. **Was hell gezeichnet wird, macht Schaden.** `kegel.gd` fragt für jeden
    Eckpunkt dieselbe `Schlund.beleuchtung()`, die auch den Schaden bestimmt.
    Ein Kegel, der anders aussieht als er wirkt, ist unlernbar.
+
+   Der **einzige** Zusatz darauf ist `kegel.gd::_schlieren()`: ein wanderndes
+   Streiflicht, das die gezeichnete Deckung um höchstens ±20 % moduliert und
+   sich über die Fläche zu null mittelt. Es ist Wasser vor dem Licht, nicht
+   mehr Licht — Form und Reichweite des Kegels bleiben unberührt, und wo er
+   hell ist, bleibt er hell. `_test_schlieren_bleiben_schmuck` hält die
+   Grenze fest; alles darüber wäre wieder eine zweite Wahrheit.
 3. **Die Wellenstärke wird aus der Sollkurve abgeleitet, nicht frei gewählt.**
    `Wellen.staerke()` rechnet aus `Ausbau.durchsatz()`. Eine frei hochgezogene
    Wachstumszahl ergab 55 Wellen ohne einen einzigen Verlust und dann
