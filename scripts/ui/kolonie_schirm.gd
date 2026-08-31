@@ -728,12 +728,38 @@ func _linienbild(breite: float, oben: float, unten: float,
 
     _text(Vector2(RAND, oben + 12.0), "WHAT THE LINE CHANGES", 13, LEISE)
 
-    # Direkt unter die Ueberschrift, nicht in die Mitte des freien Raums: die
-    # Bilder gehoeren zu den Zeilen darueber, und dazwischen gehoert kein
-    # Loch von dreihundert Pixeln.
+    # **Der Kegel darf den Platz nehmen, den er hat - aber nicht den des
+    # Nachbarn.**
+    #
+    # Bei einem Deckel von 330 blieben unter dem Bild zweihundertachtzig
+    # Pixel leer. Auf 470 hochgesetzt passte die Hoehe nicht mehr: Stromsinn
+    # stand schraeg, sein weites Ende wanderte um hundertfuenfundfuenfzig
+    # Pixel zur Seite bei einer Spalte von hunderteinundsiebzig - er lief in
+    # den Kegel daneben. Die Neigung wieder herauszurechnen liess nur noch
+    # hundertfuenfundzwanzig Pixel Hoehe uebrig, und dann war das Bild
+    # winzig.
+    #
+    # **Also keine Neigung.** Ein schraeg stehender Kegel sagt ohnehin nicht
+    # "er dreht schneller" - das sagt der Pfeil daneben. Und dieses Bild ist
+    # zum **Vergleichen** da: vier aufrechte Kegel lassen sich in Weite und
+    # Hitze nebeneinanderlegen, vier verschieden gekippte nicht. Die Hoehe
+    # kommt jetzt aus der Spaltenbreite, damit keiner uebersteht.
     var breit := (breite - RAND * 2.0) / float(Brutlinien.zahl())
-    var kegelhoch := clampf(hoch - 96.0, 90.0, 330.0)
-    var mitte_y := oben + 40.0 + kegelhoch * 0.5
+    var kegelhoch := clampf(minf(hoch - 106.0, breit * 0.5 / sin(0.30)),
+        90.0, 470.0)
+    # **Senkrecht mittig, nicht oben angeschlagen.**
+    #
+    # Vorher stand das Bild direkt unter der Ueberschrift, mit der
+    # Begruendung, es gehoere zu den Zeilen darueber. Die Weite der Kegel
+    # haengt aber an der Spaltenbreite und nicht an der Hoehe: unter dem Bild
+    # blieben zweihundertfuenfzig Pixel uebrig, und ein Loch am unteren Rand
+    # liest sich als fehlender Inhalt. Mittig verteilt sich derselbe Rest auf
+    # beide Seiten und liest sich als Rand.
+    var block := kegelhoch + 36.0
+    var mitte_y := (oben + 30.0 + unten) * 0.5 - 18.0
+    mitte_y = maxf(mitte_y, oben + 40.0 + kegelhoch * 0.5)
+    if block + 70.0 > hoch:
+        mitte_y = oben + 40.0 + kegelhoch * 0.5
 
     for index in Brutlinien.zahl():
         var mitte_x := RAND + breit * (float(index) + 0.5)
@@ -747,37 +773,71 @@ func _linienbild(breite: float, oben: float, unten: float,
         # seitlich kommt.
         var halb := 0.30
         var neigung := 0.0
-        var glut := 0.36
+        var glut := 0.44
         match index:
-            Brutlinien.Linie.STROMSINN:
-                neigung = -0.34
             Brutlinien.Linie.KALTBRAND:
-                halb = 0.20
-                glut = 0.60
+                # Deutlich schmaler und deutlich heisser. Bei 0.20 gegen 0.30
+                # war der Unterschied im Bild eine Handbreit - und "ein Ziel
+                # weniger, jedes haerter" ist die Linie, bei der man ihn am
+                # ehesten sehen muss.
+                halb = 0.15
+                glut = 0.95
         var achse := Vector2.UP.rotated(neigung)
 
-        var deckung := 1.0 if traegt else (0.5 if hat else 0.26)
-        for lage in 4:
-            var f := float(lage + 1) / 4.0
-            var w := halb * f
-            var ecken := PackedVector2Array([
-                spitze,
-                spitze + achse.rotated(-w) * kegelhoch,
-                spitze + achse.rotated(w) * kegelhoch,
-            ])
-            _flaeche.draw_colored_polygon(ecken,
-                Color(farbe.r, farbe.g, farbe.b,
-                    glut * 0.10 * (1.0 - f * 0.6) * deckung))
+        # **Auch eine Linie, die man nicht hat, muss man sehen koennen.**
+        #
+        # Hier stand `0.26` fuer verschlossene Linien, multipliziert auf eine
+        # Kegeldeckung von `0.36 * 0.10` - das ergibt neun Tausendstel. Im
+        # Bild standen vier praktisch leere Rechtecke mit Namen darunter.
+        # Der ganze Zweck dieses Bildes ist der **Vergleich**: es soll zeigen,
+        # wofuer man spart. Was verschlossen ist, wird durch den gedaempften
+        # Namen und den fehlenden Rahmen kenntlich, nicht durch
+        # Unsichtbarkeit.
+        var deckung := 1.0 if traegt else (0.78 if hat else 0.55)
 
-        # Stromsinn: ein Pfeil, gegen den der Kegel haelt.
+        # **Ein Verlauf, keine vier gestapelten Dreiecke.**
+        #
+        # Vier ineinanderliegende Dreiecke mit fester Deckung geben vier
+        # sichtbare Kanten im Kegel - dieselbe Sache, die schon bei den
+        # Schlickschwaden und am Leib des Waechters schiefging. Eine Flaeche
+        # mit Farbe je Eckpunkt kann, was eine Stapelung nicht kann: auf der
+        # Achse voll und an den Flanken genau null.
+        var strahl := PackedVector2Array([spitze])
+        var farben := PackedColorArray([
+            Color(farbe.r, farbe.g, farbe.b, 0.42 * glut * deckung)])
+        var rippen := 14
+        for e in rippen + 1:
+            var w := lerpf(-halb, halb, float(e) / float(rippen))
+            var rand_ab := 1.0 - pow(absf(w) / maxf(0.001, halb), 1.6)
+            strahl.append(spitze + achse.rotated(w) * kegelhoch)
+            farben.append(Color(farbe.r, farbe.g, farbe.b,
+                0.30 * glut * deckung * rand_ab))
+        _flaeche.draw_polygon(strahl, farben)
+
+        # Ein Saum an beiden Flanken - er macht die Weite des Kegels
+        # ablesbar, und genau die unterscheidet Kaltbrand von den anderen.
+        for s_seite: float in SEITEN:
+            _flaeche.draw_line(spitze,
+                spitze + achse.rotated(s_seite * halb) * kegelhoch,
+                Color(farbe.r, farbe.g, farbe.b, 0.34 * deckung), 1.4)
+
+        # Stromsinn: ein Bogen mit Spitze - er dreht schneller. Ein gerader
+        # Strich sah aus wie eine Stroemung, die von aussen draufhaelt; was
+        # die Linie tut, ist aber schwenken.
         if index == Brutlinien.Linie.STROMSINN:
-            var y_pf := mitte_y - kegelhoch * 0.18
-            _flaeche.draw_line(Vector2(mitte_x - 22.0, y_pf),
-                Vector2(mitte_x + 16.0, y_pf),
-                Color(farbe.r, farbe.g, farbe.b, 0.45 * deckung), 1.6)
-            _flaeche.draw_line(Vector2(mitte_x + 16.0, y_pf),
-                Vector2(mitte_x + 8.0, y_pf - 5.0),
-                Color(farbe.r, farbe.g, farbe.b, 0.45 * deckung), 1.6)
+            var r := kegelhoch * 0.36
+            var bogen := PackedVector2Array()
+            for e in 13:
+                var w := lerpf(-0.85, 0.85, float(e) / 12.0)
+                bogen.append(spitze + Vector2.UP.rotated(w) * r)
+            _flaeche.draw_polyline(bogen,
+                Color(farbe.r, farbe.g, farbe.b, 0.55 * deckung), 1.8, true)
+            var ende: Vector2 = bogen[bogen.size() - 1]
+            var vor := (ende - bogen[bogen.size() - 2]).normalized()
+            for s_dreh: float in SEITEN:
+                _flaeche.draw_line(ende,
+                    ende - vor.rotated(s_dreh * 0.7) * 9.0,
+                    Color(farbe.r, farbe.g, farbe.b, 0.55 * deckung), 1.8)
 
         # Nachglut: Punkte, die hinter dem Kegel weiterbrennen.
         if index == Brutlinien.Linie.NACHGLUT:
@@ -795,8 +855,10 @@ func _linienbild(breite: float, oben: float, unten: float,
             var t := (float(k) + 0.5) / float(ziele)
             var wo := spitze + achse.rotated(lerpf(-halb * 0.55, halb * 0.55, t)) \
                 * kegelhoch * (0.44 + 0.10 * float(k % 2))
-            _flaeche.draw_arc(wo, 5.0 + 2.0 * glut, 0.0, TAU, 14,
-                Color(1.0, 0.98, 0.94, (0.30 + 0.5 * glut) * deckung), 1.4)
+            _flaeche.draw_circle(wo, (5.0 + 3.0 * glut) * 1.8,
+                Color(farbe.r, farbe.g, farbe.b, 0.10 * deckung))
+            _flaeche.draw_arc(wo, 5.0 + 3.0 * glut, 0.0, TAU, 14,
+                Color(1.0, 0.98, 0.94, (0.42 + 0.5 * glut) * deckung), 1.6)
 
         var beschriftung := Brutlinien.name_von(index)
         _text(Vector2(mitte_x, spitze.y + 20.0), beschriftung, 11,
