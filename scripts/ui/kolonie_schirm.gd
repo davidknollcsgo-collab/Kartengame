@@ -45,6 +45,11 @@ const FARBEN: PackedColorArray = [
     Color(0.86, 0.68, 0.96),   ## Tiefenschacht
 ]
 
+## Der Lehrschritt, wenn er hier faellig ist. Das HUD ist waehrend des
+## Koloniebildschirms unsichtbar - ein Satz, der hier gilt, muss auch hier
+## gezeichnet werden, sonst zeigt er auf einen Bildschirm, den niemand sieht.
+var _lehre := -1
+
 @onready var _flaeche: Control = $Flaeche
 
 var _schrift: Font
@@ -355,6 +360,8 @@ func _zeichne() -> void:
         _leiser = Rect2()
         _loeschen = Rect2()
 
+    if Lehrpfad.in_der_kolonie(_lehre):
+        _lehrtafel(breite, hoehe)
     _fusszeile(breite, hoehe)
 
     if _meldung_leben > 0.0:
@@ -1416,13 +1423,23 @@ func _kammer(kasten: Rect2, k: int, stand: KolonieStand, jetzt: float) -> void:
             zweite_farbe = NAEHR
     _text(Vector2(links, kasten.position.y + 52.0), zweite, 12, zweite_farbe)
 
-    # Stufenpunkte statt einer Zahl: man sieht auf einen Blick, wieviel noch
-    # geht, ohne rechnen zu muessen.
+    # Was die Stufe konkret bringt - jetzt und nach dem naechsten Ausbau.
+    # Die Zahlen kommen aus `Kammern.wirkung()`, also aus derselben Rechnung,
+    # die das Spiel benutzt. Ein zweiter Satz Zahlen fuer die Anzeige waere
+    # eine zweite Wahrheit, und die laeuft auseinander.
+    var jetzt_wirkt := Kammern.wirkung(k, stufe)
+    var dann_wirkt := Kammern.wirkung(k, stufe + 1)
+    var wirkzeile := jetzt_wirkt
+    if dann_wirkt != jetzt_wirkt and stufe < Kammern.deckel(k, stand.schacht()):
+        wirkzeile = "%s   →   %s" % [jetzt_wirkt, dann_wirkt]
+    _text(Vector2(links, kasten.position.y + 100.0), wirkzeile, 12,
+        Color(farbe.r, farbe.g, farbe.b, 0.78))
+
     var deckel := Kammern.deckel(k, stand.schacht())
     var rechts := kasten.end.x - 12.0
-    # Die Reihe endet vor der Preisspalte, nicht am Kastenrand - sonst laeuft
+    # Die Zeile endet vor der Preisspalte, nicht am Kastenrand - sonst laeuft
     # sie unter die Zahl.
-    _stufenreihe(Vector2(links, kasten.position.y + 76.0),
+    _stufenzeile(Vector2(links, kasten.position.y + 78.0),
         maxf(40.0, rechts - links - 96.0), stufe, deckel, farbe)
     if baut_hier:
         _baufortschritt(kasten, stand, jetzt, farbe)
@@ -1434,7 +1451,9 @@ func _kammer(kasten: Rect2, k: int, stand: KolonieStand, jetzt: float) -> void:
     else:
         var preis := stand.preis(k)
         var reicht := stand.naehrstoffe >= preis
-        _text(Vector2(rechts, mitte_y - 6.0), "Level %d" % (stufe + 1), 13, LEISE, false, true)
+        # "to 9" und nicht "Level 9": links steht schon eine Stufe, und zwei
+        # Zahlen mit demselben Wort davor liest man als Widerspruch.
+        _text(Vector2(rechts, mitte_y - 6.0), "to %d" % (stufe + 1), 13, LEISE, false, true)
         _text(Vector2(rechts, mitte_y + 16.0), Zahl.kurz(preis), 18,
             NAEHR if reicht else SPERRE, false, true)
 
@@ -1456,51 +1475,76 @@ func _baufortschritt(kasten: Rect2, stand: KolonieStand, jetzt: float,
         _dauer(rest), 16, farbe, false, true)
 
 
-## Die Stufenreihe: ein Punkt je Stufe, gefuellt fuer erreichte, offen fuer
-## erlaubte, klein fuer das, was der Tiefenschacht noch verschlossen haelt.
+## Die Stufenzeile: **eine Zahl**, ein schmaler Balken und der Deckel.
 ##
-## **Sie zeichnete `Kammern.HOECHSTSTUFE` Punkte, und das war einmal 20.**
-## Seit der Graben keinen Boden mehr hat, sind es 80 - die Reihe lief also
-## rechts aus dem Bild, mitsamt dem Preis, der dahinter steht. Ein Fehler, den
-## kein Test findet, weil er nur im Bild existiert, und den ich mir selbst
-## eingebaut habe, als ich die Hoechststufe angehoben habe.
+## **Hier stand eine Punktreihe, ein Punkt je Stufe.** Das war lesbar, solange
+## die Hoechststufe 20 war. Seit der Graben keinen Boden mehr hat, sind es 80
+## - achtzig Punkte nebeneinander, von denen acht gefuellt waren. Niemand
+## zaehlt achtzig Punkte ab; man sieht "viele Punkte, vorne ein bisschen
+## voll", und das ist keine Auskunft, sondern ein Muster.
 ##
-## Jetzt richtet sich der Abstand nach dem Platz, und unter einer Mindestweite
-## wird zusammengefasst: was nicht mehr als Punktreihe lesbar ist, ist als
-## Balken ehrlicher. Achtzig Punkte nebeneinander sind ohnehin keine Anzahl
-## mehr, die jemand abliest.
-const REIHE_PUNKT := 9.0
-const REIHE_ENG := 4.0
+## Eine Zahl ist an dieser Stelle beides zugleich: genau und sofort ablesbar.
+## Der Balken daneben behaelt, was die Punktreihe konnte und die Zahl nicht -
+## das Gefuehl, wie weit es noch geht -, und er zeigt zusaetzlich den Deckel,
+## den der Tiefenschacht setzt.
+const BALKEN_HOCH := 5.0
 
-func _stufenreihe(wo: Vector2, breite: float, stufe: int, deckel: int,
+
+func _stufenzeile(wo: Vector2, breite: float, stufe: int, deckel: int,
         farbe: Color) -> void:
-    var abstand := minf(REIHE_PUNKT, breite / float(maxi(1, Kammern.HOECHSTSTUFE)))
+    var beschriftung := "LEVEL %d" % stufe
+    _text(wo + Vector2(0.0, 5.0), beschriftung, 15, farbe)
 
-    if abstand < REIHE_ENG:
-        # Balken: erreicht, erlaubt, verschlossen - dieselbe Auskunft, nur
-        # ohne den Anspruch, sie zaehlen zu koennen.
-        var hoehe := 5.0
-        var anteil := float(stufe) / float(maxi(1, Kammern.HOECHSTSTUFE))
-        var bis_deckel := float(deckel) / float(maxi(1, Kammern.HOECHSTSTUFE))
-        _flaeche.draw_rect(Rect2(wo - Vector2(0.0, hoehe * 0.5),
-            Vector2(breite, hoehe)), Color(0.34, 0.36, 0.38, 0.28))
-        _flaeche.draw_rect(Rect2(wo - Vector2(0.0, hoehe * 0.5),
-            Vector2(breite * bis_deckel, hoehe)),
-            Color(farbe.r, farbe.g, farbe.b, 0.30))
-        _flaeche.draw_rect(Rect2(wo - Vector2(0.0, hoehe * 0.5),
-            Vector2(breite * anteil, hoehe)), farbe)
-        return
+    # Der Balken beginnt hinter der Zahl. 96 statt einer gemessenen Breite,
+    # weil `draw_string` die Breite nur ueber einen zweiten Aufruf hergibt und
+    # die Zahl hier nie mehr als vier Zeichen hat.
+    var links := wo.x + 96.0
+    var weit := maxf(30.0, wo.x + breite - links)
+    var y := wo.y
 
-    for i in Kammern.HOECHSTSTUFE:
-        var p := wo + Vector2(abstand * float(i) + 3.0, 0.0)
-        if i < stufe:
-            _flaeche.draw_circle(p, 3.4, farbe)
-        elif i < deckel:
-            _flaeche.draw_arc(p, 3.0, 0.0, TAU, 8,
-                Color(farbe.r, farbe.g, farbe.b, 0.38), 1.2, true)
-        else:
-            # Jenseits des Deckels: was der Tiefenschacht noch verschlossen haelt.
-            _flaeche.draw_circle(p, 1.6, Color(0.34, 0.36, 0.38, 0.42))
+    # **Der Balken misst gegen den Deckel, nicht gegen die Hoechststufe.**
+    #
+    # Gegen 80 gemessen ist Stufe 7 ein Strich von vier Pixeln - richtig
+    # gerechnet und trotzdem nutzlos, weil die Hoechststufe kein Ziel ist,
+    # das jemand vor sich hat. Der Deckel ist eines: bis dahin geht es, und
+    # dann muss der Tiefenschacht tiefer. Der Balken fuellt sich also bis zur
+    # naechsten Schranke und faengt danach neu an.
+    var bis := float(maxi(1, deckel))
+    var anteil := clampf(float(stufe) / bis, 0.0, 1.0)
+
+    _flaeche.draw_rect(Rect2(links, y - BALKEN_HOCH * 0.5, weit, BALKEN_HOCH),
+        Color(0.34, 0.36, 0.38, 0.24))
+    _flaeche.draw_rect(Rect2(links, y - BALKEN_HOCH * 0.5, weit * anteil,
+        BALKEN_HOCH), farbe)
+
+    # Wo Schluss ist. Nur wenn es einen Deckel gibt - wer die Hoechststufe
+    # erreicht hat, braucht keine Schranke mehr angezeigt zu bekommen.
+    if deckel < Kammern.HOECHSTSTUFE:
+        _text(Vector2(wo.x + breite, y + 5.0), "of %d" % deckel, 11,
+            NAEHR if stufe >= deckel else LEISE, false, true)
+
+
+## Setzt den Lehrschritt. `wache.gd` ruft das; -1 heisst: nichts anzeigen.
+func zeige_einstieg(schritt: int) -> void:
+    _lehre = schritt
+
+
+## Dieselbe Tafel wie im HUD, nur ohne Ring: hier zeigt der Bildschirm selbst
+## schon auf die Kammern, weil er aus nichts anderem besteht.
+func _lehrtafel(breite: float, hoehe: float) -> void:
+    var puls := 0.5 + 0.5 * sin(_zeit * 2.0)
+    var kasten := Rect2(RAND, hoehe - FUSS - 74.0, breite - RAND * 2.0, 64.0)
+    _flaeche.draw_rect(kasten, Color(0.035, 0.105, 0.135, 0.92))
+    _flaeche.draw_rect(kasten, Color(0.42, 0.86, 0.92, 0.24 + 0.16 * puls),
+        false, 1.4)
+    _flaeche.draw_rect(Rect2(kasten.position, Vector2(3.0, kasten.size.y)),
+        Color(0.52, 0.94, 0.86, 0.85))
+    _text(Vector2(kasten.position.x + 16.0, kasten.position.y + 25.0),
+        Lehrpfad.titel(_lehre), 16, NAEHR)
+    _text(Vector2(kasten.end.x - 14.0, kasten.position.y + 24.0),
+        "%d/%d" % [_lehre + 1, Lehrpfad.anzahl()], 12, LEISE, false, true)
+    _text(Vector2(kasten.position.x + 16.0, kasten.position.y + 48.0),
+        Lehrpfad.satz(_lehre), 13, SCHRIFT)
 
 
 func _fusszeile(breite: float, hoehe: float) -> void:

@@ -8,13 +8,23 @@ extends Node2D
 ## wusch es weg. Im Bild war vom Waechter der Kranz seiner Wurzeln zu sehen
 ## und sonst nichts. Ein Tier, aus dem das Licht kommt, gehoert vor das Licht.
 ##
-## Er ist die Figur, auf die der Spieler die ganze Zeit sieht, und er war
-## einmal sechs Punkte gross: ein Sechseck, fuenf Stummel, drei Adern, ein
-## Kreis obenauf. Jetzt besteht er aus fuenf Lagen, von hinten nach vorn -
-## Wurzeln, die ihn im Kalk halten; Kiemenfaecher, die atmen; der geriefte
-## Leib; das Adernetz, das zum Organ laeuft; und das Leuchtorgan selbst.
-## Kein Gesicht und keine Gliedmassen: er soll ein Teil der Kolonie sein, kein
-## Maskottchen.
+## Er ist die Figur, auf die der Spieler die ganze Zeit sieht.
+##
+## **Und er sah aus wie eine Lampe.** Der Umriss war eine Vase: unten breit,
+## in der Mitte eingezogen, oben ein Hals mit einer leuchtenden Kugel darauf.
+## Genau das ist die Silhouette einer Tischlampe, und daran aendert keine
+## Farbe und keine Rippe etwas - eine Form liest man am Umriss, und der war
+## Geraet, nicht Tier.
+##
+## Der Umriss macht jetzt das Gegenteil: **breit und flach statt schmal und
+## hoch**, und aus dem Rand steigt ein Kranz aus acht Armen, die sich nach
+## aussen rollen und in der Stroemung stehen. Das Organ sitzt nicht mehr
+## obenauf, sondern **zwischen** den Armen, tiefer und kleiner - es wird
+## getragen, statt aufgesetzt zu sein. Arme, die sich bewegen, sind das
+## Einzige, was aus einer Form ein Tier macht; alles andere ist Verzierung.
+##
+## Kein Gesicht und keine Gliedmassen im Sinne von Beinen: er soll ein Teil
+## der Kolonie sein, kein Maskottchen.
 
 ## Links und rechts - als Konstante, weil ein Feldliteral in einer
 ## for-Schleife seinen Typ verliert.
@@ -111,10 +121,16 @@ func _draw() -> void:
     var brennt_gesamt := clampf(brennt + _glut / GLUT_DAUER, 0.0, 1.6)
 
     _wurzeln(p)
-    _kiemen(p_zuck, atem * (1.0 - 0.7 * einzug))
+    # Die hinteren Arme zuerst, dann der Leib, dann die vorderen: so steht
+    # der Kranz **um** das Tier und nicht davor. Ohne diese Teilung liegt
+    # entweder der ganze Kranz vor dem Leib (dann ist es ein Gitter) oder
+    # ganz dahinter (dann sieht man ihn nicht).
+    _arme(p_zuck, atem, brennt_gesamt, einzug, false)
+    _kragen(p_zuck, atem * (1.0 - 0.7 * einzug))
     _leib(p_zuck, brennt_gesamt, einzug)
     _adern(p_zuck, brennt_gesamt)
     _organ(p_zuck, puls, brennt_gesamt)
+    _arme(p_zuck, atem, brennt_gesamt, einzug, true)
 
 
 ## Wurzeln: was ihn im Kalkwulst haelt. Sie liegen hinter allem anderen und
@@ -128,7 +144,7 @@ func _wurzeln(p: Vector2) -> void:
     # nach unten haelt ihn nichts, zur Seite der ganze Wulst.
     for i in 7:
         var s := lerpf(-1.0, 1.0, float(i) / 6.0)
-        var wurzel := p + Vector2(s * 22.0, 40.0)
+        var wurzel := p + Vector2(s * 26.0, 46.0)
         var linie := PackedVector2Array([wurzel])
         var punkt := wurzel
         for g in 2:
@@ -139,20 +155,89 @@ func _wurzeln(p: Vector2) -> void:
             3.4 - 1.3 * absf(s), true)
 
 
-## Kiemenfaecher an beiden Flanken. Sie sind das Einzige an ihm, das sich
-## sichtbar bewegt, und sie tun es langsam - ein Tier, das schnell atmet,
-## wirkt in Panik.
-func _kiemen(p: Vector2, atem: float) -> void:
+## --- Die Arme ---
+##
+## Acht je Seite, aus dem Rand des Mantels. Sie sind der Grund, warum der
+## Waechter jetzt als Tier gelesen wird: eine Form mit ruhigem Umriss ist ein
+## Gegenstand, eine Form mit Fortsaetzen, die sich langsam bewegen, ist
+## lebendig. Nichts anderes an ihm musste sich dafuer aendern.
+##
+## Sie rollen sich nach aussen ein - jeder Arm ist eine Kurve, die flacher
+## wird, je weiter sie laeuft. Gerade Arme sind Speichen; eingerollte sind
+## Fangarme.
+##
+## `vorn` teilt den Kranz: die geraden Nummern liegen hinter dem Leib, die
+## ungeraden davor. Damit steht der Kranz **um** das Tier herum, und der
+## Leib hat vorn wie hinten eine Kante, an der etwas verschwindet.
+const ARME_JE_SEITE := 5
+
+
+func _arme(p: Vector2, atem: float, brennt: float, einzug: float,
+        vorn: bool) -> void:
     for seite: float in SEITEN:
-        for i in 5:
-            var t := float(i) / 4.0
-            var wurzel := p + Vector2(seite * lerpf(16.0, 27.0, t), lerpf(4.0, 34.0, t))
-            var oeffnung := 0.55 + 0.45 * atem
-            var laenge := lerpf(20.0, 11.0, t) * (0.82 + 0.18 * atem)
-            var w := seite * lerpf(0.35, 1.05, t) * oeffnung
-            var spitze := wurzel + Vector2(sin(w), -cos(w) * 0.35 + 0.55) * laenge
-            draw_line(wurzel, spitze, Color(0.20, 0.46, 0.52, 0.55), 2.4)
-            draw_circle(spitze, 1.5, Color(0.34, 0.70, 0.76, 0.40))
+        for i in ARME_JE_SEITE:
+            if (i % 2 == 1) != vorn:
+                continue
+            var t := float(i) / float(ARME_JE_SEITE - 1)
+            # **Ansatz und Winkel muessen zusammenlaufen.**
+            #
+            # Der innerste Arm sitzt oben an der Oeffnung und steht steil
+            # nach oben; der aeusserste sitzt unten an der Flanke und legt
+            # sich flach nach aussen. Andersherum - steiler Winkel unten,
+            # flacher oben - kreuzen sich alle Arme auf halber Hoehe, und im
+            # Bild stand links und rechts je ein Lenkergriff. Ein Kranz
+            # oeffnet sich, er buendelt nicht.
+            var ansatz_t := lerpf(1.0, 0.42, t)
+            var wurzel := p + Vector2(seite * _halbbreite(ansatz_t) * 0.86,
+                _hoehe(ansatz_t))
+            # Innen steil, aussen flach - so entsteht ein Faecher und keine
+            # Garbe. Die Welle laesst ihn in der Stroemung stehen.
+            var welle := sin(zeit * 0.8 + float(i) * 0.9 + seite * 1.3)
+            var start := lerpf(0.26, 1.02, t) + 0.09 * welle
+            # Wie stark er sich beim Auslaufen nach aussen rollt.
+            var rolle := lerpf(0.55, 1.15, t)
+            var laenge := lerpf(72.0, 42.0, t) * (1.0 - 0.30 * einzug)
+
+            var glieder := 8
+            var schritt := laenge / float(glieder)
+            var punkt := wurzel
+            var linie := PackedVector2Array([punkt])
+            for g in range(1, glieder + 1):
+                var u := float(g) / float(glieder)
+                var w := start + rolle * pow(u, 1.4) + 0.10 * welle * u
+                punkt += Vector2(seite * sin(w), -cos(w)) * schritt
+                linie.append(punkt)
+
+            # Von der Wurzel zur Spitze duenner und blasser. Ein Arm mit
+            # gleichbleibender Staerke ist ein Draht.
+            for g in glieder:
+                var u := float(g) / float(glieder)
+                draw_line(linie[g], linie[g + 1],
+                    Color(0.30, 0.66, 0.74, (0.52 - 0.30 * u) + 0.12 * brennt),
+                    lerpf(6.2, 1.2, u))
+
+            # Die Spitze traegt ein Photophor. Das sitzt in der Tiefsee an so
+            # einem Arm, und es ist zugleich das, was den Kranz im Dunkeln
+            # ueberhaupt erkennbar macht.
+            var spitze: Vector2 = linie[linie.size() - 1]
+            var glimm := 0.40 + 0.28 * (0.5 + 0.5 * welle) + 0.30 * brennt
+            draw_circle(spitze, 5.0, Color(0.34, 0.78, 0.86, 0.14 * glimm))
+            draw_circle(spitze, 2.1, Color(0.72, 0.98, 1.0, glimm))
+
+
+## Der Kragen: kurze Fransen, wo die Arme aus dem Mantel treten. Sie sind das
+## Bindeglied - ohne sie sitzen die Arme auf der Kante wie angeklebt.
+func _kragen(p: Vector2, atem: float) -> void:
+    for seite: float in SEITEN:
+        for i in 6:
+            var t := float(i) / 5.0
+            var ansatz := lerpf(0.16, 0.58, t)
+            var wurzel := p + Vector2(seite * _halbbreite(ansatz) * 0.98,
+                _hoehe(ansatz))
+            var laenge := lerpf(13.0, 7.0, t) * (0.82 + 0.18 * atem)
+            var w := seite * lerpf(0.9, 0.3, t)
+            var spitze := wurzel + Vector2(sin(w), cos(w) * 0.5) * laenge
+            draw_line(wurzel, spitze, Color(0.20, 0.46, 0.52, 0.48), 2.2)
 
 
 ## Der Leib.
@@ -212,11 +297,20 @@ func _leib(p: Vector2, brennt: float, einzug: float) -> void:
     # frueher an.
     var farben := PackedColorArray()
     for k in aussen.size():
-        var hell := pow(hoehen[k], 0.85)
+        # **Deutlich dunkler als vorher.** Der Verlauf lief bis
+        # 0.26/0.62/0.72 - bei einem flachen, breiten Mantel liegt der obere
+        # Wert nicht mehr auf einem schmalen Hals, sondern auf der halben
+        # Flaeche. Im Bild war das eine leuchtende Glaskugel, und damit war
+        # die Lampe nur runder geworden.
+        #
+        # Der Mantel ist jetzt Koerper: knapp ueber dem Wasser, mit einem
+        # Schein, der erst dicht an der Oeffnung ansteigt. Das Helle im Bild
+        # ist das Organ - genau eines, und nicht das Tier.
+        var hell := pow(hoehen[k], 1.6)
         farben.append(Color(
-            lerpf(0.048, 0.26, hell),
-            lerpf(0.115, 0.62, hell) + 0.10 * brennt * hell,
-            lerpf(0.148, 0.72, hell) + 0.10 * brennt * hell))
+            lerpf(0.042, 0.14, hell),
+            lerpf(0.112, 0.36, hell) + 0.08 * brennt * hell,
+            lerpf(0.146, 0.43, hell) + 0.08 * brennt * hell))
     draw_polygon(aussen, farben)
 
     # Drei kurze Rippen oben, wo der Koerper sich verjuengt. Ihre Breite kommt
@@ -231,11 +325,19 @@ func _leib(p: Vector2, brennt: float, einzug: float) -> void:
             bogen.append(p + Vector2(u * halb, y - (1.0 - u * u) * 2.6))
         draw_polyline(bogen, Color(0.44, 0.80, 0.88, 0.22), 1.1, true)
 
-    # Der Saum laeuft **nicht** ueber den Fuss. Unten steckt der Waechter im
-    # Kalk; eine helle Linie quer darunter waere ein Strich unter einem
-    # Rechenbeispiel, und genau so sah sie auch aus.
-    var saum := aussen.slice(1, aussen.size() - 1)
-    draw_polyline(saum, Color(0.40, 0.78, 0.88, 0.62 + 0.28 * brennt), 2.4, true)
+    # **Der Saum liegt nur oben.**
+    #
+    # Er lief einmal um den ganzen Umriss - und ein heller Strich rings um
+    # eine gewoelbte Form ist eine Kugel, ganz gleich, wie dunkel sie
+    # innen ist. Genau daran las sich der Mantel als Glasball. Licht faellt
+    # aus dem Organ nach oben und aussen; unten steckt der Waechter im Kalk,
+    # und dort hat er keine Kante.
+    var saum := PackedVector2Array()
+    for k in aussen.size():
+        if hoehen[k] > 0.42:
+            saum.append(aussen[k])
+    if saum.size() > 1:
+        draw_polyline(saum, Color(0.40, 0.78, 0.88, 0.40 + 0.22 * brennt), 2.0, true)
 
 
 ## Der Umriss des Leibes, als Vieleck und mit der Hoehenlage je Eckpunkt.
@@ -278,8 +380,15 @@ func _halbbreite(t: float) -> float:
     # Unten breit, in der Mitte leicht eingezogen, oben ein schmaler Hals.
     # Die Welle darauf ist flach und ungerade getaktet, damit keine der
     # beiden Flanken der anderen gleicht.
-    var grund := lerpf(34.0, 15.0, pow(t, 1.15)) \
-        - 4.0 * sin(t * PI) * (1.0 - t)
+    # **Breit und flach, nicht schmal und hoch.**
+    #
+    # Hier stand `lerpf(34.0, 15.0, ...)` mit einer Einschnuerung in der
+    # Mitte: unten breit, Taille, Hals. Das ist die Kontur einer Vase, und
+    # eine Vase mit einer Leuchte obendrauf ist eine Lampe. Der breiteste
+    # Punkt liegt jetzt im unteren Drittel und die Flanke faellt von dort
+    # gleichmaessig ab - so waelbt sich ein Mantel, und so waelbt sich keine
+    # Vase.
+    var grund := lerpf(44.0, 30.0, t) + 11.0 * sin(t * PI)
     return maxf(6.0, grund + 1.8 * sin(t * 7.3 + 0.9))
 
 
@@ -291,7 +400,9 @@ func _halbbreite(t: float) -> float:
 ## keine Kante: es verschwindet darin. Also ein Stueck tiefer, hinter die
 ## vordere Eierreihe.
 func _hoehe(t: float) -> float:
-    return lerpf(64.0, -26.0, t)
+    # Flacher als vorher (90 Einheiten hoch, jetzt 68). Was an Hoehe fehlt,
+    # tragen die Arme - und die tragen sie als Bewegung statt als Masse.
+    return lerpf(48.0, 4.0, t)
 
 
 ## Das Adernetz: von den Wurzeln zum Organ, mit Verzweigungen. Es pulst
@@ -305,43 +416,53 @@ func _adern(p: Vector2, brennt: float) -> void:
     for i in 3:
         var s := lerpf(-11.0, 11.0, float(i) / 2.0)
         var ader := PackedVector2Array([
-            p + Vector2(s * 1.5, 34.0),
-            p + Vector2(s * 1.2, 16.0),
-            p + Vector2(s * 0.75, -2.0),
-            p + Vector2(s * 0.3, -15.0),
+            p + Vector2(s * 1.7, 42.0),
+            p + Vector2(s * 1.4, 24.0),
+            p + Vector2(s * 0.9, 8.0),
+            p + Vector2(s * 0.4, -4.0),
         ])
         var glut := 0.5 + 0.5 * sin(zeit * 1.6 - float(i) * 0.8)
         draw_polyline(ader, Color(0.42, 0.86, 0.94,
             0.07 + 0.07 * glut + 0.10 * brennt), 1.2, true)
 
 
-## Das Leuchtorgan: Kranz, Hof, Kern. Alles daran wird groesser, wenn der
-## Kegel brennt - es ist die Quelle, und das soll man sehen.
+## Das Leuchtorgan.
+##
+## **Es sass obenauf, und das war der zweite Grund fuer die Lampe.** Ein
+## Leuchtkoerper am oberen Ende eines Halses ist eine Gluehbirne, ganz gleich,
+## woraus er besteht. Jetzt sitzt es tief im Mantel, dort, wo die Arme
+## zusammenlaufen: nicht aufgesetzt, sondern **umschlossen**. Der Kranz aus
+## Kapseln liegt flach darum herum wie die Perlen in einem Schlund, und was
+## nach oben steht, sind die Arme.
+##
+## Alles daran wird groesser, wenn der Kegel brennt - es ist die Quelle des
+## Lichts, und das soll man sehen, auch wenn der Blick oben am Bildrand haengt.
 func _organ(p: Vector2, puls: float, brennt: float) -> void:
-    var kopf := p + Vector2(0.0, -22.0)
+    var kopf := p + Vector2(0.0, 8.0)
 
-    # **Ein Kranz aus Blasen, keine dreizehn Striche.**
+    # **Ein Kranz aus Blasen, keine dreizehn Striche.** Was ein Leuchtorgan
+    # der Tiefsee ausmacht, sind Kapseln: runde, halbdurchsichtige Koerper,
+    # die einander ueberlappen und jeweils einen harten Kern haben. Sie
+    # tragen zugleich die Rueckmeldung - wenn der Waechter feuert, treten sie
+    # auseinander und werden groesser.
     #
-    # Vorher standen hier dreizehn duenne Linien mit einem Punkt am Ende -
-    # aus zwei Metern Abstand ein Kamm. Was ein Leuchtorgan der Tiefsee
-    # ausmacht, sind Kapseln: runde, halbdurchsichtige Koerper, die einander
-    # ueberlappen und jeweils einen harten Kern haben. Sie tragen zugleich
-    # die Rueckmeldung - wenn der Waechter feuert, treten sie auseinander und
-    # werden groesser, und das sieht man auch dann, wenn der Blick am oberen
-    # Bildrand haengt.
-    for i in 11:
-        var w := lerpf(-PI * 0.94, -PI * 0.06, float(i) / 10.0)
-        var weit := (12.0 + 4.5 * sin(zeit * 0.9 + float(i) * 1.7)) \
-            * (1.0 + 0.32 * brennt)
-        var mitte := kopf + Vector2(cos(w), sin(w) * 0.86) * weit
+    # Der Kranz liegt jetzt **flach** (0.44 statt 0.86 in der Hoehe): er
+    # umschliesst den Kern in der Aufsicht, statt als Bogen darueber zu
+    # stehen. Ein Bogen ueber einem Punkt ist ein Schirm.
+    for i in 13:
+        var w := TAU * float(i) / 13.0
+        var weit := (17.0 + 3.5 * sin(zeit * 0.9 + float(i) * 1.7)) \
+            * (1.0 + 0.28 * brennt)
+        var mitte := kopf + Vector2(cos(w) * weit, sin(w) * weit * 0.44)
         # Ungleiche Groessen, sonst ist es eine Perlenkette.
-        var r := 3.0 + 2.8 * absf(sin(float(i) * 2.3 + 0.6)) \
-            + 1.2 * brennt
-        draw_circle(mitte, r * 2.0, Color(0.34, 0.80, 0.94, 0.09 + 0.10 * brennt))
-        draw_circle(mitte, r, Color(0.50, 0.90, 0.98, 0.20 + 0.18 * brennt))
-        draw_circle(mitte, r * 0.42, Color(0.86, 1.0, 1.0, 0.55 + 0.35 * brennt))
+        var r := 2.6 + 2.4 * absf(sin(float(i) * 2.3 + 0.6)) + 1.0 * brennt
+        draw_circle(mitte, r * 2.0, Color(0.34, 0.80, 0.94, 0.08 + 0.09 * brennt))
+        draw_circle(mitte, r, Color(0.50, 0.90, 0.98, 0.18 + 0.16 * brennt))
+        draw_circle(mitte, r * 0.42, Color(0.86, 1.0, 1.0, 0.50 + 0.35 * brennt))
 
-    draw_circle(kopf, 26.0 + puls * 4.0 + 10.0 * brennt, Color(0.40, 0.86, 0.98, 0.07))
-    draw_circle(kopf, 16.0 + puls * 2.5 + 5.0 * brennt, Color(0.44, 0.88, 0.98, 0.13))
-    draw_circle(kopf, 9.5 + puls * 1.5, Color(0.70, 0.98, 1.0, 0.85))
-    draw_circle(kopf, 4.6, Color(1.0, 1.0, 0.98, 0.95))
+    # Der Kern. Kleiner als vorher - er soll die hellste Stelle des Bildes
+    # sein, aber nicht die groesste.
+    draw_circle(kopf, 19.0 + puls * 3.0 + 8.0 * brennt, Color(0.40, 0.86, 0.98, 0.06))
+    draw_circle(kopf, 14.0 + puls * 2.5 + 5.0 * brennt, Color(0.44, 0.88, 0.98, 0.12))
+    draw_circle(kopf, 7.5 + puls * 1.4, Color(0.70, 0.98, 1.0, 0.85))
+    draw_circle(kopf, 3.6, Color(1.0, 1.0, 0.98, 0.95))

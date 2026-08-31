@@ -143,15 +143,65 @@ const POLYP_KOSTEN := 12
 const POLYP_KOSTEN_WACHSTUM := 1.55
 const POLYP_RADIUS := 15.0
 
-## Feste Nischen in den Grabenwaenden. Feste Plaetze statt freier Platzierung,
-## weil der Spieler zwischen zwei Wellen wenige Sekunden hat - eine Wahl aus
-## acht Punkten trifft man in dieser Zeit, eine freie Platzierung nicht.
-const NISCHEN: PackedVector2Array = [
-    Vector2(-292.0, -196.0), Vector2(292.0, -104.0),
-    Vector2(-286.0, -22.0), Vector2(286.0, 64.0),
-    Vector2(-296.0, 148.0), Vector2(296.0, 226.0),
-    Vector2(-244.0, 306.0), Vector2(244.0, 336.0),
-]
+## --- Die Ranken, an denen die Wehrpolypen sitzen ---
+##
+## **Frueher sassen die Nischen in den Grabenwaenden.** Die Waende sind weg -
+## sie waren im Bild zwei graue Platten mit aufgeklebtem Kleinkram, und was
+## davor lag, verschwand darin. Damit hingen aber acht Tippflaechen im
+## Nichts: leuchtende Ringe ohne etwas, woran sie sitzen.
+##
+## Jetzt wachsen sie an der Kolonie selbst. Zwei Ranken steigen links und
+## rechts aus dem Kalkwulst auf und tragen je vier Knospen. Das erklaert die
+## Nischen, statt sie nur zu setzen: die Kolonie streckt zwei Arme in den
+## Schlund, und in deren Knospen zieht man Wehrpolypen.
+##
+## Die Bahn steht **hier** und nicht in der Zeichendatei, weil beide sie
+## brauchen - `kolonie.gd` zeichnet die Ranke, und die Nischen liegen darauf.
+## Zwei Beschreibungen derselben Kurve laufen auseinander, sobald eine sich
+## aendert, und dann sitzt die Tippflaeche neben der Knospe.
+const RANKE_FUSS := Vector2(140.0, 400.0)
+const RANKE_BUG := Vector2(330.0, 120.0)
+const RANKE_KOPF := Vector2(288.0, -250.0)
+const NISCHEN_JE_RANKE := 4
+
+## Wo die Ranke bei `t` steht. `seite` ist -1.0 oder 1.0.
+static func ranke(seite: float, t: float) -> Vector2:
+    var g := 1.0 - t
+    var p := RANKE_FUSS * (g * g) + RANKE_BUG * (2.0 * g * t) + RANKE_KOPF * (t * t)
+    return Vector2(p.x * seite, p.y)
+
+
+## Wie dick die Ranke bei `t` ist. Unten ein Stamm, oben ein Faden.
+static func ranke_dicke(t: float) -> float:
+    return lerpf(17.0, 3.0, sqrt(t))
+
+
+## Wo die Knospe mit dieser Nummer auf ihrer Ranke sitzt.
+static func nische_lage(nummer: int) -> float:
+    return lerpf(0.16, 0.88, float(nummer) / float(maxi(1, NISCHEN_JE_RANKE - 1)))
+
+
+## Feste Nischen statt freier Platzierung: der Spieler hat zwischen zwei
+## Wellen wenige Sekunden, und eine Wahl aus acht Punkten trifft man in dieser
+## Zeit, eine freie Platzierung nicht.
+##
+## **Von unten nach oben, abwechselnd links und rechts.** Gebaut wird in
+## dieser Reihenfolge - im Spiel wie im Wellenpruefer -, und der erste Polyp
+## soll dort stehen, wo die Brut liegt. Vorher fing die Liste oben links an:
+## der erste, teuerste Polyp deckte die Ecke, in der am wenigsten passiert.
+##
+## `static var` und nicht `const`, weil eine Konstante keine statische
+## Funktion aufrufen darf - und die Bahn soll genau einmal beschrieben sein.
+static var NISCHEN: PackedVector2Array = _nischen()
+
+
+static func _nischen() -> PackedVector2Array:
+    var liste := PackedVector2Array()
+    for nummer in NISCHEN_JE_RANKE:
+        var t := nische_lage(nummer)
+        liste.append(ranke(-1.0, t))
+        liste.append(ranke(1.0, t))
+    return liste
 
 ## Wie gross der Waechter und sein Kalkwulst gezeichnet werden.
 ##

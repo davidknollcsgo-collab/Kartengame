@@ -1,10 +1,28 @@
 extends Node2D
 
-## Alles, was zur Kolonie gehoert und nicht laeuft: Grabenwaende, Nischen,
-## Wehrpolypen, der Waechter und die Brut.
+## Alles, was zur Kolonie gehoert und nicht laeuft: die Ranken mit ihren
+## Nischen, die Wehrpolypen, der Kalkwulst und die Brut.
 ##
 ## Ein Knoten statt fuenf, weil alles davon still steht und sich nur bei
 ## Aenderungen neu zeichnet. Fuer Beweglichkeit gibt es `schwarm.gd`.
+##
+## --- Die Waende sind weg ---
+##
+## Hier standen einmal drei gestaffelte Felsebenen je Seite, mit Vorspruengen,
+## Rissen, Mulden, Krusten, Schleiern, Roehrenbewuchs und Zeichen darin -
+## sechshundert Zeilen, die zusammen ein Viertel der Bildbreite fuellten.
+##
+## Im Bild waren sie zwei graue Platten mit aufgeklebtem Kleinkram. Der Grund
+## ist geometrisch und nicht kuenstlerisch: die Wand steht **senkrecht am
+## Rand**, also genau dort, wo der Blick nicht hinsieht, und sie ist
+## **fast schwarz**, also kann alles darauf entweder gar nicht gesehen werden
+## oder es sticht heraus wie ein Aufkleber. Es gibt keine dritte Moeglichkeit.
+## Jede Kleinigkeit, die ich darauf legte, machte es schlimmer statt besser.
+##
+## Ohne sie ist der Graben offenes Wasser: der Verlauf des Shaders traegt die
+## Tiefe, die seitliche Verdunkelung fuehrt den Blick in die Mitte, und was
+## davor treibt, hat Platz. Ein leerer Rand ist kein Mangel - er ist der
+## Grund, warum die Mitte wirkt.
 
 ## Von `wache.gd` gefuehrt.
 var polypen: Array[Vector2] = []
@@ -14,146 +32,45 @@ var naehrstoffe: int = 0
 var bauphase := false
 var zeit := 0.0
 
-## Grundton des Felsens. `wache.gd` faerbt ihn je Abschnitt um - der Fels
-## nimmt die Farbe des Wassers an, in dem er steht.
+## Grundton des Kalks. `wache.gd` faerbt ihn je Abschnitt um - was am Grund
+## liegt, nimmt die Farbe des Wassers an, in dem es steht.
 var fels := Color(0.030, 0.050, 0.068)
 
-const FELS := Color(0.030, 0.050, 0.068)
-const FELS_KANTE := Color(0.10, 0.17, 0.20)
 const BRUT_FARBE := Color(0.98, 0.80, 0.42)
 const POLYP_FARBE := Color(0.52, 0.94, 0.80)
 
-## --- Tiefe ---
-##
-## Der Graben war eine Ebene: ein Verlauf, zwei Wandflaechen, fertig. Tiefe
-## entsteht nicht aus mehr Farbe, sondern daraus, dass Dinge **voreinander**
-## liegen. Deshalb drei Wandebenen statt einer: je weiter hinten, desto
-## dunkler, desto naeher an der Mitte und desto langsamer bewegt.
-##
-## Der Versatz ist der ganze Trick. Zwei Waende in derselben Ebene sind eine
-## Zeichnung; drei in verschiedenen Ebenen sind ein Raum.
-const EBENEN := 3
-
-## Wie weit jede Ebene gegenueber der vordersten nach innen rueckt.
-## **Weiter auseinander als zuerst.** Bei 168 stand die hinterste Wand bei
-## x = 138 von 360 - sie reichte also bis fast auf ein Drittel der Bildbreite
-## an die Mitte heran, und der Graben wirkte wie ein Schacht, in dem man
-## klemmt. Perspektive lebt vom Versatz, nicht von der Verengung: die Ebenen
-## duerfen sich staffeln, aber sie duerfen den Blick nicht zumauern.
-const EBENE_EINZUG: PackedFloat32Array = [92.0, 44.0, 0.0]
-
-## Und wieviel Dunst zwischen ihr und dem Auge liegt.
-##
-## **Das war zuerst falsch herum.** Der erste Entwurf machte ferne Ebenen
-## dunkler - so macht man es an Land, wo Entfernung Licht schluckt. Im Wasser
-## ist es umgekehrt: die Strecke dazwischen streut selbst, also wird alles
-## Ferne **heller und blauer**, bis es im Dunst verschwindet. Genau das ist
-## der Grund, warum ein Taucher Tiefe sieht und ein Bild ohne diesen Effekt
-## flach aussieht, egal wie viele Ebenen darin stecken.
-const EBENE_DUNST: PackedFloat32Array = [0.86, 0.46, 0.0]
-
-## Die Farbe, in der sich die Ferne aufloest - dieselbe, die der Wassershader
-## in mittlerer Hoehe zeigt.
-## **Sie muss deutlich heller sein als der Fels, sonst tut die ganze
-## Staffelung nichts.**
-##
-## Hier stand `Color(0.052, 0.118, 0.146)` gegen einen Fels von
-## `(0.055, 0.085, 0.110)` - der Unterschied lag im Hundertstel. Drei Ebenen,
-## die verschieden weit weg sein sollen, kamen damit in praktisch derselben
-## Farbe heraus: die Waende sahen flach aus, und zwar nicht, weil zu wenig
-## darauf gezeichnet war, sondern weil ihnen der Tonwert fehlte. Aerial
-## perspective ist kein Effekt, den man dazustellt - sie ist der Abstand
-## zwischen zwei Farben, und wenn der null ist, gibt es sie nicht.
+## Die Farbe, in der sich Fernes aufloest - dieselbe, die der Wassershader in
+## mittlerer Hoehe zeigt. Im Wasser wird Entferntes **heller und blauer**,
+## nicht dunkler; das ist der Unterschied zwischen einem Bild mit Tiefe und
+## einem ohne.
 const DUNST := Color(0.088, 0.168, 0.198)
-
-## Wie schnell eine Ebene treibt. Die hintere kriecht, die vordere zieht -
-## dasselbe Mittel wie in jedem Seitscroller, nur senkrecht.
-const EBENE_TEMPO: PackedFloat32Array = [1.6, 4.2, 0.0]
 
 ## Links und rechts - als Konstante, weil ein Feldliteral in einer
 ## for-Schleife seinen Typ verliert und jede Ableitung daraus mit.
 const SEITEN: PackedFloat32Array = [-1.0, 1.0]
 
-var _wand_links := PackedVector2Array()
-var _wand_rechts := PackedVector2Array()
-
-## Die hinteren Wandebenen, je Ebene links und rechts.
-var _fernwaende: Array[PackedVector2Array] = []
-
-## Felsvorspruenge, die quer in den Graben ragen. Sie brechen die senkrechte
-## Flucht - ohne sie sieht ein Graben aus wie ein Korridor.
-var _vorspruenge: Array[Dictionary] = []
-
-## Bewuchs auf dem Fels: Buescheln aus Roehren, keine einzelnen Punkte. Ein
-## Punkt ist ein Fehler im Bild, ein Buschel ist ein Lebewesen.
-var _bewuchs: Array[Dictionary] = []
-
-## --- Was aus einer Flaeche einen Fels macht ---
-##
-## Die Wand war eine Flaeche mit vier Schichtlinien darauf, und genau so sah
-## sie aus: nicht wie Stein, sondern wie eine dunkle Form. Fels liest man an
-## drei Dingen, und keines davon ist die Farbe.
-##
-##   * **Risse.** Sie laufen quer zur Schichtung, verzweigen sich einmal und
-##     hoeren mitten im Nichts auf. Eine Wand ohne Risse ist gegossen.
-##   * **Mulden.** Ausbrueche und eingeschlossene Broecken - Flecken, die
-##     anders liegen als die Flaeche um sie herum. Sie geben der Wand eine
-##     Oberflaeche statt einer Kontur.
-##   * **Krusten.** Was auf dem Stein sitzt: Kolonien aus winzigen Punkten,
-##     die sich an die Kante draengen, wo das Wasser vorbeizieht. Sie sind
-##     der einzige Teil der Wand, der lebt.
-##
-## Alles drei liegt in Wandkoordinaten und wandert mit dem Versatz seiner
-## Ebene - sonst schwimmt die Struktur auf dem Fels statt in ihm.
-var _risse: Array[Dictionary] = []
-var _mulden: Array[Dictionary] = []
-var _krusten: Array[Dictionary] = []
-
-## Schleier: lange Faeden, die von Vorspruengen und Kanten haengen und in der
-## Stroemung stehen. Sie sind das Einzige an der Wand, das sich bewegt - und
-## Bewegung ist es, woran man Wasser erkennt.
-var _schleier: Array[Dictionary] = []
-
-## --- Leben, das nicht mitspielt ---
-##
-## Zwischen den Waenden stand bisher Wasser und sonst nichts. Das ist die
-## groesste Flaeche im Bild, und sie war leer - kein Wunder, dass der Graben
-## unbewohnt wirkte: das einzige Lebendige darin waren die Raeuber, die einen
-## umbringen wollen, und das eigene Tier.
-##
-## Also Treiber: kleine Quallen und Schwaermchen weit hinten, die ihre eigenen
+## Treiber: kleine Quallen und Schwaermchen weit hinten, die ihre eigenen
 ## Bahnen ziehen. Sie treffen nichts und werden von nichts getroffen -
 ## **sie sind ausdruecklich keine Spielfiguren**, und darum stehen sie hier
 ## und nicht in `schwarm.gd`. Wenn sie irgendwann anfangen, dem Kegel
 ## auszuweichen, sind sie es geworden, und dann gehoeren sie in den Rechenkern.
 var _treiber: Array[Dictionary] = []
 
-## --- Was auf dem Fels waechst ---
-##
-## Der Graben war grau in grau: dunkler Fels, tuerkises Wasser, ein tuerkiser
-## Kegel. Ein Bild mit einem Farbton ist eine Tonung, keine Farbgebung - und
-## ein Riff ohne Riff ist eine Felswand.
-##
-## Also Bewuchs in drei Bauarten, weil eine Form fuenfzigmal wiederholt ein
-## Muster ergibt und drei Formen ein Oekosystem: **Faecher**, die quer zur
-## Stroemung stehen; **Roehrenbuendel**, die nach oben zeigen; und
-## **Anemonen**, deren Arme sich bewegen. Alle drei in warmen und violetten
-## Toenen, denn das Blau bekommt seinen Wert erst durch das, was nicht blau
-## ist.
+## Das Riff am Grund, rings um den Kalkwulst. Warme und violette Toene gegen
+## das Blau - ein Bild mit einem Farbton ist eine Tonung, keine Farbgebung.
 var _korallen: Array[Dictionary] = []
 
-## Zeichen im Fels: kleine leuchtende Marken, die langsam atmen. Sie erzaehlen
-## nichts und tun nichts - sie geben der Wand nur etwas, das man ansieht.
-var _zeichen: Array[Dictionary] = []
-
-## Der Kegel, um Fels und Bewuchs von ihm anleuchten zu lassen. Gesetzt von
+## Der Kegel, um Ranken und Riff von ihm anleuchten zu lassen. Gesetzt von
 ## `wache.gd`. Dieselbe `Schlund.beleuchtung()` wie ueberall - was hell
 ## gezeichnet wird, ist das Licht, das auch Schaden macht.
 var kegel: Node2D = null
 
 
 func _ready() -> void:
-    _baue_waende()
+    var rng := RandomNumberGenerator.new()
+    rng.seed = 0x4e454b7f
+    _baue_treiber(rng)
+    _baue_korallen(rng)
 
 
 func _process(delta: float) -> void:
@@ -161,248 +78,6 @@ func _process(delta: float) -> void:
     queue_redraw()
 
 
-## Die Grabenwaende. Einmal aus einer festen Saat gezogen, damit sie ueber
-## Sitzungen hinweg gleich aussehen - eine Hoehle, die sich bei jedem Start
-## anders faltet, wirkt nicht wie ein Ort.
-func _baue_waende() -> void:
-    var rng := RandomNumberGenerator.new()
-    rng.seed = 0x4e454b7f
-
-    _fernwaende.clear()
-    for ebene in EBENEN:
-        for seite: float in SEITEN:
-            _fernwaende.append(_wandprofil(seite, EBENE_EINZUG[ebene], ebene, rng))
-
-    _wand_links = _fernwaende[(EBENEN - 1) * 2]
-    _wand_rechts = _fernwaende[(EBENEN - 1) * 2 + 1]
-
-    _baue_vorspruenge(rng)
-    _baue_bewuchs(rng)
-    _baue_felsdetail(rng)
-    _baue_schleier(rng)
-    _baue_treiber(rng)
-    _baue_korallen(rng)
-    _baue_zeichen(rng)
-
-
-## Ein Wandprofil. `einzug` schiebt es zur Mitte, `ebene` waehlt die
-## Zerklueftung - hintere Ebenen sind glatter, weil Entfernung Kanten frisst.
-func _wandprofil(seite: float, einzug: float, ebene: int,
-        rng: RandomNumberGenerator) -> PackedVector2Array:
-    var oben := Graben.FELD.position.y - 400.0
-    var unten := Graben.FELD.end.y + 400.0
-    var schritte := 30
-    var schaerfe := 0.35 + 0.65 * float(ebene) / float(maxi(1, EBENEN - 1))
-
-    var punkte := PackedVector2Array()
-    var aussen := seite * (Graben.FELD.size.x * 0.5 + 260.0)
-    punkte.append(Vector2(aussen, oben))
-    for i in schritte + 1:
-        var t := float(i) / float(schritte)
-        var y := lerpf(oben, unten, t)
-        # Drei ueberlagerte Wellen: Grabenform, Zerklueftung, Feinkante.
-        #
-        # Die 330 stand einmal auf 306. Zusammen mit dem geringeren Einzug
-        # der hinteren Ebenen oeffnet das den Graben spuerbar - das Spiel
-        # findet in der Mitte statt, und die Waende sind der Rahmen, nicht
-        # der Inhalt.
-        var tief := 330.0 - einzug \
-            + sin(t * 5.1 + seite * 1.7 + float(ebene) * 2.1) * 34.0 * schaerfe \
-            + sin(t * 13.7 + seite * 4.2 + float(ebene) * 1.3) * 13.0 * schaerfe \
-            + sin(t * 31.0 + seite * 2.9) * 5.0 * schaerfe \
-            + rng.randf_range(-9.0, 9.0) * schaerfe
-        punkte.append(Vector2(seite * tief, y))
-    punkte.append(Vector2(aussen, unten))
-    return punkte
-
-
-## Felsvorspruenge: flache Keile, die aus der Wand in den Graben ragen. Sie
-## liegen zwischen den Ebenen, damit man an ihnen die Tiefe abliest.
-func _baue_vorspruenge(rng: RandomNumberGenerator) -> void:
-    _vorspruenge.clear()
-    for i in 9:
-        var seite: float = SEITEN[i % 2]
-        var y := lerpf(Graben.FELD.position.y - 260.0, Graben.FELD.end.y + 120.0,
-            float(i) / 8.0) + rng.randf_range(-40.0, 40.0)
-        var ebene := i % EBENEN
-        var laenge := rng.randf_range(58.0, 132.0) * (0.55 + 0.45 * float(ebene) / 2.0)
-        var hoehe := rng.randf_range(26.0, 62.0)
-        var wurzel := seite * (330.0 - EBENE_EINZUG[ebene] + 8.0)
-        _vorspruenge.append({
-            &"ebene": ebene,
-            &"punkte": PackedVector2Array([
-                Vector2(wurzel, y - hoehe),
-                Vector2(wurzel - seite * laenge, y - hoehe * 0.24),
-                Vector2(wurzel - seite * laenge * 0.72, y + hoehe * 0.42),
-                Vector2(wurzel, y + hoehe),
-            ]),
-        })
-
-
-## Bewuchs: Buescheln aus Roehren auf der vordersten Wand. Sie leuchten von
-## sich aus schwach und **zusaetzlich**, wenn der Kegel sie streift.
-func _baue_bewuchs(rng: RandomNumberGenerator) -> void:
-    _bewuchs.clear()
-    var kante := _wand_links.slice(1, _wand_links.size() - 1) \
-        + _wand_rechts.slice(1, _wand_rechts.size() - 1)
-    for i in range(0, kante.size(), 2):
-        if rng.randf() > 0.62:
-            continue
-        var p: Vector2 = kante[i]
-        var nach_innen := -signf(p.x)
-        var roehren := rng.randi_range(3, 6)
-        var laengen := PackedFloat32Array()
-        var winkel := PackedFloat32Array()
-        for r in roehren:
-            laengen.append(rng.randf_range(7.0, 20.0))
-            winkel.append(rng.randf_range(-0.7, 0.7))
-        _bewuchs.append({
-            &"ort": p + Vector2(nach_innen * 4.0, 0.0),
-            &"innen": nach_innen,
-            &"laengen": laengen,
-            &"winkel": winkel,
-            &"takt": rng.randf_range(0.4, 1.1),
-            &"phase": rng.randf_range(0.0, TAU),
-        })
-
-
-## Risse, Mulden und Krusten - je Ebene und Seite aus der fertigen Wandkante
-## abgeleitet, damit sie wirklich **auf** dem Fels liegen und nicht daneben.
-func _baue_felsdetail(rng: RandomNumberGenerator) -> void:
-    _risse.clear()
-    _mulden.clear()
-    _krusten.clear()
-
-    for ebene in EBENEN:
-        # Hintere Ebenen bekommen weniger davon. Nicht aus Sparsamkeit: der
-        # Dunst frisst Kanten von vorn nach hinten, und was er ohnehin
-        # verschluckt, muss man nicht zeichnen.
-        var dichte := 1.0 - 0.62 * EBENE_DUNST[ebene]
-        for s in 2:
-            var wand: PackedVector2Array = _fernwaende[ebene * 2 + s]
-            var kante := wand.slice(1, wand.size() - 1)
-            var nach_innen := -SEITEN[s]
-
-            for i in range(2, kante.size() - 2):
-                var p: Vector2 = kante[i]
-
-                # Ein Riss: vier Glieder in den Fels hinein, mit einem
-                # Abzweig. Er endet mitten in der Flaeche - ein Riss, der die
-                # Wand durchquert, waere ein Spalt.
-                if rng.randf() < 0.30 * dichte:
-                    var linie := PackedVector2Array([p])
-                    var richtung := Vector2(-nach_innen, rng.randf_range(-0.5, 0.5)).normalized()
-                    var punkt := p
-                    for _g in 4:
-                        richtung = richtung.rotated(rng.randf_range(-0.5, 0.5)).normalized()
-                        punkt += richtung * rng.randf_range(9.0, 26.0)
-                        linie.append(punkt)
-                    var abzweig := PackedVector2Array()
-                    if linie.size() > 2:
-                        var ab: Vector2 = linie[2]
-                        abzweig.append(ab)
-                        abzweig.append(ab + richtung.rotated(rng.randf_range(0.6, 1.3))
-                            * rng.randf_range(10.0, 24.0))
-                    _risse.append({
-                        &"ebene": ebene, &"linie": linie, &"abzweig": abzweig,
-                        &"staerke": rng.randf_range(0.5, 1.0),
-                    })
-
-                # Platten: grosse, kantige Broecken, die die ganze Wandbreite
-                # bedecken - nicht nur einen Saum an der Kante.
-                #
-                # Zuerst waren es kleine Mulden dicht an der Kante. Das war zu
-                # wenig: die Wand nimmt fast die Haelfte des Bildes ein, und
-                # in dieser Flaeche lagen ein paar Tupfen. Fels liest man an
-                # **grossen** Formen, die einander ueberlappen; das Kleinzeug
-                # kommt erst danach und nur dort, wo man es sieht.
-                # Nur auf den fernen Ebenen. Die vorderste Wand ist die
-                # dunkelste und die naechste - sie traegt die Silhouette, und
-                # eine Silhouette wird durch Struktur nicht besser, sondern
-                # unruhiger.
-                if ebene >= EBENEN - 1:
-                    continue
-                for _t in 2:
-                    if rng.randf() > 0.40 * dichte:
-                        continue
-                    var weg := rng.randf_range(6.0, 210.0)
-                    var mitte := p + Vector2(-nach_innen * weg,
-                        rng.randf_range(-28.0, 28.0))
-                    # Weiter aussen groesser: dort steht kein Detail daneben,
-                    # das den Massstab setzt, und kleine Formen wuerden dort
-                    # zu Rauschen.
-                    var r := rng.randf_range(16.0, 34.0) * (0.7 + weg / 210.0)
-                    var form := PackedVector2Array()
-                    var ecken := rng.randi_range(5, 7)
-                    var dreh := rng.randf_range(0.0, TAU)
-                    for e in ecken:
-                        var w := dreh + TAU * float(e) / float(ecken)
-                        var rr := r * rng.randf_range(0.66, 1.30)
-                        form.append(mitte + Vector2(cos(w) * rr, sin(w) * rr * 0.80))
-                    _mulden.append({
-                        &"ebene": ebene, &"form": form,
-                        &"innen": nach_innen,
-                        &"tiefer": rng.randf() < 0.5,
-                    })
-
-            # Krusten nur auf der vordersten Wand: dort, wo sie noch als
-            # Kolonie zu erkennen sind statt als Rauschen.
-            if EBENE_DUNST[ebene] > 0.01:
-                continue
-            for i in range(1, kante.size() - 1):
-                if rng.randf() > 0.34:
-                    continue
-                var q: Vector2 = kante[i]
-                var punkte := PackedVector2Array()
-                var groessen := PackedFloat32Array()
-                for _k in rng.randi_range(5, 11):
-                    punkte.append(q + Vector2(
-                        -nach_innen * rng.randf_range(1.0, 26.0),
-                        rng.randf_range(-15.0, 15.0)))
-                    groessen.append(rng.randf_range(1.1, 3.2))
-                _krusten.append({
-                    &"punkte": punkte, &"groessen": groessen,
-                    &"takt": rng.randf_range(0.5, 1.4),
-                    &"phase": rng.randf_range(0.0, TAU),
-                })
-
-
-## Schleier: Faeden, die von der vordersten Kante haengen und in der Stroemung
-## stehen. Sie sind lang, duenn und langsam - alles andere sieht aus wie Regen.
-func _baue_schleier(rng: RandomNumberGenerator) -> void:
-    _schleier.clear()
-    var kante := _wand_links.slice(1, _wand_links.size() - 1) \
-        + _wand_rechts.slice(1, _wand_rechts.size() - 1)
-    for i in range(0, kante.size(), 1):
-        if rng.randf() > 0.5:
-            continue
-        var p: Vector2 = kante[i]
-        var nach_innen := -signf(p.x)
-        # Kurz und viele, nicht lang und wenige. Bei fuenf Gliedern zu je
-        # dreissig Pixeln reichten sie quer durch das halbe Bild und sahen aus
-        # wie Kratzer auf der Linse - ein Faden, der laenger ist als der
-        # Bewuchs, an dem er haengt, liest sich nicht mehr als Bewuchs.
-        var glieder := PackedFloat32Array()
-        for _g in rng.randi_range(3, 4):
-            glieder.append(rng.randf_range(9.0, 17.0))
-        _schleier.append({
-            &"ort": p + Vector2(nach_innen * 3.0, 0.0),
-            &"innen": nach_innen,
-            &"glieder": glieder,
-            &"takt": rng.randf_range(0.3, 0.7),
-            &"phase": rng.randf_range(0.0, TAU),
-            &"weite": rng.randf_range(0.18, 0.55),
-        })
-
-
-## Treiber: Quallen und Schwaermchen im offenen Wasser.
-##
-## Sie liegen auf einer eigenen, sehr fernen Ebene - hell und blau wie alles
-## Ferne, langsam, und ohne jede Beziehung zum Spiel. Ihre Bahn ist eine
-## Schleife: waagerecht wandern, senkrecht atmen, und wenn sie unten aus dem
-## Bild laufen, oben wieder herein.
-## Die Farben der Treiber.
-##
 ## **Nicht alles ist tuerkis.** Das Bild hatte genau einen Farbton, und ein
 ## Bild mit einem Farbton ist eine Tonung, keine Farbgebung. Tiefseequallen
 ## leuchten in ganz unterschiedlichen Faerbungen; ein paar warme und
@@ -455,30 +130,33 @@ const KORALL_FARBEN: PackedColorArray = [
 
 func _baue_korallen(rng: RandomNumberGenerator) -> void:
     _korallen.clear()
-    var kante := _wand_links.slice(1, _wand_links.size() - 1) \
-        + _wand_rechts.slice(1, _wand_rechts.size() - 1)
-    for i in kante.size():
-        if rng.randf() > 0.34:
+    # **Am Grund, nicht am Rand.**
+    #
+    # Das Riff sass an der Wandkante und lief als farbiger Saum senkrecht
+    # durchs Bild. Ohne Wand hat es keine Kante mehr - und das ist gut so:
+    # ein Riff waechst dort, wo Halt und Naehrstoff sind, und beides gibt es
+    # am Kalkwulst der Kolonie. Es liegt damit **unter** dem Geschehen statt
+    # daneben, und der Blick geht ueber es hinweg nach oben in die Dunkelheit.
+    var grund := Graben.BRUT_Y + 158.0
+    for i in 24:
+        # Zur Mitte hin flacher: dort steht der Waechter, und Bewuchs, der
+        # ihm ins Bild waechst, verdeckt genau die Figur, auf die man sieht.
+        var x := rng.randf_range(Graben.FELD.position.x - 30.0,
+            Graben.FELD.end.x + 30.0)
+        var aussen := clampf(absf(x) / 360.0, 0.0, 1.0)
+        if absf(x) < 118.0 and rng.randf() < 0.72:
             continue
-        var p: Vector2 = kante[i]
-        var innen := -signf(p.x)
         var arme := PackedFloat32Array()
         for _a in rng.randi_range(6, 11):
             arme.append(rng.randf_range(0.5, 1.0))
         _korallen.append({
-            # **An der Kante, mit dem Fuss knapp im Fels.**
-            #
-            # Zuerst sass der Fuss bis zu 34 Einheiten *im* Gestein - und
-            # weil alle Arme nach innen wachsen, standen die Korallen damit
-            # groesstenteils hinter der Wand. Im Bild waren sie ein farbiger
-            # Saum am aeussersten Rand. Bewuchs sitzt dort, wo Fels und
-            # Wasser sich treffen, und ragt ins Wasser: das ist der Ort, an
-            # dem es Stroemung gibt, und der Grund, warum er dort waechst.
-            &"ort": p + Vector2(-innen * rng.randf_range(-6.0, 12.0),
-                rng.randf_range(-16.0, 16.0)),
-            &"innen": innen,
+            &"ort": Vector2(x, grund + rng.randf_range(-38.0, 92.0)),
+            # `innen` war die Wachstumsrichtung von der Wand weg. Am Grund
+            # waechst alles nach oben; die Zahl bleibt als Neigung erhalten,
+            # damit die drei Zeichenformen unveraendert weiterlaufen.
+            &"innen": -signf(x) if x != 0.0 else 1.0,
             &"art": rng.randi() % 3,
-            &"gross": rng.randf_range(34.0, 98.0),
+            &"gross": lerpf(24.0, 88.0, aussen) * rng.randf_range(0.7, 1.25),
             &"neigung": rng.randf_range(-0.5, 0.5),
             &"arme": arme,
             &"takt": rng.randf_range(0.25, 0.7),
@@ -488,9 +166,8 @@ func _baue_korallen(rng: RandomNumberGenerator) -> void:
 
 
 func _zeichne_korallen() -> void:
-    var versatz := Vector2(0.0, -fmod(zeit * EBENE_TEMPO[EBENEN - 1], 220.0))
     for k in _korallen:
-        var p: Vector2 = (k[&"ort"] as Vector2) + versatz
+        var p: Vector2 = k[&"ort"]
         var innen: float = k[&"innen"]
         var r: float = k[&"gross"]
         var farbe: Color = k[&"farbe"]
@@ -500,7 +177,11 @@ func _zeichne_korallen() -> void:
         # Einmal je Klumpen, nicht je Arm: `beleuchtung()` ist die teuerste
         # Rechnung im Bild.
         var hell := _licht_auf(p)
-        var kraft := 0.42 + 0.58 * hell
+        # **Deutlich schwaecher als frueher.** Am Rand sass das Riff im
+        # Halbdunkel; am Grund liegt es unter der Brut, und dort ist der
+        # hellste Punkt des Bildes. Mit der alten Deckung war es eine Reihe
+        # bunter Wimpel direkt unter dem Einzigen, worauf man sehen muss.
+        var kraft := 0.20 + 0.34 * hell
 
         match int(k[&"art"]):
             0:
@@ -619,55 +300,6 @@ func _koralle_anemone(p: Vector2, r: float, farbe: Color, kraft: float,
             Color(farbe.r, farbe.g, farbe.b, 0.34 * kraft))
 
 
-## Zeichen im Fels.
-##
-## Jedes ist ein kurzer Streckenzug auf einem Gitter von drei mal drei - so
-## entstehen Marken, die aussehen, als haetten sie eine Bedeutung, ohne dass
-## eine hineingelegt werden muss. Wichtig ist nur, dass sie **kantig** sind:
-## eine runde Kritzelei liest sich als Fehler, eine eckige als Schrift.
-func _baue_zeichen(rng: RandomNumberGenerator) -> void:
-    _zeichen.clear()
-    var kante := _wand_links.slice(1, _wand_links.size() - 1) \
-        + _wand_rechts.slice(1, _wand_rechts.size() - 1)
-    for i in kante.size():
-        if rng.randf() > 0.26:
-            continue
-        var p: Vector2 = kante[i]
-        var innen := -signf(p.x)
-        var strich := PackedVector2Array()
-        var punkt := Vector2(rng.randi_range(0, 2), rng.randi_range(0, 2))
-        strich.append(punkt)
-        for _g in rng.randi_range(2, 4):
-            var richtung := Vector2(rng.randi_range(-1, 1), rng.randi_range(-1, 1))
-            if richtung == Vector2.ZERO:
-                richtung = Vector2.DOWN
-            punkt = (punkt + richtung).clamp(Vector2.ZERO, Vector2(2.0, 2.0))
-            strich.append(punkt)
-        _zeichen.append({
-            &"ort": p + Vector2(-innen * rng.randf_range(40.0, 200.0),
-                rng.randf_range(-30.0, 30.0)),
-            &"strich": strich,
-            &"gross": rng.randf_range(10.0, 20.0),
-            &"takt": rng.randf_range(0.20, 0.55),
-            &"phase": rng.randf_range(0.0, TAU),
-        })
-
-
-func _zeichne_zeichen() -> void:
-    var versatz := Vector2(0.0, -fmod(zeit * EBENE_TEMPO[EBENEN - 1], 220.0))
-    for z in _zeichen:
-        var atem: float = 0.5 + 0.5 * sin(zeit * float(z[&"takt"]) + float(z[&"phase"]))
-        var r: float = z[&"gross"]
-        var ort: Vector2 = (z[&"ort"] as Vector2) + versatz
-        var strich: PackedVector2Array = z[&"strich"]
-        var linie := PackedVector2Array()
-        for g in strich:
-            linie.append(ort + (g - Vector2.ONE) * r)
-        var a := 0.16 + 0.24 * atem
-        draw_polyline(linie, Color(0.46, 0.86, 0.82, a * 0.45), 4.4, true)
-        draw_polyline(linie, Color(0.68, 0.96, 0.90, a), 1.4, true)
-
-
 func _zeichne_treiber() -> void:
     var hoch := Graben.FELD.size.y + 200.0
     for d in _treiber:
@@ -762,29 +394,16 @@ func _zeichne_qualle(p: Vector2, r: float, farbe: Color, kraft: float,
 
 func _draw() -> void:
     # Von hinten nach vorn. Das ist die ganze Ordnung, die Tiefe ausmacht.
-    for ebene in EBENEN:
-        var versatz := Vector2(0.0, -fmod(zeit * EBENE_TEMPO[ebene], 220.0))
-        _zeichne_wand(_fernwaende[ebene * 2], ebene, versatz)
-        _zeichne_wand(_fernwaende[ebene * 2 + 1], ebene, versatz)
-        # Erst die Mulden, dann die Risse: eine Mulde ist eine Flaeche im
-        # Fels, ein Riss laeuft darueber hinweg. Andersherum verschwaende der
-        # Riss in der Mulde, durch die er geht.
-        _zeichne_mulden(ebene, versatz)
-        _zeichne_risse(ebene, versatz)
-        _zeichne_vorspruenge(ebene, versatz)
-
-    # Zwischen die hinteren Waende und den Bewuchs: die Treiber stehen im
-    # offenen Wasser, also vor dem Fels und hinter allem, was am Fels sitzt.
-    # **Hier standen einmal sechs Lagen Kleinkram uebereinander:** Krusten,
-    # Schleier, Roehrenbewuchs, Zeichen, Korallen, Treiber. Jede fuer sich
-    # war begruendet, zusammen ergaben sie ein Rauschen, in dem der Spieler
-    # die Raeuber suchen musste. Ein Bild wird nicht reicher, indem man mehr
-    # hineinlegt - es wird reicher, wenn das, was drin ist, groesser ist und
-    # Platz hat. Uebrig sind drei: Treiber im Wasser, Zeichen im Fels,
-    # Korallen an der Kante.
+    #
+    # **Hier standen einmal neun Lagen uebereinander:** drei Wandebenen mit
+    # Mulden, Rissen und Vorspruengen, darauf Krusten, Schleier, Bewuchs und
+    # Zeichen. Jede fuer sich war begruendet, zusammen ergaben sie ein
+    # Rauschen, in dem der Spieler die Raeuber suchen musste. Ein Bild wird
+    # nicht reicher, indem man mehr hineinlegt - es wird reicher, wenn das,
+    # was drin ist, groesser ist und Platz hat.
     _zeichne_treiber()
-    _zeichne_zeichen()
     _zeichne_korallen()
+    _zeichne_ranken()
     _zeichne_nischen()
     _zeichne_polypen()
     # Der Sockel gehoert hinter die Brut. Andersherum deckte er die Eierreihe
@@ -796,6 +415,104 @@ func _draw() -> void:
     # gezeichnet - siehe `waechter.gd`.
 
 
+## --- Die Ranken ---
+##
+## Zwei Arme, die aus dem Kalkwulst aufsteigen und die Nischen tragen. Sie
+## sind der Ersatz fuer die Waende, aber sie ersetzen nicht deren Aufgabe:
+## eine Wand rahmt das Bild ein, eine Ranke **erklaert die Nischen**.
+##
+## Ohne sie haetten acht leuchtende Ringe im offenen Wasser gehangen - acht
+## Tippflaechen ohne etwas, woran sie sitzen. Mit ihnen sieht man in einem
+## Blick, dass die Kolonie zwei Arme in den Schlund streckt und dass in deren
+## Knospen etwas waechst.
+##
+## Gezeichnet als **ein** Streifenzug mit Farbe je Eckpunkt, nicht als Stapel
+## aus Linien: uebereinandergelegte deckende Lagen haben so viele harte
+## Kanten wie Lagen, und drei davon habe ich in diesem Projekt schon
+## herausgeholt.
+const RANKE_TEILE := 26
+
+
+func _zeichne_ranken() -> void:
+    for seite: float in SEITEN:
+        var links := PackedVector2Array()
+        var rechts := PackedVector2Array()
+        var farben := PackedColorArray()
+        for i in RANKE_TEILE + 1:
+            var t := float(i) / float(RANKE_TEILE)
+            var p := Graben.ranke(seite, t)
+            # Die Normale aus der Bahn selbst, damit die Dicke immer quer zur
+            # Ranke steht und nicht quer zum Bild.
+            var vor := Graben.ranke(seite, minf(1.0, t + 0.02))
+            var zurueck := Graben.ranke(seite, maxf(0.0, t - 0.02))
+            var quer := (vor - zurueck).orthogonal().normalized()
+            var d := Graben.ranke_dicke(t) * 0.5
+            links.append(p - quer * d)
+            rechts.append(p + quer * d)
+            # Das Licht des Kegels streift sie wie alles andere - und weil
+            # `_licht_auf()` dieselbe `Schlund.beleuchtung()` fragt, die auch
+            # den Schaden bestimmt, kann sie nicht heller aussehen als sie ist.
+            var hell := _licht_auf(p)
+            var atem := 0.5 + 0.5 * sin(zeit * 0.7 - t * 3.4 + seite)
+            var farbe := fels.lerp(DUNST, 0.16 + 0.30 * hell) \
+                .lerp(POLYP_FARBE, 0.05 + 0.05 * atem + 0.22 * hell)
+            # Die Spitze blendet aus, statt abzubrechen. Eine Ranke, die oben
+            # mit einer geraden Kante endet, ist ein abgesaegter Stab - und
+            # genau das war im Bild zu sehen, ein Stueck unterhalb der
+            # obersten Knospe.
+            farbe.a = clampf((1.0 - t) * 6.0, 0.0, 1.0)
+            farben.append(farbe)
+
+        var flaeche := PackedVector2Array()
+        var farbfeld := PackedColorArray()
+        for i in links.size():
+            flaeche.append(links[i])
+            farbfeld.append(farben[i])
+        for i in range(rechts.size() - 1, -1, -1):
+            flaeche.append(rechts[i])
+            farbfeld.append(farben[i])
+        draw_polygon(flaeche, farbfeld)
+
+        # Ein weicher Hof laengs der Bahn: ohne ihn ist die Ranke ein Draht.
+        # Additiv waere er ein zweites Licht - also gemischt und sehr schwach.
+        var bahn := PackedVector2Array()
+        for i in RANKE_TEILE + 1:
+            bahn.append(Graben.ranke(seite, float(i) / float(RANKE_TEILE)))
+        # Der Hof endet mit der obersten Knospe - darueber laeuft die Ranke
+        # aus, und ein Hof um nichts ist ein Strich im Wasser.
+        var hof := PackedVector2Array()
+        for i in RANKE_TEILE + 1:
+            var t := float(i) / float(RANKE_TEILE)
+            if t > Graben.nische_lage(Graben.NISCHEN_JE_RANKE - 1) + 0.04:
+                break
+            hof.append(Graben.ranke(seite, t))
+        draw_polyline(hof, Color(POLYP_FARBE.r, POLYP_FARBE.g,
+            POLYP_FARBE.b, 0.05), 22.0, true)
+        draw_polyline(hof, Color(POLYP_FARBE.r, POLYP_FARBE.g,
+            POLYP_FARBE.b, 0.05), 11.0, true)
+
+        # Ein Saum auf der dem Schlund zugewandten Seite: das ist die Kante,
+        # die der Kegel trifft, und ohne sie ist die Ranke eine Silhouette.
+        var saum := PackedVector2Array()
+        for i in links.size():
+            if float(i) / float(RANKE_TEILE) > 0.9:
+                break
+            saum.append(links[i] if seite > 0.0 else rechts[i])
+        draw_polyline(saum, Color(POLYP_FARBE.r, POLYP_FARBE.g,
+            POLYP_FARBE.b, 0.16), 1.4, true)
+
+        # Ranken haben Seitentriebe. Ohne sie ist es ein Schlauch.
+        for i in 7:
+            var t := lerpf(0.10, 0.94, float(i) / 6.0)
+            var p := Graben.ranke(seite, t)
+            var w := seite * (2.3 + 0.9 * sin(float(i) * 2.1))
+            var laenge := lerpf(30.0, 12.0, t) * (0.7 + 0.3 * sin(zeit * 0.8 + float(i)))
+            var spitze := p + Vector2(cos(w), sin(w)) * laenge
+            draw_line(p, spitze, Color(POLYP_FARBE.r, POLYP_FARBE.g,
+                POLYP_FARBE.b, 0.13), 2.0)
+            draw_circle(spitze, 2.0, Color(0.70, 0.98, 0.90, 0.16))
+
+
 ## Wie hell der Kegel diesen Punkt trifft. 0.0, solange kein Kegel gesetzt
 ## ist - `kolonie.gd` laeuft auch ohne, etwa im Koloniebildschirm.
 func _licht_auf(punkt: Vector2) -> float:
@@ -805,316 +522,38 @@ func _licht_auf(punkt: Vector2) -> float:
         kegel.reichweite, punkt, kegel.rand_kern, kegel.tiefe_kern) * kegel.schein
 
 
-func _zeichne_wand(punkte: PackedVector2Array, ebene: int, versatz: Vector2) -> void:
-    if punkte.is_empty():
-        return
-    var dunst := EBENE_DUNST[ebene]
-    var verschoben := PackedVector2Array()
-    for v in punkte:
-        verschoben.append(v + versatz)
-
-    draw_colored_polygon(verschoben, fels.lerp(DUNST, dunst))
-
-    var kante := verschoben.slice(1, verschoben.size() - 1)
-
-    # **Die Kante ist kein Strich.**
-    #
-    # Vorher lag hier eine einzelne helle Linie um jede Wand, und genau die
-    # machte aus dem Graben eine Zeichnung: im Tiefenwasser gibt es keine
-    # scharfe Grenze zwischen Fels und Wasser, weil die Strecke dazwischen
-    # selbst streut. Was man sieht, ist ein Saum, der ueber ein paar Meter
-    # ausblutet - und je weiter weg, desto breiter und schwaecher.
-    #
-    # Also drei Striche uebereinander: aussen breit und fast durchsichtig,
-    # innen schmal und heller. Die Reihenfolge zaehlt - der breite zuerst,
-    # sonst frisst er den schmalen.
-    var breit := 9.0 + 7.0 * dunst
-    for i in 3:
-        var t := float(i) / 2.0
-        draw_polyline(kante, Color(FELS_KANTE.r, FELS_KANTE.g, FELS_KANTE.b,
-            lerpf(0.05, 0.42, t) * (1.0 - 0.55 * dunst)),
-            lerpf(breit, 1.4, t), true)
-
-    # **Und ein Dunstsaum, der in das offene Wasser hineinlaeuft.**
-    #
-    # Ohne ihn endet die ferne Wand an einer Linie, und weil sie heller ist
-    # als das tiefe Wasser dahinter, steht dort eine senkrechte Kante quer
-    # durch das Bild - im breiteren Graben faellt das sofort auf: ein
-    # schwarzer Block mit sauber gezogenem Rand. Wasser tut das nicht. Die
-    # Strecke zwischen Auge und Fels streut, also loest sich der Fels ueber
-    # ein paar Meter auf, und je weiter weg, desto weiter.
-    _zeichne_kantendunst(kante, ebene)
-
-    # Schichtlinien im Fels, parallel zur Kante nach aussen versetzt. Sie
-    # geben der Wand eine Struktur statt einer Flaeche - und je naeher, desto
-    # schaerfer, weil der Dunst als Erstes die Kanten frisst.
-    for schicht in 4:
-        var tiefe_hin := float(schicht + 1) * 19.0
-        var linie := PackedVector2Array()
-        for k in kante:
-            linie.append(k + Vector2(signf(k.x) * tiefe_hin, 0.0))
-        draw_polyline(linie, Color(FELS_KANTE.r, FELS_KANTE.g, FELS_KANTE.b,
-            0.26 * (1.0 - dunst) / float(schicht + 1)), 1.2, true)
-
-    # Und das Streiflicht des Kegels auf der Kante. Nur die vorderste Ebene -
-    # weiter hinten kommt kein Licht mehr an, und genau das erzaehlt die
-    # Entfernung.
-    if dunst > 0.01:
-        return
-    for i in kante.size():
-        var hell := _licht_auf(kante[i])
-        if hell <= 0.02:
-            continue
-        draw_circle(kante[i], 3.0 + 9.0 * hell,
-            Color(0.36, 0.86, 0.98, 0.16 * hell))
-
-
-## Ein Streifen entlang der Wandkante, der nach innen auf null ausblutet.
-## `draw_polygon` nimmt eine Farbe je Eckpunkt - damit ist es ein einziger
-## Verlauf und keine Stapelung, die Streifen ergaebe.
-func _zeichne_kantendunst(kante: PackedVector2Array, ebene: int) -> void:
-    if kante.size() < 2:
-        return
-    var dunst := EBENE_DUNST[ebene]
-    # Fern heisst breit: was weiter weg liegt, hat mehr streuendes Wasser
-    # davor. Und fern heisst zugleich schwaecher, weil dort ohnehin schon
-    # alles im Dunst steht.
-    var weite := 34.0 + 96.0 * dunst
-    var farbe := fels.lerp(DUNST, dunst)
-    var voll := Color(farbe.r, farbe.g, farbe.b, 0.55 - 0.25 * dunst)
-    var leer := Color(farbe.r, farbe.g, farbe.b, 0.0)
-
-    var nach_innen := -signf(kante[0].x)
-    for i in kante.size() - 1:
-        var a: Vector2 = kante[i]
-        var b: Vector2 = kante[i + 1]
-        draw_polygon(
-            PackedVector2Array([a, b,
-                b + Vector2(nach_innen * weite, 0.0),
-                a + Vector2(nach_innen * weite, 0.0)]),
-            PackedColorArray([voll, voll, leer, leer]))
-
-
-func _zeichne_vorspruenge(ebene: int, versatz: Vector2) -> void:
-    var dunst := EBENE_DUNST[ebene]
-    for v in _vorspruenge:
-        if int(v[&"ebene"]) != ebene:
-            continue
-        var punkte := PackedVector2Array()
-        for p: Vector2 in v[&"punkte"]:
-            punkte.append(p + versatz)
-        # Der Vorsprung steht etwas vor seiner Wand, faengt also etwas mehr
-        # Licht - sonst verschwindet er in der Flaeche, aus der er ragt.
-        draw_colored_polygon(punkte, fels.lightened(0.09).lerp(DUNST, dunst * 0.86))
-        draw_polyline(punkte + PackedVector2Array([punkte[0]]),
-            FELS_KANTE.lerp(DUNST, dunst), 1.6, true)
-
-
-## Mulden: Ausbrueche und eingeschlossene Broecken. Eine Wand hat nicht nur
-## eine Kante, sondern eine Oberflaeche - und die sieht man nur, wenn etwas
-## darauf anders liegt als der Rest.
-func _zeichne_mulden(ebene: int, versatz: Vector2) -> void:
-    var dunst := EBENE_DUNST[ebene]
-    var grund := fels.lerp(DUNST, dunst)
-
-    # **Der Kontrast einer Platte ist ein Anteil ihres Grundes, kein Betrag.**
-    #
-    # Hier stand `grund.lightened(0.085)`. `lightened` mischt gegen Weiss,
-    # also hebt es einen dunklen Ton um fast den vollen Betrag - auf einem
-    # Fels mit dem Wert 0.15 sind das +0.078, die Haelfte obendrauf. Im Bild
-    # waren das keine Platten mehr, sondern helle Sechsecke, die mitten im
-    # Wasser schwebten: flach, hartkantig, wie ausgeschnittenes Papier. Und
-    # ausgerechnet auf den **fernen** Ebenen fiel es am meisten auf, weil der
-    # Dunst dort den Fels aufhellt und ihn damit dem Wasser angleicht - eine
-    # Platte mit festem Aufschlag steht dann allein im Bild.
-    #
-    # Ein Faktor tut, was ein Betrag nicht kann: er waechst mit dem Grund und
-    # verschwindet mit ihm. Und weil der Dunst mit der Entfernung auch die
-    # Struktur frisst und nicht nur die Farbe, geht er hier ein zweites Mal
-    # ein - das ist Luftperspektive, konsequent zu Ende gedacht.
-    #
-    # **Und nicht zu leise.** Der erste Anlauf gegen die harte Kante ging zu
-    # weit: bei `1 - 0.72 * dunst` und einem Hub von 0.19 blieben auf der
-    # fernen Ebene sieben Prozent Aufhellung uebrig - im Bild nichts. Die
-    # Wand war danach zwar nicht mehr kariert, aber leer. Ein Verlauf darf
-    # kraeftig sein; was ihn von einem Aufkleber unterscheidet, ist nicht
-    # seine Staerke, sondern dass er zur abgewandten Seite hin auf null
-    # laeuft.
-    var wirkung := 1.0 - 0.55 * dunst
-
-    for m in _mulden:
-        if int(m[&"ebene"]) != ebene:
-            continue
-        var form := PackedVector2Array()
-        for v: Vector2 in m[&"form"]:
-            form.append(v + versatz)
-
-        # **Kein flacher Ton, sondern ein Verlauf ueber die Platte.**
-        #
-        # Es gibt genau eine Lichtquelle im Bild - den Kegel unten in der
-        # Mitte. Also ist die Seite, die zur Grabenmitte zeigt, die helle,
-        # und die abgewandte laeuft auf den Fels zurueck. Damit hat die
-        # Platte an ihrer Rueckseite **gar keine Kante mehr**: sie geht dort
-        # in die Wand ueber, statt an einer Linie aufzuhoeren. Genau das war
-        # der Grund, warum eine Platte wie ein Aufkleber aussah.
-        var tiefer := bool(m[&"tiefer"])
-        var hub := (0.22 if tiefer else 0.36) * wirkung
-        var innen: float = m[&"innen"]
-        var mitte := mitte_von(form)
-        var weite := 1.0
-        for v in form:
-            weite = maxf(weite, absf(v.x - mitte.x))
-
-        var farben := PackedColorArray()
-        for v in form:
-            # 0 an der abgewandten Kante, 1 an der zur Mitte zeigenden.
-            var t := clampf(0.5 + 0.5 * (v.x - mitte.x) * innen / weite, 0.0, 1.0)
-            var k := hub * t * t
-            farben.append(Color(grund.r * (1.0 + k), grund.g * (1.0 + k),
-                grund.b * (1.0 + k * 0.86)))
-        draw_polygon(form, farben)
-
-        # Eine Mulde von einem Buckel unterscheidet nicht die Helligkeit der
-        # Flaeche, sondern wo ihr heller Saum liegt. Er bleibt - aber leise,
-        # und nur dort, wo ueberhaupt noch Licht ankommt.
-        if dunst > 0.5:
-            continue
-        var saum := Color(0.34, 0.62, 0.68,
-            (0.13 if tiefer else 0.09) * (1.0 - dunst))
-        for i in form.size():
-            var a: Vector2 = form[i]
-            var b: Vector2 = form[(i + 1) % form.size()]
-            if signf((a + b).x * 0.5 - mitte.x) == innen:
-                draw_line(a, b, saum, 1.4)
-
-
-## Der Mittelpunkt eines Vielecks - fuer die Frage, welche Haelfte seines
-## Randes oben liegt und welche unten.
-func mitte_von(form: PackedVector2Array) -> Vector2:
-    var summe := Vector2.ZERO
-    for v in form:
-        summe += v
-    return summe / float(maxi(1, form.size()))
-
-
-## Risse: quer zur Schichtung, mit einem Abzweig, und sie hoeren mitten im
-## Fels auf. Einer, der die Wand durchquert, waere ein Spalt.
-func _zeichne_risse(ebene: int, versatz: Vector2) -> void:
-    var dunst := EBENE_DUNST[ebene]
-    if dunst > 0.9:
-        return
-    for r in _risse:
-        if int(r[&"ebene"]) != ebene:
-            continue
-        # Auch hier hell statt dunkel, und aus demselben Grund. Physikalisch
-        # stimmt es sogar besser: was man von einem Riss sieht, ist nicht der
-        # Spalt - der ist zu schmal -, sondern die aufgebrochene Kante daneben,
-        # und die faengt Licht.
-        var deckung: float = 0.24 * float(r[&"staerke"]) * (1.0 - dunst)
-        var farbe := Color(0.34, 0.60, 0.66, deckung)
-        var linie := PackedVector2Array()
-        for v: Vector2 in r[&"linie"]:
-            linie.append(v + versatz)
-        draw_polyline(linie, farbe, 1.5, true)
-        var ab: PackedVector2Array = r[&"abzweig"]
-        if ab.size() > 1:
-            draw_line(ab[0] + versatz, ab[1] + versatz, farbe, 1.1)
-
-
-## Krusten: Kolonien winziger Punkte, die sich an die Kante draengen. Sie
-## atmen von sich aus und flammen auf, wenn der Kegel darueberzieht - das
-## Einzige an der Wand, das lebt.
-func _zeichne_krusten() -> void:
-    var versatz := Vector2(0.0, -fmod(zeit * EBENE_TEMPO[EBENEN - 1], 220.0))
-    for k in _krusten:
-        var atem := 0.5 + 0.5 * sin(zeit * float(k[&"takt"]) + float(k[&"phase"]))
-        var punkte: PackedVector2Array = k[&"punkte"]
-        var groessen: PackedFloat32Array = k[&"groessen"]
-        # Das Licht einmal je Kruste, nicht je Punkt: `beleuchtung()` ist die
-        # teuerste Rechnung im Bild, und eine Kolonie steht ohnehin im selben
-        # Lichtfleck.
-        var hell := _licht_auf(punkte[0] + versatz)
-        for i in punkte.size():
-            var p: Vector2 = punkte[i] + versatz
-            draw_circle(p, groessen[i] * (0.9 + 0.1 * atem),
-                Color(0.30, 0.62, 0.66, 0.30 + 0.16 * atem + 0.50 * hell))
-
-
-## Schleier: lange Faeden von der Kante, die in der Stroemung stehen. Jedes
-## Glied haengt weiter zurueck als das vorige - so biegt sich der Faden,
-## statt zu schwingen wie eine Saite.
-func _zeichne_schleier() -> void:
-    var versatz := Vector2(0.0, -fmod(zeit * EBENE_TEMPO[EBENEN - 1], 220.0))
-    for f in _schleier:
-        var ort: Vector2 = (f[&"ort"] as Vector2) + versatz
-        var innen: float = f[&"innen"]
-        var weite: float = f[&"weite"]
-        var takt: float = f[&"takt"]
-        var phase: float = f[&"phase"]
-        var glieder: PackedFloat32Array = f[&"glieder"]
-
-        var linie := PackedVector2Array([ort])
-        var punkt := ort
-        var winkel := 0.0
-        for g in glieder.size():
-            winkel += weite * sin(zeit * takt + phase + float(g) * 0.55) \
-                / float(g + 1)
-            var richtung := Vector2(innen * sin(winkel), cos(winkel) * 0.92 + 0.08)
-            punkt += richtung * glieder[g]
-            linie.append(punkt)
-
-        var hell := _licht_auf(linie[linie.size() / 2])
-        draw_polyline(linie, Color(0.20, 0.44, 0.48,
-            0.26 + 0.34 * hell), 1.6, true)
-        draw_circle(linie[linie.size() - 1], 1.8 + 2.4 * hell,
-            Color(0.44, 0.86, 0.90, 0.24 + 0.50 * hell))
-
-
-## Roehrenbewuchs auf der vordersten Wand. Er glimmt von sich aus und flammt
-## auf, wenn der Kegel darueberstreicht - der Spieler sieht damit an der Wand,
-## wo sein Licht steht, auch wenn dort gerade kein Raeuber ist.
-func _zeichne_bewuchs() -> void:
-    for b in _bewuchs:
-        var ort: Vector2 = b[&"ort"]
-        var innen: float = b[&"innen"]
-        var atem := 0.5 + 0.5 * sin(zeit * float(b[&"takt"]) + float(b[&"phase"]))
-        var hell := _licht_auf(ort)
-        var laengen: PackedFloat32Array = b[&"laengen"]
-        var winkel: PackedFloat32Array = b[&"winkel"]
-
-        for r in laengen.size():
-            var richtung := Vector2(innen, 0.0).rotated(winkel[r])
-            var spitze := ort + richtung * laengen[r] * (0.88 + 0.12 * atem)
-            draw_line(ort, spitze, Color(0.16, 0.40, 0.46,
-                0.34 + 0.30 * hell), 2.0)
-            draw_circle(spitze, 1.6 + 1.2 * atem + 2.2 * hell,
-                Color(0.42, 0.88, 0.92, 0.30 + 0.24 * atem + 0.46 * hell))
-
-
 func _zeichne_nischen() -> void:
     for i in Graben.NISCHEN.size():
         var p := Graben.NISCHEN[i]
         if i < polypen.size():
             continue
         var frei := bauphase and naehrstoffe >= Graben.polyp_kosten(polypen.size())
+        # Nach aussen zeigend: die Knospe sitzt auf der Ranke und oeffnet sich
+        # vom Schlund weg, so wie alles hier von der Kolonie weg waechst.
+        var nach_aussen := signf(p.x)
 
-        # **Waehrend der Welle ist eine Nische nur eine Delle im Fels.**
+        # **Waehrend der Welle ist eine Nische eine geschlossene Knospe.**
         #
-        # Hier stand fuer beide Lagen derselbe Ring, waehrend der Welle nur
-        # etwas blasser: acht leuchtende Kreise, die ueber beide Waende
-        # verteilt am Bild klebten wie Aufkleber. Antippen kann man sie nur
+        # Hier stand fuer beide Lagen derselbe Ring: acht leuchtende Kreise,
+        # die am Bild klebten wie Aufkleber. Antippen kann man sie nur
         # zwischen den Wellen - solange sie nichts tun, duerfen sie auch
-        # nichts fordern. Ein knapper Bogen auf der dem Graben zugewandten
-        # Seite genuegt, damit man spaeter weiss, wo sie waren.
+        # nichts fordern.
         if not bauphase:
-            var w := 0.0 if p.x > 0.0 else PI
-            draw_arc(p, Graben.POLYP_RADIUS * 0.9, w - 1.1, w + 1.1, 12,
-                Color(0.32, 0.60, 0.66, 0.13), 1.4, true)
+            draw_circle(p, Graben.POLYP_RADIUS * 0.52,
+                fels.lerp(POLYP_FARBE, 0.20))
+            draw_arc(p, Graben.POLYP_RADIUS * 0.52, 0.0, TAU, 14,
+                Color(0.42, 0.78, 0.82, 0.16), 1.2, true)
             continue
 
+        # Zwischen den Wellen oeffnet sie sich: ein Kelch, ein Ring und - wenn
+        # der Naehrstoff reicht - ein Kreuz, das langsam pulst.
         var puls := 0.5 + 0.5 * sin(zeit * 3.0 + float(i))
         var deckung := 0.20 + (0.30 * puls if frei else 0.0)
-        draw_circle(p, Graben.POLYP_RADIUS * 1.5, Color(0.20, 0.42, 0.46, deckung * 0.5))
+        draw_circle(p, Graben.POLYP_RADIUS * 1.6, Color(0.20, 0.42, 0.46, deckung * 0.5))
+        for k in 5:
+            var w := PI * (-0.5 + float(k) / 4.0) * 1.1 + (0.0 if nach_aussen > 0.0 else PI)
+            var spitze := p + Vector2(cos(w), sin(w)) * Graben.POLYP_RADIUS * 1.15
+            draw_line(p, spitze, Color(0.42, 0.78, 0.82, deckung * 0.9), 1.6)
         draw_arc(p, Graben.POLYP_RADIUS, 0.0, TAU, 20,
             Color(0.42, 0.78, 0.82, deckung + 0.14), 1.8, true)
         if frei:
@@ -1133,10 +572,6 @@ func _zeichne_polypen() -> void:
         # aus Linien ueber dem halben Bild.
         draw_arc(p, Graben.POLYP_REICHWEITE, 0.0, TAU, 42,
             Color(POLYP_FARBE.r, POLYP_FARBE.g, POLYP_FARBE.b, 0.055), 1.0, true)
-
-        # Stiel zur Wand, damit der Polyp gewachsen wirkt und nicht schwebt.
-        var wand := Vector2(signf(p.x) * (absf(p.x) + 26.0), p.y + 8.0)
-        draw_line(p, wand, POLYP_FARBE.darkened(0.55), 4.0)
 
         # Kelch aus Tentakeln.
         for k in 7:

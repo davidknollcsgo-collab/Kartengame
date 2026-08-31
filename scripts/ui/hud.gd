@@ -39,6 +39,16 @@ var _meldung_leben := 0.0
 ## wo der Knopf liegt.
 var _kolonieknopf := Rect2()
 
+## Der Knopf, der die Welle startet.
+##
+## **Vorher startete jeder Tipp neben einer Nische die Welle.** Das war
+## bequem gedacht und in der Hand eine Falle: die Nischen sind Kreise von
+## knapp vierzig Pixeln, und wer daneben tippt, steht sofort in der Welle -
+## ohne Warnung, ohne Weg zurueck, mit dem Naehrstoff noch in der Tasche. Ein
+## Fehlgriff darf keinen Zustandswechsel ausloesen, den man nicht
+## rueckgaengig machen kann.
+var _wellenknopf := Rect2()
+
 ## Ankuendigung einer neuen Abschnittsregel. Steht laenger als eine Meldung,
 ## weil sie erklaert, warum sich das Spiel gerade anders anfuehlt.
 var _abschnitt := -1
@@ -68,17 +78,22 @@ func blitze(farbe: Color, dauer: float) -> void:
     _blitz_voll = maxf(0.05, dauer)
     _blitz = _blitz_voll
 
-## Einstieg. Ein Satz zur Zeit, mitten im Spiel statt als Textwand davor -
-## wer eine Anleitung lesen muss, bevor er etwas anfassen darf, faengt bei
-## einem Einminutenspiel gar nicht erst an.
-const EINSTIEG: PackedStringArray = [
-    "Hold your finger on the screen and sweep the light cone.",
-    "Whatever stands in the light burns. The cone holds only a few at once.",
-    "Let nothing reach the brood - those eggs below are what you guard.",
-    "Between waves: tap the niches to place guard polyps.",
-    "And in the trench below, your colony grows.",
-]
-var _einstieg := -1
+## --- Der gefuehrte Einstieg ---
+##
+## Was gesagt wird, steht in `Lehrpfad`; hier steht nur, wie es aussieht.
+## `_lehre` ist der Schritt, `_lehr_ort` der Weltpunkt, auf den der Ring
+## zeigt (gesetzt von `wache.gd`, weil nur die Wache weiss, welche Knospe
+## frei ist), und `_lehr_leben` zaehlt, wie lange dieser Schritt schon steht.
+##
+## **Die Tafel schrumpft.** Sie steht ihre ersten Sekunden voll da - Titel
+## und Satz -, danach bleibt nur der Titel und der Ring. Ein Erklaertext, der
+## stehenbleibt, bis man tut, was er sagt, wird nach einer halben Minute zum
+## Moebel: man liest ihn nicht mehr und er nimmt trotzdem Platz weg. Der Ring
+## dagegen darf bleiben, denn er zeigt und redet nicht.
+var _lehre := -1
+var _lehr_ort := Vector2.ZERO
+var _lehr_leben := 0.0
+const LEHRE_VOLL := 14.0
 
 ## Ob das Spiel angehalten ist. Siehe `wache.gd::pausiere()`.
 var _pause := false
@@ -107,6 +122,8 @@ func _process(delta: float) -> void:
         _abschnitt_leben -= delta
     if _blitz > 0.0:
         _blitz -= delta
+    if _lehre >= 0:
+        _lehr_leben += delta
     for i in range(_ausbeuten.size() - 1, -1, -1):
         _ausbeuten[i][&"leben"] -= delta
         if _ausbeuten[i][&"leben"] <= 0.0:
@@ -146,9 +163,14 @@ func zeige_mutation(m: int) -> void:
     _abschnitt_leben = 5.0
 
 
-## Zeigt den Einstiegssatz mit dieser Nummer, oder -1 fuer keinen.
-func zeige_einstieg(schritt: int) -> void:
-    _einstieg = schritt if schritt >= 0 and schritt < EINSTIEG.size() else -1
+## Zeigt den Lehrschritt mit dieser Nummer, oder -1 fuer keinen. `ort` ist
+## der Weltpunkt, auf den der Ring zeigt - er gilt nur fuer die Ziele, die
+## einen brauchen, und wird sonst nicht angesehen.
+func zeige_einstieg(schritt: int, ort := Vector2.ZERO) -> void:
+    if schritt != _lehre:
+        _lehr_leben = 0.0
+    _lehre = schritt if Lehrpfad.gilt(schritt) else -1
+    _lehr_ort = ort
 
 
 func zeige_pause(an: bool) -> void:
@@ -158,6 +180,10 @@ func zeige_pause(an: bool) -> void:
 
 func kolonieknopf_bei(bildschirm: Vector2) -> bool:
     return _bauphase and not _ende and _kolonieknopf.has_point(bildschirm)
+
+
+func wellenknopf_bei(bildschirm: Vector2) -> bool:
+    return _bauphase and not _ende and _wellenknopf.has_point(bildschirm)
 
 
 func setze_zahlen(brut: int, naehrstoffe: int, offen: int) -> void:
@@ -247,6 +273,7 @@ func _zeichne() -> void:
         _bauhinweis(breite, hoehe)
     else:
         _kolonieknopf = Rect2()
+        _wellenknopf = Rect2()
     if _ende:
         _endschirm(breite, hoehe)
 
@@ -257,8 +284,8 @@ func _zeichne() -> void:
 
     if _abschnitt_leben > 0.0:
         _abschnittstafel(breite, hoehe)
-    elif _einstieg >= 0 and not _ende:
-        _einstiegszeile(breite, hoehe)
+    elif _lehre >= 0 and not _ende and not Lehrpfad.in_der_kolonie(_lehre):
+        _lehrtafel(breite, hoehe)
 
     # Ganz zuletzt, ueber allem: eine Pause, die man nicht sieht, ist ein
     # Absturz.
@@ -325,12 +352,112 @@ func _blitzschleier(breite: float, hoehe: float) -> void:
         _flaeche.draw_polygon(k, farben)
 
 
-## Ein Satz, unten, ohne Kasten. Er soll begleiten, nicht unterbrechen.
-func _einstiegszeile(breite: float, hoehe: float) -> void:
-    var puls := 0.6 + 0.4 * sin(_zeit * 2.0)
-    var y := hoehe * 0.24
-    _text(Vector2(breite * 0.5, y), EINSTIEG[_einstieg], 16,
-        Color(0.80, 0.94, 0.98, puls), true)
+## --- Die Lehrtafel ---
+##
+## Ein Kasten mit Titel und Satz, und ein Ring auf dem Ding, um das es geht.
+##
+## **Sie steht oben, nicht unten.** Unten liegt der Daumen, unten liegt die
+## Brut, unten liegt der Koloniekopf - alles, was der Einstieg zeigen will,
+## steht im unteren Drittel, und eine Tafel davor waere ein Vorhang vor
+## genau der Sache, die sie erklaert.
+func _lehrtafel(breite: float, hoehe: float) -> void:
+    var voll := clampf(1.0 - (_lehr_leben - LEHRE_VOLL) / 2.0, 0.0, 1.0)
+    var titel := Lehrpfad.titel(_lehre)
+    var satz := Lehrpfad.satz(_lehre)
+    var puls := 0.5 + 0.5 * sin(_zeit * 2.0)
+
+    _lehrring(breite, hoehe, puls)
+
+    # Umbruch von Hand: `draw_string` bricht nicht, und ein `RichTextLabel`
+    # waere ein zweiter Zeichenweg neben allem anderen hier.
+    var zeilen := _umbrich(satz, breite - RAND * 2.0 - 28.0, 14)
+    var hoch := 40.0 + (float(zeilen.size()) * 19.0 + 12.0) * voll
+    var kasten := Rect2(RAND, 154.0, breite - RAND * 2.0, hoch)
+
+    _flaeche.draw_rect(kasten, Color(0.035, 0.105, 0.135, 0.86))
+    _flaeche.draw_rect(kasten, Color(0.42, 0.86, 0.92, 0.24 + 0.16 * puls),
+        false, 1.4)
+    # Ein Streifen links in der Farbe des Einstiegs - dieselbe Marke wie an
+    # den Kammerzeilen, damit man die Tafel als Fuehrung erkennt und nicht
+    # als Meldung.
+    _flaeche.draw_rect(Rect2(kasten.position, Vector2(3.0, kasten.size.y)),
+        Color(0.52, 0.94, 0.86, 0.85))
+
+    _text(Vector2(kasten.position.x + 16.0, kasten.position.y + 26.0),
+        titel, 16, Color(0.62, 0.98, 0.86))
+    # Schrittzaehler rechts: er sagt, dass das hier ein Anfang ist und ein
+    # Ende hat. Ohne ihn weiss niemand, ob noch zwanzig davon kommen.
+    _text(Vector2(kasten.end.x - 14.0, kasten.position.y + 25.0),
+        "%d/%d" % [_lehre + 1, Lehrpfad.anzahl()], 12,
+        Color(0.52, 0.72, 0.78, 0.8), false, true)
+
+    if voll <= 0.01:
+        return
+    for i in zeilen.size():
+        _text(Vector2(kasten.position.x + 16.0,
+            kasten.position.y + 50.0 + float(i) * 19.0),
+            zeilen[i], 14, Color(0.80, 0.92, 0.96, voll))
+
+
+## Der Ring auf dem Ding, um das es geht.
+func _lehrring(breite: float, hoehe: float, puls: float) -> void:
+    var ziel := Lehrpfad.ziel(_lehre)
+    if ziel == Lehrpfad.Ziel.KEINS:
+        return
+
+    var wo := Vector2.ZERO
+    var r := 34.0
+    match ziel:
+        Lehrpfad.Ziel.KEGEL:
+            # Kein fester Punkt, sondern eine **Bewegung**: der Ring wandert
+            # im unteren Drittel hin und her und zieht eine kurze Spur hinter
+            # sich her. Ein stehender Kreis wuerde sagen "tippe hier", und
+            # genau das ist es nicht - es ist "halte und zieh".
+            # **Auf halber Hoehe, nicht unten.** Unten stehen der
+            # Bauhinweis und der Koloniekopf; ein wandernder Ring darauf
+            # sieht aus, als solle man die beiden Knoepfe streicheln.
+            var t := sin(_zeit * 0.9)
+            wo = Vector2(breite * (0.5 + 0.26 * t), hoehe * 0.46)
+            for i in 6:
+                var alt_t := sin((_zeit - float(i) * 0.09) * 0.9)
+                var p := Vector2(breite * (0.5 + 0.26 * alt_t), hoehe * 0.46)
+                _flaeche.draw_circle(p, 5.0 - float(i) * 0.6,
+                    Color(0.72, 1.0, 0.92, 0.18 - float(i) * 0.026))
+        Lehrpfad.Ziel.KOLONIEKNOPF:
+            if _kolonieknopf.size.x <= 0.0:
+                return
+            wo = _kolonieknopf.get_center()
+            r = _kolonieknopf.size.y * 0.62
+        _:
+            wo = _auf_bildschirm(_lehr_ort)
+
+    # Zwei Ringe, versetzt atmend: einer, der steht, und einer, der nach
+    # aussen laeuft und ausblendet. Der laufende ist es, was den Blick holt -
+    # ein pulsierender Kreis allein wird uebersehen.
+    var welle := fmod(_zeit * 0.9, 1.0)
+    _flaeche.draw_arc(wo, r * (1.0 + welle * 0.9), 0.0, TAU, 32,
+        Color(0.72, 1.0, 0.92, 0.34 * (1.0 - welle)), 2.0, true)
+    _flaeche.draw_arc(wo, r, 0.0, TAU, 32,
+        Color(0.72, 1.0, 0.92, 0.34 + 0.26 * puls), 2.2, true)
+
+
+## Bricht einen Satz auf die gegebene Breite um. `draw_string` kann das
+## nicht, und ein zweiter Zeichenweg nur fuer drei Zeilen Text waere die
+## teurere Antwort.
+func _umbrich(satz: String, breite: float, groesse: int) -> PackedStringArray:
+    var zeilen := PackedStringArray()
+    var laufend := ""
+    for wort in satz.split(" "):
+        var versuch := wort if laufend.is_empty() else laufend + " " + wort
+        if _schrift.get_string_size(versuch, HORIZONTAL_ALIGNMENT_LEFT, -1,
+                groesse).x > breite and not laufend.is_empty():
+            zeilen.append(laufend)
+            laufend = wort
+        else:
+            laufend = versuch
+    if not laufend.is_empty():
+        zeilen.append(laufend)
+    return zeilen
 
 
 ## Zwei Zeilen in der Bildmitte: der Name des Abschnitts und was er aendert.
@@ -413,11 +540,26 @@ func _kopfzeile(breite: float) -> void:
                 Color(0.52, 0.94, 0.80, 0.85), false, true)
 
 
+## Weltpunkt zu Bildschirmpunkt.
+##
+## **`Control.get_canvas_transform()` ist die falsche Frage.** Sie liefert die
+## Verschiebung der CanvasLayer, in der das Bedienbild selbst haengt - und die
+## ist die Einheitsabbildung, weil das HUD sich nicht mitbewegen soll. Was
+## gebraucht wird, ist die Abbildung der **Kamera**, und die haengt am
+## Viewport.
+##
+## Der Fehler war lange unsichtbar, weil die schwebenden Zahlen an den
+## Bildrand geklemmt werden: sie standen also da, nur nie ueber dem Tier, das
+## gestorben war. Aufgefallen ist er erst, als der Lehrring auf eine Knospe
+## zeigen sollte und gar nicht im Bild auftauchte - der wird nicht geklemmt.
+func _auf_bildschirm(welt: Vector2) -> Vector2:
+    return _flaeche.get_viewport().get_canvas_transform() * welt
+
+
 func _schwebende_zahlen() -> void:
-    var wandel := _flaeche.get_canvas_transform()
     for a in _ausbeuten:
         var f: float = a[&"leben"] / 0.9
-        var ort: Vector2 = wandel * (a[&"ort"] as Vector2)
+        var ort: Vector2 = _auf_bildschirm(a[&"ort"] as Vector2)
         ort.y -= (1.0 - f) * 34.0
         # In den Rand hinein, nicht darueber hinaus. Ein Raeuber, der an der
         # Grabenwand stirbt, hinterliess sonst ein halbes "+4" am Bildrand -
@@ -432,44 +574,65 @@ func _schwebende_zahlen() -> void:
             Color(0.52, 0.94, 0.80, f), true)
 
 
-## Der Weg in die Kolonie. Steht nur zwischen den Wellen da - waehrend einer
-## Welle gehoert der Bildschirm dem Schlund.
+## --- Die Bauphase ---
+##
+## Zwei Knoepfe **nebeneinander am unteren Rand** und eine Zeile oben, die
+## sagt, was eine Knospe kostet.
+##
+## **Vorher standen drei Kaesten uebereinander in der unteren Bildhaelfte** -
+## und genau dort haengen die Knospen an den Ranken. Vier der acht
+## Tippflaechen lagen unter einem Kasten: sichtbar, gemeint, und nicht
+## erreichbar. Ein Bedienelement, das ein anderes verdeckt, ist schlimmer
+## als eines, das fehlt, denn der Spieler haelt sich fuer zu ungeschickt.
+##
+## Unten am Rand liegt nichts als der Grund; dort ist Platz, und dort liegt
+## der Daumen ohnehin.
+##
+## **Der Wellenstart ist ein Knopf.** Er war "tipp irgendwohin", und das ist
+## der bequemste Weg, ein Spiel unfair zu machen: neben eine Knospe getippt,
+## und die Welle laeuft - ohne Warnung und ohne Weg zurueck.
+const KNOPF_HOCH := 58.0
+const KNOPF_LUECKE := 10.0
+
+
 func _kolonieknopf_zeichnen(breite: float, hoehe: float) -> void:
-    # Ueber der Brut, nicht darauf. Im ersten Bild lagen beide Tafeln genau
-    # auf der Eierreihe - der Spieler sah in der Bauphase nicht, was er
-    # verteidigt.
-    _kolonieknopf = Rect2(RAND, hoehe - 410.0, breite - RAND * 2.0, 54.0)
-    var puls := 0.5 + 0.5 * sin(_zeit * 1.8)
-    _flaeche.draw_rect(_kolonieknopf, Color(0.05, 0.14, 0.18, 0.82))
-    _flaeche.draw_rect(_kolonieknopf, Color(0.42, 0.86, 0.92, 0.28 + 0.2 * puls),
-        false, 1.5)
-    _text(_kolonieknopf.get_center() + Vector2(0.0, 6.0), "BUILD THE COLONY",
+    var y := hoehe - KNOPF_HOCH - 26.0
+    var weit := breite - RAND * 2.0 - KNOPF_LUECKE
+    # Der Wellenstart ist die Haupthandlung dieser Phase und bekommt den
+    # groesseren Anteil; die Kolonie ist der Umweg und bekommt den kleineren.
+    var links_weit := weit * 0.42
+
+    _kolonieknopf = Rect2(RAND, y, links_weit, KNOPF_HOCH)
+    _flaeche.draw_rect(_kolonieknopf, Color(0.05, 0.14, 0.18, 0.88))
+    _flaeche.draw_rect(_kolonieknopf, Color(0.42, 0.86, 0.92, 0.30), false, 1.4)
+    _text(_kolonieknopf.get_center() + Vector2(0.0, 6.0), "COLONY",
         17, Color(0.72, 0.94, 0.98), true)
 
+    var puls := 0.5 + 0.5 * sin(_zeit * 1.8)
+    _wellenknopf = Rect2(RAND + links_weit + KNOPF_LUECKE, y,
+        weit - links_weit, KNOPF_HOCH)
+    _flaeche.draw_rect(_wellenknopf, Color(0.08, 0.26, 0.28, 0.92))
+    _flaeche.draw_rect(_wellenknopf, Color(0.52, 0.94, 0.86, 0.42 + 0.30 * puls),
+        false, 1.8)
+    _text(_wellenknopf.get_center() + Vector2(0.0, 7.0),
+        "START WAVE %d" % _welle, 19, Color(0.84, 1.0, 0.94), true)
 
+
+## Was eine Knospe kostet - eine Zeile unter der Kopfzeile, wo sie nichts
+## verdeckt. Sie ist Auskunft, kein Bedienelement, und braucht deshalb keinen
+## Kasten und keinen Platz in der unteren Bildhaelfte.
 func _bauhinweis(breite: float, hoehe: float) -> void:
-    var puls := 0.5 + 0.5 * sin(_zeit * 2.4)
-    # Ueber dem Knopf und ueber dem Waechter. Vorher lag die Tafel auf seinem
-    # Kopf, davor auf der Brut - beides Dinge, die der Spieler in der Bauphase
-    # sehen muss.
-    var kasten := Rect2(RAND, hoehe - 500.0, breite - RAND * 2.0, 76.0)
-    _flaeche.draw_rect(kasten, Color(0.03, 0.08, 0.10, 0.72))
-    _flaeche.draw_rect(kasten, Color(0.26, 0.60, 0.66, 0.35), false, 1.4)
-
     var frei := _gebaut < Graben.NISCHEN.size()
     var kann := frei and _naehrstoffe >= _preis
-    var zeile := "Tap a niche: guard polyp for %s" % Zahl.kurz(_preis)
+    var zeile := "Tap a bud on the vines - guard polyp for %s" % Zahl.kurz(_preis)
     if not frei:
-        zeile = "Every niche taken"
+        zeile = "Every bud has a polyp"
     elif not kann:
         zeile = "Guard polyp costs %s - %s short" % [Zahl.kurz(_preis),
             Zahl.kurz(_preis - _naehrstoffe)]
 
-    _text(kasten.position + Vector2(18.0, 32.0), zeile, 16,
-        Color(0.62, 0.90, 0.86) if kann else Color(0.50, 0.60, 0.66))
-    _text(kasten.position + Vector2(18.0, 62.0),
-        "Tap anywhere else to start wave %d" % _welle, 15,
-        Color(0.78, 0.94, 0.98, 0.55 + 0.45 * puls))
+    _text(Vector2(breite * 0.5, 132.0), zeile, 15,
+        Color(0.62, 0.90, 0.86) if kann else Color(0.50, 0.60, 0.66), true)
 
 
 func _endschirm(breite: float, hoehe: float) -> void:
@@ -500,12 +663,34 @@ func _endschirm(breite: float, hoehe: float) -> void:
     # Aufhoerens der Grund, es noch einmal zu versuchen.
     _grabenwertung(mitte + Vector2(0.0, 122.0))
 
+    # **Was jetzt passiert, muss dastehen.**
+    #
+    # Zwischen zwei Sitzungen aendert sich dreierlei auf einmal: die Brut ist
+    # wieder voll, die Wehrpolypen sind weg, und der Naehrstoff bleibt. Wer
+    # das nicht weiss, sieht beim naechsten Mal leere Knospen und haelt es
+    # fuer einen Fehler - oder er spart Naehrstoff auf und weiss nicht,
+    # wofuer. Drei Zeilen an der Stelle, an der man ohnehin liest.
+    var nachher := "The brood is whole again and the vines are bare - "
+    if _gewonnen or _sitzung:
+        nachher += "polyps last one session, nutrients stay."
+    else:
+        nachher = "The session is lost, but the colony keeps every nutrient "
+        nachher += "it earned. Spend it before you go back down."
+    var zeilen := _umbrich(nachher, breite - RAND * 6.0, 14)
+    for i in zeilen.size():
+        _text(mitte + Vector2(0.0, 194.0 + float(i) * 20.0), zeilen[i], 14,
+            Color(0.58, 0.76, 0.82), true)
+
     var puls := 0.5 + 0.5 * sin(_zeit * 2.6)
     var weiter := "Tap to continue the watch" if _sitzung \
         else "Tap for another run"
-    # 196 und nicht 148: die Wertung darueber ist zwei Zeilen hoch, und die
-    # zweite lag genau hier. Auf dem Bild sah es aus wie ein Schriftfehler.
-    _text(mitte + Vector2(0.0, 196.0), weiter, 17,
+    # Der Abstand ist **gerechnet**, nicht gesetzt: darueber stehen die
+    # Wertung und die Auskunft, was die naechste Sitzung mitnimmt, und die
+    # ist mal ein-, mal zweizeilig. Eine feste Zahl lag hier schon zweimal
+    # auf der Zeile darueber, und auf dem Bild sah es aus wie ein
+    # Schriftfehler.
+    _text(mitte + Vector2(0.0, 194.0 + float(zeilen.size()) * 20.0 + 32.0),
+        weiter, 17,
         Color(0.82, 0.94, 0.98, 0.45 + 0.55 * puls), true)
 
 

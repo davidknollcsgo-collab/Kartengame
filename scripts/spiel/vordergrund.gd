@@ -63,7 +63,12 @@ func _ready() -> void:
         # mit bis zu sechs Armen und einer Gabelung waren achtzig Aeste im
         # Vordergrund - ein Dickicht aus Stacheln, und Dickicht ist genau das
         # Rauschen, das vor allem anderen nichts zu suchen hat.
-        for i in 3:
+        # **Zwei Stoecke je Seite, nicht drei.** Seit das Riff der Kolonie
+        # am Grund liegt statt an der Wandkante, stehen in den unteren Ecken
+        # zwei Riffe uebereinander - eines im Vordergrund, eines dahinter.
+        # Der Vordergrund ist die Ebene, die am wenigsten verzeiht: was hier
+        # zu viel steht, steht vor allem anderen.
+        for i in 2:
             var arme := PackedFloat32Array()
             for _a in rng.randi_range(3, 4):
                 arme.append(rng.randf_range(0.40, 0.62))

@@ -35,6 +35,8 @@ const TESTS: PackedStringArray = [
     "_test_kurve_haengt_nicht_an_der_abschnittszahl",
     "_test_jeder_abschnitt_ist_vollstaendig",
     "_test_jede_brutlinie_tut_etwas",
+    "_test_lehrpfad_zeigt_auf_alles",
+    "_test_nischen_liegen_auf_den_ranken",
     "_test_spiegler_brennt_nur_im_randlicht",
     "_test_drehung_begrenzt",
     "_test_drehung_erreicht_ziel",
@@ -1646,3 +1648,64 @@ func _test_jede_brutlinie_tut_etwas() -> bool:
         and Brutlinien.schwellen_nachlass(k) == 0.0
     return _melde(neutral,
         "die Linie KEINE aendert etwas - dann sind die Grundwerte keine")
+
+
+## Der Lehrpfad muss auf **jede** Sache zeigen, fuer die es ein Ziel gibt.
+##
+## Der Ring ist der Teil des Einstiegs, der die Arbeit macht: er beantwortet
+## das "wo", und ohne ihn ist jeder Satz eine Suchaufgabe. Ein Zielwert, den
+## keiner der Schritte benutzt, ist deshalb kein toter Aufzaehlungswert,
+## sondern ein Ding im Spiel, auf das nie jemand hinweist - und man merkt es
+## nicht, weil nichts fehlt, sondern nur nichts passiert.
+##
+## Umgekehrt darf kein Ziel zweimal vorkommen: zwei Schritte, die auf
+## denselben Ring zeigen, sind einer zu viel.
+func _test_lehrpfad_zeigt_auf_alles() -> bool:
+    var gezaehlt := {}
+    for schritt in Lehrpfad.anzahl():
+        if not _melde(not Lehrpfad.titel(schritt).is_empty(),
+                "Lehrschritt %d hat keinen Titel" % schritt):
+            return false
+        if not _melde(Lehrpfad.satz(schritt).length() > 20,
+                "Lehrschritt %d hat keinen Satz" % schritt):
+            return false
+        var ziel := Lehrpfad.ziel(schritt)
+        if ziel == Lehrpfad.Ziel.KEINS:
+            continue
+        if not _melde(not gezaehlt.has(ziel),
+                "Zwei Lehrschritte zeigen auf dasselbe Ziel %d" % ziel):
+            return false
+        gezaehlt[ziel] = schritt
+
+    for ziel in Lehrpfad.Ziel.values():
+        if ziel == Lehrpfad.Ziel.KEINS:
+            continue
+        if not _melde(gezaehlt.has(ziel),
+                "Auf Ziel %d zeigt kein Lehrschritt" % ziel):
+            return false
+    return true
+
+
+## Jede Nische muss auf ihrer Ranke sitzen.
+##
+## Die Ranke wird gezeichnet, die Nische wird getippt, und beide kommen aus
+## `Graben.ranke()`. Solange das so bleibt, kann die Tippflaeche nicht neben
+## der Knospe liegen - und dieser Test ist der Grund, warum es so bleibt.
+func _test_nischen_liegen_auf_den_ranken() -> bool:
+    if not _melde(Graben.NISCHEN.size() == Graben.NISCHEN_JE_RANKE * 2,
+            "Es sind nicht zwei Ranken mit je %d Knospen"
+            % Graben.NISCHEN_JE_RANKE):
+        return false
+    for i in Graben.NISCHEN.size():
+        var p := Graben.NISCHEN[i]
+        var t := Graben.nische_lage(i / 2)
+        var seite := -1.0 if i % 2 == 0 else 1.0
+        if not _melde(p.distance_to(Graben.ranke(seite, t)) < 0.01,
+                "Nische %d sitzt nicht auf ihrer Ranke" % i):
+            return false
+        # Und im Bild, mit Abstand zum Rand - eine Knospe, die halb aus dem
+        # Bild ragt, ist eine halbe Tippflaeche.
+        if not _melde(absf(p.x) < Graben.FELD.end.x - Graben.POLYP_RADIUS * 2.0,
+                "Nische %d steht zu weit aussen (x = %.1f)" % [i, p.x]):
+            return false
+    return true

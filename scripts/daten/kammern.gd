@@ -265,3 +265,36 @@ static func filter_je_stunde(filterbecken: int) -> float:
     if filterbecken <= 0:
         return 0.0
     return FILTER_ANTEIL * rundenkosten(filterbecken - 1) / (TAGE_JE_RUNDE * 24.0)
+
+
+## --- Was eine Stufe konkret bringt ---
+##
+## **Ein Satz sagt, wohin es geht; eine Zahl sagt, wie weit.**
+##
+## In der Kammerzeile stand nur "The cone burns hotter and holds more at
+## once." Das erklaert die Richtung und laesst genau die Frage offen, die man
+## vor dem Bezahlen hat: **wieviel** heisser? Bei einer Kammer, die auf Stufe
+## 7 ein paar hundert Naehrstoff kostet und auf Stufe 30 ein paar Milliarden,
+## ist das keine Kleinigkeit - es ist der Unterschied zwischen einer
+## Entscheidung und einem Knopf.
+##
+## Hier steht die Wirkung als Zeichenkette, damit sie **eine** Quelle hat.
+## Der Koloniebildschirm zeigt sie fuer die aktuelle und die naechste Stufe
+## nebeneinander; die Differenz ist damit abgelesen und nicht beschrieben.
+static func wirkung(index: int, stufe: int) -> String:
+    var s := maxi(0, stufe)
+    match index:
+        Kammer.LEUCHTORGAN:
+            return "%s dmg/s  ·  %d targets" % [
+                Zahl.kurz(int(round(Graben.LEISTUNG * leistung_faktor(s)))),
+                ziele(s)]
+        Kammer.ZUCHTKAMMER:
+            return "%s dmg/s each" % Zahl.kurz(int(round(polyp_leistung(s))))
+        Kammer.BRUTKAMMER:
+            return "%d eggs" % brut_leben(s)
+        Kammer.FILTERBECKEN:
+            return "%s / h" % Zahl.kurz(int(round(filter_je_stunde(s))))
+        Kammer.TIEFENSCHACHT:
+            return "chambers to %d" % deckel(Kammer.LEUCHTORGAN, s)
+        _:
+            return ""

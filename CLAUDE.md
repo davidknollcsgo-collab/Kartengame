@@ -6,7 +6,7 @@
 
 Die Kernschleife heißt **Schlundwache**: ein Finger zieht einen Lichtkegel über
 den Grabeneingang, was darin liegt wird verbrannt, zwischen den Wellen setzt
-man Wehrpolypen in feste Nischen.
+man Wehrpolypen in die Knospen der beiden Ranken.
 
 Die Struktur ist von Kingshot abgeschaut — casual Kernschleife vorn,
 Aufbauspiel dahinter. **Nur die Struktur.** Kein Code, kein Asset, keine Figur,
@@ -99,6 +99,7 @@ xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 720x1280 \
 | `--kolonie <n>` | öffnet den Koloniebildschirm: 0 Kammern, 1 Linien, 2 Arten, 3 Züge, 4 Tag |
 | `--endschirm <n>` | 0 gefallen, 1 Sitzung gehalten, 2 Graben durchgestanden |
 | `--stufen <n>` | setzt alle Kammern auf Stufe n |
+| `--lehre <n>` | setzt den Lehrpfad auf Schritt n (0–6) |
 
 **`--stau` braucht man oefter, als es aussieht.** Im Vorlauf steht der
 Finger fest ueber dem Schlund, und der Kegel raeumt in spaeten Wellen alles
@@ -203,6 +204,23 @@ unter einer strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
    `KolonieStand.naechste_welle()` ist der einzige Weg, an die zu spielende
    Welle zu kommen. Ohne diese Kopplung stand der Spieler an Tag 6 in Welle 36,
    während seine Kolonie bei gut der Hälfte der Sollkurve lag.
+
+13. **Nische und Ranke kommen aus derselben Kurve.** `Graben.ranke()` sagt,
+   wo die Ranke verläuft; `Graben.NISCHEN` liest die Knospenorte von dort ab.
+   Vorher stand eine feste Liste aus acht Punkten im Quelltext, und die Wände,
+   in denen sie saßen, gibt es nicht mehr. Zwei Beschreibungen derselben Kurve
+   laufen auseinander, und dann liegt die Tippfläche neben der Knospe —
+   `_test_nischen_liegen_auf_den_ranken` hält es fest.
+
+14. **Weltpunkt zu Bildschirmpunkt geht über den Viewport, nicht über das
+   Control.** `Control.get_canvas_transform()` liefert die Verschiebung der
+   CanvasLayer, in der das Bedienbild hängt — und die ist die
+   Einheitsabbildung. Gebraucht wird `get_viewport().get_canvas_transform()`,
+   die Abbildung der Kamera. Der Fehler stand lange unbemerkt in
+   `_schwebende_zahlen()`: die Ausbeutezahlen werden an den Bildrand geklemmt,
+   also standen sie da — nur nie über dem Tier, das gestorben war. Sichtbar
+   wurde er erst, als der Lehrring auf eine Knospe zeigen sollte und gar nicht
+   im Bild auftauchte.
 
 ## Fuer den Laden
 

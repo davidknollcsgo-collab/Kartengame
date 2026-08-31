@@ -137,8 +137,31 @@ func _ready() -> void:
 ## langsamer ist, bekommt mehr Zeit; wer es sofort versteht, wird nicht
 ## aufgehalten.
 func _zeige_einstieg() -> void:
-    _hud.zeige_einstieg(Fortschritt.stand.einstieg
-        if Fortschritt.stand.einstieg < _hud.EINSTIEG.size() else -1)
+    var schritt: int = Fortschritt.stand.einstieg
+    if not Lehrpfad.gilt(schritt):
+        _hud.zeige_einstieg(-1)
+        _koloniebild.zeige_einstieg(-1)
+        return
+    # **Die Wache zielt, nicht das HUD.** Wohin der Ring zeigt, haengt am
+    # Spielstand - welche Knospe frei ist, wo die Brut liegt -, und das weiss
+    # nur die Wache. Ein HUD, das sich das selbst zusammensucht, waere eine
+    # zweite Beschreibung derselben Sache.
+    _hud.zeige_einstieg(schritt, _lehr_ort(schritt))
+    _koloniebild.zeige_einstieg(schritt)
+
+
+## Der Weltpunkt, auf den der Ring dieses Schritts zeigt.
+func _lehr_ort(schritt: int) -> Vector2:
+    match Lehrpfad.ziel(schritt):
+        Lehrpfad.Ziel.BRUT:
+            return Vector2(0.0, Graben.BRUT_Y - 6.0)
+        Lehrpfad.Ziel.NISCHE:
+            # Die naechste, die gebaut wuerde - dieselbe Reihenfolge, in der
+            # `baue_polyp()` sie vergibt.
+            var frei := mini(polypen.size(), Graben.NISCHEN.size() - 1)
+            return Graben.NISCHEN[frei]
+        _:
+            return Vector2.ZERO
 
 
 func _einstieg_weiter(ab: int) -> void:
@@ -158,6 +181,7 @@ func _bau_fertig(kammer: int) -> void:
             Color(0.62, 0.94, 1.0), 26.0)
     Klang.spiele(Klang.Ton.KAMMER, 1.0, 0.7)
     _hud.melde("%s finished" % Kammern.name_von(kammer))
+    _einstieg_weiter(5)
 
     # Ein Schacht, der einen Abschnitt oeffnet, ist mehr als eine Stufe mehr:
     # er gibt den Weg frei, auf dem der Spieler gerade steht.
@@ -212,6 +236,9 @@ func _bereite_welle_vor() -> void:
     _aktualisiere_kolonie()
     _hud.zeige_bauphase(welle_nummer, brut, Fortschritt.stand.naehrstoffe,
         Fortschritt.stand.polyp_kosten(polypen.size()), polypen.size())
+    # Der Ring auf der freien Knospe muss die aktuelle sein - zwischen zwei
+    # Wellen sind die Polypen weg, und damit zeigt er wieder auf die erste.
+    _zeige_einstieg()
 
 
 func starte_welle() -> void:
@@ -685,6 +712,7 @@ func _welle_geschafft() -> void:
         return
     if welle_in_sitzung >= Graben.WELLEN_JE_SITZUNG:
         lage = Lage.SITZUNG_ENDE
+        _einstieg_weiter(6)
         _hud.zeige_sitzungsende(welle_nummer, verdient)
         return
     _bereite_welle_vor()
@@ -837,11 +865,13 @@ func _beruehrung(gedrueckt: bool, ort: Vector2) -> void:
                 Klang.spiele(Klang.Ton.TIPP)
                 oeffne_kolonie()
                 return
+            if _hud.wellenknopf_bei(_bildschirm(ort)):
+                Klang.spiele(Klang.Ton.TIPP)
+                starte_welle()
+                return
             var n := nische_bei(ort)
             if n >= 0:
-                if baue_polyp(n):
-                    return
-            starte_welle()
+                baue_polyp(n)
         Lage.VERLOREN, Lage.GESCHAFFT, Lage.SITZUNG_ENDE:
             neu_anfangen()
 
@@ -871,6 +901,7 @@ func _lies_entwicklerschalter() -> void:
     var reiter := -1
     var endschirm := -1
     var stufen := -1
+    var lehre := -1
 
     for i in argumente.size():
         match argumente[i]:
@@ -907,6 +938,12 @@ func _lies_entwicklerschalter() -> void:
                     messen = float(argumente[i + 1])
             "--stau":
                 stau = true
+            "--lehre":
+                # Der Lehrpfad laeuft genau einmal je Spielstand. Ohne
+                # Schalter liesse sich Schritt 6 nur ansehen, indem man die
+                # fuenf davor noch einmal spielt - und ein Bild, das man
+                # nicht nachpruefen kann, ist ein Bild, das schief steht.
+                lehre = int(argumente[i + 1]) if i + 1 < argumente.size() else 0
             "--pause":
                 # Die Pause laesst sich sonst nur ansehen, indem man die App
                 # auf einem Telefon in den Hintergrund schiebt.
@@ -918,6 +955,10 @@ func _lies_entwicklerschalter() -> void:
             Fortschritt.stand.stufen[k] = st
         Fortschritt.stand.hoechste_welle = Graben.ZYKLUS
         _stelle_ausbau_ein()
+
+    if lehre >= 0:
+        Fortschritt.stand.einstieg = lehre
+        _zeige_einstieg()
 
     if welle > 0:
         welle_nummer = clampi(welle, 1, Graben.TIEFSTE)

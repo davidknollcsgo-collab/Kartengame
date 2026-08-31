@@ -85,7 +85,7 @@ const tipp = async (fy, fx = 0.5, warte = 900) => {
 
 if (k) {
     // 1. Kolonie oeffnen und alle Reiter besuchen.
-    await tipp(anteil(H - 410 + 27));
+    await tipp(anteil(H - 58 - 26 + 29), 0.20);
     const reiterY = anteil(96 + 12 + 18);
     // Die Reiter sind gleich breit mit 8 px Luecke; ihre Mitten liegen also
     // bei (2i+1)/(2n) der Breite. Aus der Zahl gerechnet und nicht getippt -
@@ -99,7 +99,11 @@ if (k) {
     await tipp(anteil(H - 78 + 34));                 // zurueck zum Schlund
 
     // 2. Welle starten und den Kegel wirklich schwenken.
-    await tipp(0.5);
+    //
+    // **Auf den Knopf, nicht irgendwohin.** Bis der Wellenstart ein Knopf
+    // wurde, startete jeder Tipp die Welle - auch dieser hier, aus Versehen
+    // richtig. Jetzt ist die Stelle die Aussage des Tests.
+    await tipp(anteil(H - 58 - 26 + 29), 0.68);
     await seite.mouse.move(k.x + k.width * 0.5, k.y + k.height * 0.5);
     await seite.mouse.down();
     for (let i = 0; i <= 14; i++) {

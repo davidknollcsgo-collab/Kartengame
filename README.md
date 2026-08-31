@@ -13,7 +13,7 @@ bleiben deutsch.
 Am Eingang der Kolonie sitzt ein Wächter. Aus der Dunkelheit sinken Räuber in
 Wellen herab. Du ziehst mit **einem Finger** einen Lichtkegel über den Schlund —
 was darin liegt, wird verbrannt. Zwischen den Wellen tippst du auf freie
-Nischen und setzt dort Wehrpolypen.
+Knospen an den Ranken und setzt dort Wehrpolypen.
 
 Eine Welle dauert 40 bis 70 Sekunden. Der Kegel fasst nur wenige Räuber
 gleichzeitig; ein Schwarm lässt sich nicht wegleuchten, sondern muss sortiert
@@ -29,8 +29,8 @@ werden.
 | Leitwesen | die Schlundmutter am Ende jedes Abschnitts — ein Höhepunkt alle zehn Wellen |
 | Mutationen | ab der zweiten Umdrehung tragen Wellen eigene Züge: gepanzert, lichtscheu, unstet, stoßweise, hastig, aufgedunsen |
 | Bestiarium | jede begegnete Art mit ihrer Regel; unbekannte zeigen nur, ab wann sie kommen |
-| Grafische Tiefe | drei Wandebenen mit Wasserdunst, Staub und wandernde Schlieren im Lichtkegel, Randlicht auf jedem Tier, Schlick im Vordergrund |
-| Der Fels | Platten, Risse, Krusten und Schleier auf jeder Wandebene — alle hellen Kanten zur Grabenmitte, weil dort die einzige Lichtquelle steht |
+| Grafische Tiefe | offenes Wasser mit Tiefenverlauf, Staub und wandernde Schlieren im Lichtkegel, Randlicht auf jedem Tier, Schlick im Vordergrund |
+| Der Einstieg | sieben Schritte mit Titel, Satz und einem Ring auf dem Ding, um das es geht — er schreitet an Ereignissen fort, nicht an einer Uhr |
 | Der Wächter | eigene Figur vor dem Kegel: Haftwurzeln, atmende Kiemen, Adernetz und ein Organ, das beim Feuern aufflammt. Er zuckt, wenn die Brut getroffen wird |
 | Die Brut | ein Gelege statt einer Punktreihe: die Eier stecken zwischen Bett und Lippe der Membran |
 | Leben im Wasser | treibende Quallen und Schwärmchen weit hinten — ausdrücklich keine Spielfiguren |
