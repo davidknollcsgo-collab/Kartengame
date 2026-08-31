@@ -16,7 +16,74 @@ const WAECHTER := Vector2(0.0, 392.0)
 
 ## Hoehe, auf der die Brut liegt. Wer sie erreicht, richtet Schaden an.
 const BRUT_Y := 486.0
-const BRUT_BREITE := 300.0
+const BRUT_BREITE := 400.0
+
+## --- Wie das Gelege liegt ---
+##
+## **Hier, weil es zwei Aufrufer gibt.** `kolonie.gd` zeichnet die Eier,
+## `wache.gd` braucht denselben Ort fuer die Bruchstuecke eines getroffenen
+## Eis. Die Rechnung stand doppelt da, mit einem Kommentar "dieselbe Rechnung
+## wie in kolonie.gd" - und genau so ein Kommentar ist der Beweis, dass es
+## zwei Beschreibungen derselben Sache sind. Sobald eine davon sich aendert,
+## springen die Scherben woanders hin als das Ei lag.
+##
+## **Ein Gelege, keine Reihe.** Vierundvierzig Eier auf dreihundert Pixeln
+## lagen zur Haelfte uebereinander und verschmolzen zu einem goldenen Balken -
+## im Bild ein Laib. Und die Zahl waechst mit der Brutkammer weiter, die
+## Breite nicht. Also gestaffelte Reihen, und erst wenn vier davon nicht mehr
+## reichen, werden die Eier kleiner.
+##
+## **Die Mitte bleibt frei.** Dort steht der Waechter; Eier hinter seinem Leib
+## sind Lebenspunkte, die man nicht sehen kann. Gefuellt wird abwechselnd
+## links und rechts von innen nach aussen - was verloren geht, ist damit immer
+## das aeusserste, und das Gelege schrumpft sichtbar zur Mitte hin.
+const BRUT_JE_REIHE := 16
+const BRUT_REIHEN_HOECHSTENS := 4
+const BRUT_REIHENHOEHE := 13.5
+const BRUT_EI_RADIUS := 7.0
+const BRUT_MITTE_FREI := 66.0
+
+
+static func brut_reihen(voll: int) -> int:
+    return clampi(int(ceil(float(maxi(1, voll)) / float(BRUT_JE_REIHE))),
+        1, BRUT_REIHEN_HOECHSTENS)
+
+
+static func brut_je_reihe(voll: int) -> int:
+    return maxi(1, int(ceil(float(maxi(1, voll)) / float(brut_reihen(voll)))))
+
+
+## Abstand zweier Eier innerhalb einer Reihenhaelfte.
+static func brut_schritt(voll: int) -> float:
+    var je_seite := (brut_je_reihe(voll) + 1) / 2
+    return (BRUT_BREITE * 0.5 - BRUT_MITTE_FREI) / float(maxi(1, je_seite))
+
+
+static func ei_radius(voll: int) -> float:
+    return minf(BRUT_EI_RADIUS, brut_schritt(voll) * 0.46)
+
+
+## In welcher Reihe das Ei liegt. 0 ist die vorderste.
+static func ei_reihe(index: int, voll: int) -> int:
+    return index / brut_je_reihe(voll)
+
+
+static func ei_ort(index: int, voll: int) -> Vector2:
+    var je := brut_je_reihe(voll)
+    var reihe := index / je
+    var k := index % je
+    # Gerade Plaetze nach links, ungerade nach rechts - beide von innen nach
+    # aussen. Damit ist der hoechste Index immer der aeusserste.
+    var seite := -1.0 if k % 2 == 0 else 1.0
+    var schritt := brut_schritt(voll)
+    var x := seite * (BRUT_MITTE_FREI + schritt * (float(k / 2) + 0.5))
+    if reihe % 2 == 1:
+        # Versetzt nach innen, damit die hintere Reihe in den Luecken der
+        # vorderen liegt statt genau dahinter.
+        x -= seite * schritt * 0.5
+    # Eine schnurgerade Reihe ist eine Anzeige, eine leicht unruhige ein Gelege.
+    var hub := sin(float(index) * 2.4) * 2.0
+    return Vector2(x, BRUT_Y + hub - BRUT_REIHENHOEHE * float(reihe))
 
 ## Raeuber treten weit oberhalb des Bildes ein und sinken in den Kegel hinein.
 ## Der Abstand ist Absicht: die ersten Sekunden jeder Bahn sieht man nur eine
@@ -63,7 +130,7 @@ const NISCHEN: PackedVector2Array = [
 ## brauchen: das Tier zeichnet `waechter.gd`, den Sockel darunter
 ## `kolonie.gd`, und die zwei muessen zusammenpassen. Zwei Zahlen, die
 ## dasselbe bedeuten, laufen auseinander.
-const WAECHTER_GROESSE := 1.45
+const WAECHTER_GROESSE := 1.70
 
 ## --- Sitzung ---
 

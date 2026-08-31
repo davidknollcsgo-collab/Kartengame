@@ -176,46 +176,49 @@ func _leib(p: Vector2, brennt: float, einzug: float) -> void:
     # Lampenschirm. Ein Koerper hat keine geraden Flanken: er ist unten breit,
     # zieht sich in der Mitte leicht ein und laeuft oben in den Hals aus, der
     # das Organ traegt. Dazu eine flache Welle auf dem Profil, damit die
-    # beiden Seiten nicht spiegelgleich sind. Nichts davon laesst sich mit
-    # einer Handvoll Ecken sagen.
-    var verschoben := PackedVector2Array()
-    var stufen := 26
-    for seite: float in SEITEN:
-        for i in stufen + 1:
-            # Linke Seite von unten nach oben, rechte von oben nach unten -
-            # sonst laeuft das Vieleck ueber Kreuz.
-            var t := float(i) / float(stufen)
-            if seite > 0.0:
-                t = 1.0 - t
-            # Beim Zusammenziehen staucht er sich der Hoehe nach und quillt
-            # dabei in die Breite - was Volumen behaelt, wird beim Stauchen
-            # dicker. Ohne das schrumpft er einfach, und das sieht nach einem
-            # Fehler in der Skalierung aus.
-            verschoben.append(p + Vector2(
-                seite * _halbbreite(t) * (1.0 + 0.16 * einzug),
-                _hoehe(t) * (1.0 - 0.24 * einzug)))
-    # **Dunkler als das Wasser dahinter, nicht gleich hell.**
+    # beiden Seiten nicht spiegelgleich sind.
     #
-    # Genau hier stand der dritte Fehlversuch. Der Waechter sitzt an der
-    # Spitze des Kegels, also im hellsten Fleck des ganzen Bildes - ein Leib
-    # in Wasserfarbe verschwindet darin restlos, und uebrig bleiben die
-    # Linien, die man daraufgezeichnet hat. Aus der Lupe sah das aus wie ein
-    # Gestell aus Draehten. Ein Koerper vor einer Lampe ist eine Silhouette;
-    # so muss er auch gemalt werden.
-    draw_colored_polygon(verschoben, Color(0.026, 0.058, 0.074))
+    # **Und er ist gefuellt, nicht nur umrandet.** Hier stand eine einzige
+    # fast schwarze Flaeche mit der Begruendung, ein Koerper vor einer Lampe
+    # sei eine Silhouette. Das stimmt - nur steht der Waechter an der *Spitze*
+    # des Kegels, und dort ist der Kegel schmal und das Wasser dunkel. Der
+    # Leib lag damit bei 0.026/0.058/0.074 vor einem Wasser von etwa
+    # 0.030/0.090/0.110: ein Unterschied im Hundertstel. Sichtbar blieb
+    # allein der helle Saum, und der Waechter war zum dritten Mal ein
+    # Drahtgestell - zwei blaue Boegen mit einer Lampe darueber.
+    #
+    # Ein Koerper, in dem das Licht entsteht, leuchtet **von innen**: oben am
+    # Organ hell, zum Fuss hin aus. Drei ineinanderliegende Fassungen mit je
+    # eigener Farbe je Eckpunkt geben genau das, und sie kosten drei
+    # Zeichenaufrufe.
+    var aussen := PackedVector2Array()
+    var hoehen := PackedFloat32Array()
+    _umriss(p, 1.0, 0.0, einzug, aussen, hoehen)
 
-    # Das Innere: drei weiche Scheiben vom Organ abwaerts, immer breiter und
-    # immer schwaecher. Sie bleiben ein gutes Stueck **innerhalb** der
-    # Silhouette - eine, die ueber den Rand lief, machte aus dem Koerper
-    # wieder eine Laterne.
-    for i in 5:
-        var t := lerpf(0.86, 0.10, float(i) / 4.0)
-        var mitte := p + Vector2(0.0, _hoehe(t))
-        draw_circle(mitte, _halbbreite(t) * 0.62,
-            Color(0.34, 0.74, 0.86, (0.15 - 0.024 * float(i)) * (0.75 + 0.5 * brennt)))
+    # **Eine Flaeche mit Verlauf, keine drei gestapelten.**
+    #
+    # Der erste Anlauf legte drei geschrumpfte Fassungen ineinander, jede
+    # etwas heller. Das gab dem Leib zwar Volumen, aber jede Fassung brachte
+    # ihre eigene Kante mit: in der Lupe standen drei Trapeze im Koerper.
+    # Dasselbe Ergebnis ohne Naht gibt es fuer einen Zeichenaufruf, wenn die
+    # Farbe am Eckpunkt haengt statt an der Fassung - `ih[k]` ist 0 am Fuss
+    # und 1 am Hals, und genau von oben kommt das Licht.
+    #
+    # **Und der Fuss darf nicht schwarz sein.** Mit `pow(h, 1.5)` und einem
+    # Grundwert von 0.018 lag die untere Haelfte des Leibes praktisch bei
+    # null: im Bild eine schwarze Glocke mit zwei blauen Boegen daran. Ein
+    # Koerper, in dem Licht entsteht, ist unten gedaempft, nicht aus. Der
+    # Grundwert liegt jetzt ueber dem des Wassers, und der Verlauf steigt
+    # frueher an.
+    var farben := PackedColorArray()
+    for k in aussen.size():
+        var hell := pow(hoehen[k], 0.85)
+        farben.append(Color(
+            lerpf(0.048, 0.26, hell),
+            lerpf(0.115, 0.62, hell) + 0.10 * brennt * hell,
+            lerpf(0.148, 0.72, hell) + 0.10 * brennt * hell))
+    draw_polygon(aussen, farben)
 
-    # Drei kurze Rippen oben, wo der Koerper sich verjuengt. Mehr waren es
-    # sieben ueber die ganze Hoehe, und genau die machten das Geruest.
     # Drei kurze Rippen oben, wo der Koerper sich verjuengt. Ihre Breite kommt
     # aus derselben Kurve wie die Kontur - sonst stehen sie darueber hinaus.
     for i in 3:
@@ -226,17 +229,44 @@ func _leib(p: Vector2, brennt: float, einzug: float) -> void:
         for k in 5:
             var u := lerpf(-1.0, 1.0, float(k) / 4.0)
             bogen.append(p + Vector2(u * halb, y - (1.0 - u * u) * 2.6))
-        draw_polyline(bogen, Color(0.30, 0.62, 0.70, 0.16), 1.1, true)
+        draw_polyline(bogen, Color(0.44, 0.80, 0.88, 0.22), 1.1, true)
 
-    # Der Saum um die ganze Kontur. Er ist das, was den Koerper vom Wasser
-    # trennt, und darf deshalb nicht sparsam sein - der schwarze Balken, der
-    # hier einmal als "Fuss" lag, sah dagegen aus wie ein Strich unter einem
-    # Rechenbeispiel.
     # Der Saum laeuft **nicht** ueber den Fuss. Unten steckt der Waechter im
     # Kalk; eine helle Linie quer darunter waere ein Strich unter einem
     # Rechenbeispiel, und genau so sah sie auch aus.
-    var saum := verschoben.slice(1, verschoben.size() - 1)
+    var saum := aussen.slice(1, aussen.size() - 1)
     draw_polyline(saum, Color(0.40, 0.78, 0.88, 0.62 + 0.28 * brennt), 2.4, true)
+
+
+## Der Umriss des Leibes, als Vieleck und mit der Hoehenlage je Eckpunkt.
+##
+## Zwei Ausgaben, weil die Farbe eines Eckpunktes davon abhaengt, wie weit
+## oben er sitzt - und diese Zahl steht nur hier zur Verfuegung. Sie
+## nachtraeglich aus der y-Lage zurueckzurechnen ginge auch, waere aber eine
+## zweite Beschreibung derselben Kurve.
+##
+## `schmaler` zieht die Flanken zur Achse, `hoch` schiebt den Fuss nach oben -
+## zusammen ergibt das eine kleinere Fassung, die innerhalb der aeusseren
+## bleibt, ohne dass man sie um einen Schwerpunkt skalieren muss.
+func _umriss(p: Vector2, schmaler: float, hoch: float, einzug: float,
+        aus: PackedVector2Array, hoehen: PackedFloat32Array) -> void:
+    var stufen := 26
+    for seite: float in SEITEN:
+        for i in stufen + 1:
+            # Linke Seite von unten nach oben, rechte von oben nach unten -
+            # sonst laeuft das Vieleck ueber Kreuz.
+            var t := float(i) / float(stufen)
+            if seite > 0.0:
+                t = 1.0 - t
+            var u := lerpf(hoch, 1.0, t)
+            # Beim Zusammenziehen staucht er sich der Hoehe nach und quillt
+            # dabei in die Breite - was Volumen behaelt, wird beim Stauchen
+            # dicker. Ohne das schrumpft er einfach, und das sieht nach einem
+            # Fehler in der Skalierung aus.
+            aus.append(p + Vector2(
+                seite * _halbbreite(u) * schmaler * (1.0 + 0.16 * einzug),
+                _hoehe(u) * (1.0 - 0.24 * einzug)))
+            hoehen.append(u)
 
 
 ## Das Profil des Leibes. `t` laeuft von 0 am Fuss bis 1 am Hals.
@@ -253,8 +283,15 @@ func _halbbreite(t: float) -> float:
     return maxf(6.0, grund + 1.8 * sin(t * 7.3 + 0.9))
 
 
+## **Der Fuss reicht unter die Eier.**
+##
+## Er endete bei 50, und die Deckplatte des Sockels liegt genau dort - die
+## waagerechte Unterkante des Leibes stand damit als schwarzer Strich
+## unmittelbar ueber dem Gelege. Ein Tier, das in etwas steckt, hat dort
+## keine Kante: es verschwindet darin. Also ein Stueck tiefer, hinter die
+## vordere Eierreihe.
 func _hoehe(t: float) -> float:
-    return lerpf(50.0, -26.0, t)
+    return lerpf(64.0, -26.0, t)
 
 
 ## Das Adernetz: von den Wurzeln zum Organ, mit Verzweigungen. Es pulst
@@ -282,13 +319,27 @@ func _adern(p: Vector2, brennt: float) -> void:
 ## Kegel brennt - es ist die Quelle, und das soll man sehen.
 func _organ(p: Vector2, puls: float, brennt: float) -> void:
     var kopf := p + Vector2(0.0, -22.0)
-    for i in 13:
-        var w := lerpf(-PI * 0.92, -PI * 0.08, float(i) / 12.0)
-        var laenge := (11.0 + 6.0 * sin(zeit * 1.4 + float(i) * 0.9)) \
-            * (1.0 + 0.35 * brennt)
-        var spitze := kopf + Vector2(cos(w), sin(w)) * laenge
-        draw_line(kopf, spitze, Color(0.46, 0.88, 0.96, 0.22 + 0.20 * brennt), 1.2)
-        draw_circle(spitze, 1.3 + 1.1 * brennt, Color(0.66, 0.96, 1.0, 0.30 + 0.35 * brennt))
+
+    # **Ein Kranz aus Blasen, keine dreizehn Striche.**
+    #
+    # Vorher standen hier dreizehn duenne Linien mit einem Punkt am Ende -
+    # aus zwei Metern Abstand ein Kamm. Was ein Leuchtorgan der Tiefsee
+    # ausmacht, sind Kapseln: runde, halbdurchsichtige Koerper, die einander
+    # ueberlappen und jeweils einen harten Kern haben. Sie tragen zugleich
+    # die Rueckmeldung - wenn der Waechter feuert, treten sie auseinander und
+    # werden groesser, und das sieht man auch dann, wenn der Blick am oberen
+    # Bildrand haengt.
+    for i in 11:
+        var w := lerpf(-PI * 0.94, -PI * 0.06, float(i) / 10.0)
+        var weit := (12.0 + 4.5 * sin(zeit * 0.9 + float(i) * 1.7)) \
+            * (1.0 + 0.32 * brennt)
+        var mitte := kopf + Vector2(cos(w), sin(w) * 0.86) * weit
+        # Ungleiche Groessen, sonst ist es eine Perlenkette.
+        var r := 3.0 + 2.8 * absf(sin(float(i) * 2.3 + 0.6)) \
+            + 1.2 * brennt
+        draw_circle(mitte, r * 2.0, Color(0.34, 0.80, 0.94, 0.09 + 0.10 * brennt))
+        draw_circle(mitte, r, Color(0.50, 0.90, 0.98, 0.20 + 0.18 * brennt))
+        draw_circle(mitte, r * 0.42, Color(0.86, 1.0, 1.0, 0.55 + 0.35 * brennt))
 
     draw_circle(kopf, 26.0 + puls * 4.0 + 10.0 * brennt, Color(0.40, 0.86, 0.98, 0.07))
     draw_circle(kopf, 16.0 + puls * 2.5 + 5.0 * brennt, Color(0.44, 0.88, 0.98, 0.13))

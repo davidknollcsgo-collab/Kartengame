@@ -28,6 +28,7 @@ const TESTS: PackedStringArray = [
     "_test_kegel_wird_nicht_staerker_durch_masse",
     "_test_schlieren_bleiben_schmuck",
     "_test_zielrichtung",
+    "_test_gelege_bleibt_im_rahmen",
     "_test_drehung_begrenzt",
     "_test_drehung_erreicht_ziel",
     "_test_bahn_endet_an_der_brut",
@@ -1304,3 +1305,39 @@ func _test_eigener_platz_folgt_der_tiefe() -> bool:
         vorher = platz
     return _melde(Geister.platz(Graben.TIEFSTE) == 1,
         "wer den ganzen Graben schafft, steht oben")
+
+
+## Das Gelege wird an zwei Stellen gebraucht - `kolonie.gd` zeichnet es,
+## `wache.gd` setzt die Bruchstuecke eines getroffenen Eis dorthin. Deshalb
+## liegt die Rechnung in `Graben`, und deshalb wird sie hier festgehalten:
+## jedes Ei muss im Feld liegen, die Mitte muss frei bleiben (dort steht der
+## Waechter), und zwei Eier duerfen nicht aufeinanderliegen.
+func _test_gelege_bleibt_im_rahmen() -> bool:
+    for voll in [1, 6, 12, 24, 44, 63, 64, 65, 128, 400]:
+        var radius := Graben.ei_radius(voll)
+        if not _melde(radius > 0.6, "Eier bei %d Stueck nur %.2f gross"
+                % [voll, radius]):
+            return false
+        var orte: Array[Vector2] = []
+        for i in voll:
+            var o := Graben.ei_ort(i, voll)
+            if not _melde(absf(o.x) <= Graben.BRUT_BREITE * 0.5 + 0.01,
+                    "Ei %d von %d liegt bei x=%.1f ausserhalb der Brutbreite"
+                    % [i, voll, o.x]):
+                return false
+            if not _melde(absf(o.x) >= Graben.BRUT_MITTE_FREI - 0.01,
+                    "Ei %d von %d liegt bei x=%.1f hinter dem Waechter"
+                    % [i, voll, o.x]):
+                return false
+            orte.append(o)
+        # Kein Paar naeher beieinander als ein Eidurchmesser. Genau das war
+        # der Fehler des alten Aufbaus: vierundvierzig Eier mit sieben Pixeln
+        # Radius auf sieben Pixeln Abstand ergaben einen Balken.
+        for a in orte.size():
+            for b in range(a + 1, orte.size()):
+                var d: float = orte[a].distance_to(orte[b])
+                if not _melde(d >= radius * 1.5,
+                        "Ei %d und %d bei %d Stueck nur %.1f auseinander (Radius %.1f)"
+                        % [a, b, voll, d, radius]):
+                    return false
+    return true

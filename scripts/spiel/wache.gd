@@ -519,13 +519,16 @@ func _raeume_auf() -> void:
     _hud.setze_zahlen(brut, Fortschritt.stand.naehrstoffe, _offen)
 
 
-## Wo das Ei mit dieser Nummer liegt. Dieselbe Rechnung wie in `kolonie.gd` -
-## die Bruchstuecke muessen dort entstehen, wo das Ei auch gezeichnet wurde.
+## Wo das Ei mit dieser Nummer liegt.
+##
+## **Die Rechnung stand einmal hier und noch einmal in `kolonie.gd`**, mit
+## einem Kommentar, der auf die andere Stelle verwies. Genau dieser Kommentar
+## ist der Beweis, dass es zwei Beschreibungen derselben Sache waren: als das
+## Gelege von einer Reihe auf gestaffelte Reihen umgestellt wurde, waeren die
+## Bruchstuecke woanders entstanden als das Ei lag. Jetzt gibt es eine
+## Rechnung, und sie steht in der Datenschicht.
 func _ei_ort(index: int) -> Vector2:
-    var voll := Fortschritt.stand.brut_leben()
-    var abstand := Graben.BRUT_BREITE / float(maxi(1, voll - 1))
-    return Vector2(-Graben.BRUT_BREITE * 0.5 + abstand * float(index),
-        Graben.BRUT_Y)
+    return Graben.ei_ort(index, Fortschritt.stand.brut_leben())
 
 
 ## Faerbt Wasser und Fels nach dem Abschnitt ein.
@@ -824,7 +827,7 @@ func _lies_entwicklerschalter() -> void:
             oeffne_kolonie()
             _koloniebild.zeige_reiter(reiter)
         return
-    _nimm_auf(bild, vorlauf, bauen or endschirm >= 0, reiter)
+    _nimm_auf(bild, vorlauf, bauen or endschirm >= 0, reiter, stau)
 
 
 ## Misst die tatsaechliche Bildrate ueber `dauer` Sekunden.
@@ -877,10 +880,23 @@ func _miss_bildrate(dauer: float, stau: bool) -> void:
     get_tree().quit()
 
 
-func _nimm_auf(datei: String, vorlauf: float, bauen: bool, reiter := -1) -> void:
+## `--stau` gilt hier wie bei der Bildratenmessung: der Kegel wird aus dem
+## Feld gedreht und die Brut unverwundbar gemacht, damit sich die Welle
+## ansammelt.
+##
+## **Ohne das laesst sich kein Raeuber ansehen.** Der Finger steht im Vorlauf
+## fest ueber dem Schlund, und der Kegel raeumt in spaeten Wellen alles weg,
+## was eintritt: ein Bild von Welle 30 nach sechs Sekunden zeigte zwanzig
+## verbleibende Tiere in der Anzeige und kein einziges im Bild. Wer die Tiere
+## zeichnet, muss sie sehen koennen.
+func _nimm_auf(datei: String, vorlauf: float, bauen: bool, reiter := -1,
+        stau := false) -> void:
     if not bauen:
         starte_welle()
         _finger = Graben.WAECHTER + Vector2(-70.0, -520.0)
+        if stau:
+            _finger = Graben.WAECHTER + Vector2(0.0, 400.0)
+            brut = 1000000
         # Im Vorlauf mit festem Takt rechnen, damit dasselbe Bild entsteht,
         # egal wie schnell der Rechner ist.
         var takt := 1.0 / 60.0
