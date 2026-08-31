@@ -80,6 +80,9 @@ const EINSTIEG: PackedStringArray = [
 ]
 var _einstieg := -1
 
+## Ob das Spiel angehalten ist. Siehe `wache.gd::pausiere()`.
+var _pause := false
+
 var _schrift: Font
 var _ausbeuten: Array[Dictionary] = []
 
@@ -146,6 +149,11 @@ func zeige_mutation(m: int) -> void:
 ## Zeigt den Einstiegssatz mit dieser Nummer, oder -1 fuer keinen.
 func zeige_einstieg(schritt: int) -> void:
     _einstieg = schritt if schritt >= 0 and schritt < EINSTIEG.size() else -1
+
+
+func zeige_pause(an: bool) -> void:
+    _pause = an
+    _flaeche.queue_redraw()
 
 
 func kolonieknopf_bei(bildschirm: Vector2) -> bool:
@@ -251,6 +259,37 @@ func _zeichne() -> void:
         _abschnittstafel(breite, hoehe)
     elif _einstieg >= 0 and not _ende:
         _einstiegszeile(breite, hoehe)
+
+    # Ganz zuletzt, ueber allem: eine Pause, die man nicht sieht, ist ein
+    # Absturz.
+    if _pause:
+        _pausenschleier(breite, hoehe)
+
+
+## Die Pause.
+##
+## **Sie deckt ab, aber sie loescht nicht.** Ein schwarzer Vorhang waere die
+## naheliegende Loesung und die falsche: wer zurueckkommt, will sehen, wo er
+## stehengeblieben ist - wie viele Raeuber im Bild sind, wie es um die Brut
+## steht. Der Schleier nimmt deshalb Kontrast weg statt Bild, und die Zeile
+## darueber sagt in einem Wort, was zu tun ist.
+func _pausenschleier(breite: float, hoehe: float) -> void:
+    _flaeche.draw_rect(Rect2(0.0, 0.0, breite, hoehe),
+        Color(0.020, 0.043, 0.058, 0.72))
+
+    var mitte := Vector2(breite * 0.5, hoehe * 0.44)
+    var atem := 0.5 + 0.5 * sin(_zeit * 1.6)
+
+    # Zwei Balken - das Zeichen fuer Pause, das jeder kennt, und es ist in
+    # zwei Rechtecken gezeichnet statt in einer Schrift, die es nicht gibt.
+    for s_seite: float in [-1.0, 1.0]:
+        _flaeche.draw_rect(Rect2(mitte.x + s_seite * 15.0 - 5.0, mitte.y - 26.0,
+            10.0, 52.0), Color(0.62, 0.94, 1.0, 0.42 + 0.16 * atem))
+
+    _text(Vector2(mitte.x, mitte.y + 66.0), "PAUSED", 22,
+        Color(0.86, 0.98, 1.0, 0.92), true)
+    _text(Vector2(mitte.x, mitte.y + 96.0), "Tap anywhere to go on", 14,
+        Color(0.58, 0.80, 0.88, 0.70 + 0.20 * atem), true)
 
 
 ## Kein flaechiger Farbschleier, sondern ein Rand, der nach innen ausblutet.

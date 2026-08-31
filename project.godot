@@ -7,6 +7,14 @@ config/name="Nekton"
 config/description="Maw Watch: a cone of light on your fingertip against everything that rises from the trench."
 config/version="0.1.0"
 run/main_scene="res://scenes/schlund.tscn"
+; **Die Zurueck-Taste beendet nicht die App.**
+;
+; Godots Voreinstellung ist, bei Zurueck sofort zu beenden - auf Android also
+; mitten in der Welle, mit einem Tastendruck, den jeder aus Versehen macht.
+; `wache.gd` faengt die Meldung jetzt ab: offener Koloniebildschirm schliesst
+; sich, sonst haelt das Spiel an. Eine Ebene zurueck, so wie ueberall sonst.
+run/flush_stdout_on_print=true
+config/quit_on_go_back=false
 config/icon="res://symbol.png"
 config/features=PackedStringArray("4.5", "GL Compatibility")
 

@@ -14,14 +14,41 @@ extends RefCounted
 const PFAD := "user://nekton.stand"
 const SCHLUESSEL := "nekton-graben-2026"
 
+## Endung der Zwischendatei. Siehe `schreibe()`.
+const ROHLING := ".neu"
 
+
+## Schreibt den Stand - erst daneben, dann an seinen Platz.
+##
+## **Ein halb geschriebener Spielstand ist schlimmer als gar keiner.** Vorher
+## wurde die Datei geoeffnet, ueberschrieben und geschlossen. Genau dazwischen
+## darf Android eine App jederzeit abschiessen, und zwar bevorzugt dann, wenn
+## sie gerade in den Hintergrund geht - also genau in dem Augenblick, in dem
+## hier gesichert wird. Was liegen bleibt, ist eine abgeschnittene Datei:
+## `lies()` faengt das ab und faengt von vorn an, aber der Fortschritt von
+## Wochen ist weg. Bei einer Kaufversion ist das kein Fehlerbericht, sondern
+## eine Rueckerstattung.
+##
+## Das Umbenennen einer Datei ist auf jedem gaengigen Dateisystem unteilbar:
+## entweder es gab die alte Datei oder die neue, nie etwas dazwischen. Also
+## erst vollstaendig daneben schreiben, dann an den richtigen Platz schieben.
 static func schreibe(stand: KolonieStand, pfad := PFAD) -> bool:
-    var datei := FileAccess.open_encrypted_with_pass(pfad, FileAccess.WRITE, SCHLUESSEL)
+    var roh := pfad + ROHLING
+    var datei := FileAccess.open_encrypted_with_pass(roh, FileAccess.WRITE, SCHLUESSEL)
     if datei == null:
         push_warning("Spielstand nicht schreibbar: %s" % error_string(FileAccess.get_open_error()))
         return false
     datei.store_string(JSON.stringify(stand.zu_wort()))
     datei.close()
+
+    # Erst jetzt ist die Zwischendatei vollstaendig. `rename_absolute`
+    # ersetzt ein vorhandenes Ziel auf allen hier unterstuetzten Systemen.
+    var fehler := DirAccess.rename_absolute(
+        ProjectSettings.globalize_path(roh),
+        ProjectSettings.globalize_path(pfad))
+    if fehler != OK:
+        push_warning("Spielstand nicht umbenennbar: %s" % error_string(fehler))
+        return false
     return true
 
 

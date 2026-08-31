@@ -17,7 +17,7 @@ extends Node2D
 ## hier ein Daumen. Alles andere getrennt zu fuehren waere derselbe Fehler wie
 ## bei HYPHA - getrennte Loeser, verschiedene Ergebnisse.
 
-enum Lage { BAUEN, WELLE, VERLOREN, GESCHAFFT, SITZUNG_ENDE }
+enum Lage { BAUEN, WELLE, VERLOREN, GESCHAFFT, SITZUNG_ENDE, PAUSE }
 
 ## Wie lange die Trefferanzeige eines Raeubers nachgluecht. Ohne Nachhall
 ## flackert sie bei jedem Schwenk, und man sieht nicht mehr, wen man fasst.
@@ -331,6 +331,18 @@ func _richte_kamera() -> void:
 
 
 func _process(delta: float) -> void:
+    # **Der Deckel steht vor allem anderen.** Siehe `Graben.takt()`: das erste
+    # Bild nach einer Pause bringt die volle verstrichene Zeit mit, und ein
+    # einziger ungebremster Schritt raeumt die ganze Brut ab.
+    delta = Graben.takt(delta)
+
+    if lage == Lage.PAUSE:
+        # Nur das Bild weiterlaufen lassen, nicht die Welle. Der Graben atmet
+        # dabei sichtbar weiter - eine eingefrorene Kulisse sieht aus wie ein
+        # Absturz, nicht wie eine Pause.
+        _schwarm.queue_redraw()
+        return
+
     _zeitlupe_fuehren(delta)
     _stimmung_nachfuehren()
     _schuetteln = maxf(0.0, _schuetteln - delta * SCHUETTELN_ABKLINGEN)
@@ -705,6 +717,51 @@ func _aktualisiere_kolonie() -> void:
     _kolonie.queue_redraw()
 
 
+# --- Pause -----------------------------------------------------------------
+#
+# **Zurueck aus der Tasche heisst nicht mitten in die Welle.** Selbst mit
+# gedeckeltem Rechenschritt waere es unfair, jemanden ohne Vorwarnung in
+# fallende Raeuber zu setzen: er hat das Telefon weggelegt, nicht aufgegeben.
+# Also haelt das Spiel an, sobald Android die App pausiert, und wartet auf
+# eine Beruehrung.
+
+var _vor_pause := Lage.BAUEN
+
+
+func pausiere() -> void:
+    if lage != Lage.WELLE and lage != Lage.BAUEN:
+        return
+    _vor_pause = lage
+    lage = Lage.PAUSE
+    _zieht = false
+    Engine.time_scale = 1.0
+    Fortschritt.sichere()
+    _hud.zeige_pause(true)
+
+
+func weiter() -> void:
+    if lage != Lage.PAUSE:
+        return
+    lage = _vor_pause
+    _hud.zeige_pause(false)
+
+
+## Android meldet Hintergrund und Zurueck-Taste hierher.
+##
+## `quit_on_go_back` steht in `project.godot` auf false - sonst beendet Godot
+## die App beim ersten Druck auf Zurueck, und zwar mitten in der Welle. Die
+## Taste tut jetzt das, was sie ueberall sonst tut: eine Ebene zurueck.
+func _notification(was: int) -> void:
+    match was:
+        NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_WM_WINDOW_FOCUS_OUT:
+            pausiere()
+        NOTIFICATION_WM_GO_BACK_REQUEST:
+            if _koloniebild.sichtbar():
+                _koloniebild.schliesse()
+            else:
+                pausiere()
+
+
 # --- Eingabe ---------------------------------------------------------------
 
 func _unhandled_input(ereignis: InputEvent) -> void:
@@ -727,6 +784,8 @@ func _beruehrung(gedrueckt: bool, ort: Vector2) -> void:
     _finger = ort
 
     match lage:
+        Lage.PAUSE:
+            weiter()
         Lage.BAUEN:
             if _hud.kolonieknopf_bei(_bildschirm(ort)):
                 Klang.spiele(Klang.Ton.TIPP)
@@ -760,6 +819,7 @@ func _lies_entwicklerschalter() -> void:
     var bauen := false
     var messen := 0.0
     var stau := false
+    var halt := false
     var welle := 0
     var polypenzahl := 0
     var reiter := -1
@@ -801,6 +861,10 @@ func _lies_entwicklerschalter() -> void:
                     messen = float(argumente[i + 1])
             "--stau":
                 stau = true
+            "--pause":
+                # Die Pause laesst sich sonst nur ansehen, indem man die App
+                # auf einem Telefon in den Hintergrund schiebt.
+                halt = true
 
     if stufen >= 0:
         var st := clampi(stufen, 0, Kammern.HOECHSTSTUFE)
@@ -836,7 +900,7 @@ func _lies_entwicklerschalter() -> void:
             oeffne_kolonie()
             _koloniebild.zeige_reiter(reiter)
         return
-    _nimm_auf(bild, vorlauf, bauen or endschirm >= 0, reiter, stau)
+    _nimm_auf(bild, vorlauf, bauen or endschirm >= 0, reiter, stau, halt)
 
 
 ## Misst die tatsaechliche Bildrate ueber `dauer` Sekunden.
@@ -899,7 +963,7 @@ func _miss_bildrate(dauer: float, stau: bool) -> void:
 ## verbleibende Tiere in der Anzeige und kein einziges im Bild. Wer die Tiere
 ## zeichnet, muss sie sehen koennen.
 func _nimm_auf(datei: String, vorlauf: float, bauen: bool, reiter := -1,
-        stau := false) -> void:
+        stau := false, halt := false) -> void:
     if not bauen:
         starte_welle()
         _finger = Graben.WAECHTER + Vector2(-70.0, -520.0)
@@ -914,6 +978,9 @@ func _nimm_auf(datei: String, vorlauf: float, bauen: bool, reiter := -1,
             if lage != Lage.WELLE:
                 break
             _process(takt)
+
+    if halt:
+        pausiere()
 
     # Der Koloniebildschirm **nach** der Welle: so steht im Bestiarium, was
     # gerade aufgetreten ist, statt einer Liste aus lauter Fragezeichen.

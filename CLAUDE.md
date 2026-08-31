@@ -94,6 +94,7 @@ xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 720x1280 \
 | `--zeit <s>` | rechnet n Sekunden Welle mit festem Takt vor |
 | `--polypen <n>` | stellt n Wehrpolypen auf |
 | `--stau` | dreht den Kegel weg und macht die Brut unverwundbar |
+| `--pause` | haelt das Spiel an, wie Android es im Hintergrund tut |
 | `--bauen` | nimmt die Bauphase auf, statt die Welle zu starten |
 | `--kolonie <n>` | öffnet den Koloniebildschirm: 0 Kammern, 1 Linien, 2 Arten, 3 Züge, 4 Tag |
 | `--endschirm <n>` | 0 gefallen, 1 Sitzung gehalten, 2 Graben durchgestanden |

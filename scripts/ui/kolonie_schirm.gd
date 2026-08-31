@@ -96,6 +96,22 @@ func oeffne() -> void:
     _flaeche.queue_redraw()
 
 
+## Ob der Koloniebildschirm gerade offen ist - `wache.gd` fragt das fuer die
+## Zurueck-Taste.
+func sichtbar() -> bool:
+    return visible
+
+
+## Schliesst ihn, als haette man auf den Knopf getippt. Die Zurueck-Taste soll
+## dasselbe tun wie der Knopf und nicht etwas Eigenes.
+func schliesse() -> void:
+    if not visible:
+        return
+    Klang.spiele(Klang.Ton.TIPP)
+    geschlossen.emit()
+    hide()
+
+
 func _process(delta: float) -> void:
     if not visible:
         return

@@ -85,6 +85,35 @@ static func ei_ort(index: int, voll: int) -> Vector2:
     var hub := sin(float(index) * 2.4) * 2.0
     return Vector2(x, BRUT_Y + hub - BRUT_REIHENHOEHE * float(reihe))
 
+## --- Wie gross ein Rechenschritt hoechstens sein darf ---
+##
+## **Ohne Deckel kostet ein Anruf die Sitzung.** Die Welle rechnet mit dem
+## `delta`, das die Bildwiederholung liefert. Auf einem Telefon ist das
+## normalerweise ein Sechzigstel - aber wenn die App in den Hintergrund geht
+## und drei Minuten spaeter zurueckkommt, liefert das erste Bild danach die
+## volle verstrichene Zeit. Ein einziger Schritt bewegt dann jeden Raeuber um
+## hunderte Bildhoehen: die Brut faellt, waehrend das Telefon in der Tasche
+## steckt. Das ist der Fehler, der eine Kaufversion in Erstattungen umsetzt,
+## und er zeigt sich in keinem Test und in keinem Bild.
+##
+## Der Deckel ist **abgeleitet, nicht geraten**: in einem Schritt darf sich
+## kein Tier weiter bewegen als der Durchmesser des kleinsten Tieres. Sonst
+## springt es zwischen zwei Bildern ueber den Kegel hinweg, ohne je darin
+## gestanden zu haben - der Spieler zielt richtig und trifft trotzdem nicht.
+## Das schnellste Tier ist der Schleier mit 168 Einheiten je Sekunde, das
+## kleinste ebenfalls der Schleier mit Radius 12.
+##
+## Die Folge bei einer schlechten Bildrate ist Zeitlupe statt Sprung. Das ist
+## die richtige Wahl: der Kegel haengt am Finger, und ein Spiel, das
+## Zwischenbilder ueberspringt, wird unsteuerbar, lange bevor es langsam wird.
+const TAKT_DECKEL := 0.14
+
+
+## Der Rechenschritt fuer dieses Bild.
+static func takt(delta: float) -> float:
+    return minf(delta, TAKT_DECKEL)
+
+
 ## Raeuber treten weit oberhalb des Bildes ein und sinken in den Kegel hinein.
 ## Der Abstand ist Absicht: die ersten Sekunden jeder Bahn sieht man nur eine
 ## Bewegung im Dunkeln, nicht das Tier.

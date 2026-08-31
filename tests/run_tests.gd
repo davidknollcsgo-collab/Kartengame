@@ -29,6 +29,8 @@ const TESTS: PackedStringArray = [
     "_test_schlieren_bleiben_schmuck",
     "_test_zielrichtung",
     "_test_gelege_bleibt_im_rahmen",
+    "_test_takt_deckelt_den_sprung",
+    "_test_speichern_ist_unteilbar",
     "_test_drehung_begrenzt",
     "_test_drehung_erreicht_ziel",
     "_test_bahn_endet_an_der_brut",
@@ -1341,3 +1343,75 @@ func _test_gelege_bleibt_im_rahmen() -> bool:
                         % [a, b, voll, d, radius]):
                     return false
     return true
+
+
+## Der Rechenschritt darf kein Tier weiter tragen als den Durchmesser des
+## kleinsten Tieres - sonst springt es zwischen zwei Bildern ueber den Kegel
+## hinweg, ohne je darin gestanden zu haben.
+##
+## Das ist der Fehler, den kein Bild und kein anderer Test zeigt: er tritt nur
+## auf, wenn Android die App pausiert und das erste Bild danach die volle
+## verstrichene Zeit mitbringt.
+func _test_takt_deckelt_den_sprung() -> bool:
+    for roh: float in [0.016, 0.1, 1.0, 12.0, 300.0]:
+        var t := Graben.takt(roh)
+        if not _melde(t <= Graben.TAKT_DECKEL + 0.0001,
+                "Takt %.3f aus delta %.3f ueber dem Deckel" % [t, roh]):
+            return false
+        if not _melde(t <= roh + 0.0001,
+                "Takt %.3f groesser als delta %.3f" % [t, roh]):
+            return false
+
+    # Und der Deckel selbst muss die Zusicherung einhalten, aus der er kommt.
+    var kleinster := 1e9
+    var schnellster := 0.0
+    for a in Arten.zahl():
+        if Arten.ist_leitwesen(a):
+            continue
+        kleinster = minf(kleinster, Arten.radius(a))
+        schnellster = maxf(schnellster, Arten.tempo(a))
+    var weg := schnellster * Graben.TAKT_DECKEL
+    return _melde(weg <= kleinster * 2.0,
+        "ein Schritt traegt %.1f, der kleinste Durchmesser ist %.1f"
+        % [weg, kleinster * 2.0])
+
+
+## Ein halb geschriebener Spielstand darf den alten nicht vernichten.
+##
+## Geprueft wird die Eigenschaft, aus der das folgt: waehrend geschrieben
+## wird, steht die Zwischendatei daneben, und erst das Umbenennen macht sie
+## zum Spielstand. Danach gibt es die Zwischendatei nicht mehr.
+func _test_speichern_ist_unteilbar() -> bool:
+    var pfad := "user://pruefstand.stand"
+    var roh := pfad + Speicher.ROHLING
+    Speicher.loesche(pfad)
+    if FileAccess.file_exists(roh):
+        DirAccess.remove_absolute(ProjectSettings.globalize_path(roh))
+
+    var stand := KolonieStand.new()
+    stand.naehrstoffe = 12345
+    stand.hoechste_welle = 42
+    if not _melde(Speicher.schreibe(stand, pfad), "Schreiben fehlgeschlagen"):
+        return false
+    if not _melde(not FileAccess.file_exists(roh),
+            "die Zwischendatei liegt nach dem Schreiben noch da"):
+        return false
+
+    var zurueck := Speicher.lies(pfad)
+    if not _melde(zurueck.naehrstoffe == 12345 and zurueck.hoechste_welle == 42,
+            "gelesener Stand stimmt nicht: %d / %d"
+            % [zurueck.naehrstoffe, zurueck.hoechste_welle]):
+        return false
+
+    # Eine abgeschnittene Zwischendatei darf den gueltigen Stand nicht
+    # anfassen - genau das war der Fehler, gegen den das Umbenennen steht.
+    var kaputt := FileAccess.open(roh, FileAccess.WRITE)
+    if kaputt != null:
+        kaputt.store_string("halb")
+        kaputt.close()
+    var immer_noch := Speicher.lies(pfad)
+    Speicher.loesche(pfad)
+    if FileAccess.file_exists(roh):
+        DirAccess.remove_absolute(ProjectSettings.globalize_path(roh))
+    return _melde(immer_noch.naehrstoffe == 12345,
+        "der Stand hat eine kaputte Zwischendatei nicht ueberlebt")
