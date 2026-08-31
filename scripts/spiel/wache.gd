@@ -517,7 +517,8 @@ func _raeume_auf() -> void:
             r.lebendig = false
             _offen -= 1
             var vorher := brut
-            brut = maxi(0, brut - Arten.wucht(r.art))
+            if not _brut_unverwundbar:
+                brut = maxi(0, brut - Arten.wucht(r.art))
             _schuetteln = 0.8 + 0.3 * float(vorher - brut)
             _folge = 0.0
             Klang.spiele(Klang.Ton.BRUT_FAELLT, 1.0, 0.85)
@@ -727,6 +728,17 @@ func _aktualisiere_kolonie() -> void:
 
 var _vor_pause := Lage.BAUEN
 
+## Nur fuer `--stau`: die Brut nimmt keinen Schaden.
+##
+## **Vorher wurde dafuer `brut = 1000000` gesetzt**, und in der Kopfzeile
+## stand dann "999997 / 44". Fuer eine Bildratenmessung ist das gleichgueltig,
+## fuer ein Ladenbild ist es ein Ausschlusskriterium: Google verlangt, dass
+## Werbematerial das Spiel zeigt, das man bekommt. Eine Zahl, die es im Spiel
+## nicht gibt, gehoert nicht auf einen Screenshot - und eine Anzeige zu
+## faelschen, um eine Wirkung zu erreichen, ist ohnehin der falsche Weg. Die
+## Wirkung war "die Brut soll nicht fallen"; also wird genau das gesagt.
+var _brut_unverwundbar := false
+
 
 func pausiere() -> void:
     if lage != Lage.WELLE and lage != Lage.BAUEN:
@@ -921,7 +933,7 @@ func _miss_bildrate(dauer: float, stau: bool) -> void:
         # beides endete die Messung, bevor sich etwas angesammelt hatte: die
         # Raeuber erreichten die Brut, die Brut fiel, die Welle war vorbei.
         _finger = Graben.WAECHTER + Vector2(0.0, 400.0)
-        brut = 1000000
+        _brut_unverwundbar = true
 
     var takt := 1.0 / 60.0
     for _i in int(20.0 / takt):
@@ -969,7 +981,7 @@ func _nimm_auf(datei: String, vorlauf: float, bauen: bool, reiter := -1,
         _finger = Graben.WAECHTER + Vector2(-70.0, -520.0)
         if stau:
             _finger = Graben.WAECHTER + Vector2(0.0, 400.0)
-            brut = 1000000
+            _brut_unverwundbar = true
         # Im Vorlauf mit festem Takt rechnen, damit dasselbe Bild entsteht,
         # egal wie schnell der Rechner ist.
         var takt := 1.0 / 60.0

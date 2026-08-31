@@ -204,6 +204,27 @@ unter einer strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
    Welle zu kommen. Ohne diese Kopplung stand der Spieler an Tag 6 in Welle 36,
    während seine Kolonie bei gut der Hälfte der Sollkurve lag.
 
+## Fuer den Laden
+
+`STORE.md` ist die Abgabemappe: was der Bauauftrag liefert, was nur von Hand
+geht, die Texte fuer den Eintrag und die Antworten fuer Datensicherheit und
+Inhaltseinstufung.
+
+```bash
+godot --headless --path . --script tools/symbol.gd   # Symbolsatz neu rechnen
+tools/ladenbilder.sh build/laden                     # Screenshots, 1080x1920
+python3 tools/seite.py docs                          # privacy.html aus PRIVACY.md
+```
+
+**Der Ladestand `Play` baut ein App Bundle, nicht eine APK.** Play nimmt fuer
+neue Apps kein APK mehr an. Er braucht `use_gradle_build=true`, weil `min_sdk`
+und `target_sdk` sonst wirkungslos bleiben, und einen Freigabeschluessel aus
+den Repository-Geheimnissen - im Quelltext hat der nichts zu suchen.
+
+**In Ladenbildern darf nichts stehen, was es im Spiel nicht gibt.** `--stau`
+setzte die Brut auf 1000000, und in der Kopfzeile stand "999997 / 44". Jetzt
+macht der Schalter die Brut unverwundbar, statt die Anzeige zu faelschen.
+
 ## APK bauen
 
 `dl.google.com` ist blockiert, also gibt es hier kein Android SDK. Der Bau

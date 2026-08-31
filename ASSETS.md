@@ -64,6 +64,16 @@ Grafikprogramm, weil es keines braucht.
 | Datei | Herkunft | Autor | Lizenz | Quelle | Datum |
 |---|---|---|---|---|---|
 | `symbol.png` | selbst erzeugt | dieses Projekt | eigen | `tools/symbol.gd` | 2026-08-29 |
+| `symbol_192.png` | selbst erzeugt | dieses Projekt | eigen | `tools/symbol.gd` | 2026-08-31 |
+| `symbol_hintergrund.png` | selbst erzeugt | dieses Projekt | eigen | `tools/symbol.gd` | 2026-08-31 |
+| `symbol_vordergrund.png` | selbst erzeugt | dieses Projekt | eigen | `tools/symbol.gd` | 2026-08-31 |
+| `symbol_einfarbig.png` | selbst erzeugt | dieses Projekt | eigen | `tools/symbol.gd` | 2026-08-31 |
+
+Die vier zusaetzlichen Dateien sind der Android-Symbolsatz. Seit
+Android 8 schiebt das System zwei Ebenen gegeneinander und schneidet
+daraus die Form, die der Hersteller vorsieht — wer nur ein fertiges
+Bild abgibt, bekommt es in ein weisses Kaestchen gesetzt. Alle fuenf
+entstehen aus demselben Werkzeug und derselben `Schlund.beleuchtung()`.
 
 ## Ton
 

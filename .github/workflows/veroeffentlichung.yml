@@ -108,6 +108,11 @@ jobs:
           # GitHub Pages faehrt sonst Jekyll darueber und verschluckt alles,
           # was mit einem Unterstrich beginnt.
           touch docs/.nojekyll
+          # Die Datenschutzerklaerung gehoert auf dieselbe Seite: der Play
+          # Store verlangt dafuer eine oeffentlich erreichbare Adresse, und
+          # zwei Fassungen desselben Textes laufen frueher oder spaeter
+          # auseinander. Also aus `PRIVACY.md` erzeugt, nicht danebengelegt.
+          python3 tools/seite.py docs
           ls -la docs | head -20
 
       # Dieselbe Seite, aber in einer einzigen Datei: zum Weiterreichen, zum
@@ -204,6 +209,154 @@ jobs:
             build/nekton.apk
             build/nekton.html
           if-no-files-found: error
+
+  # --- Der Ladestand fuer den Play Store ---
+  #
+  # **Eigener Auftrag, weil er scheitern darf, ohne den Teststand zu faellen.**
+  # Er laeuft nur, wenn die vier Geheimnisse hinterlegt sind; ohne sie gibt es
+  # keinen Schluessel und damit nichts zu signieren. Solange das nicht
+  # eingerichtet ist, soll deswegen nicht die APK als kaputt dastehen.
+  #
+  # **Einmalig einzurichten** (und der Schluessel gehoert danach gesichert -
+  # geht er verloren, laesst sich die App nie wieder aktualisieren):
+  #
+  #     keytool -genkeypair -v -keystore nekton.keystore -alias nekton \
+  #       -keyalg RSA -keysize 4096 -validity 10000
+  #     base64 -w0 nekton.keystore > nekton.keystore.b64
+  #
+  # Danach unter Settings -> Secrets and variables -> Actions anlegen:
+  #
+  #   * `PLAY_KEYSTORE_BASE64` - der Inhalt von `nekton.keystore.b64`
+  #   * `PLAY_KEYSTORE_PASSWORD`
+  #   * `PLAY_KEY_ALIAS`
+  #   * `PLAY_KEY_PASSWORD`
+  bundle:
+    name: App Bundle fuer den Play Store
+    needs: bauen
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Geheimnisse pruefen
+        id: pruefen
+        env:
+          SCHLUESSEL: ${{ secrets.PLAY_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "${SCHLUESSEL}" ]; then
+            echo "vorhanden=nein" >> "$GITHUB_OUTPUT"
+            echo "::notice::Kein Freigabeschluessel hinterlegt - das App Bundle"\
+              " wird uebersprungen. Siehe den Kommentar ueber diesem Auftrag."
+          else
+            echo "vorhanden=ja" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Java 17
+        if: steps.pruefen.outputs.vorhanden == 'ja'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Godot und Exportvorlagen holen
+        if: steps.pruefen.outputs.vorhanden == 'ja'
+        run: |
+          set -euo pipefail
+          V="${GODOT_VERSION}"
+          curl -sSL --retry 3 -o /tmp/godot.zip \
+            "https://github.com/godotengine/godot-builds/releases/download/${V}/Godot_v${V}_linux.x86_64.zip"
+          unzip -q /tmp/godot.zip -d /tmp/godot
+          sudo mv "/tmp/godot/Godot_v${V}_linux.x86_64" /usr/local/bin/godot
+          sudo chmod +x /usr/local/bin/godot
+          curl -sSL --retry 3 -o /tmp/templates.tpz \
+            "https://github.com/godotengine/godot-builds/releases/download/${V}/Godot_v${V}_export_templates.tpz"
+          mkdir -p "$HOME/.local/share/godot/export_templates"
+          unzip -q /tmp/templates.tpz -d /tmp/tpl
+          mv /tmp/tpl/templates "$HOME/.local/share/godot/export_templates/${V%-*}.stable"
+
+      # **Der eigene Bau ist Pflicht, nicht Geschmackssache.** `min_sdk` und
+      # `target_sdk` wirken nur mit ihm, und Play verlangt eine Mindestversion
+      # der Ziel-API. Ohne ihn geht das Bundle durch den Export und beim
+      # Hochladen zurueck.
+      - name: Android-Bauvorlage einbauen
+        if: steps.pruefen.outputs.vorhanden == 'ja'
+        run: |
+          set -euo pipefail
+          godot --headless --import > /dev/null 2>&1 || true
+          godot --headless --install-android-build-template 2>&1 | tail -5
+          test -d android/build
+
+      - name: Schluessel und Editoreinstellungen
+        if: steps.pruefen.outputs.vorhanden == 'ja'
+        env:
+          SCHLUESSEL: ${{ secrets.PLAY_KEYSTORE_BASE64 }}
+          LADEN_PASS: ${{ secrets.PLAY_KEYSTORE_PASSWORD }}
+          MARKE: ${{ secrets.PLAY_KEY_ALIAS }}
+          MARKE_PASS: ${{ secrets.PLAY_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          echo "${SCHLUESSEL}" | base64 -d > "$HOME/nekton.keystore"
+          test -s "$HOME/nekton.keystore"
+
+          DATEI=$(ls "$HOME/.config/godot/"editor_settings-*.tres 2>/dev/null | head -1)
+          test -n "$DATEI"
+          setze () {
+            if grep -q "^$1 = " "$DATEI"; then
+              sed -i "s|^$1 = .*|$1 = $2|" "$DATEI"
+            else
+              printf '%s = %s\n' "$1" "$2" >> "$DATEI"
+            fi
+          }
+          setze "export/android/android_sdk_path" "\"${ANDROID_SDK_ROOT}\""
+          setze "export/android/java_sdk_path" "\"${JAVA_HOME}\""
+
+          # Der Schluessel gehoert in den Ladestand, nicht in die
+          # Editoreinstellungen - fuer Freigabeschluessel gibt es dort keine
+          # Felder. `export_presets.cfg` ist hier eine Wegwerfkopie.
+          python3 - <<'PY'
+          import os, re, io
+          p = "export_presets.cfg"
+          s = io.open(p, encoding="utf-8").read()
+          teile = s.split("[preset.2.options]")
+          kopf, rest = teile[0], teile[1]
+          def setze(text, schluessel, wert):
+              return re.sub(r'(?m)^%s=.*$' % re.escape(schluessel),
+                            '%s=%s' % (schluessel, wert), text, count=1)
+          rest = setze(rest, "keystore/release", '"%s"' % (os.environ["HOME"] + "/nekton.keystore"))
+          rest = setze(rest, "keystore/release_user", '"%s"' % os.environ["MARKE"])
+          rest = setze(rest, "keystore/release_password", '"%s"' % os.environ["MARKE_PASS"])
+          # Jeder Ladestand braucht eine hoehere Nummer als der davor, sonst
+          # weist Play ihn ab. Die Laufnummer des Bauauftrags waechst von
+          # selbst und wiederholt sich nie.
+          rest = setze(rest, "version/code", os.environ["GITHUB_RUN_NUMBER"])
+          io.open(p, "w", encoding="utf-8").write(kopf + "[preset.2.options]" + rest)
+          print("Ladestand vorbereitet, version/code =", os.environ["GITHUB_RUN_NUMBER"])
+          PY
+
+      - name: App Bundle bauen
+        if: steps.pruefen.outputs.vorhanden == 'ja'
+        run: |
+          set -uo pipefail
+          mkdir -p build
+          godot --headless --verbose --export-release "Play" build/nekton.aab \
+            > bundle.log 2>&1 || true
+          if [ ! -s build/nekton.aab ]; then
+            echo "--- fehlgeschlagen, Auszug aus dem Protokoll ---"
+            grep -viE "TextServer|Horipad|Nintendo|misc2|SDL|pen tablet|Unrecognized" \
+              bundle.log | tail -60
+            exit 1
+          fi
+          ls -la build/nekton.aab
+
+      # Das Bundle ist **kein** oeffentlicher Anhang. Es gehoert in die Play
+      # Console und sonst nirgendwohin - als Artefakt hinter der Anmeldung.
+      - name: App Bundle ablegen
+        if: steps.pruefen.outputs.vorhanden == 'ja'
+        uses: actions/upload-artifact@v4
+        with:
+          name: nekton-play
+          path: build/nekton.aab
+          if-no-files-found: error
+          retention-days: 30
 
   # Eine Vorabveroeffentlichung mit fester Marke. Sie wird bei jedem Bau
   # ueberschrieben, damit die Adresse dieselbe bleibt - wer sie sich einmal
