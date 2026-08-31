@@ -344,7 +344,7 @@ func _process(delta: float) -> void:
         return
 
     _zeitlupe_fuehren(delta)
-    _stimmung_nachfuehren()
+    _stimmung_nachfuehren(delta)
     _schuetteln = maxf(0.0, _schuetteln - delta * SCHUETTELN_ABKLINGEN)
     _kamera.offset = Vector2(
         randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) \
@@ -618,9 +618,21 @@ func _schiebe_farben(anteil: float) -> void:
 ## Dieselbe Regel wie bei den Zeichenstufen im Schwarm: Stimmung ist das
 ## Erste, was geht, und die Raeuber sind das Letzte. Ein Bild, in dem man den
 ## naechsten Gegner nicht mehr findet, ist kein schoenes Bild.
-func _stimmung_nachfuehren() -> void:
+## **`delta` kommt als Wert herein und wird nicht von der Uhr geholt.**
+##
+## Hier stand `get_process_delta_time()`. Im laufenden Spiel ist das dasselbe,
+## im Vorlauf einer Aufnahme aber nicht: `_nimm_auf()` ruft `_process()` mit
+## festem Takt auf, damit dasselbe Bild entsteht, egal wie schnell der Rechner
+## ist - die Uhr weiss davon nichts. Die Farbueberblendung stand deshalb
+## still, und **jedes** Abschnittsbild zeigte die Farben von Abschnitt 0.
+##
+## Gemerkt habe ich es beim Nachmessen: Grabensturm sollte eisenrot sein
+## (0.044, 0.026, 0.024) und kam als dasselbe Blau heraus wie die
+## Randschlucht. Eine Farbe, die es in den Konstanten gibt und im Bild nicht,
+## ist derselbe Fehler wie ein Dunst, der so hell ist wie sein Fels.
+func _stimmung_nachfuehren(delta: float) -> void:
     if _farbmischung < 1.0:
-        _farbmischung = minf(1.0, _farbmischung + get_process_delta_time() * 0.55)
+        _farbmischung = minf(1.0, _farbmischung + delta * 0.55)
         _schiebe_farben(_farbmischung)
 
     var lebende := 0

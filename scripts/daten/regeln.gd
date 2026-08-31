@@ -21,6 +21,8 @@ const NAMEN: PackedStringArray = [
     "Dark Band",
     "Scatterlight Zone",
     "Trench Storm",
+    "Still Trench",
+    "The Weight",
 ]
 
 const HINWEISE: PackedStringArray = [
@@ -30,6 +32,8 @@ const HINWEISE: PackedStringArray = [
     "The light organ cuts out. Count the pauses.",
     "Only the middle of the cone still burns. Aim precisely.",
     "Everything at once - and the current runs crosswise.",
+    "Quiet water. They make up for it in numbers.",
+    "Clear sight, heavy current, and the organ keeps failing.",
 ]
 
 ## --- Wie ein Abschnitt aussieht ---
@@ -59,6 +63,8 @@ const TIEF_FARBEN: PackedColorArray = [
     Color(0.020, 0.016, 0.038),   ## Dark Band - fast schwarz, violett
     Color(0.034, 0.050, 0.068),   ## Scatterlight Zone - milchig aufgehellt
     Color(0.044, 0.026, 0.024),   ## Trench Storm - eisenrot und schwer
+    Color(0.014, 0.042, 0.050),   ## Still Trench - klar und kuehl, viel Sicht
+    Color(0.018, 0.014, 0.046),   ## The Weight - tiefes Indigo, schwer
 ]
 
 ## Das Wasser in mittlerer Hoehe.
@@ -69,6 +75,8 @@ const GRUND_FARBEN: PackedColorArray = [
     Color(0.022, 0.018, 0.040),
     Color(0.052, 0.078, 0.094),
     Color(0.062, 0.032, 0.030),
+    Color(0.018, 0.070, 0.078),   ## Still Trench
+    Color(0.020, 0.016, 0.052),   ## The Weight
 ]
 
 ## Der Schein der Kolonie, der von unten heraufkommt.
@@ -79,11 +87,15 @@ const SCHEIN_FARBEN: PackedColorArray = [
     Color(0.070, 0.050, 0.140),
     Color(0.110, 0.170, 0.190),
     Color(0.170, 0.080, 0.060),
+    Color(0.050, 0.185, 0.180),   ## Still Trench
+    Color(0.075, 0.045, 0.165),   ## The Weight
 ]
 
 ## Wieviel Schwebstoff im Wasser haengt. Mehr heisst weniger Sicht - und in
 ## der Truebe Tiefe und im Grabensturm ist das der Punkt.
-const SCHNEE_DICHTE: PackedFloat32Array = [1.0, 0.9, 1.7, 0.7, 1.3, 2.0]
+## Still Trench ist der klarste Abschnitt des Grabens - das ist sein ganzer
+## Charakter. The Weight liegt dazwischen: man sieht weit, aber nicht ruhig.
+const SCHNEE_DICHTE: PackedFloat32Array = [1.0, 0.9, 1.7, 0.7, 1.3, 2.0, 0.5, 1.1]
 
 ## Der Fels. Er nimmt die Farbe des Wassers an, in dem er steht.
 ## **Dunkler als zuvor, und das ist die andere Haelfte derselben Sache.**
@@ -97,6 +109,8 @@ const FELS_FARBEN: PackedColorArray = [
     Color(0.030, 0.026, 0.050),
     Color(0.050, 0.062, 0.072),
     Color(0.062, 0.036, 0.032),
+    Color(0.028, 0.052, 0.058),   ## Still Trench
+    Color(0.028, 0.024, 0.056),   ## The Weight
 ]
 
 
@@ -119,8 +133,8 @@ static func schnee_dichte(abschnitt: int) -> float:
 ## Wie stark der Schein der Kolonie in Saeulen steht, und wie eng sich das
 ## Bild zu den Seiten schliesst. Beides folgt dem Abschnitt: der Grabensturm
 ## ist aufgewuehlt und bedrueckend, die Randschlucht offen und ruhig.
-const SAEULEN: PackedFloat32Array = [0.75, 0.55, 1.35, 0.35, 1.6, 1.9]
-const ENGE: PackedFloat32Array = [0.0, 0.10, 0.45, 0.30, 0.20, 0.70]
+const SAEULEN: PackedFloat32Array = [0.75, 0.55, 1.35, 0.35, 1.6, 1.9, 0.45, 1.15]
+const ENGE: PackedFloat32Array = [0.0, 0.10, 0.45, 0.30, 0.20, 0.70, 0.05, 0.55]
 
 
 static func saeulen(abschnitt: int) -> float:
@@ -185,6 +199,21 @@ const TAFEL: Array[Dictionary] = [
         &"sturm": false},
     {&"regeln": [Regel.STROM, Regel.TRUEB, Regel.DUNKEL, Regel.STREU],
         &"sturm": true},
+    # **Still Trench: der erste Abschnitt, der leichter wird.** Nach dem
+    # Sturm nur noch Truebe - klares, ruhiges Wasser. Das ist keine
+    # Nachlaessigkeit, sondern der Grund, warum der naechste Sturm wieder
+    # trifft: ohne Atemzug dazwischen ist eine Steigerung nur noch Laerm.
+    #
+    # Leichter heisst nicht harmlos. `Wellen.staerke()` rechnet aus dem
+    # Wirkungsgrad, also kauft ein ruhiger Abschnitt mehr Tiere fuer dasselbe
+    # Budget - ruhiges Wasser, dafuer volle Wellen. Genau das steht im
+    # Hinweis.
+    {&"regeln": [Regel.TRUEB], &"sturm": false},
+    # **The Weight: eine andere Mischung, kein weiterer Aufschlag.** Volle
+    # Sicht und voller Kegel, dafuer Sturmstroemung und Dunkelphasen. Wer
+    # hier ankommt, kann weit sehen und trotzdem nicht halten - das ist ein
+    # anderer Griff als der Sturm, nicht mehr davon.
+    {&"regeln": [Regel.STROM, Regel.DUNKEL], &"sturm": true},
 ]
 
 

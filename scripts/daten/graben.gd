@@ -190,7 +190,7 @@ const WELLEN_JE_TAG := SITZUNGEN_JE_TAG * WELLEN_JE_SITZUNG
 ##
 ## Was ein Spieler tatsaechlich erreicht, ist damit keine Zahl im Quelltext
 ## mehr, sondern das, was seine Kolonie hergibt.
-const ABSCHNITTE := 6
+const ABSCHNITTE := 8
 const ZYKLUS := ABSCHNITTE * WELLEN_JE_ABSCHNITT
 
 ## Eine Schranke fuer Schleifen, Speicherwerte und Anzeigen - kein Spielende.

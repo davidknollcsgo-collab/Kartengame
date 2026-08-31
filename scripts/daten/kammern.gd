@@ -23,7 +23,7 @@ enum Kammer {
 ##
 ## Das war einmal dieselbe Zahl wie das Ende des Grabens - Welle 60, Stufe 20,
 ## fertig. Seit der Graben keinen Boden hat, sind es zwei verschiedene Dinge:
-## `Ausbau.STUFEN_JE_ZYKLUS` sagt, wie schnell die Kolonie waechst, und hier
+## `Ausbau.STUFEN_JE_WELLE` sagt, wie schnell die Kolonie waechst, und hier
 ## steht, wo sie aufhoert.
 ##
 ## Warum ueberhaupt ein Ende, wenn der Graben keines hat? Weil Kosten

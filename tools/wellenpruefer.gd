@@ -31,7 +31,31 @@ const LEITER: PackedFloat32Array = [1.0, 0.85, 0.7, 0.55, 0.45, 0.35, 0.25]
 ## den Fall nicht, in dem sie sich gegenseitig verstaerken. Tiefer zu pruefen
 ## bringt nichts mehr: dort wiederholt sich alles, weil die Sollkurve am
 ## Kammerdeckel steht.
-const BIS := Graben.ZYKLUS * 4
+##
+## **Und genau dort endet die Zusicherung, nicht bei einer runden Zahl.**
+## `Graben.ZYKLUS * 4` traf das zufaellig, solange ein Zyklus sechzig Wellen
+## lang war: der Deckel greift bei Welle 237, gerechnet wurde bis 240. Mit
+## acht Abschnitten sind es 320 - und der Pruefer lief achtzig Wellen weit in
+## einen Bereich hinein, in dem der Spieler **nichts mehr bauen kann**. Zwei
+## Sitzungen fielen dort, bei Welle 280 und 315, und beide Male war nicht die
+## Wellenstaerke schuld (die liegt bei 280 sogar unter der von 240), sondern
+## `Wellen.umgebung()`: ein Abschnitt mit drei Mutationen kommt auf 0.371,
+## und ein Budget kann zwar Lebenspunkte kuerzen, aber kein Zeitfenster
+## verlaengern.
+##
+## "Mit Grundwerten ueberstehbar" ist eine Aussage ueber die Strecke, auf der
+## die Kolonie noch waechst. Sie wird deshalb **daraus** abgeleitet und auf
+## die naechste volle Sitzung aufgerundet, damit der Pruefer nicht mitten in
+## einer Sitzung abbricht.
+##
+## `static var` statt `const`: eine Konstante muss in GDScript zur
+## Uebersetzungszeit feststehen, und `deckelwelle()` ist ein Aufruf.
+static var BIS := _bis_welle()
+
+
+static func _bis_welle() -> int:
+    var je := Graben.WELLEN_JE_SITZUNG
+    return ((Ausbau.deckelwelle() + je - 1) / je) * je
 
 
 func _init() -> void:

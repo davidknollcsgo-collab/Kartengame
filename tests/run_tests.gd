@@ -721,8 +721,10 @@ func _test_abschnitt() -> bool:
             "letzte Welle des ersten Abschnitts gehoert noch in Abschnitt 0") \
         and _melde(Graben.abschnitt(Graben.WELLEN_JE_ABSCHNITT + 1) == 1,
             "danach beginnt Abschnitt 1") \
-        and _melde(Graben.abschnitt(Graben.ZYKLUS) == 5,
-            "die letzte Welle gehoert in Abschnitt 5")
+        and _melde(Graben.abschnitt(Graben.ZYKLUS) == Graben.ABSCHNITTE - 1,
+            "die letzte Welle des Zyklus gehoert in den letzten Abschnitt") \
+        and _melde(Graben.abschnitt(Graben.ZYKLUS + 1) == 0,
+            "danach faengt der Zyklus wieder von vorn an")
 
 
 # --- Balance ---------------------------------------------------------------
@@ -791,12 +793,13 @@ func _test_kammern_treffen_die_sollkurve() -> bool:
 
     # Und an den Enden einer Umdrehung muss es exakt aufgehen. Frueher stand
     # hier die Hoechststufe; seit der Graben keinen Boden hat, ist die
-    # Hoechststufe nur noch ein Deckel und `STUFEN_JE_ZYKLUS` das Tempo.
+    # Hoechststufe nur noch ein Deckel und `STUFEN_JE_WELLE` das Tempo.
     return _melde(is_equal_approx(Kammern.leistung_faktor(0), Ausbau.leistung_faktor(1)),
             "Stufe 0 muss den Grundwerten entsprechen") \
-        and _melde(Ausbau.stufe_soll(Graben.ZYKLUS) == Ausbau.STUFEN_JE_ZYKLUS,
-            "eine volle Umdrehung muss genau STUFEN_JE_ZYKLUS Stufen verlangen") \
-        and _melde(Kammern.HOECHSTSTUFE > Ausbau.STUFEN_JE_ZYKLUS,
+        and _melde(Ausbau.stufe_soll(Ausbau.ANKER_WELLEN + 1) == Ausbau.STUFEN_ANKER,
+            "der Anker der Kurve muss halten: %d Wellen, %d Stufen"
+                % [Ausbau.ANKER_WELLEN, Ausbau.STUFEN_ANKER]) \
+        and _melde(Kammern.HOECHSTSTUFE > Ausbau.STUFEN_ANKER,
             "der Kammerdeckel muss ueber eine Umdrehung hinausreichen")
 
 
@@ -1237,19 +1240,41 @@ func _test_regeln_sind_reproduzierbar() -> bool:
     return true
 
 
+## **Was hier geprueft wird, ist nicht mehr "jeder Abschnitt ist haerter".**
+##
+## Das stand hier, und es war die Zusicherung eines Grabens mit kumulativen
+## Regeln: wer eine Regel ab Abschnitt 1 hat, hat sie in allen folgenden auch,
+## also faellt der Wirkungsgrad zwangslaeufig monoton. Seit die Tafel je
+## Abschnitt entscheidet, ist das keine Zusicherung mehr, sondern eine
+## Fessel - "Still Trench" ist mit Absicht ruhiger als der Sturm davor, weil
+## ohne Atemzug dazwischen eine Steigerung nur noch Laerm ist.
+##
+## Die eigentliche Zusicherung ist eine andere, und sie ist staerker: **ein
+## Abschnitt, der Regeln traegt, muss den Spieler etwas kosten** - sonst ist
+## er eine Farbe und keine Regel. Und der Graben als Ganzes muss irgendwo
+## spuerbar kosten, sonst waeren die Regeln Zierde.
 func _test_wirkungsgrad_faellt_mit_den_regeln() -> bool:
-    # Jeder neue Abschnitt muss den Spieler etwas kosten - sonst waere er eine
-    # Farbe, keine Regel.
-    var vorher := 2.0
+    var haertester := 1.0
     for a in Regeln.NAMEN.size():
         var n := a * Graben.WELLEN_JE_ABSCHNITT + 1
         var w := Regeln.wirkungsgrad(n)
-        if w > vorher + 0.001:
-            return _melde(false, "Abschnitt %d ist leichter als der davor" % (a + 1))
-        vorher = w
-    return _melde(Regeln.wirkungsgrad(Graben.ZYKLUS) < 0.75,
-        "der letzte Abschnitt muss spuerbar kosten, war %.3f"
-        % Regeln.wirkungsgrad(Graben.ZYKLUS))
+        var traegt := false
+        for r in [Regeln.Regel.STROM, Regeln.Regel.DUNKEL,
+                Regeln.Regel.TRUEB, Regeln.Regel.STREU]:
+            traegt = traegt or Regeln.hat(a, r)
+        if traegt:
+            if not _melde(w < 0.999,
+                    "Abschnitt %d traegt Regeln, kostet aber nichts (%.3f)"
+                    % [a + 1, w]):
+                return false
+        else:
+            if not _melde(is_equal_approx(w, 1.0),
+                    "Abschnitt %d traegt keine Regel, kostet aber %.3f"
+                    % [a + 1, w]):
+                return false
+        haertester = minf(haertester, w)
+    return _melde(haertester < 0.75,
+        "kein Abschnitt kostet spuerbar, haertester war %.3f" % haertester)
 
 
 func _test_wellenstaerke_folgt_dem_wirkungsgrad() -> bool:
@@ -1529,7 +1554,7 @@ func _test_spiegler_brennt_nur_im_randlicht() -> bool:
 func _test_kurve_haengt_nicht_an_der_abschnittszahl() -> bool:
     for n in [1, 2, 17, 60, 61, 120, 241, 400]:
         var frueher := minf(float(Kammern.HOECHSTSTUFE),
-            float(maxi(1, n) - 1) / 59.0 * float(Ausbau.STUFEN_JE_ZYKLUS))
+            float(maxi(1, n) - 1) / 59.0 * 20.0)
         var jetzt := Ausbau.stufe_kurve(n)
         if not _melde(is_equal_approx(frueher, jetzt),
                 "Welle %d: Kurve war %.4f, ist %.4f" % [n, frueher, jetzt]):

@@ -78,8 +78,6 @@ static func durchsatz(nummer: int) -> float:
 ## frueher `Kammern.HOECHSTSTUFE`, weil Welle 60 zugleich das Ende war. Seit
 ## der Graben keinen Boden mehr hat, sind das zwei verschiedene Dinge: hier
 ## steht das Tempo, dort die oberste Stufe, die es ueberhaupt gibt.
-const STUFEN_JE_ZYKLUS := 20
-
 ## Wieviel Kammerstufe eine Welle wert ist.
 ##
 ## **Die Kurve haengt an gespielten Wellen, nicht an der Zahl der Abschnitte.**
@@ -90,9 +88,14 @@ const STUFEN_JE_ZYKLUS := 20
 ## gleich mit. Ein Abschnitt mehr ist aber eine Inhaltsentscheidung und keine
 ## ueber das Tempo - die beiden gehoeren getrennt.
 ##
-## Der Wert ist so gewaehlt, dass er die bisherige Kurve **exakt** trifft:
-## zwanzig Stufen ueber neunundfuenfzig Wellen. Ein Test haelt das fest.
-const STUFEN_JE_WELLE := float(STUFEN_JE_ZYKLUS) / 59.0
+## **Zwanzig Stufen ueber neunundfuenfzig Wellen** - das ist die Kurve, die
+## das Spiel immer hatte, nur nicht mehr ueber `ZYKLUS` ausgedrueckt.
+## `STUFEN_JE_ZYKLUS := 20` stand hier, solange ein Zyklus sechzig Wellen
+## lang war; seit acht Abschnitten sind es achtzig, und der Name haette
+## etwas anderes behauptet als die Zahl tut. Ein Test haelt den Anker fest.
+const STUFEN_ANKER := 20
+const ANKER_WELLEN := 59
+const STUFEN_JE_WELLE := float(STUFEN_ANKER) / float(ANKER_WELLEN)
 
 
 ## Die Kurve endet, wo die Kammern enden. Ohne diesen Deckel verlangte sie ab
@@ -115,7 +118,7 @@ static func stufe_soll(nummer: int) -> int:
 ## Ab welcher Welle die Sollkurve am Deckel steht - ab dort waechst nicht mehr
 ## die Leistung, sondern nur noch die Vielfalt.
 static func deckelwelle() -> int:
-    return 1 + (Kammern.HOECHSTSTUFE * (Graben.ZYKLUS - 1)) / STUFEN_JE_ZYKLUS
+    return 1 + int(float(Kammern.HOECHSTSTUFE) / STUFEN_JE_WELLE)
 
 
 # --- Grabentiefe: was den naechsten Abschnitt oeffnet ----------------------
