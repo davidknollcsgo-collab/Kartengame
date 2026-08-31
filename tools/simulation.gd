@@ -166,11 +166,19 @@ static func welle(nummer: int, z: Zustand) -> Ergebnis:
             hell.append(Schlund.beleuchtung(Graben.WAECHTER, wirksam,
                 z.halbwinkel(), z.reichweite(), p, rand_kern, tiefe_kern) * schein)
 
-        for i in Schlund.brennende(hell, z.ziele()):
-            var opfer := lebende[i]
-            opfer.leben -= Schlund.schaden_an(z.leistung(), hell[i],
-                Wellen.panzer_in(opfer.art, nummer),
-                Wellen.mindest_licht_in(opfer.art, nummer)) * TAKT
+        # Dieselbe Reihenfolge wie im Spiel: erst ausrechnen, was jedes Tier
+        # abbekaeme, dann danach auswaehlen. Wer hier nach Helligkeit
+        # auswaehlt und dort nach Wirkung, prueft ein anderes Spiel.
+        var wirkung := PackedFloat32Array()
+        wirkung.resize(lebende.size())
+        for i in lebende.size():
+            wirkung[i] = Schlund.schaden_an(z.leistung(), hell[i],
+                Wellen.panzer_in(lebende[i].art, nummer),
+                Wellen.mindest_licht_in(lebende[i].art, nummer),
+                Wellen.hoechst_licht_in(lebende[i].art, nummer))
+
+        for i in Schlund.brennende(wirkung, z.ziele()):
+            lebende[i].leben -= wirkung[i] * TAKT
 
         # 4. Polypen. Jeder greift ein Ziel in seiner Reichweite an.
         for n in z.polypen:

@@ -142,11 +142,33 @@ static func panzer_in(art: int, nummer: int) -> float:
     return roh
 
 
+## **Wer schon eine Obergrenze hat, bekommt keine Untergrenze dazu.**
+##
+## Lichtscheu hebt die Mindesthelligkeit. Auf einem Spiegler, der ohnehin nur
+## unterhalb seiner Obergrenze voll brennt, bliebe damit ein Band von 0.42 bis
+## 0.78 uebrig - und nur darin wirkt der Strahl. Das ist kein schwierigeres
+## Tier mehr, sondern ein unzielbares.
+##
+## Der Wellenpruefer hat genau das gefunden: eine gefallene Sitzung in
+## achtundvierzig, Welle 224, mit Plated, Lightshy und Bloated zugleich und
+## drei Spieglern darin. Vorher trugen alle 240 Wellen. Im Kommentar zu
+## `hoechst_licht_in()` stand die Begruendung schon - ich hatte sie nur in
+## eine Richtung angewandt.
 static func mindest_licht_in(art: int, nummer: int) -> float:
     var roh := Arten.mindest_licht(art)
+    if Arten.hoechst_licht(art) > 0.0:
+        return roh
     if Mutationen.hat(nummer, Mutationen.Mutation.LICHTSCHEU):
         roh = maxf(roh, Mutationen.LICHT_SCHWELLE)
     return roh
+
+
+## Die Obergrenze des Spieglers. Mutationen fassen sie nicht an: eine
+## Lichtscheu-Mutation *darauf* ergaebe ein Tier, das nur in einem hauchduennen
+## Helligkeitsband ueberhaupt brennt - rechnerisch reizvoll, im Bild nicht
+## unterscheidbar von einem, das gar nicht brennt.
+static func hoechst_licht_in(art: int, nummer: int) -> float:
+    return Arten.hoechst_licht(art)
 
 
 static func drift_in(art: int, nummer: int) -> float:

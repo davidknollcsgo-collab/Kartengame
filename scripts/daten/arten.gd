@@ -18,6 +18,7 @@ enum Art {
     GLUTQUALLE,     ## Brennt nur im Kern des Kegels, nicht am Rand.
     TREIBANKER,     ## Wandert quer durchs Bild, waehrend er sinkt.
     SPRUNGAAL,      ## Sinkt in Schueben - der Kegel laeuft ihm nach.
+    SPIEGLER,       ## Brennt nur im Randlicht - der Kern prallt ab.
     SCHLUNDMUTTER,  ## Leitwesen. Steht am Ende jedes Abschnitts, sonst nie.
 }
 
@@ -156,6 +157,21 @@ const TABELLE: Array[Dictionary] = [
         &"aufwand": 1.22,
     },
     {
+        &"kennung": &"SPIEGLER",
+        &"name": "Mirrorshell",
+        &"regel": "Its shell throws the core of the beam back. Only the fringe of the light burns it.",
+        &"leben": 40.0,
+        &"tempo": 58.0,
+        &"radius": 23.0,
+        &"wucht": 3,
+        &"schlaengel": 11.0,
+        &"takt": 0.8,
+        &"farbe": Color(0.80, 0.84, 0.98),
+        &"ab_welle": 54,
+        &"hoechst_licht": 0.78,
+        &"aufwand": 1.30,
+    },
+    {
         &"kennung": &"SCHLUNDMUTTER",
         &"name": "Maw Mother",
         &"regel": "Warden at the end of every section. Slow, very tough - and one hit costs a third of the brood.",
@@ -245,6 +261,11 @@ static func panzer(index: int) -> float:
 
 static func mindest_licht(index: int) -> float:
     return float(art(index).get(&"mindest_licht", 0.0))
+
+
+## Ab welcher Helligkeit der Strahl abprallt. 0.0 heisst: keine Obergrenze.
+static func hoechst_licht(index: int) -> float:
+    return float(art(index).get(&"hoechst_licht", 0.0))
 
 
 static func drift(index: int) -> float:

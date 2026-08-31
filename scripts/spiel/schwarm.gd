@@ -141,6 +141,8 @@ func _zeichne(t: Raeuber, stufe := 0) -> void:
             _treibanker(p, r, farbe, t, hitze)
         Arten.Art.SPRUNGAAL:
             _sprungaal(p, r, farbe, t, hitze)
+        Arten.Art.SPIEGLER:
+            _spiegler(p, r, farbe, t, hitze)
         Arten.Art.SCHLUNDMUTTER:
             _schlundmutter(p, r, farbe, t, hitze)
 
@@ -675,3 +677,60 @@ func _kielwasser(p: Vector2, r: float, farbe: Color, t: Raeuber) -> void:
         var wo := p + zurueck * r * (0.9 + 2.4 * f) * kraft
         draw_circle(wo, r * (0.62 - 0.17 * float(i)),
             Color(farbe.r, farbe.g, farbe.b, (0.16 - 0.045 * float(i)) * kraft))
+
+
+## Der Spiegler.
+##
+## **Seine Zeichnung erklaert seine Regel.** Er brennt nur im Randlicht; im
+## Kern des Kegels prallt der Strahl ab. Genau das ist zu sehen: je heller er
+## steht, desto groesser das Glanzlicht auf seiner Schale - er blendet am
+## staerksten in dem Augenblick, in dem er unverwundbar ist. Wer ihn einmal in
+## den Kern genommen hat und nichts geschehen sah, hat die Regel gelernt, ohne
+## sie zu lesen.
+##
+## Die Schale ist facettiert, weil eine glatte Kuppel wie eine Blase aussieht
+## und eine Blase nichts zurueckwirft. Sechs Felder genuegen; bei zwoelf ist
+## es wieder eine Kuppel.
+func _spiegler(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> void:
+    var k := t.richtung
+    var quer := k.orthogonal()
+
+    # Die Schale: breit quer zur Bahn, vorn gerundet, hinten offen.
+    var schale := PackedVector2Array([
+        p + k * r * 0.86,
+        p + k * r * 0.34 + quer * r * 0.92,
+        p - k * r * 0.42 + quer * r * 0.80,
+        p - k * r * 0.72,
+        p - k * r * 0.42 - quer * r * 0.80,
+        p + k * r * 0.34 - quer * r * 0.92,
+    ])
+    _koerper(schale, farbe, hitze)
+
+    # Facetten: Grate vom Rand zur Mitte. Sie tragen den Glanz.
+    for i in 5:
+        var u := lerpf(-0.86, 0.86, float(i) / 4.0)
+        var aussen := p + k * r * 0.30 + quer * r * u * 0.95
+        draw_line(p + k * r * 0.05, aussen,
+            Color(farbe.r, farbe.g, farbe.b, 0.20 + 0.22 * hitze), 1.2)
+
+    # **Das Glanzlicht haengt an `t.licht`, nicht an `hitze`.**
+    #
+    # `hitze` sagt "wurde getroffen", `licht` sagt "steht im Strahl". Fuer
+    # jedes andere Tier ist das fast dasselbe; fuer den Spiegler ist es der
+    # ganze Unterschied. Im Kern steht er hell und nimmt nichts - also glaenzt
+    # er dort, und nur dort.
+    var blenden := clampf((t.licht - Wellen.hoechst_licht_in(t.art, t.welle))
+        / 0.45, 0.0, 1.0)
+    if blenden > 0.01:
+        var glanz := p + k * r * 0.20
+        draw_circle(glanz, r * (0.30 + 0.85 * blenden),
+            Color(0.86, 0.94, 1.0, 0.14 * blenden))
+        draw_circle(glanz, r * (0.16 + 0.34 * blenden),
+            Color(1.0, 1.0, 1.0, 0.42 * blenden))
+        # Ein kurzer Strahl zurueck zum Waechter - das Licht kommt von dort,
+        # also geht es auch dorthin zurueck.
+        var heim := (Graben.WAECHTER - p).normalized()
+        draw_line(glanz, glanz + heim * r * (0.8 + 1.6 * blenden),
+            Color(0.92, 0.98, 1.0, 0.30 * blenden), 1.6)
+
+    _auge(p + k * r * 0.46, r * 0.13, hitze)

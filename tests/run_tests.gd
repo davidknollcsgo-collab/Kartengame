@@ -31,6 +31,8 @@ const TESTS: PackedStringArray = [
     "_test_gelege_bleibt_im_rahmen",
     "_test_takt_deckelt_den_sprung",
     "_test_speichern_ist_unteilbar",
+    "_test_kegel_waehlt_nach_wirkung",
+    "_test_spiegler_brennt_nur_im_randlicht",
     "_test_drehung_begrenzt",
     "_test_drehung_erreicht_ziel",
     "_test_bahn_endet_an_der_brut",
@@ -1415,3 +1417,97 @@ func _test_speichern_ist_unteilbar() -> bool:
         DirAccess.remove_absolute(ProjectSettings.globalize_path(roh))
     return _melde(immer_noch.naehrstoffe == 12345,
         "der Stand hat eine kaputte Zwischendatei nicht ueberlebt")
+
+
+## Der Kegel darf keinen Zielplatz an ein Tier verschenken, das gerade gar
+## nicht brennen kann.
+##
+## **Das war ein echter Fehler.** `brennende()` waehlte nach Helligkeit, den
+## Schaden rechnete `schaden_an()` - und die gibt fuer eine Glutqualle
+## unterhalb ihrer Mindesthelligkeit null zurueck. Eine Glutqualle im
+## Randlicht belegte damit einen der wenigen Zielplaetze, ohne Schaden zu
+## nehmen: der Ausbau "ein Ziel mehr" verpuffte. Sichtbar wird das nur beim
+## Spielen, und auch dort nur als "der Kegel tut nichts".
+func _test_kegel_waehlt_nach_wirkung() -> bool:
+    var leistung := 40.0
+    # Zwei Tiere: eine Glutqualle im Randlicht (hell, aber unverwundbar) und
+    # ein Zahnkiefer im schwaecheren Licht (dunkler, aber verwundbar).
+    var hell := PackedFloat32Array([0.50, 0.30])
+    var mindest := PackedFloat32Array([0.52, 0.0])
+    var wirkung := PackedFloat32Array()
+    for i in hell.size():
+        wirkung.append(Schlund.schaden_an(leistung, hell[i], 0.0, mindest[i]))
+
+    if not _melde(wirkung[0] == 0.0,
+            "die Glutqualle im Randlicht nimmt %.2f Schaden" % wirkung[0]):
+        return false
+    if not _melde(wirkung[1] > 0.0, "der Zahnkiefer nimmt gar nichts"):
+        return false
+
+    # Mit nur einem Zielplatz muss der Zahnkiefer gewaehlt werden, obwohl die
+    # Glutqualle heller steht.
+    var treffer := Schlund.brennende(wirkung, 1)
+    if not _melde(treffer.size() == 1 and treffer[0] == 1,
+            "der Kegel nimmt das Tier, das er nicht verletzen kann"):
+        return false
+
+    # Und die alte Auswahl nach Helligkeit haette genau andersherum gewaehlt -
+    # sonst wuerde dieser Test nichts belegen.
+    var frueher := Schlund.brennende(hell, 1)
+    return _melde(frueher.size() == 1 and frueher[0] == 0,
+        "die Helligkeitsauswahl haette dasselbe getan - der Test ist blind")
+
+
+## Der Spiegler ist das Gegenstueck zur Glutqualle: er brennt nur unterhalb
+## seiner Obergrenze. Wer ihn in den Kern nimmt, tut ihm nichts.
+func _test_spiegler_brennt_nur_im_randlicht() -> bool:
+    var art := Arten.Art.SPIEGLER
+    var grenze := Arten.hoechst_licht(art)
+    if not _melde(grenze > 0.0, "der Spiegler hat keine Obergrenze"):
+        return false
+
+    var leistung := 40.0
+    # **Beide Messungen dicht an der Grenze.** Der erste Anlauf verglich
+    # Randlicht mit vollem Kern - also zwei verschiedene Helligkeiten, und
+    # damit steckte im Ergebnis auch der gewoehnliche Helligkeitsverlauf. Was
+    # diese Art ausmacht, ist aber der **Sprung an der Grenze**: eine
+    # Handbreit daneben, und derselbe Strahl wirkt doppelt.
+    var hell_rand := grenze * 0.99
+    var hell_kern := minf(1.0, grenze * 1.01)
+    var im_rand := Schlund.schaden_an(leistung, hell_rand, 0.0, 0.0, grenze)
+    var im_kern := Schlund.schaden_an(leistung, hell_kern, 0.0, 0.0, grenze)
+    if not _melde(im_rand > 0.0, "im Randlicht nimmt der Spiegler nichts"):
+        return false
+
+    # **Nicht null, aber deutlich weniger.** Volle Unverwundbarkeit im Kern
+    # war der erste Entwurf und ergab eine Wand: achtunddreissig gefallene
+    # Sitzungen im Wellenpruefer, beginnend genau bei seiner ersten Welle.
+    # Wer ihn falsch haelt, soll langsamer vorankommen, nicht gar nicht.
+    if not _melde(im_kern > 0.0,
+            "im Kern ist der Spiegler unverwundbar - das war die Wand"):
+        return false
+    if not _melde(im_kern < im_rand * 0.6,
+            "der Sprung an der Grenze ist zu klein: Rand %.2f, Kern %.2f"
+            % [im_rand, im_kern]):
+        return false
+
+    # Und keine andere Art darf versehentlich eine Obergrenze haben - sonst
+    # waere die Regel nicht mehr das Besondere dieser einen.
+    for a in Arten.zahl():
+        if a == art:
+            continue
+        if not _melde(Arten.hoechst_licht(a) == 0.0,
+                "%s hat auch eine Obergrenze" % Arten.art(a)[&"kennung"]):
+            return false
+
+    # **Keine zweite Schranke von unten.** Lichtscheu auf einem Spiegler
+    # liesse nur ein Band uebrig, in dem er ueberhaupt brennt - das ist kein
+    # schwierigeres Tier mehr, sondern ein unzielbares. Der Wellenpruefer hat
+    # das mit einer gefallenen Sitzung bei Welle 224 belegt.
+    for n in range(1, Graben.ZYKLUS * 4):
+        if not Mutationen.hat(n, Mutationen.Mutation.LICHTSCHEU):
+            continue
+        if not _melde(Wellen.mindest_licht_in(art, n) == Arten.mindest_licht(art),
+                "Welle %d gibt dem Spiegler zusaetzlich eine Untergrenze" % n):
+            return false
+    return true

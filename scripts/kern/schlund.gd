@@ -86,20 +86,63 @@ static func schaden_je_sekunde(leistung: float, helligkeit: float) -> float:
 ##     Schildkoralle, der Kegel nicht.
 ##   * `mindest_licht` verlangt eine Mindesthelligkeit. Wer am Rand des Kegels
 ##     mitlaeuft, nimmt keinen Schaden; das Tier muss in den Kern.
+##   * `hoechst_licht` ist das Gegenstueck: darueber prallt der Strahl
+##     groesstenteils ab. Ein Spiegler gehoert ins **Randlicht**, und das
+##     kehrt den Griff um, den man sich bei allen anderen angewoehnt hat.
 ##
-## Beides gehoert **hierher** und nicht in Spiel und Pruefer getrennt: was
+## Alles drei gehoert **hierher** und nicht in Spiel und Pruefer getrennt: was
 ## brennt, muss in beiden dieselbe Rechnung sein.
+##
+## `hoechst_licht <= 0.0` heisst "keine Obergrenze" - so bleibt der Wert fuer
+## die acht Arten, die keine haben, aus der Rechnung heraus.
+##
+## **Ueber der Grenze bleibt ein Rest, und der ist keine Feigheit.** Der erste
+## Entwurf gab dort null zurueck, also volle Unverwundbarkeit im Kern. Der
+## Wellenpruefer hat das sofort erledigt: achtunddreissig gefallene Sitzungen
+## und eine Wand genau bei Welle 55, dort wo der Spiegler auftritt. Vorher
+## waren es null.
+##
+## Der Grund ist kein Zahlenwert, sondern ein Entwurfsfehler. Ein Daumen zielt
+## auf die hellste Stelle - dorthin, wo die meisten Tiere stehen. Ein Tier,
+## das ausgerechnet dort nichts abbekommt, laesst sich nicht mehr durch
+## Zielen erledigen, sondern nur noch durch einen Trick, den niemand von
+## selbst findet. Das ist keine Fertigkeit, das ist eine Wand.
+##
+## Mit einem Rest wird daraus ein Gefaelle: wer ihn im Kern haelt, toetet ihn
+## langsam; wer lernt, ihn im Randlicht mitlaufen zu lassen, fuenfmal so
+## schnell. Der Unterschied ist gross genug, dass man ihn merkt, und klein
+## genug, dass niemand steckenbleibt.
+const SPIEGEL_REST := 0.45
+
+
 static func schaden_an(leistung: float, helligkeit: float, panzer: float,
-        mindest_licht: float) -> float:
+        mindest_licht: float, hoechst_licht := 0.0) -> float:
     if helligkeit < mindest_licht:
         return 0.0
-    return maxf(0.0, schaden_je_sekunde(leistung, helligkeit) - panzer)
+    var roh := maxf(0.0, schaden_je_sekunde(leistung, helligkeit) - panzer)
+    if hoechst_licht > 0.0 and helligkeit > hoechst_licht:
+        return roh * SPIEGEL_REST
+    return roh
 
 
 ## Welche der beleuchteten Raeuber der Kegel tatsaechlich verbrennt.
 ##
-## Gibt die Indizes der bis zu `ziele` hellsten Eintraege zurueck, absteigend
-## nach Helligkeit. Unbeleuchtetes (0.0) bleibt immer draussen.
+## Gibt die Indizes der bis zu `ziele` **wirksamsten** Eintraege zurueck.
+## Alles, was null Schaden naehme, bleibt draussen.
+##
+## **Es war einmal die Helligkeit, und das war ein Fehler.** Die Auswahl nahm
+## die hellsten Tiere, den Schaden rechnete danach `schaden_an()` - und die
+## gibt fuer eine Glutqualle unterhalb ihrer Mindesthelligkeit null zurueck.
+## Eine Glutqualle im Randlicht belegte damit einen der wenigen Zielplaetze
+## und nahm keinen Schaden: der Ausbau "ein Ziel mehr", der sich am
+## deutlichsten anfuehlen soll, verpuffte an einem Tier, das gar nicht
+## brennen konnte. Kein Test und kein Bild zeigt das; man merkt es nur als
+## Spieler daran, dass der Kegel nichts tut.
+##
+## Wer auswaehlt, muss dieselbe Zahl kennen wie der, der Schaden macht.
+## Deshalb bekommt diese Funktion jetzt die **Wirkung** je Tier und nicht
+## seine Helligkeit - und mit `hoechst_licht` gaebe es sonst ohnehin keine
+## Ordnung mehr: der Spiegler ist genau dann angreifbar, wenn er dunkel steht.
 ##
 ## **Warum es diese Grenze gibt.** Ohne sie nahm jedes Tier im Licht den vollen
 ## Schaden, und die Gesamtleistung des Kegels wuchs mit der Zahl der Gegner.
@@ -110,7 +153,7 @@ static func schaden_an(leistung: float, helligkeit: float, panzer: float,
 ## Mit der Grenze wird ein Schwarm zu dem, was er sein soll: eine Bedrohung,
 ## die man nicht wegleuchten kann. Und das Leuchtorgan bekommt einen Ausbau,
 ## der sich anfuehlt - ein Ziel mehr ist spuerbar, mehr Reichweite kaum.
-static func brennende(helligkeiten: PackedFloat32Array, ziele: int) -> PackedInt32Array:
+static func brennende(wirkungen: PackedFloat32Array, ziele: int) -> PackedInt32Array:
     var treffer := PackedInt32Array()
     if ziele <= 0:
         return treffer
@@ -121,10 +164,10 @@ static func brennende(helligkeiten: PackedFloat32Array, ziele: int) -> PackedInt
     while treffer.size() < ziele:
         var beste := -1
         var hell := 0.0
-        for i in helligkeiten.size():
-            if vergeben.has(i) or helligkeiten[i] <= hell:
+        for i in wirkungen.size():
+            if vergeben.has(i) or wirkungen[i] <= hell:
                 continue
-            hell = helligkeiten[i]
+            hell = wirkungen[i]
             beste = i
         if beste < 0:
             break

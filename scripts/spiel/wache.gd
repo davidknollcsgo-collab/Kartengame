@@ -451,11 +451,22 @@ func _verbrenne(delta: float) -> void:
                 r.leben -= maxf(0.0, glut - Wellen.panzer_in(r.art, r.welle)) * delta
                 r.hitze = maxf(r.hitze, 0.35)
 
-    for i in Schlund.brennende(hell, ziele()):
+    # **Erst die Wirkung, dann die Auswahl.** `brennende()` bekommt nicht mehr
+    # die Helligkeit, sondern was das Tier davon tatsaechlich abbekommt -
+    # sonst belegt ein Tier, das gerade gar nicht brennen kann, einen der
+    # wenigen Zielplaetze. Siehe `Schlund.brennende()`.
+    var wirkung := PackedFloat32Array()
+    wirkung.resize(sichtbar.size())
+    for i in sichtbar.size():
+        var t := sichtbar[i]
+        wirkung[i] = Schlund.schaden_an(leistung(), hell[i],
+            Wellen.panzer_in(t.art, t.welle),
+            Wellen.mindest_licht_in(t.art, t.welle),
+            Wellen.hoechst_licht_in(t.art, t.welle))
+
+    for i in Schlund.brennende(wirkung, ziele()):
         var r := sichtbar[i]
-        r.leben -= Schlund.schaden_an(leistung(), hell[i],
-            Wellen.panzer_in(r.art, r.welle),
-            Wellen.mindest_licht_in(r.art, r.welle)) * delta
+        r.leben -= wirkung[i] * delta
         r.hitze = 1.0
         r.glut = glut_dauer
         if randf() < hell[i] * delta * 26.0:
