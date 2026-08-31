@@ -59,14 +59,25 @@ func _ready() -> void:
     # Rauschen, und Rauschen ist genau das, was der Vordergrund nicht sein
     # darf - er liegt vor allem anderen.
     for seite: float in [-1.0, 1.0]:
-        for i in 4:
+        # **Drei Stoecke je Seite, drei bis vier Finger daran.** Vier Stoecke
+        # mit bis zu sechs Armen und einer Gabelung waren achtzig Aeste im
+        # Vordergrund - ein Dickicht aus Stacheln, und Dickicht ist genau das
+        # Rauschen, das vor allem anderen nichts zu suchen hat.
+        for i in 3:
             var arme := PackedFloat32Array()
-            for _a in rng.randi_range(5, 8):
-                arme.append(rng.randf_range(0.55, 1.0))
+            for _a in rng.randi_range(3, 4):
+                arme.append(rng.randf_range(0.40, 0.62))
+            # **Weiter gestreut, aber nach innen kleiner.** Vorher standen
+            # alle acht Stoecke zwischen 300 und 372 - im Bild zwei schwarze
+            # Klumpen in den Ecken und dazwischen nichts. Ein Riff ist ein
+            # Feld: es laeuft am unteren Rand entlang und wird nach innen
+            # flacher, sonst greift es der Brut ins Bild.
+            var rand := rng.randf_range(238.0, 384.0)
+            var nach_innen := clampf((rand - 238.0) / 146.0, 0.0, 1.0)
             _riff.append({
                 &"seite": seite,
-                &"rand": rng.randf_range(300.0, 372.0),
-                &"gross": rng.randf_range(110.0, 230.0),
+                &"rand": rand,
+                &"gross": lerpf(88.0, 210.0, nach_innen) * rng.randf_range(0.85, 1.15),
                 &"arme": arme,
                 &"farbe": RIFF_FARBEN[rng.randi() % RIFF_FARBEN.size()],
             })
@@ -145,7 +156,7 @@ func _zeichne_riff() -> void:
         var arme: PackedFloat32Array = f[&"arme"]
         var n := arme.size()
 
-        # Der Stamm - dunkel und breit, damit die Ecke Gewicht bekommt.
+        # Der Stock - dunkel und breit, damit die Ecke Gewicht bekommt.
         var stamm := PackedVector2Array()
         for i in 9:
             var t := float(i) / 8.0
@@ -164,22 +175,84 @@ func _zeichne_riff() -> void:
             var t := float(i) / float(maxi(1, n - 1))
             # Nach innen und nach oben, weg von der Ecke.
             var w := lerpf(0.15, 1.35, t) * -seite
-            var laenge := r * arme[i]
-            var linie := PackedVector2Array([fuss])
-            var punkt := fuss
-            var richtung := Vector2(sin(w), -cos(w))
-            for g in 4:
-                richtung = richtung.rotated(
-                    sin(_zeit * 0.35 + float(i) * 1.3 + float(g)) * 0.06
-                    + (0.16 * -seite))
-                punkt += richtung * laenge * 0.25
-                linie.append(punkt)
-            draw_polyline(linie, Color(0.016, 0.036, 0.050, 0.95),
-                5.5 - 0.5 * float(i % 3), true)
-            # Nur die Spitze traegt Farbe, und leise.
-            var spitze: Vector2 = linie[linie.size() - 1]
-            draw_circle(spitze, 3.4, Color(farbe.r, farbe.g, farbe.b, 0.16))
-            draw_circle(spitze, 1.5, Color(farbe.r, farbe.g, farbe.b, 0.30))
+            # Kurz und dick. Eine Koralle hat Finger, keine Ruten: bei
+            # `r * 0.075` Dicke und voller Laenge standen dort Stacheln.
+            _ast(fuss, w, r * arme[i], r * 0.15 + 4.0, farbe, seite,
+                float(i), 0)
+
+
+## Ein Ast des Riffs.
+##
+## **Ein Strich ist kein Ast.** Vorher lag hier `draw_polyline` mit fester
+## Breite: im Bild schwarze Stoecke von gleichbleibender Dicke, die aus einem
+## schwarzen Klumpen ragten - eher Haare als Koralle. Drei Dinge machen den
+## Unterschied, und keines davon ist Farbe in der Flaeche:
+##
+##   * **Verjuengung.** Ein Ast ist unten dick und oben duenn. Dafuer braucht
+##     es ein Vieleck aus zwei Saeumen, keine Linie.
+##   * **Randlicht.** Es gibt eine Lichtquelle im Bild, und die steht beim
+##     Waechter. Die ihm zugewandte Flanke bekommt einen schmalen hellen
+##     Saum - das ist das Einzige, was eine Silhouette raeumlich macht.
+##   * **Polypen.** Kleine leuchtende Punkte auf der Oberkante. Sie tragen die
+##     Farbe, die die Flaeche nicht tragen darf.
+##
+## `tiefe` begrenzt die Gabelung: ein Ast teilt sich einmal, nicht endlos.
+func _ast(fuss: Vector2, richtung_w: float, laenge: float, dicke: float,
+        farbe: Color, seite: float, saat: float, tiefe: int) -> void:
+    var glieder := 5
+    var richtung := Vector2(sin(richtung_w), -cos(richtung_w))
+    var punkt := fuss
+    var links := PackedVector2Array()
+    var rechts := PackedVector2Array()
+    var mitte := PackedVector2Array([fuss])
+
+    for g in glieder:
+        var u := float(g) / float(glieder - 1)
+        richtung = richtung.rotated(
+            sin(_zeit * 0.35 + saat * 1.3 + float(g)) * 0.05
+            + (0.14 * -seite))
+        punkt += richtung * laenge / float(glieder - 1)
+        mitte.append(punkt)
+        var quer := richtung.orthogonal() * dicke * (1.0 - 0.82 * u)
+        links.append(punkt + quer)
+        rechts.append(punkt - quer)
+
+    var leib := PackedVector2Array([fuss + richtung.orthogonal() * dicke])
+    leib.append_array(links)
+    for i in range(rechts.size() - 1, -1, -1):
+        leib.append(rechts[i])
+    leib.append(fuss - richtung.orthogonal() * dicke)
+    draw_colored_polygon(leib, Color(0.016, 0.036, 0.050, 0.95))
+
+    # Der Saum auf der dem Waechter zugewandten Flanke. Das ist die Seite zur
+    # Grabenmitte hin, also `-seite`.
+    var saum: PackedVector2Array = links if seite > 0.0 else rechts
+    draw_polyline(saum, Color(farbe.r * 0.5 + 0.10, farbe.g * 0.5 + 0.18,
+        farbe.b * 0.5 + 0.22, 0.30), 1.4, true)
+
+    # Polypen auf der Oberkante, dichter zur Spitze hin.
+    for g in range(1, mitte.size()):
+        var u := float(g) / float(mitte.size() - 1)
+        # Nur auf der aeusseren Haelfte. Ueber den ganzen Ast verteilt sahen
+        # sie aus wie Perlen auf einer Schnur.
+        if u < 0.5:
+            continue
+        var wo: Vector2 = mitte[g]
+        var atem := 0.5 + 0.5 * sin(_zeit * 1.1 + saat * 2.0 + float(g))
+        var gross := (1.5 + 1.3 * u) * (0.8 + 0.2 * atem)
+        draw_circle(wo, gross * 2.6, Color(farbe.r, farbe.g, farbe.b, 0.07))
+        draw_circle(wo, gross, Color(farbe.r, farbe.g, farbe.b, 0.22 + 0.10 * atem))
+        draw_circle(wo, gross * 0.42, Color(
+            minf(1.0, farbe.r + 0.30), minf(1.0, farbe.g + 0.30),
+            minf(1.0, farbe.b + 0.30), 0.42 + 0.16 * atem))
+
+    # **Keine Gabelung.** Sie stand hier mit der Begruendung, ein Ast teile
+    # sich einmal - stimmt fuer eine Koralle, verdoppelt hier aber die Zahl
+    # der Formen im Vordergrund. `tiefe` bleibt in der Kopfzeile stehen,
+    # damit sichtbar ist, dass die Entscheidung getroffen wurde und nicht
+    # vergessen.
+    if tiefe >= 0:
+        return
 
 
 ## Schlickschwaden. Sie steigen langsam, weil der Spieler in den Graben

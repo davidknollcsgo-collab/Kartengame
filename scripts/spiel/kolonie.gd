@@ -1230,7 +1230,15 @@ func _zeichne_sockel() -> void:
     # eingezogener Schaft, ein Fuss, der sich wieder oeffnet. Und darin
     # leuchtet der Kern der Kolonie durch - die Begruendung dafuer, warum der
     # Waechter hier steht und nicht anderswo.
+    #
+    # **Und er ist nicht schwarz.** `fels.lightened(0.05)` auf einem Fels vom
+    # Wert 0.03 ergibt 0.08 - im Bild ein dunkles Loch unter dem Gelege, das
+    # groesste zusammenhaengende Nichts im ganzen Bild. Die Saeule steht
+    # direkt unter der einzigen Lichtquelle: oben faengt sie Licht, nach
+    # unten laeuft sie in die Tiefe aus. Eine Farbe je Eckpunkt sagt das in
+    # einem Zeichenaufruf.
     var schaft := PackedVector2Array()
+    var farben := PackedColorArray()
     var stufen := 22
     for seite: float in SEITEN:
         for i in stufen + 1:
@@ -1238,7 +1246,17 @@ func _zeichne_sockel() -> void:
             if seite > 0.0:
                 t = 1.0 - t
             schaft.append(p + Vector2(seite * _sockelbreite(t), _sockelhoehe(t)) * g)
-    draw_colored_polygon(schaft, fels.lightened(0.05))
+            # Oben hell, unten aus - und die Flanken etwas heller als die
+            # Mitte, weil sie sich dem Licht zuwenden.
+            # **Leise.** Der erste Anlauf mischte bis zu 68 Prozent gegen
+            # ein helles Blaugruen - damit stand die Saeule heller da als
+            # das Wasser davor und las sich als Glasrohr. Ein Stein unter
+            # einer Lampe ist oben etwa so hell wie das Wasser und darunter
+            # dunkler; was ihm Form gibt, ist der Saum an den Flanken, nicht
+            # die Flaeche.
+            var hell := pow(1.0 - t, 1.6)
+            farben.append(fels.lerp(DUNST, 0.06 + 0.28 * hell))
+    draw_polygon(schaft, farben)
 
     # Der Kern liegt tief im Schaft, nicht hinter dem Tier: hoeher angesetzt
     # legte er einen Hof um den Waechter und sah aus wie ein zweites Organ.
@@ -1248,8 +1266,11 @@ func _zeichne_sockel() -> void:
         draw_circle(mitte, lerpf(24.0, 9.0, t) * g,
             Color(0.34, 0.82, 0.84, 0.05 + 0.055 * t))
 
+    # Der Saum an den Flanken. Er traegt die Form der Saeule - deshalb zwei
+    # Striche uebereinander, ein breiter blasser und ein schmaler heller.
     var kante := schaft.slice(1, schaft.size() - 1)
-    draw_polyline(kante, Color(0.24, 0.46, 0.52, 0.40), 1.8, true)
+    draw_polyline(kante, Color(0.24, 0.50, 0.58, 0.16), 5.0, true)
+    draw_polyline(kante, Color(0.38, 0.72, 0.80, 0.46), 1.6, true)
 
     for i in 5:
         var t := lerpf(0.30, 0.86, float(i) / 4.0)
