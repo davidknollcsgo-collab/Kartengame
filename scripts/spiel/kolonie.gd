@@ -932,7 +932,15 @@ func _zeichne_mulden(ebene: int, versatz: Vector2) -> void:
     # verschwindet mit ihm. Und weil der Dunst mit der Entfernung auch die
     # Struktur frisst und nicht nur die Farbe, geht er hier ein zweites Mal
     # ein - das ist Luftperspektive, konsequent zu Ende gedacht.
-    var wirkung := 1.0 - 0.72 * dunst
+    #
+    # **Und nicht zu leise.** Der erste Anlauf gegen die harte Kante ging zu
+    # weit: bei `1 - 0.72 * dunst` und einem Hub von 0.19 blieben auf der
+    # fernen Ebene sieben Prozent Aufhellung uebrig - im Bild nichts. Die
+    # Wand war danach zwar nicht mehr kariert, aber leer. Ein Verlauf darf
+    # kraeftig sein; was ihn von einem Aufkleber unterscheidet, ist nicht
+    # seine Staerke, sondern dass er zur abgewandten Seite hin auf null
+    # laeuft.
+    var wirkung := 1.0 - 0.55 * dunst
 
     for m in _mulden:
         if int(m[&"ebene"]) != ebene:
@@ -950,7 +958,7 @@ func _zeichne_mulden(ebene: int, versatz: Vector2) -> void:
         # in die Wand ueber, statt an einer Linie aufzuhoeren. Genau das war
         # der Grund, warum eine Platte wie ein Aufkleber aussah.
         var tiefer := bool(m[&"tiefer"])
-        var hub := (0.11 if tiefer else 0.19) * wirkung
+        var hub := (0.22 if tiefer else 0.36) * wirkung
         var innen: float = m[&"innen"]
         var mitte := mitte_von(form)
         var weite := 1.0
