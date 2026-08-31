@@ -508,6 +508,30 @@ func _tagesziel(kasten: Rect2, index: int, stand: KolonieStand) -> void:
 ## Der Schacht faellt in der Mitte, die Kammern haengen abwechselnd links und
 ## rechts daran. Jede waechst mit ihrer Stufe und leuchtet staerker - man
 ## sieht seine Kolonie also wachsen, statt es aus Zahlen abzuleiten.
+## --- Der Fels, aus dem gegraben wird ---
+##
+## **Ohne ihn ist ein Schnitt kein Schnitt.** Der erste Entwurf zeichnete den
+## Schacht und vier Kammern in einen leeren dunklen Kasten: fuenf umrandete
+## Blasen, die im Nichts schwebten, verbunden mit gestrichelten Linien. Eine
+## Kammer ist aber kein Objekt, sondern ein **Loch** - sie wird erst dadurch
+## zur Kammer, dass um sie herum Stein steht. Genau das fehlte, und deshalb
+## sah der wichtigste Bildschirm des Aufbauspiels aus wie ein Schaubild.
+##
+## Nach unten dunkler: hier ist es umgekehrt zum Wasser draussen. Im Graben
+## streut die Strecke und macht Fernes heller; im Stein kommt kein Licht an,
+## und je tiefer gegraben ist, desto weniger.
+const FELS_OBEN := Color(0.062, 0.088, 0.104)
+const FELS_UNTEN := Color(0.014, 0.026, 0.036)
+
+## Der senkrechte Schnitt durch den Graben.
+##
+## **Das ist der Bildschirm, den der Plan beschreibt** - "die Kolonie als
+## senkrechter Schnitt, Kammern werden nach unten gegraben". Eine Liste sagt,
+## was man kaufen kann; ein Schnitt sagt, wo man ist.
+##
+## Der Schacht faellt in der Mitte, die Kammern haengen abwechselnd links und
+## rechts daran. Jede waechst mit ihrer Stufe und leuchtet staerker - man
+## sieht seine Kolonie also wachsen, statt es aus Zahlen abzuleiten.
 func _schnitt(breite: float, oben: float, unten: float, stand: KolonieStand,
         _jetzt: float) -> void:
     var hoch := unten - oben
@@ -525,11 +549,33 @@ func _schnitt(breite: float, oben: float, unten: float, stand: KolonieStand,
     var fuss := unten - 16.0
     var spanne := fuss - kopf
 
+    _fels(breite, kopf, fuss)
+
     # **Der Schacht laeuft durch.** Im ersten Entwurf endete er dort, wo
     # gerade gegraben ist - und die beiden unteren Kammern hingen frei im
     # Bild, weil ihre Gaenge ins Leere zeigten. Jetzt ist der ganze Schacht
     # da; hell ist, was gegraben wurde, und der Rest steht als Umriss.
-    var gegraben := clampf(float(tiefste) / float(Kammern.HOECHSTSTUFE), 0.10, 1.0)
+    # **Wie tief der Schacht gezeichnet wird, misst nicht die Hoechststufe.**
+    #
+    # Hier stand `tiefste / Kammern.HOECHSTSTUFE`. Seit der Graben keinen
+    # Boden mehr hat, ist die Hoechststufe 80 - bei Schacht 13, also einem
+    # voellig normalen Stand, endete der Schacht nach einem Sechstel der
+    # Hoehe, und drei der vier Kammern hingen darunter als "noch nicht
+    # erreicht" im Bild. Das Bild sagte den ganzen Mittelteil des Spiels
+    # lang: du hast noch nicht angefangen.
+    #
+    # Was der Tiefenschacht wirklich tut, ist Abschnitte aufmachen. Also
+    # misst der gezeichnete Rest genau das: wie weit es von der Stufe, die
+    # den jetzigen Abschnitt geoeffnet hat, bis zu der ist, die den naechsten
+    # oeffnet. Die vier Kammern haengen ueber den oberen drei Vierteln und
+    # sind immer angeschlossen; das untere Viertel ist die Anzeige.
+    var offen_nr := Graben.abschnitt_gesamt(stand.offene_welle())
+    var von := Ausbau.schacht_fuer_abschnitt(offen_nr)
+    var ziel_stufe := stand.naechste_tiefe()
+    var anteil := clampf(float(tiefste - von) / maxf(1.0, float(ziel_stufe - von)),
+        0.0, 1.0)
+    var letzte_kammer := 0.10 + 0.21 * 3.0
+    var gegraben := letzte_kammer + 0.06 + (0.94 - letzte_kammer - 0.06) * anteil
     var spitze_y := kopf + spanne * gegraben
     var schachtfarbe: Color = FARBEN[Kammern.Kammer.TIEFENSCHACHT]
 
@@ -538,9 +584,26 @@ func _schnitt(breite: float, oben: float, unten: float, stand: KolonieStand,
         Vector2(mitte - halb, kopf), Vector2(mitte + halb, kopf),
         Vector2(mitte + halb * 0.62, spitze_y), Vector2(mitte - halb * 0.62, spitze_y),
     ])
-    _flaeche.draw_colored_polygon(offen, Color(0.030, 0.062, 0.075))
-    _flaeche.draw_polyline(offen + PackedVector2Array([offen[0]]),
-        Color(schachtfarbe.r, schachtfarbe.g, schachtfarbe.b, 0.40), 1.5, true)
+    # Der Schacht ist ein Hohlraum: dunkler als der Fels, mit einem hellen
+    # Saum an beiden Waenden. Dasselbe Mittel wie am Sockel in der
+    # Schlundwache - was einem Loch Tiefe gibt, ist die Kante, nicht die
+    # Flaeche.
+    _flaeche.draw_colored_polygon(offen, Color(0.008, 0.018, 0.026))
+    # **Und Licht darin.** Ein Hohlraum in fast schwarzem Fels ist unsichtbar:
+    # der Schacht war dunkler als der Stein oben und heller als der Stein
+    # unten, verschwand also auf halber Hoehe. Die Kolonie leuchtet aber
+    # selbst - der Schacht ist der Weg, auf dem ihr Licht nach unten geht.
+    # Oben hell, zur Bohrspitze hin aus.
+    var schein := PackedColorArray()
+    for v in offen:
+        var t := clampf((v.y - kopf) / maxf(1.0, spitze_y - kopf), 0.0, 1.0)
+        schein.append(Color(schachtfarbe.r, schachtfarbe.g, schachtfarbe.b,
+            0.30 * (1.0 - t) + 0.06))
+    _flaeche.draw_polygon(offen, schein)
+    for seite: float in SEITEN:
+        _flaeche.draw_line(Vector2(mitte + seite * halb, kopf),
+            Vector2(mitte + seite * halb * 0.62, spitze_y),
+            Color(schachtfarbe.r, schachtfarbe.g, schachtfarbe.b, 0.55), 2.0)
 
     # Was noch bevorsteht - nur angedeutet, in Strichen.
     if gegraben < 0.995:
@@ -558,7 +621,7 @@ func _schnitt(breite: float, oben: float, unten: float, stand: KolonieStand,
     # Die Bohrspitze: dort ist die Kolonie gerade angekommen.
     _flaeche.draw_circle(Vector2(mitte, spitze_y), 5.0 + 3.5 * puls,
         Color(schachtfarbe.r, schachtfarbe.g, schachtfarbe.b, 0.22 + 0.24 * puls))
-    _text(Vector2(mitte, spitze_y + 22.0), "shaft %d" % tiefste, 11,
+    _text(Vector2(mitte, spitze_y + 22.0), "shaft %d of %d" % [tiefste, ziel_stufe], 11,
         Color(schachtfarbe.r, schachtfarbe.g, schachtfarbe.b, 0.7), true)
 
     # Vier Kammern am Schacht, abwechselnd links und rechts - ueber die ganze
@@ -572,16 +635,27 @@ func _schnitt(breite: float, oben: float, unten: float, stand: KolonieStand,
         var stufe := stand.stufe(k)
         var voll := clampf(float(stufe) / float(Kammern.HOECHSTSTUFE), 0.0, 1.0)
         var seite: float = SEITEN[i % 2]
-        var y := kopf + spanne * (0.13 + 0.25 * float(i))
-        var weite := 52.0 + 66.0 * voll
-        var kammerhoch := 17.0 + 17.0 * voll
-        var wo := Vector2(mitte + seite * (halb + 18.0 + weite * 0.5), y)
+        var y := kopf + spanne * (0.10 + 0.21 * float(i))
+        # **Groesser und weiter aussen.** Bei 52 Pixeln Grundweite und einem
+        # Abstand von 18 zum Schacht standen die vier Kammern in einer Spalte
+        # von zweihundert Pixeln Breite, waehrend links und rechts je
+        # zweihundertsechzig Pixel Fels leer blieben. Ein Schnitt soll die
+        # Flaeche fuellen, die er bekommt.
+        var weite := 130.0 + 110.0 * voll
+        var kammerhoch := 21.0 + 20.0 * voll
+        var wo := Vector2(mitte + seite * (halb + 26.0 + weite * 0.5), y)
         var farbe: Color = FARBEN[k]
         var baut_hier := stand.bau_kammer == k
         var erreicht := y <= spitze_y + 4.0
 
-        _flaeche.draw_line(Vector2(mitte + seite * halb * 0.7, y), wo,
-            Color(0.14, 0.24, 0.28, 0.9 if erreicht else 0.35), 5.0)
+        # Der Gang: ein Hohlraum im Stein, kein Kabel. Er ist deshalb dunkler
+        # als der Fels und hat oben und unten eine Kante.
+        var gang_a := Vector2(mitte + seite * halb * 0.7, y)
+        var dick := 5.0
+        _flaeche.draw_line(gang_a, wo, Color(0.008, 0.018, 0.026),
+            dick + 2.0)
+        _flaeche.draw_line(gang_a, wo,
+            Color(farbe.r, farbe.g, farbe.b, 0.30 if erreicht else 0.10), 1.2)
 
         # Eine gegrabene Blase, kein Rechteck. Ein Rechteck waere ein Raum,
         # den jemand gebaut hat; das hier ist aus dem Fels geholt.
@@ -595,8 +669,19 @@ func _schnitt(breite: float, oben: float, unten: float, stand: KolonieStand,
         var leuchten := 0.10 + 0.32 * voll
         if baut_hier:
             leuchten += 0.20 * puls
-        _flaeche.draw_colored_polygon(blase,
-            Color(farbe.r, farbe.g, farbe.b, leuchten * 0.40))
+
+        # Erst der Hohlraum - dunkler als der Fels, damit die Kammer ein Loch
+        # ist und kein Aufkleber -, dann das, was darin leuchtet.
+        _flaeche.draw_colored_polygon(blase, Color(0.010, 0.020, 0.028))
+        var farben := PackedColorArray()
+        for v in blase:
+            # Zur Schachtseite hin heller: das Licht der Kolonie kommt aus
+            # dem Schacht, nicht aus dem Stein.
+            var t := clampf(0.5 - 0.5 * (v.x - wo.x) * seite / maxf(1.0, weite * 0.5),
+                0.0, 1.0)
+            farben.append(Color(farbe.r, farbe.g, farbe.b,
+                leuchten * (0.16 + 0.62 * t)))
+        _flaeche.draw_polygon(blase, farben)
         _flaeche.draw_polyline(blase + PackedVector2Array([blase[0]]),
             Color(farbe.r, farbe.g, farbe.b, 0.28 + leuchten), 1.4, true)
         _flaeche.draw_circle(wo, 3.0 + 4.5 * voll,
@@ -605,6 +690,28 @@ func _schnitt(breite: float, oben: float, unten: float, stand: KolonieStand,
         var beschriftung := "%s %d" % [Kammern.name_von(k).split(" ")[0], stufe]
         _text(wo + Vector2(0.0, kammerhoch + 15.0), beschriftung, 11,
             Color(farbe.r, farbe.g, farbe.b, 0.75), true)
+
+
+## Der Stein, in dem die Kolonie sitzt: ein Verlauf nach unten und ein paar
+## Schichten quer darueber.
+##
+## Die Schichten sind der billigste Weg zu Gestein - waagerecht, ungleich weit
+## auseinander und nur wenige. Vier reichen; bei zwanzig waere es ein
+## Notenblatt.
+func _fels(breite: float, kopf: float, fuss: float) -> void:
+    var ecken := PackedVector2Array([
+        Vector2(0.0, kopf), Vector2(breite, kopf),
+        Vector2(breite, fuss), Vector2(0.0, fuss),
+    ])
+    _flaeche.draw_polygon(ecken, PackedColorArray([
+        FELS_OBEN, FELS_OBEN, FELS_UNTEN, FELS_UNTEN]))
+
+    var spanne := fuss - kopf
+    for i in 5:
+        var t := 0.14 + 0.19 * float(i) + 0.03 * sin(float(i) * 2.9)
+        var y := kopf + spanne * t
+        _flaeche.draw_line(Vector2(0.0, y), Vector2(breite, y),
+            Color(0.30, 0.44, 0.50, 0.055 + 0.02 * sin(float(i))), 1.0)
 
 
 ## Was die tragende Brutlinie mit dem Kegel macht - als Bild.

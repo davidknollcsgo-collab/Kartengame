@@ -342,8 +342,29 @@ static func auftritte(nummer: int) -> Array[Dictionary]:
             var streu := 0.0
             var versatz := 0.0
             if gruppe.size() > 1:
-                streu = (float(k) - (gruppe.size() - 1) * 0.5) * 46.0
-                versatz = rng.randf_range(0.0, 0.5)
+                var halb := (gruppe.size() - 1) * 0.5
+                streu = (float(k) - halb) * 46.0
+                # **Ein Schwarm zieht in Staffel, nicht in einer Reihe.**
+                #
+                # Hier stand `rng.randf_range(0.0, 0.5)` je Tier. Gemessen
+                # ueber die Bahnen einer Welle: drei Schleier standen in
+                # Welle 40 bei y = 21, -1 und -1 - zwei davon auf denselben
+                # Pixel, sechsundvierzig Pixel nebeneinander. Bei einem Tempo
+                # von 168 sind fuenf Hundertstel Sekunde Unterschied acht
+                # Pixel, und der Wuerfel liefert solche Paare regelmaessig.
+                #
+                # Jedes Tier tritt ein Stueck spaeter ein als sein Nachbar -
+                # eine Schraege quer zum Graben. Ein Keil war der erste
+                # Einfall und hat den Fehler nur halbiert: er ist
+                # spiegelsymmetrisch, also stehen die beiden Flanken wieder
+                # auf demselben Pixel. Eine Staffel wiederholt keine Hoehe.
+                #
+                # Es ist dieselbe Streuung wie vorher - null bis knapp eine
+                # halbe Sekunde -, nur nicht mehr zufaellig, sondern als
+                # Form. Das Budget der Welle bleibt unberuehrt: es aendert
+                # sich nur, wann innerhalb einer halben Sekunde ein Tier
+                # eintritt, nicht welches und nicht wie viele.
+                versatz = 0.44 * float(k) / float(gruppe.size() - 1)
             liste.append({
                 &"art": gruppe[k],
                 &"zeit": maxf(0.0, zeit + versatz),
