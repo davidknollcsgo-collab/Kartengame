@@ -239,6 +239,15 @@ func starte_welle() -> void:
     _polyp_takt.fill(0.0)
     _schwarm.tiere = _tiere
     lage = Lage.WELLE
+    # **Die Kolonie muss erfahren, dass die Bauphase vorbei ist.**
+    #
+    # `_kolonie.bauphase` wurde in `_bereite_welle_vor()` gesetzt und danach
+    # erst wieder, wenn die Brut getroffen wird - bis dahin blinkten die
+    # Kreuze auf den freien Nischen die ganze Welle lang weiter. Der
+    # Kommentar an der Zeichenstelle sagte sogar, warum das falsch ist
+    # ("waehrend der Welle darf hier nichts blinken - der Blick gehoert dem
+    # Schlund"); nur wurde die Lage nie durchgereicht.
+    _aktualisiere_kolonie()
     _folge = 0.0
     Klang.spiele(Klang.Ton.WELLE, 1.0, 0.55)
     _hud.zeige_welle(welle_nummer, brut, Fortschritt.stand.naehrstoffe, _tiere.size())

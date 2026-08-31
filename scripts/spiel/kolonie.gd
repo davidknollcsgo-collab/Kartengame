@@ -511,6 +511,19 @@ func _zeichne_korallen() -> void:
                 _koralle_anemone(p, r, farbe, kraft, innen, arme, atem)
 
 
+## --- Warum die Korallen eine Flaeche brauchen ---
+##
+## Alle drei waren aus Strichen gebaut: Rippen, Roehren und Arme, jeweils
+## `draw_line` mit einem Punkt an der Spitze. In der Lupe sah das aus wie
+## Wunderkerzen - Funken auf Stielen, ohne Koerper. Eine Koralle ist aber vor
+## allem **Masse**: ein Faecher hat ein Netz zwischen den Rippen, eine Roehre
+## ist unten dick und oben duenn, eine Anemone hat einen Fuss.
+##
+## Die Flaechen sind bewusst schwach gedeckt. Sie sollen der Form Gewicht
+## geben, nicht das Bild fuellen - die Korallen sitzen am Rand, und der Rand
+## darf nicht lauter werden als die Mitte.
+
+
 ## Ein Faecher: Rippen von einem Fuss aus, mit einem Netz dazwischen. Er steht
 ## quer zur Stroemung, weil er von ihr lebt.
 func _koralle_faecher(p: Vector2, r: float, farbe: Color, kraft: float,
@@ -523,11 +536,21 @@ func _koralle_faecher(p: Vector2, r: float, farbe: Color, kraft: float,
         var w := lerpf(-1.05, 1.05, t) + neigung + 0.05 * sin(zeit * 0.4 + float(i))
         var laenge := r * (0.55 + 0.45 * sin(t * PI)) * arme[i]
         var richtung := Vector2(innen * sin(w), -cos(w))
-        var spitze := p + richtung * laenge
-        spitzen.append(spitze)
-        draw_line(p, spitze, Color(farbe.r, farbe.g, farbe.b, 0.34 * kraft),
+        spitzen.append(p + richtung * laenge)
+
+    # Das Netz als Flaeche, mit Verlauf vom Fuss zur Kante: dicht am Stiel,
+    # ausgefranst am Rand. Erst danach die Rippen darauf.
+    if spitzen.size() > 2:
+        var netz := PackedVector2Array([p])
+        var farben := PackedColorArray([Color(farbe.r, farbe.g, farbe.b, 0.20 * kraft)])
+        for sp in spitzen:
+            netz.append(sp)
+            farben.append(Color(farbe.r, farbe.g, farbe.b, 0.05 * kraft))
+        draw_polygon(netz, farben)
+
+    for i in n:
+        draw_line(p, spitzen[i], Color(farbe.r, farbe.g, farbe.b, 0.34 * kraft),
             1.0 + r * 0.035)
-    # Das Netz zwischen den Rippen - daran erkennt man einen Faecher.
     if spitzen.size() > 1:
         for anteil in [0.55, 0.85]:
             var bogen := PackedVector2Array()
@@ -547,8 +570,16 @@ func _koralle_roehren(p: Vector2, r: float, farbe: Color, kraft: float,
         var fuss := p + Vector2(innen * lerpf(-0.5, 0.5, t) * r * 0.9, 0.0)
         var hoch := r * arme[i] * (0.85 + 0.15 * atem)
         var spitze := fuss + Vector2(innen * 0.18 * r * (t - 0.5), -hoch)
-        draw_line(fuss, spitze, Color(farbe.r, farbe.g, farbe.b, 0.30 * kraft),
-            1.4 + r * 0.05)
+        # Unten dick, oben schmal - eine Roehre mit gleichbleibender Breite
+        # ist ein Strich.
+        var quer := (spitze - fuss).orthogonal().normalized()
+        var dick := 1.6 + r * 0.075
+        draw_colored_polygon(PackedVector2Array([
+            fuss + quer * dick, spitze + quer * dick * 0.44,
+            spitze - quer * dick * 0.44, fuss - quer * dick,
+        ]), Color(farbe.r, farbe.g, farbe.b, 0.24 * kraft))
+        draw_line(fuss, spitze, Color(farbe.r, farbe.g, farbe.b, 0.26 * kraft),
+            1.0 + r * 0.03)
         draw_circle(spitze, 1.2 + r * 0.055,
             Color(farbe.r, farbe.g, farbe.b, 0.42 * kraft))
         draw_circle(spitze, 0.6 + r * 0.022,
@@ -558,13 +589,24 @@ func _koralle_roehren(p: Vector2, r: float, farbe: Color, kraft: float,
 ## Eine Anemone: ein Fuss und Arme, die sich einzeln bewegen.
 func _koralle_anemone(p: Vector2, r: float, farbe: Color, kraft: float,
         innen: float, arme: PackedFloat32Array, atem: float) -> void:
-    draw_circle(p, r * 0.30 * (0.9 + 0.1 * atem),
-        Color(farbe.r, farbe.g, farbe.b, 0.20 * kraft))
+    # Der Fuss ist eine Kuppel, kein Punkt. Vorher stand hier ein Kreis mit
+    # dem Radius eines Drittels - aus dem ragten die Arme heraus wie Draehte
+    # aus einer Perle.
+    var breit := r * 0.46
+    var hoch := r * 0.30 * (0.9 + 0.1 * atem)
+    var kuppe := PackedVector2Array()
+    for k in 13:
+        var w := lerpf(PI, TAU, float(k) / 12.0)
+        kuppe.append(p + Vector2(cos(w) * breit, sin(w) * hoch + hoch * 0.35))
+    draw_colored_polygon(kuppe, Color(farbe.r, farbe.g, farbe.b, 0.26 * kraft))
+    draw_polyline(kuppe, Color(farbe.r, farbe.g, farbe.b, 0.34 * kraft), 1.2, true)
+
     for i in arme.size():
         var t := float(i) / float(maxi(1, arme.size() - 1))
         var w := lerpf(-1.25, 1.25, t)
-        var linie := PackedVector2Array([p])
-        var punkt := p
+        var fuss := p + Vector2(cos(lerpf(PI, TAU, t)) * breit * 0.7, -hoch * 0.4)
+        var linie := PackedVector2Array([fuss])
+        var punkt := fuss
         var richtung := Vector2(innen * sin(w), -cos(w))
         for g in 3:
             richtung = richtung.rotated(
@@ -1047,14 +1089,27 @@ func _zeichne_nischen() -> void:
         if i < polypen.size():
             continue
         var frei := bauphase and naehrstoffe >= Graben.polyp_kosten(polypen.size())
+
+        # **Waehrend der Welle ist eine Nische nur eine Delle im Fels.**
+        #
+        # Hier stand fuer beide Lagen derselbe Ring, waehrend der Welle nur
+        # etwas blasser: acht leuchtende Kreise, die ueber beide Waende
+        # verteilt am Bild klebten wie Aufkleber. Antippen kann man sie nur
+        # zwischen den Wellen - solange sie nichts tun, duerfen sie auch
+        # nichts fordern. Ein knapper Bogen auf der dem Graben zugewandten
+        # Seite genuegt, damit man spaeter weiss, wo sie waren.
+        if not bauphase:
+            var w := 0.0 if p.x > 0.0 else PI
+            draw_arc(p, Graben.POLYP_RADIUS * 0.9, w - 1.1, w + 1.1, 12,
+                Color(0.32, 0.60, 0.66, 0.13), 1.4, true)
+            continue
+
         var puls := 0.5 + 0.5 * sin(zeit * 3.0 + float(i))
-        var deckung := 0.16 + (0.30 * puls if frei else 0.0)
+        var deckung := 0.20 + (0.30 * puls if frei else 0.0)
         draw_circle(p, Graben.POLYP_RADIUS * 1.5, Color(0.20, 0.42, 0.46, deckung * 0.5))
         draw_arc(p, Graben.POLYP_RADIUS, 0.0, TAU, 20,
             Color(0.42, 0.78, 0.82, deckung + 0.14), 1.8, true)
         if frei:
-            # Ein Kreuz, das nur waehrend der Bauphase erscheint. Waehrend der
-            # Welle darf hier nichts blinken - der Blick gehoert dem Schlund.
             draw_line(p - Vector2(5.0, 0.0), p + Vector2(5.0, 0.0),
                 Color(0.72, 1.0, 0.92, 0.5 + 0.4 * puls), 1.8)
             draw_line(p - Vector2(0.0, 5.0), p + Vector2(0.0, 5.0),
