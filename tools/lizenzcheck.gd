@@ -16,6 +16,10 @@ extends SceneTree
 const QUELLTEXT: PackedStringArray = [
     ".gd", ".gdshader", ".tscn", ".tres", ".godot", ".cfg", ".md", ".py",
     ".yml", ".yaml", ".json", ".gitignore", ".uid", ".txt", ".mjs", ".js",
+    # Ein Schalenskript ist Quelltext wie jedes andere. Es fehlte hier nur,
+    # weil es bis `tools/ladenbilder.sh` keines gab - und der Pruefer hat das
+    # zu Recht gemeldet, statt still durchzuwinken.
+    ".sh",
     # `.import` erzeugt Godot selbst aus der Datei daneben. Sie traegt keinen
     # fremden Inhalt, und der Eintrag der Datei daneben deckt sie mit ab.
     ".import",
