@@ -761,8 +761,17 @@ func _linienbild(breite: float, oben: float, unten: float,
     # Hitze nebeneinanderlegen, vier verschieden gekippte nicht. Die Hoehe
     # kommt jetzt aus der Spaltenbreite, damit keiner uebersteht.
     var breit := (breite - RAND * 2.0) / float(Brutlinien.zahl())
+    # **Der laengste Kegel gibt den Massstab.**
+    #
+    # Tiefenblick reicht anderthalbmal so weit wie die anderen. Zeichnet man
+    # ihn einfach laenger, laeuft er oben aus dem Kasten; setzt man dafuer
+    # seine Spitze tiefer, steht seine Beschriftung hundertdreissig Pixel
+    # unter allen anderen. Beides sieht nach Fehler aus. Also wird die
+    # gemeinsame Hoehe durch den groessten Faktor geteilt: alle sieben teilen
+    # sich Spitze und Oberkante, und der laengste fuellt den Platz genau aus.
+    var laengster := maxf(1.0, Brutlinien.TIEFENBLICK_REICHWEITE)
     var kegelhoch := clampf(minf(hoch - 106.0, breit * 0.5 / sin(0.30)),
-        90.0, 470.0)
+        90.0, 470.0) / laengster
     # **Senkrecht mittig, nicht oben angeschlagen.**
     #
     # Vorher stand das Bild direkt unter der Ueberschrift, mit der
@@ -790,7 +799,14 @@ func _linienbild(breite: float, oben: float, unten: float,
         var halb := 0.30
         var neigung := 0.0
         var glut := 0.44
+        # Tiefenblick aendert die **Form**, nicht die Staerke - also muss der
+        # Kegel hier wirklich schmaler und laenger stehen. Ohne das saehe die
+        # einzige Linie, die man an ihrem Umriss erkennt, aus wie keine.
+        var laenger := 1.0
         match index:
+            Brutlinien.Linie.TIEFENBLICK:
+                halb = 0.30 * Brutlinien.TIEFENBLICK_WINKEL
+                laenger = Brutlinien.TIEFENBLICK_REICHWEITE
             Brutlinien.Linie.KALTBRAND:
                 # Deutlich schmaler und deutlich heisser. Bei 0.20 gegen 0.30
                 # war der Unterschied im Bild eine Handbreit - und "ein Ziel
@@ -818,6 +834,9 @@ func _linienbild(breite: float, oben: float, unten: float,
         # Schlickschwaden und am Leib des Waechters schiefging. Eine Flaeche
         # mit Farbe je Eckpunkt kann, was eine Stapelung nicht kann: auf der
         # Achse voll und an den Flanken genau null.
+        # Der laengere Kegel darf nicht aus dem Kasten laufen: was ueber die
+        # gemeinsame Hoehe hinausginge, wird von der Spitze abgezogen.
+        var weit := kegelhoch * laenger
         var strahl := PackedVector2Array([spitze])
         var farben := PackedColorArray([
             Color(farbe.r, farbe.g, farbe.b, 0.42 * glut * deckung)])
@@ -825,7 +844,7 @@ func _linienbild(breite: float, oben: float, unten: float,
         for e in rippen + 1:
             var w := lerpf(-halb, halb, float(e) / float(rippen))
             var rand_ab := 1.0 - pow(absf(w) / maxf(0.001, halb), 1.6)
-            strahl.append(spitze + achse.rotated(w) * kegelhoch)
+            strahl.append(spitze + achse.rotated(w) * weit)
             farben.append(Color(farbe.r, farbe.g, farbe.b,
                 0.30 * glut * deckung * rand_ab))
         _flaeche.draw_polygon(strahl, farben)
@@ -834,7 +853,7 @@ func _linienbild(breite: float, oben: float, unten: float,
         # ablesbar, und genau die unterscheidet Kaltbrand von den anderen.
         for s_seite: float in SEITEN:
             _flaeche.draw_line(spitze,
-                spitze + achse.rotated(s_seite * halb) * kegelhoch,
+                spitze + achse.rotated(s_seite * halb) * weit,
                 Color(farbe.r, farbe.g, farbe.b, 0.34 * deckung), 1.4)
 
         # Stromsinn: ein Bogen mit Spitze - er dreht schneller. Ein gerader
@@ -866,15 +885,35 @@ func _linienbild(breite: float, oben: float, unten: float,
                         (0.55 - 0.11 * float(k)) * deckung))
 
         # Ziele als kleine Ringe: Kaltbrand hat einen weniger, aber heller.
+        #
+        # **Zwei Linien wirken nicht auf den Kegel, sondern auf das Ziel** -
+        # Salzbrand auf seinen Panzer, Zwielicht auf die Schwelle, ab der es
+        # ueberhaupt brennt. Die stehen deshalb an den Zielen und nicht am
+        # Strahl: Zwielicht setzt sie an den **Rand** des Kegels, wo sie sonst
+        # nichts abbekaemen, Salzbrand zeigt sie mit gesprungener Schale.
         var ziele := 3 if index != Brutlinien.Linie.KALTBRAND else 2
+        var am_rand := index == Brutlinien.Linie.ZWIELICHT
         for k in ziele:
             var t := (float(k) + 0.5) / float(ziele)
-            var wo := spitze + achse.rotated(lerpf(-halb * 0.55, halb * 0.55, t)) \
-                * kegelhoch * (0.44 + 0.10 * float(k % 2))
+            var quer := lerpf(-halb * 0.55, halb * 0.55, t)
+            if am_rand:
+                quer = halb * (0.86 if k % 2 == 0 else -0.86)
+            var wo := spitze + achse.rotated(quer) \
+                * weit * (0.44 + 0.10 * float(k % 2))
             _flaeche.draw_circle(wo, (5.0 + 3.0 * glut) * 1.8,
                 Color(farbe.r, farbe.g, farbe.b, 0.10 * deckung))
-            _flaeche.draw_arc(wo, 5.0 + 3.0 * glut, 0.0, TAU, 14,
-                Color(1.0, 0.98, 0.94, (0.42 + 0.5 * glut) * deckung), 1.6)
+            var ring := 5.0 + 3.0 * glut
+            if index == Brutlinien.Linie.SALZBRAND:
+                # Gesprungen: zwei Boegen mit einer Luecke statt eines Kreises.
+                for haelfte in 2:
+                    var a0 := PI * float(haelfte) + 0.34
+                    _flaeche.draw_arc(wo, ring, a0, a0 + PI - 0.68, 10,
+                        Color(1.0, 0.98, 0.94, (0.42 + 0.5 * glut) * deckung), 1.6)
+                _flaeche.draw_line(wo + Vector2(-ring, 0.0), wo + Vector2(ring, 0.0),
+                    Color(farbe.r, farbe.g, farbe.b, 0.55 * deckung), 1.4)
+            else:
+                _flaeche.draw_arc(wo, ring, 0.0, TAU, 14,
+                    Color(1.0, 0.98, 0.94, (0.42 + 0.5 * glut) * deckung), 1.6)
 
         var beschriftung := Brutlinien.name_von(index)
         _text(Vector2(mitte_x, spitze.y + 20.0), beschriftung, 11,
@@ -1295,6 +1334,51 @@ func _brutsinnbild(p: Vector2, r: float, index: int, farbe: Color, hat: bool) ->
                     p + Vector2(seite * r * 0.55, r * 0.3),
                     Color(farbe.r, farbe.g, farbe.b, 0.30 * deckung), 1.4)
             _flaeche.draw_circle(p, r * 0.2, Color(1.0, 0.96, 1.0, 0.9 * deckung))
+        Brutlinien.Linie.SALZBRAND:
+            # Ein gesprungener Panzer: die Platte bleibt, der Riss geht durch.
+            var schale := PackedVector2Array()
+            for k in 9:
+                var w := lerpf(-PI * 0.9, PI * 0.9, float(k) / 8.0)
+                schale.append(p + Vector2(cos(w), sin(w) * 0.82) * r * 0.9)
+            _flaeche.draw_polyline(schale,
+                Color(farbe.r, farbe.g, farbe.b, 0.60 * deckung), 2.2, true)
+            var riss := PackedVector2Array([
+                p + Vector2(-r * 0.55, -r * 0.60),
+                p + Vector2(-r * 0.12, -r * 0.10),
+                p + Vector2(-r * 0.30, r * 0.18),
+                p + Vector2(r * 0.20, r * 0.72),
+            ])
+            _flaeche.draw_polyline(riss,
+                Color(1.0, 0.94, 0.72, 0.90 * deckung), 2.0, true)
+        Brutlinien.Linie.TIEFENBLICK:
+            # Ein schmaler Keil, der ueber den Rand hinausreicht.
+            var keil := PackedVector2Array([
+                p + Vector2(0.0, r * 0.95),
+                p + Vector2(-r * 0.30, -r * 1.05),
+                p + Vector2(r * 0.30, -r * 1.05),
+            ])
+            _flaeche.draw_colored_polygon(keil,
+                Color(farbe.r, farbe.g, farbe.b, 0.20 * deckung))
+            _flaeche.draw_polyline(keil + PackedVector2Array([keil[0]]),
+                Color(farbe.r, farbe.g, farbe.b, 0.70 * deckung), 1.6, true)
+            _flaeche.draw_circle(p + Vector2(0.0, -r * 0.85), r * 0.14,
+                Color(1.0, 1.0, 0.96, 0.85 * deckung))
+        Brutlinien.Linie.ZWIELICHT:
+            # Zwei Schwellen, die sich zur Mitte hin aufloesen: aussen hart,
+            # innen ein Verlauf. Das ist genau, was die Linie tut.
+            for seite: float in SEITEN:
+                var x := p.x + seite * r * 0.72
+                _flaeche.draw_line(Vector2(x, p.y - r * 0.8),
+                    Vector2(x, p.y + r * 0.8),
+                    Color(farbe.r, farbe.g, farbe.b, 0.70 * deckung), 2.0)
+            for i in 7:
+                var t := float(i) / 6.0
+                var x2 := lerpf(p.x - r * 0.66, p.x + r * 0.66, t)
+                var kraft := 1.0 - absf(t - 0.5) * 2.0
+                _flaeche.draw_line(Vector2(x2, p.y - r * 0.5),
+                    Vector2(x2, p.y + r * 0.5),
+                    Color(farbe.r, farbe.g, farbe.b,
+                        (0.12 + 0.42 * kraft) * deckung), 1.4)
 
 
 func _kammer(kasten: Rect2, k: int, stand: KolonieStand, jetzt: float) -> void:

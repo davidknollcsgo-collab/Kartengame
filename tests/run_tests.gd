@@ -34,6 +34,7 @@ const TESTS: PackedStringArray = [
     "_test_kegel_waehlt_nach_wirkung",
     "_test_kurve_haengt_nicht_an_der_abschnittszahl",
     "_test_jeder_abschnitt_ist_vollstaendig",
+    "_test_jede_brutlinie_tut_etwas",
     "_test_spiegler_brennt_nur_im_randlicht",
     "_test_drehung_begrenzt",
     "_test_drehung_erreicht_ziel",
@@ -1594,3 +1595,54 @@ func _test_jeder_abschnitt_ist_vollstaendig() -> bool:
                 % [n, int(felder[name]), name]):
             return false
     return true
+
+
+## Jede Brutlinie muss mindestens eine Zahl aendern.
+##
+## **Eine Linie, die nichts tut, faellt niemandem auf.** Sie steht in der
+## Liste, kostet Naehrstoff, hat einen Namen und eine Farbe - und wer sie
+## zuechtet, merkt den Unterschied nur daran, dass keiner da ist. Genau so
+## etwas entsteht, wenn eine Tabellenzeile geschrieben und die
+## Verwendungsstelle vergessen wird; beides liegt in verschiedenen Dateien.
+##
+## Geprueft wird nicht *wie stark*, sondern *ob ueberhaupt*: die Staerke ist
+## eine Balance-Entscheidung, das Wirken ist eine Zusicherung.
+func _test_jede_brutlinie_tut_etwas() -> bool:
+    for i in range(1, Brutlinien.zahl()):
+        var anders := false
+        if not is_equal_approx(Brutlinien.drehtempo_faktor(i), 1.0):
+            anders = true
+        if not is_equal_approx(Brutlinien.stroemung_faktor(i), 1.0):
+            anders = true
+        if Brutlinien.nachglut_dauer(i) > 0.0:
+            anders = true
+        if Brutlinien.ziele_zusatz(i) != 0:
+            anders = true
+        if not is_equal_approx(Brutlinien.leistung_faktor(i), 1.0):
+            anders = true
+        if Brutlinien.panzerbruch(i) > 0.0:
+            anders = true
+        if not is_equal_approx(Brutlinien.reichweite_faktor(i), 1.0):
+            anders = true
+        if not is_equal_approx(Brutlinien.winkel_faktor(i), 1.0):
+            anders = true
+        if Brutlinien.schwellen_nachlass(i) > 0.0:
+            anders = true
+        if not _melde(anders, "%s aendert keinen einzigen Wert"
+                % Brutlinien.name_von(i)):
+            return false
+
+    # Und die Linie KEINE muss wirklich nichts tun - sonst waeren die
+    # Grundwerte, mit denen der Wellenpruefer rechnet, nicht die Grundwerte.
+    var k := Brutlinien.Linie.KEINE
+    var neutral := is_equal_approx(Brutlinien.drehtempo_faktor(k), 1.0) \
+        and is_equal_approx(Brutlinien.stroemung_faktor(k), 1.0) \
+        and Brutlinien.nachglut_dauer(k) == 0.0 \
+        and Brutlinien.ziele_zusatz(k) == 0 \
+        and is_equal_approx(Brutlinien.leistung_faktor(k), 1.0) \
+        and Brutlinien.panzerbruch(k) == 0.0 \
+        and is_equal_approx(Brutlinien.reichweite_faktor(k), 1.0) \
+        and is_equal_approx(Brutlinien.winkel_faktor(k), 1.0) \
+        and Brutlinien.schwellen_nachlass(k) == 0.0
+    return _melde(neutral,
+        "die Linie KEINE aendert etwas - dann sind die Grundwerte keine")

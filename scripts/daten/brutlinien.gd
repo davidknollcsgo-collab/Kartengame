@@ -18,6 +18,9 @@ enum Linie {
     STROMSINN,   ## Gegen die Stroemung
     NACHGLUT,    ## Das Licht klingt nach
     KALTBRAND,   ## Weniger Ziele, jedes haerter
+    SALZBRAND,   ## Frisst den Panzer statt ihn zu ueberwinden
+    TIEFENBLICK, ## Schmaler und weiter - man faengt sie weiter oben
+    ZWIELICHT,   ## Nimmt den Schwellen ihre Schaerfe
 }
 
 ## Was jede Linie kostet und was sie tut. Die Wirkungen sind bewusst
@@ -48,6 +51,24 @@ const TABELLE: Array[Dictionary] = [
         &"kosten": 6000,
         &"farbe": Color(0.78, 0.62, 1.00),
     },
+    {
+        &"name": "Saltburn",
+        &"wirkung": "Eats through armour. Shells and plating count for much less.",
+        &"kosten": 14000,
+        &"farbe": Color(1.00, 0.84, 0.40),
+    },
+    {
+        &"name": "Deepsight",
+        &"wirkung": "A narrower cone that reaches much further. Catch them high.",
+        &"kosten": 32000,
+        &"farbe": Color(0.52, 0.98, 0.72),
+    },
+    {
+        &"name": "Duskveil",
+        &"wirkung": "Blunts every light threshold. The fringe burns what only the core could.",
+        &"kosten": 70000,
+        &"farbe": Color(0.68, 0.78, 0.96),
+    },
 ]
 
 ## --- Stromsinn ---
@@ -62,6 +83,32 @@ const NACHGLUT_ANTEIL := 0.30
 ## --- Kaltbrand ---
 const KALTBRAND_ZIELE := -1
 const KALTBRAND_LEISTUNG := 1.62
+
+## --- Salzbrand ---
+##
+## **Die Antwort auf eine Klippe, nicht auf eine Zahl.** Panzer wird vom
+## Schaden *abgezogen*, nicht mit ihm verrechnet - sinkt die Helligkeit, faellt
+## `leistung * hell` irgendwann unter den Panzer, und dann ist der Schaden
+## nicht klein, sondern null. Genau das passiert in Dunkelabschnitten mit
+## Schildkorallen und der Panzerung-Mutation. Salzbrand nimmt der Klippe die
+## Hoehe, statt die Leistung zu erhoehen.
+const SALZBRAND_PANZERBRUCH := 0.62
+
+## --- Tiefenblick ---
+##
+## Weiter und schmaler. Das ist der einzige Ausbau im Spiel, der die **Form**
+## des Kegels aendert statt seiner Staerke: man faengt die Tiere weiter oben,
+## hat dafuer weniger Breite und muss frueher entscheiden.
+const TIEFENBLICK_REICHWEITE := 1.45
+const TIEFENBLICK_WINKEL := 0.66
+
+## --- Zwielicht ---
+##
+## Nimmt beiden Schwellen die Schaerfe: die Glutqualle brennt auch ausserhalb
+## ihres Kerns, der Spiegler auch im Kern. Zwei Arten, die man vorher nur mit
+## der richtigen Handbewegung erwischt hat, werden damit gewoehnlich - und
+## das ist der Preis wert, den die Linie kostet.
+const ZWIELICHT_NACHLASS := 0.55
 
 
 static func zahl() -> int:
@@ -110,6 +157,25 @@ static func ziele_zusatz(index: int) -> int:
 
 static func leistung_faktor(index: int) -> float:
     return KALTBRAND_LEISTUNG if index == Linie.KALTBRAND else 1.0
+
+
+## Wieviel vom Panzer eines Raeubers wegfaellt. 0.0 heisst: der volle Panzer.
+static func panzerbruch(index: int) -> float:
+    return SALZBRAND_PANZERBRUCH if index == Linie.SALZBRAND else 0.0
+
+
+static func reichweite_faktor(index: int) -> float:
+    return TIEFENBLICK_REICHWEITE if index == Linie.TIEFENBLICK else 1.0
+
+
+static func winkel_faktor(index: int) -> float:
+    return TIEFENBLICK_WINKEL if index == Linie.TIEFENBLICK else 1.0
+
+
+## Um wieviel jede Lichtschwelle nachlaesst - die Mindesthelligkeit der
+## Glutqualle nach unten, die Obergrenze des Spieglers nach oben.
+static func schwellen_nachlass(index: int) -> float:
+    return ZWIELICHT_NACHLASS if index == Linie.ZWIELICHT else 0.0
 
 
 ## In welcher Reihenfolge die Linien freigeschaltet werden. Eine Linie laesst

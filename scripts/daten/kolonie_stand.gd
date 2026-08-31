@@ -402,11 +402,23 @@ func nachglut_anteil() -> float:
 
 
 func reichweite_faktor() -> float:
-    return Kammern.reichweite_faktor(stufe(Kammern.Kammer.LEUCHTORGAN))
+    return Kammern.reichweite_faktor(stufe(Kammern.Kammer.LEUCHTORGAN)) \
+        * Brutlinien.reichweite_faktor(linie)
 
 
 func winkel_faktor() -> float:
-    return Kammern.winkel_faktor(stufe(Kammern.Kammer.LEUCHTORGAN))
+    return Kammern.winkel_faktor(stufe(Kammern.Kammer.LEUCHTORGAN)) \
+        * Brutlinien.winkel_faktor(linie)
+
+
+## Wieviel vom Panzer eines Raeubers wegfaellt - siehe Salzbrand.
+func panzerbruch() -> float:
+    return Brutlinien.panzerbruch(linie)
+
+
+## Um wieviel jede Lichtschwelle nachlaesst - siehe Zwielicht.
+func schwellen_nachlass() -> float:
+    return Brutlinien.schwellen_nachlass(linie)
 
 
 func polyp_leistung() -> float:

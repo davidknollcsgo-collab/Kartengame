@@ -455,14 +455,25 @@ func _verbrenne(delta: float) -> void:
     # die Helligkeit, sondern was das Tier davon tatsaechlich abbekommt -
     # sonst belegt ein Tier, das gerade gar nicht brennen kann, einen der
     # wenigen Zielplaetze. Siehe `Schlund.brennende()`.
+    # Was die getragene Brutlinie an den Werten des Raeubers aendert. Beides
+    # einmal je Bild geholt und nicht je Tier - `Fortschritt.stand` ist ein
+    # Autoload-Zugriff, und hier stehen bis zu zweihundert Tiere.
+    var bruch := Fortschritt.stand.panzerbruch()
+    var nachlass := Fortschritt.stand.schwellen_nachlass()
+
     var wirkung := PackedFloat32Array()
     wirkung.resize(sichtbar.size())
     for i in sichtbar.size():
         var t := sichtbar[i]
+        # Salzbrand frisst den Panzer, Zwielicht nimmt den Schwellen die
+        # Schaerfe: die Mindesthelligkeit sinkt, die Obergrenze steigt.
+        var hoechst := Wellen.hoechst_licht_in(t.art, t.welle)
+        if hoechst > 0.0:
+            hoechst = minf(1.0, hoechst + nachlass)
         wirkung[i] = Schlund.schaden_an(leistung(), hell[i],
-            Wellen.panzer_in(t.art, t.welle),
-            Wellen.mindest_licht_in(t.art, t.welle),
-            Wellen.hoechst_licht_in(t.art, t.welle))
+            Wellen.panzer_in(t.art, t.welle) * (1.0 - bruch),
+            maxf(0.0, Wellen.mindest_licht_in(t.art, t.welle) - nachlass),
+            hoechst)
 
     for i in Schlund.brennende(wirkung, ziele()):
         var r := sichtbar[i]
