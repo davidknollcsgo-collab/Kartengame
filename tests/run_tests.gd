@@ -32,6 +32,8 @@ const TESTS: PackedStringArray = [
     "_test_takt_deckelt_den_sprung",
     "_test_speichern_ist_unteilbar",
     "_test_kegel_waehlt_nach_wirkung",
+    "_test_kurve_haengt_nicht_an_der_abschnittszahl",
+    "_test_jeder_abschnitt_ist_vollstaendig",
     "_test_spiegler_brennt_nur_im_randlicht",
     "_test_drehung_begrenzt",
     "_test_drehung_erreicht_ziel",
@@ -1509,5 +1511,61 @@ func _test_spiegler_brennt_nur_im_randlicht() -> bool:
             continue
         if not _melde(Wellen.mindest_licht_in(art, n) == Arten.mindest_licht(art),
                 "Welle %d gibt dem Spiegler zusaetzlich eine Untergrenze" % n):
+            return false
+    return true
+
+
+## Die Fortschrittskurve darf sich nicht aendern, wenn der Graben einen
+## Abschnitt mehr bekommt.
+##
+## Sie stand als `(nummer - 1) / (ZYKLUS - 1) * STUFEN_JE_ZYKLUS` da und hing
+## damit an `Graben.ABSCHNITTE`. Ein siebter Abschnitt haette die ganze Kurve
+## gestreckt und mit ihr `Wellen.staerke()`, den Wellenpruefer und den
+## Kolonielauf - obwohl "ein Abschnitt mehr" eine Inhaltsentscheidung ist und
+## keine ueber das Tempo.
+##
+## Geprueft wird beides: dass die neue Rechnung die alte trifft, und dass sie
+## `Graben.ZYKLUS` nicht mehr braucht.
+func _test_kurve_haengt_nicht_an_der_abschnittszahl() -> bool:
+    for n in [1, 2, 17, 60, 61, 120, 241, 400]:
+        var frueher := minf(float(Kammern.HOECHSTSTUFE),
+            float(maxi(1, n) - 1) / 59.0 * float(Ausbau.STUFEN_JE_ZYKLUS))
+        var jetzt := Ausbau.stufe_kurve(n)
+        if not _melde(is_equal_approx(frueher, jetzt),
+                "Welle %d: Kurve war %.4f, ist %.4f" % [n, frueher, jetzt]):
+            return false
+
+    # Und die Kurve muss aus der Wellenzahl allein folgen: zwei Wellen mit
+    # demselben Abstand muessen denselben Zuwachs haben, egal wo im Zyklus.
+    var a := Ausbau.stufe_kurve(11) - Ausbau.stufe_kurve(1)
+    var b := Ausbau.stufe_kurve(71) - Ausbau.stufe_kurve(61)
+    return _melde(is_equal_approx(a, b),
+        "zehn Wellen bringen mal %.4f und mal %.4f Stufen" % [a, b])
+
+
+## Jeder Abschnitt braucht **jeden** seiner Werte.
+##
+## `Regeln` fuehrt neun Felder je Abschnitt in getrennten Feldern - Namen,
+## Hinweise, drei Farbsaetze, Schnee, Fels, Saeulen, Enge. Geprueft wurden
+## bisher zwei davon. Wer einen Abschnitt hinzufuegt und ein Feld vergisst,
+## bekommt entweder einen Absturz beim Betreten oder, schlimmer, still die
+## Farbe des Nachbarn - und beides faellt erst dem Spieler auf.
+func _test_jeder_abschnitt_ist_vollstaendig() -> bool:
+    var n := Graben.ABSCHNITTE
+    var felder := {
+        "NAMEN": Regeln.NAMEN.size(),
+        "HINWEISE": Regeln.HINWEISE.size(),
+        "TIEF_FARBEN": Regeln.TIEF_FARBEN.size(),
+        "GRUND_FARBEN": Regeln.GRUND_FARBEN.size(),
+        "SCHEIN_FARBEN": Regeln.SCHEIN_FARBEN.size(),
+        "SCHNEE_DICHTE": Regeln.SCHNEE_DICHTE.size(),
+        "FELS_FARBEN": Regeln.FELS_FARBEN.size(),
+        "SAEULEN": Regeln.SAEULEN.size(),
+        "ENGE": Regeln.ENGE.size(),
+    }
+    for name in felder:
+        if not _melde(int(felder[name]) == n,
+                "%d Abschnitte, aber %d Eintraege in %s"
+                % [n, int(felder[name]), name]):
             return false
     return true

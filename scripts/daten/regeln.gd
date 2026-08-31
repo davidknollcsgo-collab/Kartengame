@@ -139,28 +139,64 @@ static func fels_farbe(abschnitt: int) -> Color:
 ##
 ## Zwei ueberlagerte Schwingungen mit unrundem Verhaeltnis, damit sich das
 ## Muster nicht in wenigen Sekunden wiederholt und auswendig lernen laesst.
-const STROM_AB := 1          ## ab Abschnitt 2 (Index 1)
 const STROM_WEITE := 0.155
 const STROM_WEITE_STURM := 0.245
 const STROM_TAKT_A := 0.41
 const STROM_TAKT_B := 0.97
 
 ## --- Dunkelphasen: das Leuchtorgan setzt aus ---
-const DUNKEL_AB := 3
 const DUNKEL_ZYKLUS := 7.4
 const DUNKEL_DAUER := 1.25
 const DUNKEL_ZYKLUS_STURM := 5.6
 const DUNKEL_TIEFE := 0.22    ## Restlicht waehrend der Pause
 
 ## --- Truebe Tiefe: die Reichweite verliert frueher an Kraft ---
-const TRUEB_AB := 2
 const TIEFE_KERN_TRUEB := 0.26
 
 ## --- Streulicht: nur die Mitte des Kegels brennt ---
-const STREU_AB := 4
 const RAND_KERN_STREU := 0.30
 
 const STURM := 5              ## Abschnitt 6 (Index 5)
+
+## --- Welcher Abschnitt welche Regel traegt ---
+##
+## **Vorher stand das als `if a < STROM_AB: return 0.0` in jeder Regel, und
+## das war eine Sackgasse.** Die Schwellen sind kumulativ: wer eine Regel ab
+## Abschnitt 1 hat, hat sie in allen folgenden auch. Solange es sechs
+## Abschnitte gibt, liest sich das wie eine Steigerung. Sobald ein siebter
+## dazukommt, ist er zwangslaeufig der bisher haerteste - mit **allem**, und
+## wegen `a >= STURM` sogar in Sturmstaerke. Ein Graben, in dem jeder neue
+## Abschnitt nur mehr Regeln auf einmal hat, kann nicht mehr atmen: er hat
+## keine Ruhe, keinen Wechsel und keine Ueberraschung, nur Zuwachs.
+##
+## Eine Tabelle sagt dasselbe fuer die ersten sechs Abschnitte und laesst
+## danach die Wahl. Sie ist bewusst so gefuellt, dass sich am bestehenden
+## Spiel **nichts** aendert - der Wellenpruefer muss danach dieselbe Zeile
+## ausgeben wie davor, sonst war es kein Umbau, sondern eine Aenderung.
+enum Regel { STROM, DUNKEL, TRUEB, STREU }
+
+## Je Abschnitt: welche Regeln gelten, und ob in Sturmstaerke.
+const TAFEL: Array[Dictionary] = [
+    {&"regeln": [], &"sturm": false},
+    {&"regeln": [Regel.STROM], &"sturm": false},
+    {&"regeln": [Regel.STROM, Regel.TRUEB], &"sturm": false},
+    {&"regeln": [Regel.STROM, Regel.TRUEB, Regel.DUNKEL], &"sturm": false},
+    {&"regeln": [Regel.STROM, Regel.TRUEB, Regel.DUNKEL, Regel.STREU],
+        &"sturm": false},
+    {&"regeln": [Regel.STROM, Regel.TRUEB, Regel.DUNKEL, Regel.STREU],
+        &"sturm": true},
+]
+
+
+## Ob dieser Abschnitt die Regel traegt.
+static func hat(abschnitt: int, regel: int) -> bool:
+    var i := clampi(abschnitt, 0, TAFEL.size() - 1)
+    return (TAFEL[i][&"regeln"] as Array).has(regel)
+
+
+## Ob dieser Abschnitt seine Regeln in Sturmstaerke fuehrt.
+static func stuermisch(abschnitt: int) -> bool:
+    return bool(TAFEL[clampi(abschnitt, 0, TAFEL.size() - 1)][&"sturm"])
 
 
 static func name_von(abschnitt: int) -> String:
@@ -174,9 +210,9 @@ static func hinweis(abschnitt: int) -> String:
 ## Ablenkung des Kegels in Bogenmass. 0.0 heisst ruhiges Wasser.
 static func stroemung(nummer: int, zeit: float) -> float:
     var a := Graben.abschnitt(nummer)
-    if a < STROM_AB:
+    if not hat(a, Regel.STROM):
         return 0.0
-    var weite := STROM_WEITE_STURM if a >= STURM else STROM_WEITE
+    var weite := STROM_WEITE_STURM if stuermisch(a) else STROM_WEITE
     return weite * (0.68 * sin(zeit * STROM_TAKT_A)
         + 0.32 * sin(zeit * STROM_TAKT_B + 1.9))
 
@@ -186,9 +222,9 @@ static func stroemung(nummer: int, zeit: float) -> float:
 ## Schaden, denn beide kommen aus derselben Zahl.
 static func helligkeit(nummer: int, zeit: float) -> float:
     var a := Graben.abschnitt(nummer)
-    if a < DUNKEL_AB:
+    if not hat(a, Regel.DUNKEL):
         return 1.0
-    var zyklus := DUNKEL_ZYKLUS_STURM if a >= STURM else DUNKEL_ZYKLUS
+    var zyklus := DUNKEL_ZYKLUS_STURM if stuermisch(a) else DUNKEL_ZYKLUS
     var seit := fmod(maxf(0.0, zeit), zyklus)
     if seit >= DUNKEL_DAUER:
         return 1.0
@@ -201,22 +237,33 @@ static func helligkeit(nummer: int, zeit: float) -> float:
 
 ## Ab welchem Anteil der Reichweite der Kegel abfaellt.
 static func tiefe_kern(nummer: int) -> float:
-    if Graben.abschnitt(nummer) < TRUEB_AB:
+    if not hat(Graben.abschnitt(nummer), Regel.TRUEB):
         return Schlund.TIEFE_KERN
     return TIEFE_KERN_TRUEB
 
 
 ## Wie breit der volle Kern des Kegels ist, als Anteil der Halbbreite.
 static func rand_kern(nummer: int) -> float:
-    if Graben.abschnitt(nummer) < STREU_AB:
+    if not hat(Graben.abschnitt(nummer), Regel.STREU):
         return Schlund.RAND_KERN
     return RAND_KERN_STREU
 
 
 ## Ob dieser Abschnitt gegenueber dem vorigen etwas Neues mitbringt. Nur dann
 ## lohnt es, den Spieler darauf hinzuweisen.
+##
+## **Aus der Tafel abgelesen, nicht aufgezaehlt.** Vorher stand hier eine
+## Liste der Schwellen - und die haette man bei jedem neuen Abschnitt von Hand
+## nachziehen muessen, mit dem einzigen Hinweis darauf, dass irgendwann eine
+## Tafel erscheint, die niemand ankuendigt. Neu ist ein Abschnitt, der eine
+## Regel traegt, die der vorige nicht hatte, oder der als erster stuermt.
 static func neu_in(abschnitt: int) -> bool:
-    return abschnitt in [0, STROM_AB, TRUEB_AB, DUNKEL_AB, STREU_AB, STURM]
+    if abschnitt <= 0:
+        return true
+    for r in [Regel.STROM, Regel.DUNKEL, Regel.TRUEB, Regel.STREU]:
+        if hat(abschnitt, r) and not hat(abschnitt - 1, r):
+            return true
+    return stuermisch(abschnitt) and not stuermisch(abschnitt - 1)
 
 
 # --- Was die Regeln den Spieler kosten -------------------------------------
@@ -268,9 +315,9 @@ static func _kegelanteil(rk: float, tk: float) -> float:
 ## Mittlere Helligkeit ueber einen vollen Dunkelzyklus.
 static func _mittlere_helligkeit(nummer: int) -> float:
     var a := Graben.abschnitt(nummer)
-    if a < DUNKEL_AB:
+    if not hat(a, Regel.DUNKEL):
         return 1.0
-    var zyklus := DUNKEL_ZYKLUS_STURM if a >= STURM else DUNKEL_ZYKLUS
+    var zyklus := DUNKEL_ZYKLUS_STURM if stuermisch(a) else DUNKEL_ZYKLUS
     var summe := 0.0
     for i in TAKTE:
         summe += helligkeit(nummer, (float(i) + 0.5) / float(TAKTE) * zyklus)
@@ -279,6 +326,6 @@ static func _mittlere_helligkeit(nummer: int) -> float:
 
 static func _stroemungsverlust(nummer: int) -> float:
     var a := Graben.abschnitt(nummer)
-    if a < STROM_AB:
+    if not hat(a, Regel.STROM):
         return 1.0
-    return STROM_VERLUST_STURM if a >= STURM else STROM_VERLUST
+    return STROM_VERLUST_STURM if stuermisch(a) else STROM_VERLUST

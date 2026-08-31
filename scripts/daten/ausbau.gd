@@ -80,6 +80,20 @@ static func durchsatz(nummer: int) -> float:
 ## steht das Tempo, dort die oberste Stufe, die es ueberhaupt gibt.
 const STUFEN_JE_ZYKLUS := 20
 
+## Wieviel Kammerstufe eine Welle wert ist.
+##
+## **Die Kurve haengt an gespielten Wellen, nicht an der Zahl der Abschnitte.**
+## Vorher stand sie als `(nummer - 1) / (ZYKLUS - 1) * STUFEN_JE_ZYKLUS` da,
+## und damit hing sie an `Graben.ABSCHNITTE`: wer dem Graben einen siebten
+## Abschnitt gibt, streckt ungewollt die gesamte Fortschrittskurve und
+## verschiebt damit `Wellen.staerke()`, den Wellenpruefer und den Kolonielauf
+## gleich mit. Ein Abschnitt mehr ist aber eine Inhaltsentscheidung und keine
+## ueber das Tempo - die beiden gehoeren getrennt.
+##
+## Der Wert ist so gewaehlt, dass er die bisherige Kurve **exakt** trifft:
+## zwanzig Stufen ueber neunundfuenfzig Wellen. Ein Test haelt das fest.
+const STUFEN_JE_WELLE := float(STUFEN_JE_ZYKLUS) / 59.0
+
 
 ## Die Kurve endet, wo die Kammern enden. Ohne diesen Deckel verlangte sie ab
 ## Welle 241 eine Stufe 81, die es auf keiner Kammer gibt - und der
@@ -90,8 +104,8 @@ const STUFEN_JE_ZYKLUS := 20
 ## will - die Zaehigkeit der Raeuber etwa -, braucht sie ungerundet, sonst
 ## springt sie alle drei Wellen und steht dazwischen still.
 static func stufe_kurve(nummer: int) -> float:
-    var t := float(maxi(1, nummer) - 1) / float(Graben.ZYKLUS - 1)
-    return minf(float(Kammern.HOECHSTSTUFE), t * float(STUFEN_JE_ZYKLUS))
+    return minf(float(Kammern.HOECHSTSTUFE),
+        float(maxi(1, nummer) - 1) * STUFEN_JE_WELLE)
 
 
 static func stufe_soll(nummer: int) -> int:
