@@ -308,6 +308,17 @@ func _zeichne() -> void:
     elif _sicht == Sicht.TAG:
         anzahl = Tagesziel.zahl()
     var oben := KOPF + 58.0
+    # **Eine Erklaerung, nicht sechs.** Auf dem Zuegereiter stand vor der
+    # ersten Begegnung sechsmal dasselbe Band: "Not yet encountered / Waves
+    # start to mutate in trench depth II". Sechs gleiche Zeilen sind keine
+    # Liste, sondern ein Fehler, der aussieht wie Absicht. Der Satz gehoert
+    # einmal ueber die Liste; in den Baendern steht dann, welcher Platz das
+    # ist und nicht noch einmal, warum er leer ist.
+    if _sicht == Sicht.ZUEGE:
+        _text(Vector2(RAND, oben + 12.0),
+            "A trait changes every raider in a wave. They begin in trench depth II.",
+            12, LEISE)
+        oben += 26.0
     var verfuegbar := hoehe - oben - FUSS - 24.0
     var passt := BAND
     var gebraucht := float(anzahl) * (BAND + LUECKE)
@@ -445,11 +456,25 @@ func _kopfzeile(breite: float, stand: KolonieStand) -> void:
         % [stand.hoechste_welle,
            Geister.platz(stand.hoechste_welle), Geister.zahl() + 1], 14, LEISE)
 
-    var rechts := breite - RAND
-    _text(Vector2(rechts, 34.0), Zahl.kurz(stand.naehrstoffe), 21, NAEHR, false, true)
+    # **Der Naehrstoff bekommt eine Flaeche.**
+    #
+    # Er stand als blanke Zahl an der Kante, in derselben Schrift wie der
+    # Rang darunter - und er ist das Einzige auf diesem Bildschirm, das man
+    # ausgibt. Jede Zahl auf den Karten wird gegen ihn gelesen; also gehoert
+    # er in einen eigenen Rahmen, damit das Auge ihn beim Vergleichen
+    # wiederfindet.
     var strom := stand.je_stunde()
-    var zeile := "Nutrients" if strom <= 0.0 else "Nutrients  +%s/h" % Zahl.kurz(int(strom))
-    _text(Vector2(rechts, 58.0), zeile, 13, LEISE, false, true)
+    var unten := "" if strom <= 0.0 else "+%s / h" % Zahl.kurz(int(strom))
+    var chip := Rect2(breite - RAND - 150.0, 18.0, 150.0, 52.0)
+    _flaeche.draw_rect(chip, Color(NAEHR.r, NAEHR.g, NAEHR.b, 0.07))
+    _flaeche.draw_rect(chip, Color(NAEHR.r, NAEHR.g, NAEHR.b, 0.28), false, 1.3)
+    _text(Vector2(chip.end.x - 12.0, chip.position.y + 28.0),
+        Zahl.kurz(stand.naehrstoffe), 22, NAEHR, false, true)
+    _text(Vector2(chip.position.x + 12.0, chip.position.y + 45.0),
+        "NUTRIENTS", 10, LEISE)
+    if not unten.is_empty():
+        _text(Vector2(chip.end.x - 12.0, chip.position.y + 45.0), unten, 11,
+            Color(NAEHR.r, NAEHR.g, NAEHR.b, 0.75), false, true)
 
     if stand.linie != Brutlinien.Linie.KEINE:
         _text(Vector2(breite * 0.5, 58.0), Brutlinien.name_von(stand.linie), 14,
@@ -471,12 +496,20 @@ func _umschalterzeile(breite: float) -> void:
     for i in anzahl:
         var kasten := Rect2(RAND + (breit + 8.0) * float(i), y, breit, 36.0)
         _reiter.append(kasten)
+        # **Der aktive Reiter braucht mehr als eine Nuance.** Er unterschied
+        # sich nur in der Deckung von den anderen; auf einem Telefon in der
+        # Hand sieht man das nicht. Ein Strich unter dem aktiven sagt es
+        # sofort - das ist der Reiter, in dem man steht.
         var aktiv := _sicht == i
-        _flaeche.draw_rect(kasten, Color(0.06, 0.16, 0.20, 0.9 if aktiv else 0.45))
-        _flaeche.draw_rect(kasten, Color(0.42, 0.86, 0.92, 0.5 if aktiv else 0.16),
+        _flaeche.draw_rect(kasten, Color(0.06, 0.16, 0.20, 0.92 if aktiv else 0.35))
+        _flaeche.draw_rect(kasten, Color(0.42, 0.86, 0.92, 0.45 if aktiv else 0.12),
             false, 1.4)
         _text(kasten.get_center() + Vector2(0.0, 5.0), BESCHRIFTUNG[i], 13,
             SCHRIFT if aktiv else LEISE, true)
+        if aktiv:
+            _flaeche.draw_rect(Rect2(kasten.position.x + 6.0,
+                kasten.end.y - 3.0, kasten.size.x - 12.0, 3.0),
+                Color(0.52, 0.94, 0.86, 0.9))
 
         # Ein Punkt am Reiter, wenn dort etwas abzuholen ist. Sonst muesste
         # man jeden Tag nachsehen, ob sich etwas getan hat.
@@ -548,8 +581,17 @@ func _tagesziel(kasten: Rect2, index: int, stand: KolonieStand) -> void:
 ## Nach unten dunkler: hier ist es umgekehrt zum Wasser draussen. Im Graben
 ## streut die Strecke und macht Fernes heller; im Stein kommt kein Licht an,
 ## und je tiefer gegraben ist, desto weniger.
-const FELS_OBEN := Color(0.062, 0.088, 0.104)
-const FELS_UNTEN := Color(0.014, 0.026, 0.036)
+## **Der Stein muss heller sein als die Hohlraeume.**
+##
+## Hier stand unten `(0.014, 0.026, 0.036)`, und ein ausgehoehlter Raum wird
+## mit `(0.010, 0.020, 0.028)` gezeichnet - der Unterschied lag im
+## Tausendstel. In der unteren Bildhaelfte, wo die Kammern sitzen, gab es
+## also gar keinen Fels, gegen den sie sich haetten abheben koennen: uebrig
+## blieben vier freischwebende Umrisse. Ein Schnitt durch Gestein lebt davon,
+## dass das Volle heller ist als das Leere; ist es das nicht, ist es kein
+## Schnitt, sondern ein Diagramm.
+const FELS_OBEN := Color(0.132, 0.172, 0.194)
+const FELS_UNTEN := Color(0.074, 0.100, 0.118)
 
 ## Der senkrechte Schnitt durch den Graben.
 ##
@@ -622,16 +664,26 @@ func _schnitt(breite: float, oben: float, unten: float, stand: KolonieStand,
     # unten, verschwand also auf halber Hoehe. Die Kolonie leuchtet aber
     # selbst - der Schacht ist der Weg, auf dem ihr Licht nach unten geht.
     # Oben hell, zur Bohrspitze hin aus.
+    # **Schwach, und das Licht gehoert an die Waende.**
+    #
+    # Der Schein stand auf 0.30 - der Schacht kam damit auf RGB (80, 65, 92)
+    # gegen einen Fels von (30, 40, 45). Er war also **heller** als das
+    # Gestein, und ein Hohlraum, der heller ist als das Volle, ist kein
+    # Hohlraum, sondern ein Balken. Genau so sah er auch aus. Ein Loch
+    # erkennt man an seinen beleuchteten Kanten und seiner dunklen Mitte.
     var schein := PackedColorArray()
     for v in offen:
         var t := clampf((v.y - kopf) / maxf(1.0, spitze_y - kopf), 0.0, 1.0)
         schein.append(Color(schachtfarbe.r, schachtfarbe.g, schachtfarbe.b,
-            0.30 * (1.0 - t) + 0.06))
+            0.11 * (1.0 - t) + 0.02))
     _flaeche.draw_polygon(offen, schein)
     for seite: float in SEITEN:
-        _flaeche.draw_line(Vector2(mitte + seite * halb, kopf),
-            Vector2(mitte + seite * halb * 0.62, spitze_y),
-            Color(schachtfarbe.r, schachtfarbe.g, schachtfarbe.b, 0.55), 2.0)
+        var a := Vector2(mitte + seite * halb, kopf)
+        var b := Vector2(mitte + seite * halb * 0.62, spitze_y)
+        _flaeche.draw_line(a, b,
+            Color(schachtfarbe.r, schachtfarbe.g, schachtfarbe.b, 0.16), 5.0)
+        _flaeche.draw_line(a, b,
+            Color(schachtfarbe.r, schachtfarbe.g, schachtfarbe.b, 0.85), 2.0)
 
     # Was noch bevorsteht - nur angedeutet, in Strichen.
     if gegraben < 0.995:
@@ -661,7 +713,13 @@ func _schnitt(breite: float, oben: float, unten: float, stand: KolonieStand,
     for i in reihe.size():
         var k := reihe[i]
         var stufe := stand.stufe(k)
-        var voll := clampf(float(stufe) / float(Kammern.HOECHSTSTUFE), 0.0, 1.0)
+        # **Gemessen am Deckel, nicht an der Hoechststufe.** Gegen 80
+        # gerechnet war Stufe 6 ein Wert von 0.075: die Kammer blieb ueber
+        # das halbe Spiel hinweg auf ihrer Mindestgroesse und ihr Leuchten
+        # bei einem Achtel. Derselbe Fehler wie bei den Balken - die
+        # Hoechststufe ist kein Ziel, das jemand vor sich hat.
+        var voll := clampf(float(stufe)
+            / float(maxi(1, Kammern.deckel(k, stand.schacht()))), 0.0, 1.0)
         var seite: float = SEITEN[i % 2]
         var y := kopf + spanne * (0.10 + 0.21 * float(i))
         # **Groesser und weiter aussen.** Bei 52 Pixeln Grundweite und einem
@@ -679,11 +737,15 @@ func _schnitt(breite: float, oben: float, unten: float, stand: KolonieStand,
         # Der Gang: ein Hohlraum im Stein, kein Kabel. Er ist deshalb dunkler
         # als der Fels und hat oben und unten eine Kante.
         var gang_a := Vector2(mitte + seite * halb * 0.7, y)
-        var dick := 5.0
-        _flaeche.draw_line(gang_a, wo, Color(0.008, 0.018, 0.026),
-            dick + 2.0)
-        _flaeche.draw_line(gang_a, wo,
-            Color(farbe.r, farbe.g, farbe.b, 0.30 if erreicht else 0.10), 1.2)
+        var dick := 7.0
+        _flaeche.draw_line(gang_a, wo, Color(0.008, 0.018, 0.026), dick)
+        # Zwei Kanten statt einer Mittellinie: ein Gang ist ein Hohlraum, und
+        # ein Hohlraum leuchtet an den Waenden. Eine Linie in der Mitte waere
+        # ein Kabel.
+        for rand: float in SEITEN:
+            _flaeche.draw_line(gang_a + Vector2(0.0, rand * dick * 0.42),
+                wo + Vector2(0.0, rand * dick * 0.42),
+                Color(farbe.r, farbe.g, farbe.b, 0.42 if erreicht else 0.12), 1.2)
 
         # Eine gegrabene Blase, kein Rechteck. Ein Rechteck waere ein Raum,
         # den jemand gebaut hat; das hier ist aus dem Fels geholt.
@@ -712,12 +774,18 @@ func _schnitt(breite: float, oben: float, unten: float, stand: KolonieStand,
         _flaeche.draw_polygon(blase, farben)
         _flaeche.draw_polyline(blase + PackedVector2Array([blase[0]]),
             Color(farbe.r, farbe.g, farbe.b, 0.28 + leuchten), 1.4, true)
-        _flaeche.draw_circle(wo, 3.0 + 4.5 * voll,
-            Color(farbe.r, farbe.g, farbe.b, 0.55 + 0.35 * leuchten))
+        # Das Sinnbild **in** der Kammer, nicht ein Punkt darin. Dasselbe
+        # Zeichen wie oben in der Liste: wer die Karte gelesen hat, findet
+        # die Kammer im Schnitt wieder, ohne die Beschriftung zu brauchen.
+        _sinnbild(wo - Vector2(weite * 0.18, 0.0),
+            minf(kammerhoch * 0.72, 17.0), k, farbe, stufe)
+        _text(wo + Vector2(weite * 0.16, 6.0), "%d" % stufe,
+            int(clampf(kammerhoch * 0.9, 13.0, 22.0)),
+            Color(farbe.r, farbe.g, farbe.b, 0.92), true)
 
-        var beschriftung := "%s %d" % [Kammern.name_von(k).split(" ")[0], stufe]
-        _text(wo + Vector2(0.0, kammerhoch + 15.0), beschriftung, 11,
-            Color(farbe.r, farbe.g, farbe.b, 0.75), true)
+        _text(wo + Vector2(0.0, kammerhoch + 15.0),
+            Kammern.name_von(k).split(" ")[0], 11,
+            Color(farbe.r, farbe.g, farbe.b, 0.65), true)
 
 
 ## Der Stein, in dem die Kolonie sitzt: ein Verlauf nach unten und ein paar
@@ -739,7 +807,11 @@ func _fels(breite: float, kopf: float, fuss: float) -> void:
         var t := 0.14 + 0.19 * float(i) + 0.03 * sin(float(i) * 2.9)
         var y := kopf + spanne * t
         _flaeche.draw_line(Vector2(0.0, y), Vector2(breite, y),
-            Color(0.30, 0.44, 0.50, 0.055 + 0.02 * sin(float(i))), 1.0)
+            Color(0.44, 0.58, 0.64, 0.075 + 0.03 * sin(float(i))), 1.0)
+        # Eine dunkle Linie dicht darunter: eine Schichtfuge hat eine Kante
+        # und einen Schatten, sonst ist sie ein Strich auf Papier.
+        _flaeche.draw_line(Vector2(0.0, y + 1.6), Vector2(breite, y + 1.6),
+            Color(0.0, 0.0, 0.0, 0.16), 1.6)
 
 
 ## Was die tragende Brutlinie mit dem Kegel macht - als Bild.
@@ -1001,11 +1073,10 @@ func _mutationsband(kasten: Rect2, index: int, stand: KolonieStand) -> void:
 
     var links := kasten.position.x + 84.0
     _text(Vector2(links, mitte_y - 6.0),
-        Mutationen.name_von(index) if kennt else "Not yet encountered", 17,
+        Mutationen.name_von(index) if kennt else "Trait %d" % (index + 1), 17,
         SCHRIFT if kennt else LEISE)
     _text(Vector2(links, mitte_y + 18.0),
-        Mutationen.hinweis(index) if kennt
-            else "Waves start to mutate in trench depth II",
+        Mutationen.hinweis(index) if kennt else "Not yet encountered",
         12, LEISE if kennt else Color(0.34, 0.44, 0.50))
 
 
@@ -1311,26 +1382,47 @@ func _brutlinie(kasten: Rect2, index: int, stand: KolonieStand) -> void:
     _text(Vector2(links, kasten.position.y + 56.0), Brutlinien.wirkung(index), 12,
         LEISE if hat else Color(0.34, 0.44, 0.50))
 
-    var rechts := kasten.end.x - 12.0
+    # Derselbe Knopf wie auf den Kammerkarten - aus demselben Grund: was man
+    # antippen kann, muss aussehen wie etwas, das man antippt. Zwei
+    # Bildschirme mit derselben Handlung und zwei verschiedenen Formen dafuer
+    # sind ein Bildschirm zu viel.
+    var knopf := Rect2(kasten.end.x - KNOPF_BREIT - 10.0, kasten.position.y + 10.0,
+        KNOPF_BREIT, kasten.size.y - 20.0)
+    var mitte := knopf.get_center()
     if traegt:
-        _text(Vector2(rechts, mitte_y + 5.0), "carries", 15, farbe, false, true)
+        _flaeche.draw_rect(knopf, Color(farbe.r, farbe.g, farbe.b, 0.22))
+        _flaeche.draw_rect(knopf, Color(farbe.r, farbe.g, farbe.b, 0.9), false, 2.0)
+        _text(mitte + Vector2(0.0, 5.0), "CARRIES", 14, SCHRIFT, true)
     elif hat:
-        _text(Vector2(rechts, mitte_y + 5.0), "select", 15, LEISE, false, true)
+        _flaeche.draw_rect(knopf, Color(0.06, 0.14, 0.17, 0.6))
+        _flaeche.draw_rect(knopf, Color(farbe.r, farbe.g, farbe.b, 0.5), false, 1.5)
+        _text(mitte + Vector2(0.0, 5.0), "SELECT", 14,
+            Color(farbe.r, farbe.g, farbe.b, 0.9), true)
     else:
         var davor := Brutlinien.voraussetzung(index)
         var frei := stand.hat_linie(davor)
         var preis := Brutlinien.kosten(index)
         var reicht := frei and stand.naehrstoffe >= preis
-        _text(Vector2(rechts, mitte_y - 6.0), "breed", 13, LEISE, false, true)
-        _text(Vector2(rechts, mitte_y + 16.0), Zahl.kurz(preis) if frei else "locked", 18,
-            NAEHR if reicht else SPERRE, false, true)
-        # **"locked" allein ist keine Auskunft, sondern eine Absage.**
-        #
-        # Fuenf von sechs Zeilen standen auf "locked", und nirgends stand,
-        # woran es liegt. Wer das sieht, haelt die Linien fuer etwas, das
-        # spaeter irgendwie kommt - dabei ist die Bedingung genau eine, und
-        # sie steht eine Zeile weiter oben im selben Bildschirm.
-        if not frei:
+        if reicht:
+            _flaeche.draw_rect(knopf, Color(farbe.r, farbe.g, farbe.b, 0.20))
+            _flaeche.draw_rect(knopf, Color(farbe.r, farbe.g, farbe.b, 0.85),
+                false, 1.8)
+        else:
+            _flaeche.draw_rect(knopf, Color(0.06, 0.08, 0.10, 0.5))
+            _flaeche.draw_rect(knopf, Color(SPERRE.r, SPERRE.g, SPERRE.b, 0.30),
+                false, 1.4)
+        if frei:
+            _text(mitte + Vector2(0.0, -8.0), "BREED", 12,
+                SCHRIFT if reicht else LEISE, true)
+            _text(mitte + Vector2(0.0, 18.0), Zahl.kurz(preis), 19,
+                NAEHR if reicht else SPERRE, true)
+        else:
+            _text(mitte + Vector2(0.0, 5.0), "LOCKED", 14, SPERRE, true)
+            # **"locked" allein ist keine Auskunft, sondern eine Absage.**
+            #
+            # Fuenf von sechs Zeilen standen darauf, und nirgends stand,
+            # woran es liegt. Dabei ist die Bedingung genau eine, und sie
+            # steht eine Zeile weiter oben im selben Bildschirm.
             _text(Vector2(links, kasten.position.y + 78.0),
                 "Needs %s first" % Brutlinien.name_von(davor), 12,
                 Color(0.62, 0.52, 0.48))
@@ -1418,9 +1510,28 @@ func _brutsinnbild(p: Vector2, r: float, index: int, farbe: Color, hat: bool) ->
                         (0.12 + 0.42 * kraft) * deckung), 1.4)
 
 
+## --- Die Kammerkarte ---
+##
+## **Sie sah nicht aus wie etwas, das man antippt.**
+##
+## Die ganze Zeile war das Tippziel, und nichts sagte das. Rechts stand ein
+## kleines "to 7" mit einer Zahl darunter, frei an der Kante - kein Rahmen,
+## keine Flaeche, nichts, was einen Knopf von einer Auskunft unterscheidet.
+## Wer den Bildschirm zum ersten Mal sieht, liest fuenf Zeilen mit Zahlen und
+## sucht dann den Ausbauknopf. Es gab keinen.
+##
+## Jetzt traegt jede Karte rechts eine Schaltflaeche ueber die volle Hoehe.
+## Sie ist zugleich die Zustandsanzeige der Kammer: gefuellt, wenn der
+## Naehrstoff reicht; nur umrandet, wenn nicht; ein Fortschrittsbalken samt
+## Restzeit, waehrend gegraben wird; und stumpf mit einem Wort darin, wenn
+## der Tiefenschacht sie deckelt. Ein Zustand, eine Stelle.
+const KNOPF_BREIT := 128.0
+
+
 func _kammer(kasten: Rect2, k: int, stand: KolonieStand, jetzt: float) -> void:
     var farbe := FARBEN[k]
     var stufe := stand.stufe(k)
+    var deckel := Kammern.deckel(k, stand.schacht())
     var baut_hier := stand.bau_kammer == k
     var gedrueckt := _gedrueckt == k
 
@@ -1433,9 +1544,18 @@ func _kammer(kasten: Rect2, k: int, stand: KolonieStand, jetzt: float) -> void:
         Color(farbe.r, farbe.g, farbe.b, 0.85))
 
     var mitte_y := kasten.position.y + kasten.size.y * 0.5
-    _sinnbild(Vector2(kasten.position.x + 46.0, mitte_y), 24.0, k, farbe, stufe)
+    _sinnbild(Vector2(kasten.position.x + 44.0, mitte_y - 8.0), 23.0, k, farbe, stufe)
+    # Die Stufe steht **am Sinnbild**, nicht in einer eigenen Spalte: das
+    # Bild sagt, welche Kammer, die Zahl darunter, wie weit sie ist. Zwei
+    # Angaben zu einer Sache gehoeren nebeneinander.
+    _text(Vector2(kasten.position.x + 44.0, kasten.end.y - 16.0),
+        "LVL %d" % stufe, 14, farbe, true)
 
-    var links := kasten.position.x + 84.0
+    var links := kasten.position.x + 80.0
+    var knopf := Rect2(kasten.end.x - KNOPF_BREIT - 10.0, kasten.position.y + 10.0,
+        KNOPF_BREIT, kasten.size.y - 20.0)
+    var textweit := knopf.position.x - links - 14.0
+
     _text(Vector2(links, kasten.position.y + 30.0), Kammern.name_von(k), 17, SCHRIFT)
 
     # Der Tiefenschacht sagt, was er als naechstes aufmacht. Ein Spieler, der
@@ -1460,98 +1580,121 @@ func _kammer(kasten: Rect2, k: int, stand: KolonieStand, jetzt: float) -> void:
     var jetzt_wirkt := Kammern.wirkung(k, stufe)
     var dann_wirkt := Kammern.wirkung(k, stufe + 1)
     var wirkzeile := jetzt_wirkt
-    if dann_wirkt != jetzt_wirkt and stufe < Kammern.deckel(k, stand.schacht()):
+    if dann_wirkt != jetzt_wirkt and stufe < deckel:
         wirkzeile = "%s   →   %s" % [jetzt_wirkt, dann_wirkt]
-    _text(Vector2(links, kasten.position.y + 100.0), wirkzeile, 12,
-        Color(farbe.r, farbe.g, farbe.b, 0.78))
+    _text(Vector2(links, kasten.position.y + 76.0), wirkzeile, 12,
+        Color(farbe.r, farbe.g, farbe.b, 0.80))
 
-    var deckel := Kammern.deckel(k, stand.schacht())
-    var rechts := kasten.end.x - 12.0
-    # Die Zeile endet vor der Preisspalte, nicht am Kastenrand - sonst laeuft
-    # sie unter die Zahl.
-    _stufenzeile(Vector2(links, kasten.position.y + 78.0),
-        maxf(40.0, rechts - links - 96.0), stufe, deckel, farbe)
+    # Der Tiefenschacht misst gegen die Stufe, die den naechsten Abschnitt
+    # aufmacht; alle anderen gegen den Deckel, den er ihnen setzt.
+    var schranke := deckel
+    if k == Kammern.Kammer.TIEFENSCHACHT and stand.naechste_tiefe() > stufe:
+        schranke = stand.naechste_tiefe()
+    _stufenzeile(Vector2(links, kasten.position.y + 96.0), maxf(40.0, textweit),
+        stufe, schranke, farbe)
+
+    _ausbauknopf(knopf, k, stand, jetzt, farbe, stufe, deckel, baut_hier)
+
+
+## Die Schaltflaeche rechts auf der Karte. Sie zeigt genau einen von fuenf
+## Zustaenden, und der Zustand bestimmt Form **und** Farbe - eine gefuellte
+## Flaeche heisst "geht", eine umrandete "kostet mehr, als du hast".
+func _ausbauknopf(knopf: Rect2, k: int, stand: KolonieStand, jetzt: float,
+        farbe: Color, stufe: int, deckel: int, baut_hier: bool) -> void:
+    var mitte := knopf.get_center()
+
     if baut_hier:
-        _baufortschritt(kasten, stand, jetzt, farbe)
-    elif stand.baut():
-        _text(Vector2(rechts, mitte_y + 5.0), "waiting", 14, LEISE, false, true)
-    elif stufe >= deckel:
-        var was := "full" if k == Kammern.Kammer.TIEFENSCHACHT else "locked"
-        _text(Vector2(rechts, mitte_y + 5.0), was, 14, SPERRE, false, true)
+        # Der Bau selbst ist der Knopf: der Balken fuellt ihn von unten,
+        # darauf die Restzeit. Damit sieht man an derselben Stelle, an der
+        # man getippt hat, was daraus geworden ist.
+        var rest := stand.restzeit(jetzt)
+        var ganz := maxf(0.001, Kammern.bauzeit(k, stufe))
+        var anteil := clampf(1.0 - rest / ganz, 0.0, 1.0)
+        _flaeche.draw_rect(knopf, Color(0.0, 0.0, 0.0, 0.35))
+        _flaeche.draw_rect(Rect2(knopf.position.x,
+            knopf.end.y - knopf.size.y * anteil, knopf.size.x,
+            knopf.size.y * anteil), Color(farbe.r, farbe.g, farbe.b, 0.30))
+        _flaeche.draw_rect(knopf, Color(farbe.r, farbe.g, farbe.b, 0.6), false, 1.6)
+        _text(mitte + Vector2(0.0, -4.0), "DIGGING", 12,
+            Color(farbe.r, farbe.g, farbe.b, 0.9), true)
+        _text(mitte + Vector2(0.0, 18.0), _dauer(rest), 17, SCHRIFT, true)
+        return
+
+    if stufe >= deckel:
+        var was := "MAXED" if k == Kammern.Kammer.TIEFENSCHACHT else "SHAFT TOO"
+        var zweite := "" if k == Kammern.Kammer.TIEFENSCHACHT else "SHALLOW"
+        _flaeche.draw_rect(knopf, Color(0.10, 0.11, 0.12, 0.55))
+        _flaeche.draw_rect(knopf, Color(SPERRE.r, SPERRE.g, SPERRE.b, 0.35),
+            false, 1.4)
+        _text(mitte + Vector2(0.0, 0.0 if zweite.is_empty() else -6.0), was, 13,
+            SPERRE, true)
+        if not zweite.is_empty():
+            _text(mitte + Vector2(0.0, 12.0), zweite, 13, SPERRE, true)
+        return
+
+    if stand.baut():
+        # Es wird woanders gegraben. Kein zweiter Bau gleichzeitig - das steht
+        # hier, damit niemand auf einen Knopf drueckt, der nichts tut.
+        _flaeche.draw_rect(knopf, Color(0.08, 0.10, 0.12, 0.5))
+        _flaeche.draw_rect(knopf, Color(LEISE.r, LEISE.g, LEISE.b, 0.25), false, 1.4)
+        _text(mitte + Vector2(0.0, 5.0), "IN QUEUE", 13, LEISE, true)
+        return
+
+    var preis := stand.preis(k)
+    var reicht := stand.naehrstoffe >= preis
+    if reicht:
+        _flaeche.draw_rect(knopf, Color(farbe.r, farbe.g, farbe.b, 0.20))
+        _flaeche.draw_rect(knopf, Color(farbe.r, farbe.g, farbe.b, 0.85), false, 1.8)
     else:
-        var preis := stand.preis(k)
-        var reicht := stand.naehrstoffe >= preis
-        # "to 9" und nicht "Level 9": links steht schon eine Stufe, und zwei
-        # Zahlen mit demselben Wort davor liest man als Widerspruch.
-        _text(Vector2(rechts, mitte_y - 6.0), "to %d" % (stufe + 1), 13, LEISE, false, true)
-        _text(Vector2(rechts, mitte_y + 16.0), Zahl.kurz(preis), 18,
-            NAEHR if reicht else SPERRE, false, true)
+        _flaeche.draw_rect(knopf, Color(0.06, 0.08, 0.10, 0.5))
+        _flaeche.draw_rect(knopf, Color(SPERRE.r, SPERRE.g, SPERRE.b, 0.30),
+            false, 1.4)
+
+    # Ein Pfeil nach oben statt des Wortes "upgrade": er ist in jeder Sprache
+    # dasselbe und braucht ein Drittel des Platzes.
+    var pfeil_farbe := farbe if reicht else SPERRE
+    var spitze := Vector2(mitte.x - 34.0, knopf.position.y + 20.0)
+    _flaeche.draw_polyline(PackedVector2Array([
+        spitze + Vector2(-6.0, 6.0), spitze, spitze + Vector2(6.0, 6.0)]),
+        pfeil_farbe, 2.0, true)
+    _flaeche.draw_line(spitze, spitze + Vector2(0.0, 12.0), pfeil_farbe, 2.0)
+
+    _text(Vector2(mitte.x + 8.0, knopf.position.y + 26.0),
+        "LVL %d" % (stufe + 1), 13, LEISE if not reicht else SCHRIFT, true)
+    _text(Vector2(mitte.x, knopf.end.y - 16.0), Zahl.kurz(preis), 20,
+        NAEHR if reicht else SPERRE, true)
 
 
-func _baufortschritt(kasten: Rect2, stand: KolonieStand, jetzt: float,
-        farbe: Color) -> void:
-    var rest := stand.restzeit(jetzt)
-    var ganz := maxf(0.001, Kammern.bauzeit(stand.bau_kammer,
-        stand.stufe(stand.bau_kammer)))
-    var anteil := clampf(1.0 - rest / ganz, 0.0, 1.0)
-
-    var balken := Rect2(kasten.position.x + 84.0, kasten.end.y - 22.0,
-        kasten.size.x - 100.0, 5.0)
-    _flaeche.draw_rect(balken, Color(0.0, 0.0, 0.0, 0.45))
-    _flaeche.draw_rect(Rect2(balken.position, Vector2(balken.size.x * anteil,
-        balken.size.y)), farbe)
-
-    _text(Vector2(kasten.end.x - 12.0, kasten.position.y + 30.0),
-        _dauer(rest), 16, farbe, false, true)
-
-
-## Die Stufenzeile: **eine Zahl**, ein schmaler Balken und der Deckel.
+## Der Stufenbalken: wie weit die Kammer bis zur naechsten Schranke ist.
 ##
-## **Hier stand eine Punktreihe, ein Punkt je Stufe.** Das war lesbar, solange
-## die Hoechststufe 20 war. Seit der Graben keinen Boden mehr hat, sind es 80
-## - achtzig Punkte nebeneinander, von denen acht gefuellt waren. Niemand
-## zaehlt achtzig Punkte ab; man sieht "viele Punkte, vorne ein bisschen
-## voll", und das ist keine Auskunft, sondern ein Muster.
+## **Hier stand einmal eine Punktreihe**, ein Punkt je Stufe. Das war lesbar,
+## solange die Hoechststufe 20 war; seit der Graben keinen Boden hat, sind es
+## achtzig Punkte, von denen sechs gefuellt waren. Die Zahl steht jetzt als
+## Marke am Sinnbild, und hier bleibt das, was eine Zahl nicht kann: das
+## Gefuehl, wie weit es noch geht.
 ##
-## Eine Zahl ist an dieser Stelle beides zugleich: genau und sofort ablesbar.
-## Der Balken daneben behaelt, was die Punktreihe konnte und die Zahl nicht -
-## das Gefuehl, wie weit es noch geht -, und er zeigt zusaetzlich den Deckel,
-## den der Tiefenschacht setzt.
+## **Gemessen wird gegen die Schranke, nicht gegen die Hoechststufe.** Gegen
+## 80 gemessen ist Stufe 6 ein Strich von vier Pixeln - richtig gerechnet und
+## trotzdem nutzlos, weil die Hoechststufe kein Ziel ist, das jemand vor sich
+## hat. Die Schranke ist eines: bei den vier Kammern der Deckel des
+## Tiefenschachts, beim Tiefenschacht selbst die Stufe, die den naechsten
+## Grabenabschnitt aufmacht.
 const BALKEN_HOCH := 5.0
 
 
-func _stufenzeile(wo: Vector2, breite: float, stufe: int, deckel: int,
+func _stufenzeile(wo: Vector2, breite: float, stufe: int, bis: int,
         farbe: Color) -> void:
-    var beschriftung := "LEVEL %d" % stufe
-    _text(wo + Vector2(0.0, 5.0), beschriftung, 15, farbe)
-
-    # Der Balken beginnt hinter der Zahl. 96 statt einer gemessenen Breite,
-    # weil `draw_string` die Breite nur ueber einen zweiten Aufruf hergibt und
-    # die Zahl hier nie mehr als vier Zeichen hat.
-    var links := wo.x + 96.0
-    var weit := maxf(30.0, wo.x + breite - links)
     var y := wo.y
+    var weit := maxf(30.0, breite - 46.0)
+    var voll := float(maxi(1, bis))
+    var anteil := clampf(float(stufe) / voll, 0.0, 1.0)
 
-    # **Der Balken misst gegen den Deckel, nicht gegen die Hoechststufe.**
-    #
-    # Gegen 80 gemessen ist Stufe 7 ein Strich von vier Pixeln - richtig
-    # gerechnet und trotzdem nutzlos, weil die Hoechststufe kein Ziel ist,
-    # das jemand vor sich hat. Der Deckel ist eines: bis dahin geht es, und
-    # dann muss der Tiefenschacht tiefer. Der Balken fuellt sich also bis zur
-    # naechsten Schranke und faengt danach neu an.
-    var bis := float(maxi(1, deckel))
-    var anteil := clampf(float(stufe) / bis, 0.0, 1.0)
-
-    _flaeche.draw_rect(Rect2(links, y - BALKEN_HOCH * 0.5, weit, BALKEN_HOCH),
+    _flaeche.draw_rect(Rect2(wo.x, y - BALKEN_HOCH * 0.5, weit, BALKEN_HOCH),
         Color(0.34, 0.36, 0.38, 0.24))
-    _flaeche.draw_rect(Rect2(links, y - BALKEN_HOCH * 0.5, weit * anteil,
+    _flaeche.draw_rect(Rect2(wo.x, y - BALKEN_HOCH * 0.5, weit * anteil,
         BALKEN_HOCH), farbe)
-
-    # Wo Schluss ist. Nur wenn es einen Deckel gibt - wer die Hoechststufe
-    # erreicht hat, braucht keine Schranke mehr angezeigt zu bekommen.
-    if deckel < Kammern.HOECHSTSTUFE:
-        _text(Vector2(wo.x + breite, y + 5.0), "of %d" % deckel, 11,
-            NAEHR if stufe >= deckel else LEISE, false, true)
+    _text(Vector2(wo.x + breite, y + 5.0), "of %d" % bis, 11,
+        NAEHR if stufe >= bis else LEISE, false, true)
 
 
 ## Setzt den Lehrschritt. `wache.gd` ruft das; -1 heisst: nichts anzeigen.

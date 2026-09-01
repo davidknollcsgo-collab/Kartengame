@@ -28,7 +28,6 @@ var _gewonnen := false
 var _sitzung := false
 
 ## Welche Art die Tafel gerade ankuendigt, oder -1 fuer den Abschnitt.
-var _neue_art := -1
 var _verdient := 0
 var _zeit := 0.0
 var _meldung := ""
@@ -141,17 +140,6 @@ func melde(was: String) -> void:
 ## Dunkeln steht und nicht weiss warum, haelt es fuer einen Fehler.
 func zeige_abschnitt(abschnitt: int) -> void:
     _abschnitt = abschnitt
-    _neue_art = -1
-    _abschnitt_leben = 5.0
-
-
-## Kuendigt eine Art an, die zum ersten Mal auftritt.
-##
-## Dieselbe Tafel wie beim Abschnitt, nur mit anderem Inhalt. Eine Regel, die
-## man sich erspielen muss, ist bei einem Gegner, der nach vierzig Sekunden
-## bei der Brut steht, keine Regel, sondern eine Falle.
-func zeige_art(art: int) -> void:
-    _neue_art = art
     _neue_mutation = -1
     _abschnitt_leben = 5.0
 
@@ -159,7 +147,7 @@ func zeige_art(art: int) -> void:
 ## Kuendigt eine Mutation an, die zum ersten Mal auftritt. Dieselbe Tafel.
 func zeige_mutation(m: int) -> void:
     _neue_mutation = m
-    _neue_art = -1
+    _abschnitt = -1
     _abschnitt_leben = 5.0
 
 
@@ -460,27 +448,32 @@ func _umbrich(satz: String, breite: float, groesse: int) -> PackedStringArray:
     return zeilen
 
 
-## Zwei Zeilen in der Bildmitte: der Name des Abschnitts und was er aendert.
+## Zwei Zeilen in der Bildmitte: was sich an diesem Graben geaendert hat.
+##
+## **Nur noch Abschnitte und Mutationen, keine Arten mehr.** Hier stand
+## einmal "NEW: VEILFORM" mit der Regel darunter, bevor das erste davon
+## eintrat - und das nahm der Welle ihren Anfang. Was aus dem Dunkel kommt,
+## soll man sehen und nicht vorher lesen. Beide verbliebenen Faelle sind
+## keine Gegner, sondern die Bedingungen, unter denen man spielt.
 func _abschnittstafel(breite: float, hoehe: float) -> void:
     var f := clampf(_abschnitt_leben / 1.2, 0.0, 1.0)
     var mitte := Vector2(breite * 0.5, hoehe * 0.34)
     var kasten := Rect2(RAND, mitte.y - 54.0, breite - RAND * 2.0, 96.0)
 
-    var titel := Regeln.name_von(_abschnitt).to_upper()
-    var zeile := Regeln.hinweis(_abschnitt)
+    var titel := ""
+    var zeile := ""
     var rahmen := Color(0.42, 0.86, 0.92, 0.34 * f)
     var farbe := Color(0.72, 0.96, 1.0, f)
-    if _neue_art >= 0:
-        var a := Arten.farbe(_neue_art)
-        titel = "NEW: %s" % Arten.name_von(_neue_art).to_upper()
-        zeile = Arten.regel(_neue_art)
-        rahmen = Color(a.r, a.g, a.b, 0.45 * f)
-        farbe = Color(a.r, a.g, a.b, f)
-    elif _neue_mutation >= 0:
+    if _neue_mutation >= 0:
         titel = "MUTATION: %s" % Mutationen.name_von(_neue_mutation).to_upper()
         zeile = Mutationen.hinweis(_neue_mutation)
         rahmen = Color(0.94, 0.62, 0.86, 0.45 * f)
         farbe = Color(0.96, 0.72, 0.90, f)
+    elif _abschnitt >= 0:
+        titel = Regeln.name_von(_abschnitt).to_upper()
+        zeile = Regeln.hinweis(_abschnitt)
+    else:
+        return
 
     _flaeche.draw_rect(kasten, Color(0.02, 0.06, 0.09, 0.72 * f))
     _flaeche.draw_rect(kasten, rahmen, false, 1.4)

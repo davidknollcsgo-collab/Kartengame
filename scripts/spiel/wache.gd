@@ -289,17 +289,29 @@ func starte_welle() -> void:
     if Regeln.neu_in(a) and welle_nummer == a * Graben.WELLEN_JE_ABSCHNITT + 1:
         _hud.zeige_abschnitt(a)
 
-    # Dasselbe fuer ein Tier, das der Spieler noch nie gesehen hat. Die Regel
-    # steht ab dann auch im Bestiarium - der Hinweis verschwindet, die
-    # Nachschlagemoeglichkeit nicht.
-    var neu := -1
+    # **Ein neues Tier wird nicht mehr angekuendigt.**
+    #
+    # Hier stand eine Tafel "NEW: VEILFORM - comes in swarms and is very
+    # fast", mitten im Bild, bevor das erste davon eintrat. Die Begruendung
+    # war, dass eine Regel, die man sich erspielen muss, bei einem Gegner an
+    # der Brut keine Regel sei, sondern eine Falle.
+    #
+    # Sie war trotzdem falsch, und zwar aus einem Grund, den man nur beim
+    # Spielen merkt: die Tafel nimmt der Welle ihren Anfang. Aus dem Dunkel
+    # kommt etwas, das man noch nie gesehen hat - das ist der Augenblick, um
+    # den es in diesem Spiel geht -, und eine Schrifttafel sagt vorher, was
+    # es ist und wie es sich verhaelt. Aus einer Begegnung wird eine Ansage.
+    #
+    # Gemerkt wird die Art weiterhin: sie steht danach im Bestiarium, mit
+    # ihrer Regel und ihren Werten. Der Unterschied ist, wann man es erfaehrt
+    # - hinterher beim Nachschlagen statt vorher als Untertitel.
     for r in _tiere:
-        if Fortschritt.stand.merke_art(r.art) and neu < 0:
-            neu = r.art
+        Fortschritt.stand.merke_art(r.art)
 
-    # Und dasselbe fuer eine Mutation, die zum ersten Mal auftritt. Sie
-    # kommt nach der Art, weil ein unbekanntes Tier die groessere Neuigkeit
-    # ist - zwei Tafeln uebereinander liest niemand.
+    # Die Mutationen dagegen bleiben angesagt. Sie sind keine Gegner, sondern
+    # die Bedingungen dieser Welle - was der Kegel heute schlechter kann,
+    # sieht man dem Tier nicht an, und es zu verschweigen macht die Welle
+    # nicht spannender, sondern nur unerklaerlich.
     var neue_mutation := -1
     _mutationen = Mutationen.in_welle(welle_nummer)
     for m in _mutationen:
@@ -307,12 +319,9 @@ func starte_welle() -> void:
             neue_mutation = m
 
     _hud.mutationen = _mutationen
-    if neu >= 0:
-        _hud.zeige_art(neu)
-        Fortschritt.sichere()
-    elif neue_mutation >= 0:
+    if neue_mutation >= 0:
         _hud.zeige_mutation(neue_mutation)
-        Fortschritt.sichere()
+    Fortschritt.sichere()
 
 
 # --- Schleife --------------------------------------------------------------
