@@ -322,7 +322,9 @@ static func auftritte(nummer: int) -> Array[Dictionary]:
     # Das Leitwesen zuerst, und aus demselben Budget. Es kommt also nicht
     # obendrauf - die Welle wird nicht schwerer, sondern anders: ein Brocken
     # statt eines Dutzends.
-    var leit := Arten.leitwesen()
+    # **Welches** Leitwesen, haengt am Abschnitt und nicht am Zufall - sonst
+    # waere der Hoehepunkt eine Ueberraschung statt eines Ortes.
+    var leit := Arten.leitwesen_fuer(Graben.abschnitt(nummer))
     if hat_leitwesen(nummer) and leit >= 0:
         budget -= aufwand_in(leit, nummer)
         var allein: Array[int] = [leit]

@@ -145,6 +145,10 @@ func _zeichne(t: Raeuber, stufe := 0) -> void:
             _spiegler(p, r, farbe, t, hitze)
         Arten.Art.SCHLUNDMUTTER:
             _schlundmutter(p, r, farbe, t, hitze)
+        Arten.Art.KALKROCHEN:
+            _kalkrochen(p, r, farbe, t, hitze)
+        Arten.Art.SCHWARMHERZ:
+            _schwarmherz(p, r, farbe, t, hitze)
 
     # Lebensanzeige nur bei Verletzten. Volle Balken ueber jedem Tier waeren
     # Rauschen; ein angeschlagener Gegner ist dagegen eine Entscheidung.
@@ -628,6 +632,94 @@ func _schlundmutter(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float
     for i in 7:
         var w := lerpf(-PI * 0.42, PI * 0.42, float(i) / 6.0)
         _auge(p + (k * cos(w) * 0.62 + quer * sin(w) * 0.86) * r, r * 0.10, hitze)
+
+
+## Der Kalkrochen. Ein flacher, breiter Schild mit einem Schleppschwanz -
+## und die Panzerplatten sind das, was man von ihm sieht.
+##
+## **Er muss sich vom Mantel der Schlundmutter im Umriss unterscheiden**, nicht
+## in der Farbe: zwei Leitwesen mit derselben Silhouette sind dasselbe Tier in
+## zwei Anstrichen. Sie ist rund und gebuchtet, er ist eine Raute, die quer
+## zur Bahn liegt und flach wirkt.
+func _kalkrochen(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> void:
+    var k := t.richtung
+    var quer := k.orthogonal()
+    var schlag := sin(t.alter * 1.3 + t.phase)
+
+    # Der Schwanz zuerst, damit der Schild darueber liegt.
+    var schwanz := PackedVector2Array()
+    for i in 7:
+        var u := float(i) / 6.0
+        schwanz.append(p - k * r * (0.5 + 2.0 * u)
+            + quer * schlag * r * 0.34 * u * u)
+    draw_polyline(schwanz, Color(farbe.r, farbe.g, farbe.b, 0.30 + 0.24 * hitze),
+        3.4, true)
+    draw_circle(schwanz[schwanz.size() - 1], r * 0.09,
+        Color(1.0, 0.96, 0.88, 0.40 + 0.40 * hitze))
+
+    # Der Schild: breit quer zur Bahn, vorn stumpf, hinten spitz. Die
+    # Wellenkante an den Flanken ist das, woran ein Rochen erkannt wird.
+    var schild := PackedVector2Array()
+    for i in 19:
+        var u := lerpf(-1.0, 1.0, float(i) / 18.0)
+        var laengs := (1.0 - u * u) * 0.86 - 0.14
+        var flatter := 0.08 * sin(u * 5.4 + t.alter * 2.2)
+        schild.append(p + k * r * laengs + quer * r * u * (1.36 + flatter))
+    schild.append(p - k * r * 0.62)
+    _koerper(schild, farbe, hitze)
+
+    # **Die Platten sind seine Regel.** Dieselbe Bildsprache wie bei der
+    # Schildkoralle: wer die kennt, liest hier ohne einen Satz Text, dass der
+    # Rand des Kegels an ihm nichts ausrichtet.
+    # **Als Fugen, nicht als helle Striche.** Weiss auf einem sandfarbenen
+    # Leib bei zwanzig Prozent Deckung ist unsichtbar - im Bild war der
+    # Kalkrochen eine glatte Raute, und seine einzige Regel stand nirgends.
+    # Eine Platte erkennt man an ihrem Schatten und ihrer Oberkante, so wie
+    # jede Fuge in jedem Material.
+    # **Die Breite kommt aus derselben Kurve wie der Rumpf.** Vorher war sie
+    # eine eigene Interpolation, und die stand an den Flanken ueber den
+    # Umriss hinaus - im Bild ragten die Platten aus dem Tier heraus wie
+    # Speichen. Zwei Beschreibungen derselben Form laufen auseinander, immer.
+    for i in 5:
+        var u := lerpf(0.26, 0.94, float(i) / 4.0)
+        var y := (1.0 - u * u) * 0.86 - 0.14
+        var halb := r * u * 1.30
+        var a := p + k * r * y + quer * halb
+        var b := p + k * r * y - quer * halb
+        draw_line(a, b, Color(0.05, 0.04, 0.03, 0.55), 3.4)
+        draw_line(a - k * 2.0, b - k * 2.0,
+            Color(1.0, 0.98, 0.92, 0.30 + 0.40 * hitze), 1.8)
+
+    for seite: float in SEITEN:
+        _auge(p + k * r * 0.44 + quer * r * seite * 0.30, r * 0.11, hitze)
+
+
+## Das Schwarmherz. Ein Kern, um den ein Ring aus Trabanten kreist - kein
+## Panzer, dafuer eine Bahn, die weit ausschlaegt.
+##
+## Der Ring ist kein Schmuck: er dreht sich mit der Zeit und macht damit
+## sichtbar, dass dieses Tier **nicht stillsteht**. Genau das ist seine
+## Schwierigkeit, und ein Leitwesen soll man ansehen und wissen, woran man ist.
+func _schwarmherz(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> void:
+    var dreh := t.alter * 1.4 + t.phase
+
+    for i in 9:
+        var w := TAU * float(i) / 9.0 + dreh
+        var weit := r * (1.02 + 0.20 * sin(dreh * 1.7 + float(i)))
+        var wo := p + Vector2(cos(w), sin(w) * 0.72) * weit
+        draw_line(p, wo, Color(farbe.r, farbe.g, farbe.b, 0.13 + 0.10 * hitze), 1.4)
+        draw_circle(wo, r * 0.13,
+            Color(farbe.r, farbe.g, farbe.b, 0.34 + 0.34 * hitze))
+        draw_circle(wo, r * 0.055, Color(0.92, 1.0, 0.96, 0.55 + 0.35 * hitze))
+
+    var kern := PackedVector2Array()
+    for i in 15:
+        var w := TAU * float(i) / 15.0
+        var zerre := 1.0 + 0.16 * sin(float(i) * 2.1 + t.alter * 2.6)
+        kern.append(p + Vector2(cos(w), sin(w) * 0.82) * r * 0.62 * zerre)
+    _koerper(kern, farbe, hitze)
+
+    _auge(p, r * 0.17, hitze)
 
 
 ## Randlicht: die dem Waechter zugewandte Kante wird hell.

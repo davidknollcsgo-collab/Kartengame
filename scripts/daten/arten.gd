@@ -20,7 +20,31 @@ enum Art {
     SPRUNGAAL,      ## Sinkt in Schueben - der Kegel laeuft ihm nach.
     SPIEGLER,       ## Brennt nur im Randlicht - der Kern prallt ab.
     SCHLUNDMUTTER,  ## Leitwesen. Steht am Ende jedes Abschnitts, sonst nie.
+    KALKROCHEN,     ## Leitwesen. Dicke Haut - nur der Kern des Kegels beisst.
+    SCHWARMHERZ,    ## Leitwesen. Schnell und ausweichend statt gepanzert.
 }
+
+## --- Warum es drei Leitwesen gibt und nicht eines ---
+##
+## Es gab genau eines, und es stand am Ende **jedes** Abschnitts. Der Graben
+## hat keinen Boden; wer ihn zwei Umdrehungen weit spielt, hat sechzehnmal
+## dieselbe Schlundmutter erlegt, und zwar an genau der Stelle, die der
+## Hoehepunkt sein soll. Ein Hoehepunkt, der immer derselbe ist, ist eine
+## Wiederholung mit Musik.
+##
+## Die drei verlangen Verschiedenes, und zwar nicht "mehr Leben", sondern
+## einen anderen Umgang mit dem Kegel:
+##
+##   * **Schlundmutter** - langsam, riesig, kaum Panzer. Man haelt drauf.
+##   * **Kalkrochen** - dicke Haut. Am Rand des Kegels frisst der feste Abzug
+##     fast alles; man muss den Kern treffen und dort bleiben.
+##   * **Schwarmherz** - kein Panzer, dafuer schnell und weit schlaengelnd.
+##     Draufhalten reicht nicht, man muss nachfuehren.
+##
+## Welches wo steht, sagt `leitwesen_fuer()` - und das ist keine Zufallswahl,
+## sondern eine Zuordnung: der Kalkrochen darf nie in einem Abschnitt stehen,
+## der den Kegel abdunkelt. Ein fester Abzug von einem Fuenftel Helligkeit
+## frisst alles, und dann steht dort ein unbesiegbares Tier.
 
 ## --- Was die vier spaeten Arten anders machen ---
 ##
@@ -203,6 +227,54 @@ const TABELLE: Array[Dictionary] = [
         &"aufwand": 1.0,
         &"leitwesen": true,
     },
+    {
+        &"kennung": &"KALKROCHEN",
+        &"name": "Chalk Ray",
+        &"regel": "Warden with a shell that shrugs off the fringe. Only the core of the beam bites.",
+        &"leben": 1.0,
+        # Etwas schneller als die Schlundmutter: sie ist der Brocken, er ist
+        # der Druck. Zwei Leitwesen mit demselben Tempo waeren dasselbe Tier
+        # in zwei Farben.
+        &"tempo": 31.0,
+        &"radius": 54.0,
+        &"wucht": 4,
+        &"schlaengel": 5.0,
+        &"takt": 0.35,
+        &"farbe": Color(0.94, 0.78, 0.42),
+        &"ab_welle": Graben.WELLEN_JE_ABSCHNITT,
+        # **Das ist sein ganzer Entwurf.** Der Panzer zieht einen festen
+        # Betrag je Sekunde ab; am Rand des Kegels bleibt davon nichts uebrig.
+        # Sein Leben wird - wie bei jedem Leitwesen - aus
+        # `(Kegel - Panzer) * Sekunden` gerechnet, der Kampf dauert also
+        # gleich lang. Was sich aendert, ist **wo** man stehen muss.
+        #
+        # Er darf deshalb nie in einem Abschnitt stehen, der den Kegel
+        # abdunkelt: `leitwesen_fuer()` haelt das fest.
+        &"panzer": 13.0,
+        &"aufwand": 1.0,
+        &"leitwesen": true,
+    },
+    {
+        &"kennung": &"SCHWARMHERZ",
+        &"name": "Swarm Heart",
+        &"regel": "Warden that will not hold still. No shell - but it leaves the beam on its own.",
+        &"leben": 1.0,
+        &"tempo": 38.0,
+        # Groesser als zuerst: bei 46 stand es im Bild neben einer
+        # Grabnatter und sah aus wie eine. Ein Leitwesen muss man am Umriss
+        # erkennen, nicht am Lebensbalken.
+        &"radius": 54.0,
+        &"wucht": 4,
+        # Der Gegenentwurf zum Kalkrochen: keine Haut, dafuer eine Bahn, die
+        # weit ausschlaegt und schnell schwingt. Draufhalten reicht nicht.
+        &"schlaengel": 46.0,
+        &"takt": 1.15,
+        &"farbe": Color(0.58, 0.96, 0.78),
+        &"ab_welle": Graben.WELLEN_JE_ABSCHNITT,
+        &"panzer": 1.0,
+        &"aufwand": 1.0,
+        &"leitwesen": true,
+    },
 ]
 
 
@@ -310,9 +382,42 @@ static func verfuegbar(nummer: int) -> PackedInt32Array:
     return liste
 
 
-## Das Leitwesen, oder -1. Es gibt genau eines.
+## Alle Leitwesen, in Tabellenreihenfolge.
+static func leitwesen_liste() -> PackedInt32Array:
+    var liste := PackedInt32Array()
+    for i in TABELLE.size():
+        if ist_leitwesen(i):
+            liste.append(i)
+    return liste
+
+
+## Das erste Leitwesen, oder -1. Bleibt fuer den Fall, dass jemand nur wissen
+## will, ob es ueberhaupt eines gibt.
 static func leitwesen() -> int:
     for i in TABELLE.size():
         if ist_leitwesen(i):
             return i
     return -1
+
+
+## **Welches Leitwesen am Ende dieses Abschnitts steht.**
+##
+## Eine feste Zuordnung, keine Wuerfelei: der Kalkrochen traegt einen Panzer,
+## und ein fester Abzug frisst in einem abgedunkelten Abschnitt alles, was der
+## Kegel noch hergibt. Er steht deshalb nur dort, wo `Regeln.DUNKEL` nicht
+## gilt - in den Abschnitten 0, 1, 2 und 6. Die anderen beiden duerfen
+## ueberall stehen.
+##
+## Der Index wiederholt sich mit den Abschnitten, nicht mit den Umdrehungen:
+## wer den Graben zum zweiten Mal durchlaeuft, trifft dieselbe Folge unter
+## haerteren Regeln. Das ist Absicht - eine Abfolge, die man kennt, ist der
+## Unterschied zwischen einem Abstieg und einer Liste.
+const LEITFOLGE: PackedInt32Array = [0, 1, 2, 0, 2, 0, 1, 2]
+
+
+static func leitwesen_fuer(abschnitt: int) -> int:
+    var liste := leitwesen_liste()
+    if liste.is_empty():
+        return -1
+    var wahl := LEITFOLGE[clampi(abschnitt, 0, LEITFOLGE.size() - 1)]
+    return liste[clampi(wahl, 0, liste.size() - 1)]

@@ -50,6 +50,7 @@ const TESTS: PackedStringArray = [
     "_test_bahn_bleibt_im_bild_und_sinkt",
     "_test_haut_schluckt_schwache_quellen",
     "_test_leitwesen_stehen_an_den_abschnittsenden",
+    "_test_gepanzertes_leitwesen_nie_im_dunkeln",
     "_test_mutationen_tabelle_vollstaendig",
     "_test_mutationen_erst_ab_der_zweiten_umdrehung",
     "_test_mutationen_sind_reproduzierbar",
@@ -381,14 +382,24 @@ func _test_arten_erst_ab_ihrer_welle() -> bool:
         if not _melde(int(Arten.art(i)[&"ab_welle"]) <= 1,
                 "Art %d darf in Welle 1 nicht vorkommen" % i):
             return false
-    # Alle Arten ausser dem Leitwesen - das wird nie gewuerfelt, sondern von
+    # Alle Arten ausser den Leitwesen - die werden nie gewuerfelt, sondern von
     # `Wellen.auftritte()` an die Abschnittsenden gesetzt.
+    #
+    # **Es sind drei, nicht eines.** Hier stand `== 1`, und das war die
+    # richtige Zahl, solange jeder Abschnitt gleich endete. Was der Test
+    # wirklich sichern soll, steht eine Zeile tiefer: kein Leitwesen darf in
+    # der Wuerfelauswahl auftauchen. Wie viele es gibt, ist eine Frage des
+    # Inhalts, nicht der Richtigkeit.
     var leitwesen := 0
     for i in Arten.zahl():
         if Arten.ist_leitwesen(i):
             leitwesen += 1
-    if not _melde(leitwesen == 1, "es muss genau ein Leitwesen geben, nicht %d" % leitwesen):
+    if not _melde(leitwesen >= 1, "es muss mindestens ein Leitwesen geben"):
         return false
+    for i in Arten.verfuegbar(Graben.ZYKLUS):
+        if not _melde(not Arten.ist_leitwesen(i),
+                "Leitwesen %d steht in der Wuerfelauswahl" % i):
+            return false
 
     var spaet := Arten.verfuegbar(Graben.ZYKLUS)
     return _melde(spaet.size() == Arten.zahl() - leitwesen,
@@ -566,15 +577,23 @@ func _test_leitwesen_stehen_an_den_abschnittsenden() -> bool:
     # Genau eines je Abschnittsende, sonst keines. Waeren sie Teil der
     # normalen Auswahl, kaeme irgendwann eine Welle aus lauter Leitwesen - und
     # aus sechs Hoehepunkten wuerde Rauschen.
-    var leit := Arten.leitwesen()
-    if not _melde(leit >= 0, "es gibt kein Leitwesen"):
+    var alle := Arten.leitwesen_liste()
+    if not _melde(not alle.is_empty(), "es gibt kein Leitwesen"):
         return false
+    var leit := alle[0]
 
     for n in range(1, Graben.ZYKLUS + 1):
         var zahl := 0
         for a in Wellen.auftritte(n):
-            if int(a[&"art"]) == leit:
+            if alle.has(int(a[&"art"])):
                 zahl += 1
+                # Und zwar genau das, das fuer diesen Abschnitt vorgesehen
+                # ist. Ein zufaellig gewaehlter Hoehepunkt ist ein Ereignis,
+                # ein zugeordneter ist ein Ort.
+                if not _melde(int(a[&"art"])
+                        == Arten.leitwesen_fuer(Graben.abschnitt(n)),
+                        "Welle %d hat das falsche Leitwesen" % n):
+                    return false
         var soll := 1 if Wellen.hat_leitwesen(n) else 0
         if not _melde(zahl == soll,
                 "Welle %d hat %d Leitwesen statt %d" % [n, zahl, soll]):
@@ -1782,4 +1801,26 @@ func _test_sichtbares_bleibt_englisch() -> bool:
                             "%s:%d zeigt deutschen Text: %s"
                             % [datei.get_file(), nummer, text]):
                         return false
+    return true
+
+
+## Ein gepanzertes Leitwesen darf nie in einem abgedunkelten Abschnitt stehen.
+##
+## Der Panzer zieht einen **festen** Betrag je Sekunde ab. `Regeln.DUNKEL`
+## nimmt dem Kegel einen grossen Teil seiner Helligkeit - und von einem
+## Fuenftel frisst ein fester Abzug alles. Beides zusammen ist kein schwerer
+## Kampf, sondern ein Tier, an dem der Spieler nichts ausrichten kann, und der
+## Wellenpruefer wuerde es als Wand melden, ohne zu sagen warum.
+##
+## Die Zuordnung in `Arten.LEITFOLGE` haelt das auseinander. Sie ist von Hand
+## gesetzt; dieser Test ist der Grund, warum sie es bleiben darf.
+func _test_gepanzertes_leitwesen_nie_im_dunkeln() -> bool:
+    for abschnitt in Graben.ABSCHNITTE:
+        var leit := Arten.leitwesen_fuer(abschnitt)
+        if Arten.panzer(leit) < 8.0:
+            continue
+        if not _melde(not Regeln.hat(abschnitt, Regeln.Regel.DUNKEL),
+                "%s steht in Abschnitt %d, und der dunkelt den Kegel ab"
+                % [Arten.name_von(leit), abschnitt]):
+            return false
     return true

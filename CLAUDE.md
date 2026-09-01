@@ -220,7 +220,17 @@ unter einer strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
    laufen auseinander, und dann liegt die Tippfläche neben der Knospe —
    `_test_nischen_liegen_auf_den_ranken` hält es fest.
 
-14. **Weltpunkt zu Bildschirmpunkt geht über den Viewport, nicht über das
+14. **Ein gepanzertes Leitwesen darf nie in einem abgedunkelten Abschnitt
+   stehen.** Der Panzer zieht einen *festen* Betrag je Sekunde ab, und
+   `Regeln.DUNKEL` nimmt dem Kegel einen großen Teil seiner Helligkeit — von
+   einem Fünftel frisst ein fester Abzug alles. Beides zusammen ist kein
+   schwerer Kampf, sondern ein unbesiegbares Tier, und der Wellenprüfer
+   meldet es als Wand, ohne zu sagen warum. `Arten.LEITFOLGE` ordnet die drei
+   Leitwesen von Hand den acht Abschnitten zu;
+   `_test_gepanzertes_leitwesen_nie_im_dunkeln` ist der Grund, warum das von
+   Hand bleiben darf.
+
+15. **Weltpunkt zu Bildschirmpunkt geht über den Viewport, nicht über das
    Control.** `Control.get_canvas_transform()` liefert die Verschiebung der
    CanvasLayer, in der das Bedienbild hängt — und die ist die
    Einheitsabbildung. Gebraucht wird `get_viewport().get_canvas_transform()`,

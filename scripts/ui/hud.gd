@@ -29,6 +29,11 @@ var _sitzung := false
 
 ## Welche Art die Tafel gerade ankuendigt, oder -1 fuer den Abschnitt.
 var _verdient := 0
+
+## Wieviele Raeuber diese Sitzung gekostet hat. Die zweite Zahl des
+## Ergebnisses - Naehrstoff sagt, was man mitnimmt, und das hier, was man
+## getan hat.
+var _erlegt := 0
 var _zeit := 0.0
 var _meldung := ""
 var _meldung_leben := 0.0
@@ -166,12 +171,19 @@ func zeige_pause(an: bool) -> void:
     _flaeche.queue_redraw()
 
 
+## **Dieselben zwei Knoepfe wie in der Bauphase, auch auf dem Schlussbild.**
+##
+## Nach einem Fall ist die nuetzliche Handlung nicht "noch einmal", sondern
+## "ausgeben, was du verdient hast, und dann noch einmal". Genau die stand
+## nicht zur Verfuegung: das Schlussbild kannte einen einzigen Ausgang, und
+## der fuehrte sofort in die naechste Welle. Wer besser werden wollte, musste
+## erst wieder verlieren, um in die Kolonie zu kommen.
 func kolonieknopf_bei(bildschirm: Vector2) -> bool:
-    return _bauphase and not _ende and _kolonieknopf.has_point(bildschirm)
+    return (_bauphase or _ende) and _kolonieknopf.has_point(bildschirm)
 
 
 func wellenknopf_bei(bildschirm: Vector2) -> bool:
-    return _bauphase and not _ende and _wellenknopf.has_point(bildschirm)
+    return (_bauphase or _ende) and _wellenknopf.has_point(bildschirm)
 
 
 func setze_zahlen(brut: int, naehrstoffe: int, offen: int) -> void:
@@ -197,23 +209,25 @@ func zeige_bauphase(nummer: int, brut: int, naehrstoffe: int, preis: int,
     setze_zahlen(brut, naehrstoffe, 0)
 
 
-func zeige_ende(gewonnen: bool, nummer: int, verdient: int) -> void:
+func zeige_ende(gewonnen: bool, nummer: int, verdient: int, erlegt := 0) -> void:
     _ende = true
     _gewonnen = gewonnen
     _sitzung = false
     _welle = nummer
     _verdient = verdient
+    _erlegt = erlegt
 
 
 ## Das Ende einer Sitzung - kein Verlust, sondern ein Punkt zum Aufhoeren.
 ## Bewusst anders gefaerbt und anders formuliert als der Fall der Brut: wer
 ## gerade fuenf Wellen gehalten hat, darf das nicht wie eine Niederlage lesen.
-func zeige_sitzungsende(naechste: int, verdient: int) -> void:
+func zeige_sitzungsende(naechste: int, verdient: int, erlegt := 0) -> void:
     _ende = true
     _gewonnen = false
     _sitzung = true
     _welle = naechste
     _verdient = verdient
+    _erlegt = erlegt
 
 
 ## Eine aufsteigende Zahl am Ort des Treffers. Die einzige Stelle, an der das
@@ -257,9 +271,10 @@ func _zeichne() -> void:
     _schwebende_zahlen()
 
     if _bauphase and not _ende:
-        _kolonieknopf_zeichnen(breite, hoehe)
+        _kolonieknopf_zeichnen(breite, hoehe,
+            "COLONY", "START WAVE %d" % _welle)
         _bauhinweis(breite, hoehe)
-    else:
+    elif not _ende:
         _kolonieknopf = Rect2()
         _wellenknopf = Rect2()
     if _ende:
@@ -588,7 +603,8 @@ const KNOPF_HOCH := 58.0
 const KNOPF_LUECKE := 10.0
 
 
-func _kolonieknopf_zeichnen(breite: float, hoehe: float) -> void:
+func _kolonieknopf_zeichnen(breite: float, hoehe: float, links_text: String,
+        rechts_text: String) -> void:
     var y := hoehe - KNOPF_HOCH - 26.0
     var weit := breite - RAND * 2.0 - KNOPF_LUECKE
     # Der Wellenstart ist die Haupthandlung dieser Phase und bekommt den
@@ -598,7 +614,7 @@ func _kolonieknopf_zeichnen(breite: float, hoehe: float) -> void:
     _kolonieknopf = Rect2(RAND, y, links_weit, KNOPF_HOCH)
     _flaeche.draw_rect(_kolonieknopf, Color(0.05, 0.14, 0.18, 0.88))
     _flaeche.draw_rect(_kolonieknopf, Color(0.42, 0.86, 0.92, 0.30), false, 1.4)
-    _text(_kolonieknopf.get_center() + Vector2(0.0, 6.0), "COLONY",
+    _text(_kolonieknopf.get_center() + Vector2(0.0, 6.0), links_text,
         17, Color(0.72, 0.94, 0.98), true)
 
     var puls := 0.5 + 0.5 * sin(_zeit * 1.8)
@@ -608,7 +624,7 @@ func _kolonieknopf_zeichnen(breite: float, hoehe: float) -> void:
     _flaeche.draw_rect(_wellenknopf, Color(0.52, 0.94, 0.86, 0.42 + 0.30 * puls),
         false, 1.8)
     _text(_wellenknopf.get_center() + Vector2(0.0, 7.0),
-        "START WAVE %d" % _welle, 19, Color(0.84, 1.0, 0.94), true)
+        rechts_text, 19, Color(0.84, 1.0, 0.94), true)
 
 
 ## Was eine Knospe kostet - eine Zeile unter der Kopfzeile, wo sie nichts
@@ -628,63 +644,89 @@ func _bauhinweis(breite: float, hoehe: float) -> void:
         Color(0.62, 0.90, 0.86) if kann else Color(0.50, 0.60, 0.66), true)
 
 
+## --- Das Schlussbild ---
+##
+## **Es war eine Wand aus sechs zentrierten Zeilen.** Titel, Welle, Ausbeute,
+## Rang, ein Trostabsatz und "Tap for another run" - alles untereinander,
+## alles mittig, alles ungefaehr gleich wichtig. Und es hatte genau einen
+## Ausgang, der sofort in die naechste Welle fuehrte.
+##
+## Beides ist am Punkt des Verlierens genau falsch herum. Was man in diesem
+## Augenblick wissen will, ist **was der Lauf gebracht hat** - das sind zwei
+## Zahlen, keine sechs Zeilen -, und was man tun will, ist **besser werden**.
+## Die nuetzliche Handlung nach einem Fall ist der Ausbau, nicht der sofortige
+## nachste Versuch; sie stand nicht zur Wahl.
+##
+## Jetzt: eine Karte mit zwei grossen Kacheln, darunter dieselben zwei
+## Knoepfe wie in der Bauphase - Kolonie links, weiter rechts.
 func _endschirm(breite: float, hoehe: float) -> void:
-    _flaeche.draw_rect(Rect2(0.0, 0.0, breite, hoehe), Color(0.01, 0.03, 0.05, 0.80))
-    var mitte := Vector2(breite * 0.5, hoehe * 0.42)
+    _flaeche.draw_rect(Rect2(0.0, 0.0, breite, hoehe), Color(0.01, 0.03, 0.05, 0.84))
 
+    var titel := "THE BROOD FELL"
+    var unter := "Wave %d  ·  %s" % [_welle,
+        Regeln.name_von(Graben.abschnitt(_welle))]
+    var ton := Color(1.0, 0.62, 0.52)
     if _gewonnen:
-        _text(mitte, "A FULL DESCENT", 30, Color(0.62, 0.98, 0.86), true)
-        _text(mitte + Vector2(0.0, 44.0),
-            "%d waves down. The trench turns over - deeper, not finished." % _welle,
-            15, Color(0.66, 0.84, 0.88), true)
+        titel = "A FULL DESCENT"
+        unter = "%d waves down. The trench turns over - deeper, not finished." % _welle
+        ton = Color(0.62, 0.98, 0.86)
     elif _sitzung:
-        _text(mitte, "SESSION HELD", 30, Color(0.62, 0.98, 0.86), true)
-        _text(mitte + Vector2(0.0, 44.0),
-            "%d waves in a row - next up is wave %d"
-            % [Graben.WELLEN_JE_SITZUNG, _welle], 17,
-            Color(0.66, 0.84, 0.88), true)
-    else:
-        _text(mitte, "THE BROOD HAS FALLEN", 30, Color(1.0, 0.52, 0.44), true)
-        _text(mitte + Vector2(0.0, 44.0), "Wave %d" % _welle, 17,
-            Color(0.72, 0.72, 0.76), true)
+        titel = "SESSION HELD"
+        unter = "%d waves in a row - next up is wave %d" \
+            % [Graben.WELLEN_JE_SITZUNG, _welle]
+        ton = Color(0.62, 0.98, 0.86)
 
-    _text(mitte + Vector2(0.0, 86.0),
-        "%s nutrients harvested" % Zahl.kurz(_verdient), 17,
-        Color(0.52, 0.94, 0.80), true)
+    var karte := Rect2(RAND, hoehe * 0.20, breite - RAND * 2.0, 342.0)
+    _flaeche.draw_rect(karte, Color(0.030, 0.078, 0.098, 0.92))
+    _flaeche.draw_rect(karte, Color(ton.r, ton.g, ton.b, 0.34), false, 1.6)
+    _flaeche.draw_rect(Rect2(karte.position, Vector2(karte.size.x, 3.0)),
+        Color(ton.r, ton.g, ton.b, 0.85))
 
-    # Die Wertung steht genau hier, weil sie hier wirkt: im Moment des
+    var mitte_x := karte.get_center().x
+    _text(Vector2(mitte_x, karte.position.y + 50.0), titel, 26, ton, true)
+    var unterzeilen := _umbrich(unter, karte.size.x - 40.0, 14)
+    for i in unterzeilen.size():
+        _text(Vector2(mitte_x, karte.position.y + 76.0 + float(i) * 19.0),
+            unterzeilen[i], 14, Color(0.68, 0.82, 0.86), true)
+
+    # Zwei Kacheln: was der Lauf eingebracht hat und was er gekostet hat.
+    # Nebeneinander und gross - eine Zahl in einer Zeile Fliesstext ist ein
+    # Wort, eine Zahl in einer Kachel ist ein Ergebnis.
+    var kachel_y := karte.position.y + 116.0
+    var kachel_b := (karte.size.x - 52.0) * 0.5
+    _kachel(Rect2(karte.position.x + 18.0, kachel_y, kachel_b, 84.0),
+        Zahl.kurz(_verdient), "NUTRIENTS", Color(0.52, 0.94, 0.80))
+    _kachel(Rect2(karte.position.x + 34.0 + kachel_b, kachel_y, kachel_b, 84.0),
+        Zahl.kurz(_erlegt), "RAIDERS BURNED", Color(0.72, 0.90, 0.98))
+
+    # Die Wertung steht genau hier, weil sie hier wirkt: im Augenblick des
     # Aufhoerens der Grund, es noch einmal zu versuchen.
-    _grabenwertung(mitte + Vector2(0.0, 122.0))
+    _grabenwertung(Vector2(mitte_x, kachel_y + 126.0))
 
-    # **Was jetzt passiert, muss dastehen.**
-    #
-    # Zwischen zwei Sitzungen aendert sich dreierlei auf einmal: die Brut ist
-    # wieder voll, die Wehrpolypen sind weg, und der Naehrstoff bleibt. Wer
-    # das nicht weiss, sieht beim naechsten Mal leere Knospen und haelt es
-    # fuer einen Fehler - oder er spart Naehrstoff auf und weiss nicht,
-    # wofuer. Drei Zeilen an der Stelle, an der man ohnehin liest.
-    var nachher := "The brood is whole again and the vines are bare - "
-    if _gewonnen or _sitzung:
-        nachher += "polyps last one session, nutrients stay."
-    else:
-        nachher = "The session is lost, but the colony keeps every nutrient "
-        nachher += "it earned. Spend it before you go back down."
-    var zeilen := _umbrich(nachher, breite - RAND * 6.0, 14)
+    # **Was jetzt passiert, muss dastehen.** Zwischen zwei Sitzungen aendert
+    # sich dreierlei auf einmal: die Brut ist wieder voll, die Wehrpolypen
+    # sind weg, und der Naehrstoff bleibt.
+    var nachher := "Brood whole again, vines bare - polyps last one session, nutrients stay."
+    if not (_gewonnen or _sitzung):
+        nachher = "The colony keeps every nutrient it earned. Spend it before you go back down."
+    var zeilen := _umbrich(nachher, karte.size.x - 40.0, 13)
     for i in zeilen.size():
-        _text(mitte + Vector2(0.0, 194.0 + float(i) * 20.0), zeilen[i], 14,
+        _text(Vector2(mitte_x, karte.end.y - 20.0
+            - float(zeilen.size() - 1 - i) * 18.0), zeilen[i], 13,
             Color(0.58, 0.76, 0.82), true)
 
-    var puls := 0.5 + 0.5 * sin(_zeit * 2.6)
-    var weiter := "Tap to continue the watch" if _sitzung \
-        else "Tap for another run"
-    # Der Abstand ist **gerechnet**, nicht gesetzt: darueber stehen die
-    # Wertung und die Auskunft, was die naechste Sitzung mitnimmt, und die
-    # ist mal ein-, mal zweizeilig. Eine feste Zahl lag hier schon zweimal
-    # auf der Zeile darueber, und auf dem Bild sah es aus wie ein
-    # Schriftfehler.
-    _text(mitte + Vector2(0.0, 194.0 + float(zeilen.size()) * 20.0 + 32.0),
-        weiter, 17,
-        Color(0.82, 0.94, 0.98, 0.45 + 0.55 * puls), true)
+    _kolonieknopf_zeichnen(breite, hoehe, "COLONY",
+        "GO ON" if _sitzung or _gewonnen else "DIVE AGAIN")
+
+
+## Eine Ergebniskachel: eine grosse Zahl mit einem kleinen Wort darunter.
+func _kachel(kasten: Rect2, wert: String, wort: String, farbe: Color) -> void:
+    _flaeche.draw_rect(kasten, Color(farbe.r, farbe.g, farbe.b, 0.07))
+    _flaeche.draw_rect(kasten, Color(farbe.r, farbe.g, farbe.b, 0.24), false, 1.3)
+    var mitte := kasten.get_center()
+    _text(Vector2(mitte.x, mitte.y + 4.0), wert, 28, farbe, true)
+    _text(Vector2(mitte.x, kasten.end.y - 12.0), wort, 11,
+        Color(0.52, 0.70, 0.76), true)
 
 
 ## Der eigene Platz und der Naechste, den man einholen kann.

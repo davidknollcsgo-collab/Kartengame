@@ -1029,11 +1029,20 @@ func _artband(kasten: Rect2, index: int, stand: KolonieStand) -> void:
     var mitte_y := kasten.position.y + kasten.size.y * 0.5
     _artsinnbild(Vector2(kasten.position.x + 46.0, mitte_y), 22.0, index, farbe, kennt)
 
+    # **Die Zeilen haengen an der Bandhoehe, nicht an festen Abstaenden.**
+    #
+    # Sie standen bei 32, 56 und `end.y - 16` - richtig fuer ein Band von
+    # 116 Pixeln. Mit zwoelf Arten teilt sich die Liste den Platz auf 75, und
+    # die Werte lagen dann quer ueber der Regel. Der Fehler faellt in keinem
+    # Test auf und in keinem Bild, ausser man sieht sich genau die Liste an,
+    # die eine Art zu lang geworden ist.
     var links := kasten.position.x + 84.0
-    _text(Vector2(links, kasten.position.y + 32.0),
+    var hoch := kasten.size.y
+    var eng := hoch < 92.0
+    _text(Vector2(links, kasten.position.y + hoch * (0.36 if eng else 0.28)),
         Arten.name_von(index) if kennt else "Not yet encountered", 17,
         SCHRIFT if kennt else LEISE)
-    _text(Vector2(links, kasten.position.y + 56.0),
+    _text(Vector2(links, kasten.position.y + hoch * (0.60 if eng else 0.48)),
         Arten.regel(index) if kennt else "Appears from wave %d on" % Arten.art(index)[&"ab_welle"],
         12, LEISE if kennt else Color(0.34, 0.44, 0.50))
 
@@ -1048,7 +1057,8 @@ func _artband(kasten: Rect2, index: int, stand: KolonieStand) -> void:
     var zeile := "Health %d  ·  speed %d  ·  impact %d" % [
         int(Wellen.leben_in(index, tiefe)), int(Arten.tempo(index)),
         Arten.wucht(index)]
-    _text(Vector2(links, kasten.end.y - 16.0), zeile, 11, Color(0.40, 0.54, 0.60))
+    _text(Vector2(links, kasten.position.y + hoch * (0.86 if eng else 0.72)),
+        zeile, 11, Color(0.40, 0.54, 0.60))
 
     var rechts := kasten.end.x - 14.0
     _text(Vector2(rechts, mitte_y - 6.0), "from wave", 12, LEISE, false, true)
@@ -1202,6 +1212,26 @@ func _artsinnbild(p: Vector2, r: float, index: int, farbe: Color, kennt: bool) -
                 p + Vector2(0.0, -r * 0.2), Color(1.0, 1.0, 0.96, 0.85), 1.8)
             _flaeche.draw_line(p + Vector2(0.0, -r * 0.2),
                 p + Vector2(r * 0.75, -r * 0.9), Color(1.0, 1.0, 0.96, 0.85), 1.8)
+        Arten.Art.KALKROCHEN:
+            # Eine flache Raute quer zur Bahn, mit Platten darauf - derselbe
+            # Umriss wie im Schlund, nur klein.
+            _flaeche.draw_polyline(PackedVector2Array([
+                p + Vector2(0.0, -r * 0.5), p + Vector2(r * 0.95, 0.0),
+                p + Vector2(0.0, r * 0.5), p + Vector2(-r * 0.95, 0.0),
+                p + Vector2(0.0, -r * 0.5)]), farbe, 2.0, true)
+            for i in 3:
+                var y := lerpf(-r * 0.22, r * 0.22, float(i) / 2.0)
+                var halb := r * (0.72 - 0.5 * absf(y) / (r * 0.5))
+                _flaeche.draw_line(p + Vector2(-halb, y), p + Vector2(halb, y),
+                    Color(farbe.r, farbe.g, farbe.b, 0.6), 1.4)
+        Arten.Art.SCHWARMHERZ:
+            # Ein Kern mit einem Ring aus Trabanten - das Zeichen sagt
+            # dasselbe wie das Tier: das hier steht nicht still.
+            _flaeche.draw_circle(p, r * 0.3, farbe)
+            for i in 7:
+                var w := TAU * float(i) / 7.0 + _zeit * 0.7
+                _flaeche.draw_circle(p + Vector2(cos(w), sin(w) * 0.75) * r * 0.82,
+                    r * 0.13, Color(farbe.r, farbe.g, farbe.b, 0.75))
         Arten.Art.SCHLUNDMUTTER:
             # Breiter Mantel und ein Kranz aus Augen - dieselbe Silhouette wie
             # im Schlund, nur klein.

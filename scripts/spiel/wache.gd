@@ -80,6 +80,11 @@ var verdient := 0
 ## heisst: gemessen wurde ein anderes Spiel als gespielt.
 var welle_in_sitzung := 0
 
+## Wieviele Raeuber diese Sitzung gekostet hat. Steht auf dem Schlussbild
+## neben dem Naehrstoff - die eine Zahl sagt, was man mitnimmt, die andere,
+## was man getan hat.
+var erlegt := 0
+
 var _tiere: Array[Raeuber] = []
 var _offen := 0
 var _wellenzeit := 0.0
@@ -196,12 +201,21 @@ func _kolonie_geschlossen() -> void:
     _hud.visible = true
     _stelle_ausbau_ein()
     _aktualisiere_kolonie()
+    # **Nicht zurueck in die Bauphase, wenn man gar nicht dort war.** Wer die
+    # Kolonie vom Schlussbild aus geoeffnet hat, kommt auf das Schlussbild
+    # zurueck; `zeige_bauphase()` haette es weggewischt und den Spieler
+    # mitten in einer Welle stehen lassen, die er verloren hat.
+    if lage != Lage.BAUEN:
+        return
     _hud.zeige_bauphase(welle_nummer, brut, Fortschritt.stand.naehrstoffe,
         Fortschritt.stand.polyp_kosten(polypen.size()), polypen.size())
 
 
 func oeffne_kolonie() -> void:
-    if lage != Lage.BAUEN:
+    # Auch von den Schlussbildern aus: dort ist der Ausbau die Handlung, die
+    # etwas aendert, und sie war von dort aus nicht erreichbar.
+    if lage not in [Lage.BAUEN, Lage.VERLOREN, Lage.GESCHAFFT,
+            Lage.SITZUNG_ENDE]:
         return
     _hud.visible = false
     _einstieg_weiter(4)
@@ -559,6 +573,7 @@ func _raeume_auf() -> void:
             _hud.zeige_ausbeute(r.ort, lohn)
             _folge = minf(24.0, _folge + 1.0)
             Fortschritt.melde_ziel(Tagesziel.Ziel.RAEUBER)
+            erlegt += 1
             _einstieg_weiter(1)
             Klang.spiele(Klang.Ton.TOD, 0.82 + _folge * 0.025, 0.5)
             _waechter.feuer()
@@ -717,12 +732,12 @@ func _welle_geschafft() -> void:
     welle_nummer += 1
     if abgeschlossen % Graben.ZYKLUS == 0:
         lage = Lage.GESCHAFFT
-        _hud.zeige_ende(true, abgeschlossen, verdient)
+        _hud.zeige_ende(true, abgeschlossen, verdient, erlegt)
         return
     if welle_in_sitzung >= Graben.WELLEN_JE_SITZUNG:
         lage = Lage.SITZUNG_ENDE
         _einstieg_weiter(6)
-        _hud.zeige_sitzungsende(welle_nummer, verdient)
+        _hud.zeige_sitzungsende(welle_nummer, verdient, erlegt)
         return
     _bereite_welle_vor()
 
@@ -730,7 +745,7 @@ func _welle_geschafft() -> void:
 func _verloren() -> void:
     lage = Lage.VERLOREN
     _schuetteln = 1.6
-    _hud.zeige_ende(false, welle_nummer, verdient)
+    _hud.zeige_ende(false, welle_nummer, verdient, erlegt)
 
 
 ## Nach einem Fall: die Sitzung beginnt neu, die Kolonie bleibt.
@@ -741,6 +756,7 @@ func _verloren() -> void:
 func neu_anfangen() -> void:
     brut = Fortschritt.stand.brut_leben()
     verdient = 0
+    erlegt = 0
     polypen.clear()
     welle_in_sitzung = 0
     welle_nummer = Fortschritt.stand.naechste_welle()
@@ -882,7 +898,16 @@ func _beruehrung(gedrueckt: bool, ort: Vector2) -> void:
             if n >= 0:
                 baue_polyp(n)
         Lage.VERLOREN, Lage.GESCHAFFT, Lage.SITZUNG_ENDE:
-            neu_anfangen()
+            # **Zwei Ausgaenge, nicht einer.** Ein Tipp irgendwohin startete
+            # sofort den naechsten Versuch - und der nuetzliche Weg nach
+            # einem Fall ist der Ausbau, nicht die Wiederholung.
+            var schirm := _bildschirm(ort)
+            if _hud.kolonieknopf_bei(schirm):
+                Klang.spiele(Klang.Ton.TIPP)
+                oeffne_kolonie()
+            elif _hud.wellenknopf_bei(schirm):
+                Klang.spiele(Klang.Ton.TIPP)
+                neu_anfangen()
 
 
 func _welt(bildschirm: Vector2) -> Vector2:
@@ -981,16 +1006,17 @@ func _lies_entwicklerschalter() -> void:
         return
     if endschirm >= 0:
         verdient = 1840
+        erlegt = 214
         match endschirm:
             1:
                 lage = Lage.SITZUNG_ENDE
-                _hud.zeige_sitzungsende(welle_nummer + 1, verdient)
+                _hud.zeige_sitzungsende(welle_nummer + 1, verdient, erlegt)
             2:
                 lage = Lage.GESCHAFFT
-                _hud.zeige_ende(true, Graben.ZYKLUS * 2, verdient)
+                _hud.zeige_ende(true, Graben.ZYKLUS * 2, verdient, erlegt)
             _:
                 lage = Lage.VERLOREN
-                _hud.zeige_ende(false, welle_nummer, verdient)
+                _hud.zeige_ende(false, welle_nummer, verdient, erlegt)
     if bild.is_empty():
         if reiter >= 0:
             oeffne_kolonie()
