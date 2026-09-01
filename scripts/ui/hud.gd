@@ -10,6 +10,54 @@ extends CanvasLayer
 
 const RAND := 22.0
 
+## --- Was das Geraet fuer sich beansprucht ---
+##
+## **Ein Telefon ist kein Rechteck.** Oben sitzt eine Kamera in einem Loch
+## oder einer Kerbe, unten ein Gestenbalken, an den Seiten laeuft das Glas um
+## die Kante. Das Bedienbild rechnete mit festen Raendern: Kopfzeile bei 36,
+## die Knopfzeile bei `hoehe - 84`. Ein Gestenbalken ist achtundvierzig Pixel
+## hoch - die untere Haelfte von "START WAVE" lag also unter einem Balken, den
+## das Betriebssystem selbst bedient.
+##
+## Im Entwurfsfenster von 720 mal 1280 faellt das nie auf: dort gibt es keine
+## Aussparungen, und `get_display_safe_area()` liefert den ganzen Schirm. Der
+## Fehler existiert ausschliesslich auf dem Geraet, fuer das das Spiel gebaut
+## ist - und genau deshalb ist er zweimal an mir vorbeigegangen.
+##
+## Gerechnet wird in **Leinwandeinheiten**, nicht in Bildschirmpixeln: das
+## Bild wird gestreckt, die Raender werden es also auch.
+var _rand_oben := 0.0
+var _rand_unten := 0.0
+var _rand_seite := 0.0
+
+
+func _miss_geraeterand() -> void:
+    # **Nur auf dem Telefon fragen.** `get_display_safe_area()` liefert auf
+    # dem Schreibtisch den ganzen *Bildschirm*, nicht das Fenster - und der
+    # ist gerne kleiner als ein Hochformatfenster von 1280 Pixeln. Aus der
+    # Differenz wurde dann ein unterer Rand von vierhundert Pixeln, und die
+    # Knopfzeile sprang mitten ins Bild. Der Aufnahmelauf hat es sofort
+    # gezeigt; auf einem Telefon waere es richtig gewesen und hier falsch.
+    if not OS.has_feature("mobile"):
+        return
+    var fenster := DisplayServer.window_get_size()
+    if fenster.x <= 0 or fenster.y <= 0 or _flaeche.size.x <= 0.0:
+        return
+    var sicher := DisplayServer.get_display_safe_area()
+    if sicher.size.x <= 0 or sicher.size.y <= 0:
+        return
+    var skala := _flaeche.size / Vector2(fenster)
+    # Und gedeckelt: kein Geraet nimmt sich ein Achtel des Bildes. Was
+    # darueber liegt, ist eine Fehlmessung und keine Kerbe.
+    var deckel := _flaeche.size * 0.12
+    _rand_oben = clampf(float(sicher.position.y) * skala.y, 0.0, deckel.y)
+    _rand_unten = clampf(
+        float(fenster.y - sicher.position.y - sicher.size.y) * skala.y,
+        0.0, deckel.y)
+    var links := float(sicher.position.x) * skala.x
+    var rechts := float(fenster.x - sicher.position.x - sicher.size.x) * skala.x
+    _rand_seite = clampf(maxf(links, rechts), 0.0, deckel.x)
+
 @onready var _flaeche: Control = $Flaeche
 
 ## Ob die laufende Welle eine Tagesstroemung ist. `wache.gd` setzt es beim
@@ -368,6 +416,7 @@ func zeige_ausbeute(welt: Vector2, wert: int) -> void:
 
 
 func _zeichne() -> void:
+    _miss_geraeterand()
     var breite := _flaeche.size.x
     var hoehe := _flaeche.size.y
 
@@ -493,7 +542,8 @@ func _lehrtafel(breite: float, hoehe: float) -> void:
     # waere ein zweiter Zeichenweg neben allem anderen hier.
     var zeilen := _umbrich(satz, breite - RAND * 2.0 - 28.0, 14)
     var hoch := 40.0 + (float(zeilen.size()) * 19.0 + 12.0) * voll
-    var kasten := Rect2(RAND, 154.0, breite - RAND * 2.0, hoch)
+    var kasten := Rect2(RAND + _rand_seite, 154.0 + _rand_oben,
+        breite - (RAND + _rand_seite) * 2.0, hoch)
 
     _flaeche.draw_rect(kasten, Color(0.035, 0.105, 0.135, 0.86))
     _flaeche.draw_rect(kasten, Color(0.42, 0.86, 0.92, 0.24 + 0.16 * puls),
@@ -640,17 +690,19 @@ func _abschnittstafel(breite: float, hoehe: float) -> void:
 
 
 func _kopfzeile(breite: float) -> void:
-    var balken := Rect2(0.0, 0.0, breite, 84.0)
+    var o := _rand_oben
+    var links := RAND + _rand_seite
+    var balken := Rect2(0.0, 0.0, breite, 84.0 + o)
     _flaeche.draw_rect(balken, Color(0.02, 0.05, 0.07, 0.55))
-    _flaeche.draw_line(Vector2(0.0, 84.0), Vector2(breite, 84.0),
+    _flaeche.draw_line(Vector2(0.0, 84.0 + o), Vector2(breite, 84.0 + o),
         Color(0.24, 0.56, 0.62, 0.35), 1.5)
 
-    _text(Vector2(RAND, 36.0), "WAVE %d" % _welle, 20, Color(0.72, 0.94, 0.98))
+    _text(Vector2(links, 36.0 + o), "WAVE %d" % _welle, 20, Color(0.72, 0.94, 0.98))
     if stroemung and not _bauphase and not _ende:
-        _text(Vector2(RAND, 64.0), "CURRENT x%d" % int(Tagesstroemung.FAKTOR),
+        _text(Vector2(links, 64.0 + o), "CURRENT x%d" % int(Tagesstroemung.FAKTOR),
             14, Color(0.52, 0.94, 0.80))
     else:
-        _text(Vector2(RAND, 64.0), Regeln.name_von(Graben.abschnitt(_welle))
+        _text(Vector2(links, 64.0 + o), Regeln.name_von(Graben.abschnitt(_welle))
             + Graben.tiefe_zeichen(_welle), 14, Color(0.44, 0.66, 0.72))
 
     # Das Mutationsband. Es steht dort, wo sonst nichts steht, und ist die
@@ -660,25 +712,25 @@ func _kopfzeile(breite: float) -> void:
         var teile := PackedStringArray()
         for m in mutationen:
             teile.append(Mutationen.name_von(m).to_upper())
-        _text(Vector2(RAND, 108.0), " / ".join(teile), 13,
+        _text(Vector2(links, 108.0 + o), " / ".join(teile), 13,
             Color(0.94, 0.66, 0.88, 0.9))
 
     var mitte := breite * 0.5
-    _text(Vector2(mitte - 40.0, 40.0), "BROOD", 13, Color(0.62, 0.52, 0.38))
-    _text(Vector2(mitte - 40.0, 66.0), "%d / %d"
+    _text(Vector2(mitte - 40.0, 40.0 + o), "BROOD", 13, Color(0.62, 0.52, 0.38))
+    _text(Vector2(mitte - 40.0, 66.0 + o), "%d / %d"
         % [_brut, Fortschritt.stand.brut_leben()], 19, Color(0.98, 0.80, 0.42))
 
     # Rechtsbuendig an der Randkante, nicht linksbuendig 120 Pixel davor: was
     # dort steht, ist mal "40" und mal "60.0T", und die Spalte soll bei beiden
     # am selben Rand enden.
-    var rechts := breite - RAND
-    _text(Vector2(rechts, 40.0), "NUTRIENTS", 13,
+    var rechts := breite - RAND - _rand_seite
+    _text(Vector2(rechts, 40.0 + o), "NUTRIENTS", 13,
         Color(0.40, 0.66, 0.60), false, true)
-    _text(Vector2(rechts, 66.0), Zahl.kurz(_naehrstoffe), 19,
+    _text(Vector2(rechts, 66.0 + o), Zahl.kurz(_naehrstoffe), 19,
         Color(0.52, 0.94, 0.80), false, true)
 
     if not _bauphase and not _ende:
-        _text(Vector2(rechts, 108.0), "%d left" % _offen, 15,
+        _text(Vector2(rechts, 108.0 + o), "%d left" % _offen, 15,
             Color(0.62, 0.74, 0.80, 0.8), false, true)
     elif _bauphase and not _ende:
         # Derselbe Platz, andere Auskunft: in der Bauphase steht dort, was der
@@ -686,7 +738,7 @@ func _kopfzeile(breite: float) -> void:
         # entdeckt, wirkt nicht.
         var hinweis := Tagesstroemung.hinweis(Fortschritt.stand.stroemung_offen)
         if not hinweis.is_empty():
-            _text(Vector2(rechts, 108.0), hinweis, 14,
+            _text(Vector2(rechts, 108.0 + o), hinweis, 14,
                 Color(0.52, 0.94, 0.80, 0.85), false, true)
 
 
@@ -747,20 +799,20 @@ const KNOPF_LUECKE := 10.0
 
 func _kolonieknopf_zeichnen(breite: float, hoehe: float, links_text: String,
         rechts_text: String) -> void:
-    var y := hoehe - KNOPF_HOCH - 26.0
-    var weit := breite - RAND * 2.0 - KNOPF_LUECKE
+    var y := hoehe - KNOPF_HOCH - 26.0 - _rand_unten
+    var weit := breite - (RAND + _rand_seite) * 2.0 - KNOPF_LUECKE
     # Der Wellenstart ist die Haupthandlung dieser Phase und bekommt den
     # groesseren Anteil; die Kolonie ist der Umweg und bekommt den kleineren.
     var links_weit := weit * 0.42
 
-    _kolonieknopf = Rect2(RAND, y, links_weit, KNOPF_HOCH)
+    _kolonieknopf = Rect2(RAND + _rand_seite, y, links_weit, KNOPF_HOCH)
     _flaeche.draw_rect(_kolonieknopf, Color(0.05, 0.14, 0.18, 0.88))
     _flaeche.draw_rect(_kolonieknopf, Color(0.42, 0.86, 0.92, 0.30), false, 1.4)
     _text(_kolonieknopf.get_center() + Vector2(0.0, 6.0), links_text,
         17, Color(0.72, 0.94, 0.98), true)
 
     var puls := 0.5 + 0.5 * sin(_zeit * 1.8)
-    _wellenknopf = Rect2(RAND + links_weit + KNOPF_LUECKE, y,
+    _wellenknopf = Rect2(RAND + _rand_seite + links_weit + KNOPF_LUECKE, y,
         weit - links_weit, KNOPF_HOCH)
     _flaeche.draw_rect(_wellenknopf, Color(0.08, 0.26, 0.28, 0.92))
     _flaeche.draw_rect(_wellenknopf, Color(0.52, 0.94, 0.86, 0.42 + 0.30 * puls),
@@ -782,7 +834,7 @@ func _bauhinweis(breite: float, hoehe: float) -> void:
         zeile = "Guard polyp costs %s - %s short" % [Zahl.kurz(_preis),
             Zahl.kurz(_preis - _naehrstoffe)]
 
-    _text(Vector2(breite * 0.5, 132.0), zeile, 15,
+    _text(Vector2(breite * 0.5, 132.0 + _rand_oben), zeile, 15,
         Color(0.62, 0.90, 0.86) if kann else Color(0.50, 0.60, 0.66), true)
 
 
@@ -912,8 +964,8 @@ func _rueckkehrtafel(breite: float, hoehe: float) -> void:
             zeilen[i], 14, Color(0.72, 0.88, 0.92), true)
 
     var puls := 0.5 + 0.5 * sin(_zeit * 1.8)
-    _heimknopf = Rect2(RAND + 40.0, karte.end.y + 22.0,
-        breite - RAND * 2.0 - 80.0, KNOPF_HOCH)
+    _heimknopf = Rect2(RAND + _rand_seite + 40.0, karte.end.y + 22.0,
+        breite - (RAND + _rand_seite) * 2.0 - 80.0, KNOPF_HOCH)
     _flaeche.draw_rect(_heimknopf, Color(0.08, 0.26, 0.28, 0.92))
     _flaeche.draw_rect(_heimknopf, Color(0.52, 0.94, 0.86, 0.42 + 0.30 * puls),
         false, 1.8)
@@ -937,7 +989,7 @@ func _spanne(stunden: float) -> String:
 
 ## Die Kette: Zahl, Faktor, ablaufender Bogen.
 func _kettenanzeige(breite: float) -> void:
-    var mitte := Vector2(breite * 0.5, 152.0)
+    var mitte := Vector2(breite * 0.5, 152.0 + _rand_oben)
     var stoss := _kette_stoss * _kette_stoss
     var farbe := Color(0.62, 0.98, 0.86).lerp(Color(1.0, 0.86, 0.52),
         clampf(float(_kette) / 30.0, 0.0, 1.0))
@@ -961,8 +1013,8 @@ func _kettenanzeige(breite: float) -> void:
 
 ## Der Knopf fuer das Stosslicht.
 func _stossknopf_zeichnen(breite: float, hoehe: float) -> void:
-    var mitte := Vector2(breite - STOSS_RAND - STOSS_GROSS,
-        hoehe - STOSS_RAND - STOSS_GROSS)
+    var mitte := Vector2(breite - STOSS_RAND - STOSS_GROSS - _rand_seite,
+        hoehe - STOSS_RAND - STOSS_GROSS - _rand_unten)
     _stossknopf = Rect2(mitte - Vector2.ONE * STOSS_GROSS,
         Vector2.ONE * STOSS_GROSS * 2.0)
 

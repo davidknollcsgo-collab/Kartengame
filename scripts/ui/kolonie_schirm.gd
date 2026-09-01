@@ -50,6 +50,42 @@ const FARBEN: PackedColorArray = [
 ## gezeichnet werden, sonst zeigt er auf einen Bildschirm, den niemand sieht.
 var _lehre := -1
 
+## Was das Geraet fuer sich beansprucht - dieselbe Rechnung wie im HUD, aus
+## demselben Grund: Kopfzeile unter der Kerbe, Fusszeile unter dem
+## Gestenbalken. Siehe `hud.gd::_miss_geraeterand()`.
+var _rand_oben := 0.0
+var _rand_unten := 0.0
+var _rand_seite := 0.0
+
+
+func _miss_geraeterand() -> void:
+    # **Nur auf dem Telefon fragen.** `get_display_safe_area()` liefert auf
+    # dem Schreibtisch den ganzen *Bildschirm*, nicht das Fenster - und der
+    # ist gerne kleiner als ein Hochformatfenster von 1280 Pixeln. Aus der
+    # Differenz wurde dann ein unterer Rand von vierhundert Pixeln, und die
+    # Knopfzeile sprang mitten ins Bild. Der Aufnahmelauf hat es sofort
+    # gezeigt; auf einem Telefon waere es richtig gewesen und hier falsch.
+    if not OS.has_feature("mobile"):
+        return
+    var fenster := DisplayServer.window_get_size()
+    if fenster.x <= 0 or fenster.y <= 0 or _flaeche.size.x <= 0.0:
+        return
+    var sicher := DisplayServer.get_display_safe_area()
+    if sicher.size.x <= 0 or sicher.size.y <= 0:
+        return
+    var skala := _flaeche.size / Vector2(fenster)
+    # Und gedeckelt: kein Geraet nimmt sich ein Achtel des Bildes. Was
+    # darueber liegt, ist eine Fehlmessung und keine Kerbe.
+    var deckel := _flaeche.size * 0.12
+    _rand_oben = clampf(float(sicher.position.y) * skala.y, 0.0, deckel.y)
+    _rand_unten = clampf(
+        float(fenster.y - sicher.position.y - sicher.size.y) * skala.y,
+        0.0, deckel.y)
+    var links := float(sicher.position.x) * skala.x
+    var rechts := float(fenster.x - sicher.position.x - sicher.size.x) * skala.x
+    _rand_seite = clampf(maxf(links, rechts), 0.0, deckel.x)
+
+
 @onready var _flaeche: Control = $Flaeche
 
 var _schrift: Font
@@ -281,8 +317,12 @@ func _zeige(was: String) -> void:
 # --- Zeichnen --------------------------------------------------------------
 
 func _zeichne() -> void:
+    _miss_geraeterand()
     var breite := _flaeche.size.x
-    var hoehe := _flaeche.size.y
+    # Der Fuss haengt am unteren Rand; was das Geraet dort beansprucht, muss
+    # von der nutzbaren Hoehe ab, sonst liegt "BACK TO THE MAW" unter dem
+    # Gestenbalken.
+    var hoehe := _flaeche.size.y - _rand_unten
     var stand: KolonieStand = Fortschritt.stand
     var jetzt := Time.get_unix_time_from_system()
 
@@ -307,7 +347,7 @@ func _zeichne() -> void:
         anzahl = Mutationen.Mutation.size()
     elif _sicht == Sicht.TAG:
         anzahl = Tagesziel.zahl()
-    var oben := KOPF + 58.0
+    var oben := KOPF + _rand_oben + 58.0
     # **Eine Erklaerung, nicht sechs.** Auf dem Zuegereiter stand vor der
     # ersten Begegnung sechsmal dasselbe Band: "Not yet encountered / Waves
     # start to mutate in trench depth II". Sechs gleiche Zeilen sind keine
@@ -338,7 +378,8 @@ func _zeichne() -> void:
     var y := oben + minf(28.0, maxf(0.0, (verfuegbar - gebraucht) * 0.5))
 
     for k in anzahl:
-        var kasten := Rect2(RAND, y, breite - RAND * 2.0, passt)
+        var kasten := Rect2(RAND + _rand_seite, y,
+            breite - (RAND + _rand_seite) * 2.0, passt)
         _baender.append(kasten)
         match _sicht:
             Sicht.LINIEN:
@@ -454,8 +495,10 @@ func _schwebstoff(breite: float, hoehe: float) -> void:
 
 
 func _kopfzeile(breite: float, stand: KolonieStand) -> void:
-    _text(Vector2(RAND, 34.0), "COLONY", 21, SCHRIFT)
-    _text(Vector2(RAND, 58.0), "Deepest wave %d  ·  rank %d of %d"
+    var o := _rand_oben
+    var links := RAND + _rand_seite
+    _text(Vector2(links, 34.0 + o), "COLONY", 21, SCHRIFT)
+    _text(Vector2(links, 58.0 + o), "Deepest wave %d  ·  rank %d of %d"
         % [stand.hoechste_welle,
            Geister.platz(stand.hoechste_welle), Geister.zahl() + 1], 14, LEISE)
 
@@ -468,7 +511,7 @@ func _kopfzeile(breite: float, stand: KolonieStand) -> void:
     # wiederfindet.
     var strom := stand.je_stunde()
     var unten := "" if strom <= 0.0 else "+%s / h" % Zahl.kurz(int(strom))
-    var chip := Rect2(breite - RAND - 150.0, 18.0, 150.0, 52.0)
+    var chip := Rect2(breite - RAND - _rand_seite - 150.0, 18.0 + o, 150.0, 52.0)
     _flaeche.draw_rect(chip, Color(NAEHR.r, NAEHR.g, NAEHR.b, 0.07))
     _flaeche.draw_rect(chip, Color(NAEHR.r, NAEHR.g, NAEHR.b, 0.28), false, 1.3)
     _text(Vector2(chip.end.x - 12.0, chip.position.y + 28.0),
@@ -483,7 +526,8 @@ func _kopfzeile(breite: float, stand: KolonieStand) -> void:
         _text(Vector2(breite * 0.5, 58.0), Brutlinien.name_von(stand.linie), 14,
             Brutlinien.farbe(stand.linie), true)
 
-    _flaeche.draw_line(Vector2(0.0, KOPF), Vector2(breite, KOPF),
+    _flaeche.draw_line(Vector2(0.0, KOPF + _rand_oben),
+        Vector2(breite, KOPF + _rand_oben),
         Color(BAND_KANTE.r, BAND_KANTE.g, BAND_KANTE.b, 0.4), 1.4)
 
 
@@ -491,13 +535,14 @@ func _kopfzeile(breite: float, stand: KolonieStand) -> void:
 func _umschalterzeile(breite: float) -> void:
     const BESCHRIFTUNG: PackedStringArray = ["CHAMBERS", "LINES", "SPECIES",
         "TRAITS", "DAY"]
-    var y := KOPF + 12.0
+    var y := KOPF + _rand_oben + 12.0
     var anzahl := BESCHRIFTUNG.size()
-    var breit := (breite - RAND * 2.0 - 8.0 * float(anzahl - 1)) / float(anzahl)
+    var breit := (breite - (RAND + _rand_seite) * 2.0 - 8.0 * float(anzahl - 1)) / float(anzahl)
     _reiter.clear()
 
     for i in anzahl:
-        var kasten := Rect2(RAND + (breit + 8.0) * float(i), y, breit, 36.0)
+        var kasten := Rect2(RAND + _rand_seite + (breit + 8.0) * float(i), y,
+            breit, 36.0)
         _reiter.append(kasten)
         # **Der aktive Reiter braucht mehr als eine Nuance.** Er unterschied
         # sich nur in der Deckung von den anderen; auf einem Telefon in der
@@ -1774,7 +1819,8 @@ func _lehrtafel(breite: float, hoehe: float) -> void:
 
 
 func _fusszeile(breite: float, hoehe: float) -> void:
-    _schliessen = Rect2(RAND, hoehe - FUSS + 8.0, breite - RAND * 2.0, 52.0)
+    _schliessen = Rect2(RAND + _rand_seite, hoehe - FUSS + 8.0,
+        breite - (RAND + _rand_seite) * 2.0, 52.0)
     var puls := 0.5 + 0.5 * sin(_zeit * 2.2)
     _flaeche.draw_rect(_schliessen, Color(0.08, 0.20, 0.24, 0.9))
     _flaeche.draw_rect(_schliessen, Color(0.42, 0.86, 0.92, 0.30 + 0.25 * puls),

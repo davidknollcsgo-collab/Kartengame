@@ -250,7 +250,15 @@ unter einer strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
    `Fortschritt.aendere()` und `verdient` dürfen nie in derselben Anweisung
    stehen wie `kette`.
 
-17. **Weltpunkt zu Bildschirmpunkt geht über den Viewport, nicht über das
+17. **`get_display_safe_area()` nur auf dem Telefon fragen.** Auf dem
+   Schreibtisch liefert sie den ganzen *Bildschirm* und nicht das Fenster —
+   und der ist gerne kleiner als ein Hochformatfenster von 1280 Pixeln. Aus
+   der Differenz wurde ein unterer Rand von vierhundert Pixeln, und die
+   Knopfzeile sprang mitten ins Bild. Also `OS.has_feature("mobile")` davor
+   und jeden Rand auf 12 % der Bildkante deckeln: was darüber liegt, ist eine
+   Fehlmessung und keine Kerbe.
+
+18. **Weltpunkt zu Bildschirmpunkt geht über den Viewport, nicht über das
    Control.** `Control.get_canvas_transform()` liefert die Verschiebung der
    CanvasLayer, in der das Bedienbild hängt — und die ist die
    Einheitsabbildung. Gebraucht wird `get_viewport().get_canvas_transform()`,
