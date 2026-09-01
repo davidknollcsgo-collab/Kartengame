@@ -38,6 +38,7 @@ const TESTS: PackedStringArray = [
     "_test_lehrpfad_zeigt_auf_alles",
     "_test_nischen_liegen_auf_den_ranken",
     "_test_jede_art_hat_ein_sinnbild",
+    "_test_sichtbares_bleibt_englisch",
     "_test_spiegler_brennt_nur_im_randlicht",
     "_test_drehung_begrenzt",
     "_test_drehung_erreicht_ziel",
@@ -1739,4 +1740,46 @@ func _test_jede_art_hat_ein_sinnbild() -> bool:
         if not _melde(quelle.contains("Brutlinien.Linie.%s:" % name),
                 "Die Brutlinie %s hat keinen Zweig im Sinnbild" % name):
             return false
+    return true
+
+
+## Alles Sichtbare ist englisch - auch das, was spaeter dazukam.
+##
+## Die Konvention steht seit dem ersten Commit: Bezeichner und Kommentare auf
+## Deutsch, alles Sichtbare auf Englisch. Sie haelt sich trotzdem nicht von
+## selbst. In der Grabenwertung stand "Welle 80" neben "Your colony" - eine
+## Zeile, die ich beim Bauen der Rangliste aus dem Kopf getippt habe, in
+## derselben Sprache, in der ich denke.
+##
+## Geprueft werden die Zeichenketten, die tatsaechlich in `_text()` gehen: das
+## ist die eine Stelle, durch die jedes sichtbare Wort dieses Spiels laeuft.
+## Namen aus den Datentabellen haben ihre eigenen Waechter.
+const DEUTSCHE_WOERTER: PackedStringArray = [
+    "Welle", "Naehrstoff", "Kammer", "Polypen", "Graben", "Schlund",
+    "Waechter", "Tiefe", "Sitzung", "Abschnitt", "Knospe", "Ranke", "Stufe",
+]
+
+
+func _test_sichtbares_bleibt_englisch() -> bool:
+    var dateien: PackedStringArray = [
+        "res://scripts/ui/hud.gd", "res://scripts/ui/kolonie_schirm.gd",
+    ]
+    var zeichenkette := RegEx.new()
+    zeichenkette.compile('"[^"]*"')
+    for datei in dateien:
+        var quelle := FileAccess.get_file_as_string(datei)
+        if not _melde(not quelle.is_empty(), "%s nicht lesbar" % datei):
+            return false
+        var nummer := 0
+        for zeile in quelle.split("\n"):
+            nummer += 1
+            if not zeile.contains("_text("):
+                continue
+            for treffer in zeichenkette.search_all(zeile):
+                var text := treffer.get_string()
+                for wort in DEUTSCHE_WOERTER:
+                    if not _melde(not text.contains(wort),
+                            "%s:%d zeigt deutschen Text: %s"
+                            % [datei.get_file(), nummer, text]):
+                        return false
     return true

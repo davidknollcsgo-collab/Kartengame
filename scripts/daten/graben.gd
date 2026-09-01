@@ -159,7 +159,10 @@ const POLYP_RADIUS := 15.0
 ## brauchen - `kolonie.gd` zeichnet die Ranke, und die Nischen liegen darauf.
 ## Zwei Beschreibungen derselben Kurve laufen auseinander, sobald eine sich
 ## aendert, und dann sitzt die Tippflaeche neben der Knospe.
-const RANKE_FUSS := Vector2(140.0, 400.0)
+## **Der Fuss steht auf dem Kalkwulst.** Er lag bei y = 400, also gut
+## achtzig Einheiten darueber - im Bild endeten beide Ranken frei in der Luft
+## ueber dem Sockel. Was waechst, waechst aus etwas heraus.
+const RANKE_FUSS := Vector2(176.0, 498.0)
 const RANKE_BUG := Vector2(330.0, 120.0)
 const RANKE_KOPF := Vector2(288.0, -250.0)
 const NISCHEN_JE_RANKE := 4
@@ -173,12 +176,16 @@ static func ranke(seite: float, t: float) -> Vector2:
 
 ## Wie dick die Ranke bei `t` ist. Unten ein Stamm, oben ein Faden.
 static func ranke_dicke(t: float) -> float:
-    return lerpf(17.0, 3.0, sqrt(t))
+    return lerpf(20.0, 3.0, sqrt(t))
 
 
 ## Wo die Knospe mit dieser Nummer auf ihrer Ranke sitzt.
+##
+## Nicht ganz unten: das erste Stueck der Ranke ist Stiel. Eine Knospe direkt
+## am Kalkwulst saesse zwischen den Armen des Waechters, und dort sieht man
+## sie nicht mehr - der Ring des Lehrpfads zeigte auf ein Gewirr.
 static func nische_lage(nummer: int) -> float:
-    return lerpf(0.16, 0.88, float(nummer) / float(maxi(1, NISCHEN_JE_RANKE - 1)))
+    return lerpf(0.28, 0.92, float(nummer) / float(maxi(1, NISCHEN_JE_RANKE - 1)))
 
 
 ## Feste Nischen statt freier Platzierung: der Spieler hat zwischen zwei

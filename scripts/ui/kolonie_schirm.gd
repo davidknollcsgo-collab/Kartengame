@@ -360,7 +360,12 @@ func _zeichne() -> void:
         _leiser = Rect2()
         _loeschen = Rect2()
 
-    if Lehrpfad.in_der_kolonie(_lehre):
+    # **Nur auf dem Reiter, um den es geht.** Auf dem Tagesreiter reicht der
+    # Inhalt bis an den Fuss hinunter, und die Tafel lag dort ueber dem Knopf,
+    # der den Spielstand loescht. Ein Erklaertext, der eine Schaltflaeche
+    # verdeckt, ist schlimmer als keiner - und der Satz redet ohnehin von den
+    # Kammern.
+    if Lehrpfad.in_der_kolonie(_lehre) and _sicht == Sicht.KAMMERN:
         _lehrtafel(breite, hoehe)
     _fusszeile(breite, hoehe)
 
@@ -1176,7 +1181,7 @@ func _grabenwertung(breite: float, y: float, stand: KolonieStand) -> float:
         _text(Vector2(RAND + 46.0, zeile_y + 21.0), String(eintrag[&"name"]), 15,
             SCHRIFT if selbst else LEISE)
         _text(Vector2(breite - RAND - 10.0, zeile_y + 21.0),
-            "Welle %d" % int(eintrag[&"tiefe"]), 14, farbe, false, true)
+            "Wave %d" % int(eintrag[&"tiefe"]), 14, farbe, false, true)
         zeile_y += 34.0
 
     return zeile_y
