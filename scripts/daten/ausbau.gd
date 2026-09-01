@@ -60,9 +60,22 @@ static func polypen(nummer: int) -> int:
 ## Roher Schaden je Sekunde, den dieser Stand aufbringen kann, wenn alle Ziele
 ## belegt sind.
 static func durchsatz(nummer: int) -> float:
-    var kegel := Graben.LEISTUNG * leistung_faktor(nummer) * ziele(nummer)
+    var leistung := Graben.LEISTUNG * leistung_faktor(nummer)
+    var kegel := leistung * ziele(nummer)
     var polyp := Graben.POLYP_LEISTUNG * polypen(nummer)
-    return kegel + polyp
+    # **Das Stosslicht gehoert hier hinein, sonst waere es geschenkt.**
+    #
+    # Zusicherung: was die Welle leichter macht, geht in die Sollkurve ein -
+    # sonst waechst die Wellenstaerke an einer Leistung vorbei, die es
+    # tatsaechlich gibt, und der Wellenpruefer misst ein Spiel, das leichter
+    # ist als das gespielte.
+    #
+    # Gezaehlt wird es als **ein** zusaetzliches Ziel, nicht als alle: der
+    # Ring trifft zwar jeden, den er kreuzt, aber wie viele das sind, haengt
+    # am Augenblick und nicht am Ausbau. Eine Kurve, die den guenstigsten
+    # Fall einrechnet, verlangt spaeter genau ihn.
+    var stoss := leistung * (Graben.STOSS_WERT / Graben.STOSS_ABKUEHLUNG)
+    return kegel + polyp + stoss
 
 
 ## Welche Kammerstufe die Sollkurve bei Welle `nummer` erwartet.

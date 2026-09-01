@@ -109,6 +109,7 @@ xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 720x1280 \
 | `--stufen <n>` | setzt alle Kammern auf Stufe n |
 | `--lehre <n>` | setzt den Lehrpfad auf Schritt n (0–7) |
 | `--heim` | zeigt die Rückkehrtafel mit Beispielwerten |
+| `--stoss <s>` | stößt das Stoßlicht s Sekunden vor dem Bild ab |
 
 **`--stau` braucht man oefter, als es aussieht.** Im Vorlauf steht der
 Finger fest ueber dem Schlund, und der Kegel raeumt in spaeten Wellen alles
@@ -155,7 +156,16 @@ unter einer strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
    Wachstumszahl ergab 55 Wellen ohne einen einzigen Verlust und dann
    Totalverlust in Welle 56.
 4. **Kein Ausbau darf etwas verschlechtern.** Ein Test hält das fest.
-5. **Was die Welle schwerer macht, geht in `Wellen.staerke()` ein.**
+5. **Was die Welle leichter macht, geht ebenfalls in `Ausbau.durchsatz()`
+   ein.** Das Stoßlicht ist eine zweite Schadensquelle, die jeder Spieler in
+   jeder Welle hat. Fällt es aus dem Durchsatz heraus, wächst die
+   Wellenstärke an einer Leistung vorbei, die es tatsächlich gibt — und der
+   Wellenprüfer misst ein Spiel, das leichter ist als das gespielte.
+   `_test_stosslicht_steht_in_der_sollkurve` hält es fest, und
+   `tools/simulation.gd` **ruft es ab**: ein Prüfer, der eine eingerechnete
+   Leistung nicht benutzt, meldet Wände, die es nicht gibt.
+
+6. **Was die Welle schwerer macht, geht in `Wellen.staerke()` ein.**
    `Regeln.wirkungsgrad` und `Mutationen.wirkungsgrad`, zusammengefasst in
    `Wellen.umgebung()`. Ohne diese Kopplung wurde jeder neue Abschnitt zur
    Wand: der Wellenprüfer meldete fünf gefallene Sitzungen ab Welle 36. Bei
@@ -167,10 +177,10 @@ unter einer strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
    Sekunden`. `LEIT_SEKUNDEN` heißt „so lange soll es dauern"; wird der
    Gegenwind nicht herausgerechnet, dauert es länger, und zwar genau dort, wo
    ohnehin der Höhepunkt steht.
-6. **Es gibt keine Audiodatei und nur eine Bilddatei.** Der Ton entsteht in
+7. **Es gibt keine Audiodatei und nur eine Bilddatei.** Der Ton entsteht in
    `klang.gd`, das App-Symbol in `tools/symbol.gd` — beide zur Laufzeit
    gerechnet. Das ist der Copyright-Nachweis, nicht nur ein Stil.
-7. **Es gibt genau eine Ausbaukurve.** `Ausbau.leistung_faktor`, `.ziele`,
+8. **Es gibt genau eine Ausbaukurve.** `Ausbau.leistung_faktor`, `.ziele`,
    `.reichweite_faktor`, `.winkel_faktor` sind der Koloniestand *auf*
    `stufe_soll()` — gerechnet mit denselben `Kammern`-Funktionen, die auch der
    Spieler benutzt. Vorher stand daneben eine zweite Kurve mit eigenen
@@ -178,12 +188,12 @@ unter einer strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
    Welle 49 verlangte sie sieben gleichzeitige Ziele, während die zugehörige
    Sollstufe 16 nur sechs hergab — zwölf Wellen lang prüfte der Wellenprüfer
    einen Wächter, den es auf keiner Kammerstufe gab.
-8. **Eine Sitzung ist `Graben.WELLEN_JE_SITZUNG` Wellen lang.** Danach volle
+9. **Eine Sitzung ist `Graben.WELLEN_JE_SITZUNG` Wellen lang.** Danach volle
    Brut, keine Wehrpolypen. Wellenprüfer und Kolonielauf rechnen seit jeher so;
    das Spiel tat es nicht — dort trug die Brut ihren Schaden über beliebig
    viele Wellen weiter und einmal gesetzte Polypen standen für immer. Gemessen
    wurde damit ein anderes Spiel als gespielt.
-9. **Einkommen und Kosten wachsen mit derselben Rate.** Kammern kosten
+10. **Einkommen und Kosten wachsen mit derselben Rate.** Kammern kosten
    geometrisch; ein Einkommen, das linear oder auch nur langsamer geometrisch
    wächst, holt das nie wieder ein. Deshalb sind **beide Einkommensquellen aus
    den Kosten abgeleitet**: `Kammern.filter_je_stunde()` und `Wellen.ertrag()`
@@ -193,7 +203,7 @@ unter einer strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
    250 000 ungenutzten Nährstoff. Ein Test hält das Verhältnis über 400 Wellen
    fest.
 
-10. **Kein Bau dauert länger als der Abstand zwischen zwei Besuchen.**
+11. **Kein Bau dauert länger als der Abstand zwischen zwei Besuchen.**
    `Kammern.ZEIT_DECKEL` ist aus `Graben.SITZUNGEN_JE_TAG` abgeleitet, mit
    Sicherheitsabstand nach unten. Bei zwei Tagen Deckel lagen ab Stufe 24 alle
    fünf Kammern daran, eine Runde kostete zehn Tage, und der Kolonielauf
@@ -201,27 +211,27 @@ unter einer strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
    wurde ein Bau sieben Minuten nach dem nächsten Besuch fertig — der Spieler
    kam jedes zweite Mal umsonst.
 
-11. **Die Sollkurve endet, wo die Kammern enden.** `Ausbau.stufe_soll()` ist
+12. **Die Sollkurve endet, wo die Kammern enden.** `Ausbau.stufe_soll()` ist
    auf `Kammern.HOECHSTSTUFE` gedeckelt, ebenso die Zähigkeit über
    `Ausbau.stufe_kurve()`. Der Graben läuft weiter; was ihn ab dort
    unterscheidet, sind Abschnittsregeln und Mutationen, nicht mehr Leistung.
    Ohne den Deckel verlangte die Kurve ab Welle 241 eine Stufe, die es auf
    keiner Kammer gibt.
 
-12. **Der Graben öffnet sich am Tiefenschacht.** `Ausbau.schacht_fuer_abschnitt`
+13. **Der Graben öffnet sich am Tiefenschacht.** `Ausbau.schacht_fuer_abschnitt`
    leitet aus der Sollkurve ab, welche Schachtstufe einen Abschnitt aufmacht;
    `KolonieStand.naechste_welle()` ist der einzige Weg, an die zu spielende
    Welle zu kommen. Ohne diese Kopplung stand der Spieler an Tag 6 in Welle 36,
    während seine Kolonie bei gut der Hälfte der Sollkurve lag.
 
-13. **Nische und Ranke kommen aus derselben Kurve.** `Graben.ranke()` sagt,
+14. **Nische und Ranke kommen aus derselben Kurve.** `Graben.ranke()` sagt,
    wo die Ranke verläuft; `Graben.NISCHEN` liest die Knospenorte von dort ab.
    Vorher stand eine feste Liste aus acht Punkten im Quelltext, und die Wände,
    in denen sie saßen, gibt es nicht mehr. Zwei Beschreibungen derselben Kurve
    laufen auseinander, und dann liegt die Tippfläche neben der Knospe —
    `_test_nischen_liegen_auf_den_ranken` hält es fest.
 
-14. **Ein gepanzertes Leitwesen darf nie in einem abgedunkelten Abschnitt
+15. **Ein gepanzertes Leitwesen darf nie in einem abgedunkelten Abschnitt
    stehen.** Der Panzer zieht einen *festen* Betrag je Sekunde ab, und
    `Regeln.DUNKEL` nimmt dem Kegel einen großen Teil seiner Helligkeit — von
    einem Fünftel frisst ein fester Abzug alles. Beides zusammen ist kein
@@ -231,7 +241,7 @@ unter einer strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
    `_test_gepanzertes_leitwesen_nie_im_dunkeln` ist der Grund, warum das von
    Hand bleiben darf.
 
-15. **Weltpunkt zu Bildschirmpunkt geht über den Viewport, nicht über das
+16. **Weltpunkt zu Bildschirmpunkt geht über den Viewport, nicht über das
    Control.** `Control.get_canvas_transform()` liefert die Verschiebung der
    CanvasLayer, in der das Bedienbild hängt — und die ist die
    Einheitsabbildung. Gebraucht wird `get_viewport().get_canvas_transform()`,

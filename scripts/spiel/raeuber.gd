@@ -49,6 +49,11 @@ var licht: float = 0.0
 ## Anders als `hitze` macht das echten Schaden.
 var glut: float = 0.0
 
+## Von welchem Stosslicht dieses Tier schon getroffen wurde. Der Ring laeuft
+## ueber mehrere Bilder nach aussen; ohne diese Marke bekaeme ein Tier, das
+## langsamer sinkt als der Ring waechst, den Stoss zweimal.
+var stoss_nr: int = -1
+
 ## Frueherere Orte auf der eigenen Bahn - fuer den Leib der Grabnatter.
 var rueckweg: Array[Vector2] = []
 

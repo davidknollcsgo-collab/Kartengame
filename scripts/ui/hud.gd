@@ -111,6 +111,9 @@ const LEHRE_VOLL := 14.0
 var _heim := {}
 var _heimknopf := Rect2()
 
+## Ab wann eine Abwesenheit eine ist, die eine Tafel verdient.
+const HEIM_MINDEST_STUNDEN := 0.5
+
 
 func zeige_rueckkehr(was: Dictionary) -> void:
     var ertrag := int(was.get(&"ertrag", 0))
@@ -121,7 +124,15 @@ func zeige_rueckkehr(was: Dictionary) -> void:
     # Tageswechsel - und der neue Spieler haette als erstes Bild eine Tafel
     # bekommen, die ihm erzaehlt, was in seiner Abwesenheit geschehen ist.
     # Der Tageswechsel ist eine Zeile auf dieser Tafel, nie ihr Anlass.
-    if ertrag <= 0 and kammer < 0:
+    #
+    # **Und zwei Minuten sind keine Abwesenheit.** Ohne die Zeitschwelle stand
+    # die Tafel schon nach einem kurzen Blick auf eine Nachricht wieder da,
+    # mit "1 minutes down there" und einem einzigen Naehrstoff darin: ein
+    # ganzseitiges Fenster, das den Spieler aufhaelt, um ihm nichts zu sagen.
+    # Eine fertige Kammer ist immer eine Meldung wert, eine Handvoll
+    # Naehrstoff erst nach einer halben Stunde.
+    var stunden: float = was.get(&"stunden", 0.0)
+    if kammer < 0 and (ertrag <= 0 or stunden < HEIM_MINDEST_STUNDEN):
         return
     _heim = was
     _heim[&"tag"] = tag
@@ -138,6 +149,24 @@ func rueckkehrknopf_bei(bildschirm: Vector2) -> bool:
 func schliesse_rueckkehr() -> void:
     _heim = {}
     _heimknopf = Rect2()
+
+
+## --- Der Stossknopf ---
+##
+## Er steht unten rechts, wo der zweite Daumen ohnehin liegt: der erste zieht
+## den Kegel, der zweite tippt. Waehrend der Welle und sonst nie.
+##
+## `stoss_ladung` fuellt einen Ring um ihn herum - eine Zahl daneben waere
+## genauer und langsamer zu lesen. Wer im Gefecht ist, sieht einen vollen
+## Kreis oder keinen.
+var stoss_ladung := 0.0
+var _stossknopf := Rect2()
+const STOSS_RAND := 26.0
+const STOSS_GROSS := 46.0
+
+
+func stossknopf_bei(bildschirm: Vector2) -> bool:
+    return _stossknopf.size.x > 0.0 and _stossknopf.has_point(bildschirm)
 
 
 ## Ob das Spiel angehalten ist. Siehe `wache.gd::pausiere()`.
@@ -315,9 +344,13 @@ func _zeichne() -> void:
         _kolonieknopf_zeichnen(breite, hoehe,
             "COLONY", "START WAVE %d" % _welle)
         _bauhinweis(breite, hoehe)
+        _stossknopf = Rect2()
     elif not _ende:
         _kolonieknopf = Rect2()
         _wellenknopf = Rect2()
+        _stossknopf_zeichnen(breite, hoehe)
+    else:
+        _stossknopf = Rect2()
     if _ende:
         _endschirm(breite, hoehe)
 
@@ -481,6 +514,11 @@ func _lehrring(breite: float, hoehe: float, puls: float) -> void:
         Lehrpfad.Ziel.WELLENKNOPF:
             _lehrrahmen(_wellenknopf, puls)
             return
+        Lehrpfad.Ziel.STOSSKNOPF:
+            if _stossknopf.size.x <= 0.0:
+                return
+            wo = _stossknopf.get_center()
+            r = STOSS_GROSS + 8.0
         _:
             wo = _auf_bildschirm(_lehr_ort)
 
@@ -788,7 +826,7 @@ func _rueckkehrtafel(breite: float, hoehe: float) -> void:
 
     var ertrag := int(_heim.get(&"ertrag", 0))
     var kammer := int(_heim.get(&"kammer", -1))
-    var stunden: float = _heim.get(&"stunden", 0.0)
+    var weg: float = _heim.get(&"stunden", 0.0)
 
     var zeilen := PackedStringArray()
     if kammer >= 0:
@@ -807,7 +845,7 @@ func _rueckkehrtafel(breite: float, hoehe: float) -> void:
     var mitte_x := karte.get_center().x
     _text(Vector2(mitte_x, karte.position.y + 46.0), "WHILE YOU WERE AWAY",
         22, ton, true)
-    _text(Vector2(mitte_x, karte.position.y + 72.0), _spanne(stunden), 14,
+    _text(Vector2(mitte_x, karte.position.y + 72.0), _spanne(weg), 14,
         Color(0.68, 0.82, 0.86), true)
 
     _kachel(Rect2(karte.position.x + 18.0, karte.position.y + 96.0,
@@ -840,6 +878,44 @@ func _spanne(stunden: float) -> String:
     if min <= 0:
         return "%d hours down there" % st
     return "%d h %d min down there" % [st, min]
+
+
+## Der Knopf fuer das Stosslicht.
+func _stossknopf_zeichnen(breite: float, hoehe: float) -> void:
+    var mitte := Vector2(breite - STOSS_RAND - STOSS_GROSS,
+        hoehe - STOSS_RAND - STOSS_GROSS)
+    _stossknopf = Rect2(mitte - Vector2.ONE * STOSS_GROSS,
+        Vector2.ONE * STOSS_GROSS * 2.0)
+
+    var bereit := stoss_ladung >= 0.999
+    var puls := 0.5 + 0.5 * sin(_zeit * 2.4)
+    var farbe := Color(0.72, 0.98, 1.0) if bereit else Color(0.42, 0.60, 0.68)
+
+    _flaeche.draw_circle(mitte, STOSS_GROSS,
+        Color(0.03, 0.09, 0.12, 0.72))
+    # Der Ladering laeuft von oben im Uhrzeigersinn. Ein Balken waere
+    # genauer abzulesen und an dieser Stelle unbrauchbar: der Knopf ist rund,
+    # und der Blick springt im Gefecht nur kurz hierher.
+    _flaeche.draw_arc(mitte, STOSS_GROSS - 5.0, 0.0, TAU, 40,
+        Color(0.30, 0.44, 0.50, 0.5), 3.0, true)
+    if stoss_ladung > 0.001:
+        _flaeche.draw_arc(mitte, STOSS_GROSS - 5.0, -PI * 0.5,
+            -PI * 0.5 + TAU * stoss_ladung, 40,
+            Color(farbe.r, farbe.g, farbe.b, 0.9), 3.4, true)
+    if bereit:
+        _flaeche.draw_circle(mitte, STOSS_GROSS * (0.62 + 0.06 * puls),
+            Color(farbe.r, farbe.g, farbe.b, 0.13 + 0.08 * puls))
+
+    # Das Zeichen: ein Punkt mit drei Ringen, die von ihm weglaufen - dasselbe
+    # Bild wie im Wasser, nur klein.
+    _flaeche.draw_circle(mitte, 4.4, Color(farbe.r, farbe.g, farbe.b,
+        0.95 if bereit else 0.5))
+    for i in 3:
+        var r := 11.0 + float(i) * 8.0
+        _flaeche.draw_arc(mitte, r, 0.0, TAU, 28,
+            Color(farbe.r, farbe.g, farbe.b,
+                (0.55 - float(i) * 0.14) * (1.0 if bereit else 0.45)),
+            2.0 - float(i) * 0.4, true)
 
 
 ## Eine Ergebniskachel: eine grosse Zahl mit einem kleinen Wort darunter.

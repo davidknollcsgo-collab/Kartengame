@@ -35,6 +35,7 @@ enum Ziel {
     WELLENKNOPF,    ## Der Knopf, der die Welle losschickt.
     BRUT,           ## Das Gelege.
     NISCHE,         ## Die naechste freie Knospe an der Ranke.
+    STOSSKNOPF,     ## Der Knopf unten rechts: das Stosslicht.
     KOLONIEKNOPF,   ## Der Weg in die Kolonie.
     KAMMERN,        ## Im Koloniebildschirm: die Kammerliste.
 }
@@ -60,6 +61,12 @@ const TAFEL: Array[Dictionary] = [
         &"titel": "LIGHT BURNS",
         &"satz": "Whatever stands in the cone takes damage. The bright core burns fastest, and the cone holds only a few at once.",
         &"ziel": Ziel.KEINS,
+    },
+    {
+        &"kennung": &"STOSS",
+        &"titel": "THE BURST",
+        &"satz": "Tap the ring, bottom right. The guardian throws a shockwave that hits everything it crosses - even outside the cone. It recharges on its own.",
+        &"ziel": Ziel.STOSSKNOPF,
     },
     {
         &"kennung": &"BRUT",

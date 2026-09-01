@@ -80,6 +80,16 @@ var verdient := 0
 ## heisst: gemessen wurde ein anderes Spiel als gespielt.
 var welle_in_sitzung := 0
 
+## --- Das Stosslicht ---
+##
+## `_stoss_kuehl` sind die Sekunden, bis es wieder bereit ist. `_stoss_weit`
+## ist der Radius des laufenden Rings, oder -1, wenn keiner unterwegs ist.
+## `_stoss_nr` zaehlt die Stoesse durch; jedes Tier merkt sich die Nummer des
+## Rings, der es getroffen hat.
+var _stoss_kuehl := 0.0
+var _stoss_weit := -1.0
+var _stoss_nr := 0
+
 ## Wieviele Raeuber diese Sitzung gekostet hat. Steht auf dem Schlussbild
 ## neben dem Naehrstoff - die eine Zahl sagt, was man mitnimmt, die andere,
 ## was man getan hat.
@@ -188,7 +198,7 @@ func _bau_fertig(kammer: int) -> void:
             Color(0.62, 0.94, 1.0), 26.0)
     Klang.spiele(Klang.Ton.KAMMER, 1.0, 0.7)
     _hud.melde("%s finished" % Kammern.name_von(kammer))
-    _einstieg_weiter(6)
+    _einstieg_weiter(7)
 
     # Ein Schacht, der einen Abschnitt oeffnet, ist mehr als eine Stufe mehr:
     # er gibt den Weg frei, auf dem der Spieler gerade steht.
@@ -220,7 +230,7 @@ func oeffne_kolonie() -> void:
             Lage.SITZUNG_ENDE]:
         return
     _hud.visible = false
-    _einstieg_weiter(5)
+    _einstieg_weiter(6)
     _koloniebild.oeffne()
 
 
@@ -272,6 +282,12 @@ func starte_welle() -> void:
         r.leben = r.leben_voll
         r.ort = Vector2(r.start_x, Graben.EINTRITT_Y)
         _tiere.append(r)
+
+    # Jede Welle faengt mit einem geladenen Stosslicht an. Es aufzuheben
+    # waere eine Buchhaltung ueber Wellen hinweg, und die passt nicht zu
+    # einer Handlung, die man im Augenblick trifft.
+    _stoss_kuehl = 0.0
+    _stoss_weit = -1.0
 
     welle_in_sitzung += 1
     # Der Lehrpfad wartet an dieser Stelle darauf, dass die Welle wirklich
@@ -410,6 +426,7 @@ func _process(delta: float) -> void:
         _fuehre_kegel(delta)
         _bewege(delta)
         _verbrenne(delta)
+        _stosslicht_fuehren(delta)
         _polypen_feuern(delta)
         _raeume_auf()
         _wellenzeit += delta
@@ -419,7 +436,73 @@ func _process(delta: float) -> void:
     elif lage == Lage.BAUEN:
         _fuehre_kegel(delta)
 
+    _hud.stoss_ladung = stoss_ladung()
     _schwarm.queue_redraw()
+
+
+## Ob das Stosslicht gerade bereit ist. Das HUD zeichnet daraus den Ladering.
+func stoss_bereit() -> bool:
+    return lage == Lage.WELLE and _stoss_kuehl <= 0.0
+
+
+## Wie weit es geladen ist, 0 bis 1.
+func stoss_ladung() -> float:
+    if lage != Lage.WELLE:
+        return 0.0
+    return clampf(1.0 - _stoss_kuehl / Graben.STOSS_ABKUEHLUNG, 0.0, 1.0)
+
+
+## Stoesst den Ring ab. Gibt zurueck, ob es geklappt hat.
+func stosslicht() -> bool:
+    if not stoss_bereit():
+        return false
+    _stoss_kuehl = Graben.STOSS_ABKUEHLUNG
+    _stoss_weit = 0.0
+    _stoss_nr += 1
+    _schuetteln = maxf(_schuetteln, 0.7)
+    _waechter.feuer()
+    _funken.platzen(Graben.WAECHTER, Color(0.72, 0.98, 1.0), 46.0)
+    Klang.spiele(Klang.Ton.WELLE, 0.7, 0.9)
+    _einstieg_weiter(3)
+    return true
+
+
+## Laesst den Ring nach aussen laufen und rechnet ab, was er kreuzt.
+##
+## **Der Schaden kommt aus derselben `Schlund.schaden_an()` wie der Kegel** -
+## bei voller Helligkeit, weil der Stoss aus dem Waechter selbst kommt. Panzer
+## zieht also ab, eine Glutqualle nimmt ihn ganz, und ein Spiegler wirft ihn
+## bis auf den Rest zurueck. Dieselben Regeln, ein anderer Weg; eine zweite
+## Schadensrechnung waere eine zweite Wahrheit.
+func _stosslicht_fuehren(delta: float) -> void:
+    _stoss_kuehl = maxf(0.0, _stoss_kuehl - delta)
+    if _stoss_weit < 0.0:
+        return
+
+    var vorher := _stoss_weit
+    _stoss_weit += Graben.STOSS_TEMPO * delta
+    var bruch := Fortschritt.stand.panzerbruch()
+    var nachlass := Fortschritt.stand.schwellen_nachlass()
+
+    for r in _tiere:
+        if not r.lebendig or r.alter < 0.0 or r.stoss_nr == _stoss_nr:
+            continue
+        var weit := r.ort.distance_to(Graben.WAECHTER)
+        if weit > _stoss_weit or weit <= vorher:
+            continue
+        r.stoss_nr = _stoss_nr
+        var wirkung := Schlund.schaden_an(leistung(), 1.0,
+            Wellen.panzer_in(r.art, r.welle) * (1.0 - bruch),
+            maxf(0.0, Wellen.mindest_licht_in(r.art, r.welle) - nachlass),
+            Wellen.hoechst_licht_in(r.art, r.welle))
+        r.leben -= wirkung * Graben.STOSS_WERT
+        r.hitze = 1.0
+        _funken.zerfall(r.ort, Arten.farbe(r.art),
+            Wellen.radius_in(r.art, r.welle) * 0.4, r.richtung)
+
+    if _stoss_weit > _kegel.reichweite:
+        _stoss_weit = -1.0
+    _waechter.stoss_weit = _stoss_weit
 
 
 ## Fuehrt den Kegel dem Finger nach und legt die Regeln des Abschnitts an.
@@ -716,7 +799,7 @@ func _stimmung_nachfuehren(delta: float) -> void:
 
 func _welle_geschafft() -> void:
     Fortschritt.melde_ziel(Tagesziel.Ziel.WELLEN)
-    _einstieg_weiter(3)
+    _einstieg_weiter(4)
     Fortschritt.merke_welle(welle_nummer + 1)
     # Der Graben gibt nur her, was der Tiefenschacht geoeffnet hat. Wer am
     # Ende des Abschnitts steht, spielt ihn weiter - und erfaehrt, woran es
@@ -742,7 +825,7 @@ func _welle_geschafft() -> void:
         return
     if welle_in_sitzung >= Graben.WELLEN_JE_SITZUNG:
         lage = Lage.SITZUNG_ENDE
-        _einstieg_weiter(7)
+        _einstieg_weiter(8)
         _hud.zeige_sitzungsende(welle_nummer, verdient, erlegt)
         return
     _bereite_welle_vor()
@@ -787,7 +870,7 @@ func baue_polyp(nische: int) -> bool:
     polypen.append(ort)
     _funken.platzen(ort, Color(0.52, 0.94, 0.80), 20.0)
     Klang.spiele(Klang.Ton.POLYP)
-    _einstieg_weiter(4)
+    _einstieg_weiter(5)
     _aktualisiere_kolonie()
     _hud.zeige_bauphase(welle_nummer, brut, Fortschritt.stand.naehrstoffe,
         Fortschritt.stand.polyp_kosten(polypen.size()), polypen.size())
@@ -951,6 +1034,7 @@ func _lies_entwicklerschalter() -> void:
     var endschirm := -1
     var stufen := -1
     var lehre := -1
+    var stoss_bei := -1.0
 
     for i in argumente.size():
         match argumente[i]:
@@ -1001,6 +1085,8 @@ func _lies_entwicklerschalter() -> void:
                     &"ertrag": 12480, &"stunden": 6.2,
                     &"kammer": Kammern.Kammer.LEUCHTORGAN, &"tag": true,
                 })
+            "--stoss":
+                stoss_bei = float(argumente[i + 1]) if i + 1 < argumente.size() else 0.3
             "--pause":
                 # Die Pause laesst sich sonst nur ansehen, indem man die App
                 # auf einem Telefon in den Hintergrund schiebt.
@@ -1045,7 +1131,8 @@ func _lies_entwicklerschalter() -> void:
             oeffne_kolonie()
             _koloniebild.zeige_reiter(reiter)
         return
-    _nimm_auf(bild, vorlauf, bauen or endschirm >= 0, reiter, stau, halt)
+    _nimm_auf(bild, vorlauf, bauen or endschirm >= 0, reiter, stau, halt,
+        stoss_bei)
 
 
 ## Misst die tatsaechliche Bildrate ueber `dauer` Sekunden.
@@ -1107,8 +1194,12 @@ func _miss_bildrate(dauer: float, stau: bool) -> void:
 ## was eintritt: ein Bild von Welle 30 nach sechs Sekunden zeigte zwanzig
 ## verbleibende Tiere in der Anzeige und kein einziges im Bild. Wer die Tiere
 ## zeichnet, muss sie sehen koennen.
+## `stoss_bei` stoesst das Stosslicht so viele Sekunden vor dem Bild ab. Ohne
+## das laesst sich der Ring nicht ansehen: er ist eine halbe Sekunde
+## unterwegs und haengt an einer Beruehrung, die es in einer Aufnahme nicht
+## gibt.
 func _nimm_auf(datei: String, vorlauf: float, bauen: bool, reiter := -1,
-        stau := false, halt := false) -> void:
+        stau := false, halt := false, stoss_bei := -1.0) -> void:
     if not bauen:
         starte_welle()
         _finger = Graben.WAECHTER + Vector2(-70.0, -520.0)
@@ -1119,9 +1210,14 @@ func _nimm_auf(datei: String, vorlauf: float, bauen: bool, reiter := -1,
         # egal wie schnell der Rechner ist.
         var takt := 1.0 / 60.0
         var schritte := int(vorlauf / takt)
+        var stoss_schritt := -1
+        if stoss_bei >= 0.0:
+            stoss_schritt = maxi(0, schritte - int(stoss_bei / takt))
         for i in schritte:
             if lage != Lage.WELLE:
                 break
+            if i == stoss_schritt:
+                stosslicht()
             _process(takt)
 
     if halt:

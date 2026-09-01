@@ -68,6 +68,10 @@ class Tier extends RefCounted:
     var lebendig: bool = true
     var angekommen: bool = false
 
+    ## Von welchem Stosslicht es schon getroffen wurde - dieselbe Marke wie
+    ## `Raeuber.stoss_nr` im Spiel, aus demselben Grund.
+    var stoss_nr: int = -1
+
     func ort(zeit: float) -> Vector2:
         var seit := zeit - eintritt
         if seit < 0.0:
@@ -110,6 +114,20 @@ static func welle(nummer: int, z: Zustand) -> Ergebnis:
     var richtung := Vector2.UP
     var zeit := 0.0
     var offen := tiere.size()
+
+    # **Der simulierte Spieler benutzt das Stosslicht, sobald es geladen ist.**
+    #
+    # Das muss er, denn `Ausbau.durchsatz()` rechnet es ein und
+    # `Wellen.staerke()` faellt daraus. Ein Pruefer, der eine Leistung nicht
+    # abruft, die die Kurve voraussetzt, misst ein Spiel, das schwerer ist als
+    # das gespielte - und meldet Waende, die es nicht gibt.
+    #
+    # Sofort statt aufgehoben: das ist die schlechtere Wahl (ein Mensch spart
+    # ihn fuer den Pulk auf), und der Simulator soll absichtlich schlechter
+    # spielen als ein guter Mensch.
+    var stoss_kuehl := 0.0
+    var stoss_weit := -1.0
+    var stoss_nr := 0
 
     while offen > 0 and z.brut > 0 and zeit < HOECHSTDAUER:
         zeit += TAKT
@@ -179,6 +197,32 @@ static func welle(nummer: int, z: Zustand) -> Ergebnis:
 
         for i in Schlund.brennende(wirkung, z.ziele()):
             lebende[i].leben -= wirkung[i] * TAKT
+
+        # 3b. Das Stosslicht. Derselbe Ring wie im Spiel: er laeuft nach
+        #     aussen und trifft jedes Tier genau einmal, mit derselben
+        #     `Schlund.schaden_an()` bei voller Helligkeit.
+        stoss_kuehl = maxf(0.0, stoss_kuehl - TAKT)
+        if stoss_weit < 0.0 and stoss_kuehl <= 0.0:
+            stoss_kuehl = Graben.STOSS_ABKUEHLUNG
+            stoss_weit = 0.0
+            stoss_nr += 1
+        if stoss_weit >= 0.0:
+            var vorher := stoss_weit
+            stoss_weit += Graben.STOSS_TEMPO * TAKT
+            for i in lebende.size():
+                var tt := lebende[i]
+                if tt.stoss_nr == stoss_nr or tt.leben <= 0.0:
+                    continue
+                var weg := orte[i].distance_to(Graben.WAECHTER)
+                if weg > stoss_weit or weg <= vorher:
+                    continue
+                tt.stoss_nr = stoss_nr
+                tt.leben -= Schlund.schaden_an(z.leistung(), 1.0,
+                    Wellen.panzer_in(tt.art, nummer),
+                    Wellen.mindest_licht_in(tt.art, nummer),
+                    Wellen.hoechst_licht_in(tt.art, nummer)) * Graben.STOSS_WERT
+            if stoss_weit > z.reichweite():
+                stoss_weit = -1.0
 
         # 4. Polypen. Jeder greift ein Ziel in seiner Reichweite an.
         for n in z.polypen:

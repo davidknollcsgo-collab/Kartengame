@@ -51,6 +51,7 @@ const TESTS: PackedStringArray = [
     "_test_haut_schluckt_schwache_quellen",
     "_test_leitwesen_stehen_an_den_abschnittsenden",
     "_test_gepanzertes_leitwesen_nie_im_dunkeln",
+    "_test_stosslicht_steht_in_der_sollkurve",
     "_test_mutationen_tabelle_vollstaendig",
     "_test_mutationen_erst_ab_der_zweiten_umdrehung",
     "_test_mutationen_sind_reproduzierbar",
@@ -1824,3 +1825,47 @@ func _test_gepanzertes_leitwesen_nie_im_dunkeln() -> bool:
                 % [Arten.name_von(leit), abschnitt]):
             return false
     return true
+
+
+## Das Stosslicht muss in der Sollkurve stehen.
+##
+## Zusicherung: **was die Welle leichter macht, geht in `Wellen.staerke()`
+## ein.** Der Stoss ist eine zweite Schadensquelle, die jeder Spieler in jeder
+## Welle hat. Faellt er aus `Ausbau.durchsatz()` heraus, waechst die
+## Wellenstaerke an einer Leistung vorbei, die es tatsaechlich gibt - und der
+## Wellenpruefer misst ein Spiel, das leichter ist als das gespielte. Genau
+## dieser Fehler hat bei den Abschnittsregeln fuenf gefallene Sitzungen
+## gekostet, und bei den Mutationen noch einmal.
+##
+## Geprueft wird beides: dass der Anteil ueberhaupt drin ist, und dass er mit
+## dem Leuchtorgan mitwaechst. Ein fester Zuschlag waere in Welle 200 nicht
+## mehr messbar.
+func _test_stosslicht_steht_in_der_sollkurve() -> bool:
+    for n in [1, 20, 60, 140, 240]:
+        var leistung := Graben.LEISTUNG * Ausbau.leistung_faktor(n)
+        var ohne := leistung * float(Ausbau.ziele(n)) \
+            + Graben.POLYP_LEISTUNG * float(Ausbau.polypen(n))
+        var mit := Ausbau.durchsatz(n)
+        var anteil := mit - ohne
+        var soll := leistung * (Graben.STOSS_WERT / Graben.STOSS_ABKUEHLUNG)
+        if not _melde(absf(anteil - soll) < 0.001,
+                "Welle %d: der Stossanteil im Durchsatz ist %.2f statt %.2f"
+                % [n, anteil, soll]):
+            return false
+
+    # Und er waechst mit: sonst ist er in Welle 200 eine Rundungsstelle.
+    if not _melde(Ausbau.durchsatz(240) - Ausbau.durchsatz(1) > 0.0,
+            "der Durchsatz muss mit der Welle wachsen"):
+        return false
+
+    # Der Stoss rechnet mit derselben Schadensfunktion wie der Kegel. Ein
+    # gepanzertes Tier nimmt weniger, ein Spiegler nur den Rest - haette der
+    # Stoss eine eigene Rechnung, waeren beide Regeln an dieser Stelle
+    # ausgehebelt, ohne dass es irgendwo stuende.
+    var voll := Schlund.schaden_an(100.0, 1.0, 0.0, 0.0)
+    var gepanzert := Schlund.schaden_an(100.0, 1.0, 30.0, 0.0)
+    if not _melde(gepanzert < voll, "Panzer muss auch den Stoss daempfen"):
+        return false
+    var gespiegelt := Schlund.schaden_an(100.0, 1.0, 0.0, 0.0, 0.78)
+    return _melde(gespiegelt < voll,
+        "ein Spiegler darf den Stoss nicht voll abbekommen")

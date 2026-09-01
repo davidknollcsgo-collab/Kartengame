@@ -131,6 +131,35 @@ const DREHTEMPO := 7.4             ## Bogenmass je Sekunde
 ## seine Gesamtleistung mit der Zahl der Gegner - siehe `Schlund.brennende()`.
 const ZIELE := 3
 
+## --- Das Stosslicht ---
+##
+## **Waehrend einer Welle gab es genau eine Handlung: ziehen.** Vierzig bis
+## siebzig Sekunden lang schwenkt man einen Kegel, und die einzige
+## Entscheidung ist, worauf. Das ist eine gute Kernschleife und eine duenne:
+## es gibt nichts, was man sich aufhebt, und nichts, was man zu frueh
+## ausgibt.
+##
+## Das Stosslicht ist ein Ring, den der Waechter abstoesst. Er laeuft nach
+## aussen und trifft **alles**, was er kreuzt - unabhaengig davon, wo der
+## Kegel gerade steht. Damit ist er der Gegenentwurf zum Kegel: der ist
+## gerichtet und dauernd, das hier ist ungerichtet und einmalig.
+##
+## Er rechnet mit derselben `Schlund.schaden_an()` wie alles andere, bei
+## voller Helligkeit. Panzer zieht also ab, eine Glutqualle nimmt ihn ganz
+## (sie will Kernlicht, und heller geht es nicht), und ein Spiegler wirft ihn
+## bis auf den Rest zurueck - dieselben Regeln, ein anderer Weg.
+##
+## **Der Wert steht in Sekunden Kegel.** Ein Stoss ist so viel wert wie
+## `STOSS_WERT` Sekunden voller Beschuss - so laesst er sich in
+## `Ausbau.durchsatz()` einsetzen, ohne eine zweite Einheit einzufuehren.
+const STOSS_WERT := 2.2
+const STOSS_ABKUEHLUNG := 11.0
+
+## Wie schnell der Ring nach aussen laeuft. Schnell genug, dass er als Stoss
+## gelesen wird, langsam genug, dass man ihn ankommen sieht.
+const STOSS_TEMPO := 820.0
+
+
 ## --- Brut ---
 
 const BRUT_LEBEN := 12

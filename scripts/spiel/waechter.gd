@@ -68,6 +68,12 @@ var kegel: Node2D = null
 ## skaliert und zugleich so verschoben, dass `Graben.WAECHTER` auf sich selbst
 ## abbildet. Nur die Skalierung zu setzen haette ihn quer durch das Bild
 ## geschoben.
+## Wie weit der Ring des Stosslichts gerade draussen ist, oder -1. `wache.gd`
+## setzt es; gezeichnet wird es hier, weil der Stoss vom Waechter ausgeht und
+## nicht vom Bedienbild.
+var stoss_weit := -1.0
+
+
 func _ready() -> void:
     var g := Graben.WAECHTER_GROESSE
     scale = Vector2.ONE * g
@@ -131,6 +137,28 @@ func _draw() -> void:
     _adern(p_zuck, brennt_gesamt)
     _organ(p_zuck, puls, brennt_gesamt)
     _arme(p_zuck, atem, brennt_gesamt, einzug, true)
+    _stossring(p)
+
+
+## Der Ring des Stosslichts: eine Front, die nach aussen laeuft.
+##
+## Drei Boegen dicht hintereinander statt eines dicken - eine Druckwelle hat
+## eine Vorderkante und einen Schweif, und genau daran erkennt man, in welche
+## Richtung sie laeuft. Ein einzelner Kreis waere ein Reifen.
+func _stossring(p: Vector2) -> void:
+    if stoss_weit < 0.0:
+        return
+    # In lokalen Koordinaten: der Knoten ist skaliert, der Radius kommt aber
+    # aus der Welt. Ohne das Teilen laeuft der Ring um den Massstab zu schnell.
+    var g := maxf(0.001, Graben.WAECHTER_GROESSE)
+    var r := stoss_weit / g
+    for i in 3:
+        var weit := r - float(i) * 16.0 / g
+        if weit <= 0.0:
+            continue
+        var a := (0.42 - float(i) * 0.12) * clampf(1.0 - r / 900.0, 0.0, 1.0)
+        draw_arc(p, weit, 0.0, TAU, 64, Color(0.74, 0.98, 1.0, a),
+            3.4 - float(i) * 0.9, true)
 
 
 ## Wurzeln: was ihn im Kalkwulst haelt. Sie liegen hinter allem anderen und
