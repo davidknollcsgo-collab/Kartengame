@@ -37,6 +37,7 @@ const TESTS: PackedStringArray = [
     "_test_jede_brutlinie_tut_etwas",
     "_test_lehrpfad_zeigt_auf_alles",
     "_test_nischen_liegen_auf_den_ranken",
+    "_test_jede_art_hat_ein_sinnbild",
     "_test_spiegler_brennt_nur_im_randlicht",
     "_test_drehung_begrenzt",
     "_test_drehung_erreicht_ziel",
@@ -1707,5 +1708,35 @@ func _test_nischen_liegen_auf_den_ranken() -> bool:
         # Bild ragt, ist eine halbe Tippflaeche.
         if not _melde(absf(p.x) < Graben.FELD.end.x - Graben.POLYP_RADIUS * 2.0,
                 "Nische %d steht zu weit aussen (x = %.1f)" % [i, p.x]):
+            return false
+    return true
+
+
+## Jede Art braucht ein Sinnbild im Bestiarium.
+##
+## **Der Spiegler hatte keines, und im Bild war ein leerer grauer Kreis.**
+## Das ist der Fehler, den man beim Hinzufuegen einer Art zuverlaessig macht:
+## die Tabelle wird ergaenzt, das Verhalten wird ergaenzt, die Zeichnung im
+## Schlund wird ergaenzt - und die eine `match`-Verzweigung im
+## Koloniebildschirm faellt in den Standardzweig, der nichts zeichnet. Es
+## kracht nicht, es fehlt nur.
+##
+## Geprueft wird am Quelltext und nicht an der Zeichnung: eine Zeichenfunktion
+## laesst sich kopflos nicht ausfuehren, ein `match`-Zweig aber sehr wohl
+## nachweisen. Grob, aber es faengt genau den Fall, um den es geht.
+func _test_jede_art_hat_ein_sinnbild() -> bool:
+    var quelle := FileAccess.get_file_as_string(
+        "res://scripts/ui/kolonie_schirm.gd")
+    if not _melde(not quelle.is_empty(), "kolonie_schirm.gd nicht lesbar"):
+        return false
+    for name in Arten.Art.keys():
+        if not _melde(quelle.contains("Arten.Art.%s:" % name),
+                "Die Art %s hat keinen Zweig im Bestiarium-Sinnbild" % name):
+            return false
+    for name in Brutlinien.Linie.keys():
+        if name == "KEINE":
+            continue
+        if not _melde(quelle.contains("Brutlinien.Linie.%s:" % name),
+                "Die Brutlinie %s hat keinen Zweig im Sinnbild" % name):
             return false
     return true

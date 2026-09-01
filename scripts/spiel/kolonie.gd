@@ -568,10 +568,16 @@ func _zeichne_polypen() -> void:
         var p := polypen[i]
         var puls := 0.5 + 0.5 * sin(zeit * 2.1 + float(i) * 0.8)
 
-        # Reichweite nur andeuten - ein voller Kreis je Polyp waere ein Netz
-        # aus Linien ueber dem halben Bild.
-        draw_arc(p, Graben.POLYP_REICHWEITE, 0.0, TAU, 42,
-            Color(POLYP_FARBE.r, POLYP_FARBE.g, POLYP_FARBE.b, 0.055), 1.0, true)
+        # **Die Reichweite steht nur zwischen den Wellen.**
+        #
+        # Sie ist die Auskunft, die man beim Setzen braucht - und genau dann
+        # ist der Bildschirm leer. Waehrend der Welle sind es acht sich
+        # kreuzende Kreise ueber dem halben Bild, und dann sucht man die
+        # Raeuber in einem Netz aus Linien. Was man nicht mehr entscheiden
+        # kann, muss man auch nicht mehr sehen.
+        if bauphase:
+            draw_arc(p, Graben.POLYP_REICHWEITE, 0.0, TAU, 42,
+                Color(POLYP_FARBE.r, POLYP_FARBE.g, POLYP_FARBE.b, 0.10), 1.0, true)
 
         # Kelch aus Tentakeln.
         for k in 7:

@@ -1109,6 +1109,20 @@ func _artsinnbild(p: Vector2, r: float, index: int, farbe: Color, kennt: bool) -
                 p + Vector2(r * 0.2, r * 0.2), p + Vector2(r * 0.9, -r * 0.5),
             ])
             _flaeche.draw_polyline(zack, farbe, 2.2)
+        Arten.Art.SPIEGLER:
+            # Ein facettierter Panzer und ein Strahl, der daran umkehrt -
+            # genau das, was die Regel sagt.
+            _flaeche.draw_arc(p + Vector2(0.0, r * 0.3), r * 0.8, PI, TAU, 18,
+                farbe, 2.2)
+            for i in 3:
+                var x := lerpf(-r * 0.5, r * 0.5, float(i) / 2.0)
+                _flaeche.draw_line(p + Vector2(x, r * 0.3),
+                    p + Vector2(x * 0.45, -r * 0.4),
+                    Color(farbe.r, farbe.g, farbe.b, 0.55), 1.4)
+            _flaeche.draw_line(p + Vector2(-r * 0.75, -r * 0.9),
+                p + Vector2(0.0, -r * 0.2), Color(1.0, 1.0, 0.96, 0.85), 1.8)
+            _flaeche.draw_line(p + Vector2(0.0, -r * 0.2),
+                p + Vector2(r * 0.75, -r * 0.9), Color(1.0, 1.0, 0.96, 0.85), 1.8)
         Arten.Art.SCHLUNDMUTTER:
             # Breiter Mantel und ein Kranz aus Augen - dieselbe Silhouette wie
             # im Schlund, nur klein.
@@ -1298,12 +1312,23 @@ func _brutlinie(kasten: Rect2, index: int, stand: KolonieStand) -> void:
     elif hat:
         _text(Vector2(rechts, mitte_y + 5.0), "select", 15, LEISE, false, true)
     else:
-        var frei := stand.hat_linie(Brutlinien.voraussetzung(index))
+        var davor := Brutlinien.voraussetzung(index)
+        var frei := stand.hat_linie(davor)
         var preis := Brutlinien.kosten(index)
         var reicht := frei and stand.naehrstoffe >= preis
         _text(Vector2(rechts, mitte_y - 6.0), "breed", 13, LEISE, false, true)
         _text(Vector2(rechts, mitte_y + 16.0), Zahl.kurz(preis) if frei else "locked", 18,
             NAEHR if reicht else SPERRE, false, true)
+        # **"locked" allein ist keine Auskunft, sondern eine Absage.**
+        #
+        # Fuenf von sechs Zeilen standen auf "locked", und nirgends stand,
+        # woran es liegt. Wer das sieht, haelt die Linien fuer etwas, das
+        # spaeter irgendwie kommt - dabei ist die Bedingung genau eine, und
+        # sie steht eine Zeile weiter oben im selben Bildschirm.
+        if not frei:
+            _text(Vector2(links, kasten.position.y + 78.0),
+                "Needs %s first" % Brutlinien.name_von(davor), 12,
+                Color(0.62, 0.52, 0.48))
 
 
 ## Ein Sinnbild je Linie. Wie bei den Kammern: gezeichnet, keine Bilddatei.

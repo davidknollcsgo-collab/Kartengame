@@ -318,7 +318,14 @@ func _init() -> void:
     print("")
     if fehler.is_empty():
         print("Die Kolonie traegt die Sollkurve ohne Warte- und ohne Fortschrittsmauer.")
+        # **`quit()` kehrt zurueck.** Es meldet der Hauptschleife nur an, dass
+        # sie aufhoeren soll - der Rest der Funktion laeuft weiter. Ohne das
+        # `return` fiel der gute Ausgang unten in `quit(1)` hinein und
+        # ueberschrieb seinen eigenen Exitcode: der Lauf meldete auf dem Bild
+        # "Die Kolonie traegt die Sollkurve" und in der Schale einen Fehler.
+        # In CI stand deshalb ein rotes Kreuz an einem Schritt, der gruen war.
         quit(0)
+        return
     for f in fehler:
         print("FEHLER: " + f)
     quit(1)

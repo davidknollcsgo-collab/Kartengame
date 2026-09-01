@@ -76,6 +76,14 @@ gekostet.
 Registry ebenfalls nicht — Klassen erscheinen dort fälschlich als undeklariert.
 Für echte Prüfung immer `--import` und den Testlauf verwenden.
 
+**`quit()` kehrt zurueck.** Es meldet der Hauptschleife nur an, dass sie
+aufhören soll — der Rest der Funktion läuft weiter. In `kolonielauf.gd` fiel
+der gute Ausgang deshalb unten in `quit(1)` hinein und überschrieb seinen
+eigenen Exitcode: der Lauf meldete auf dem Bild „Die Kolonie trägt die
+Sollkurve" und in der Schale einen Fehler. In CI stand ein rotes Kreuz an
+einem Schritt, der grün war. Also `return` hinter jedes `quit()`, das nicht
+das letzte Statement der Funktion ist.
+
 **Achtung beim Fehler-Check in der Shell:** `godot ... | grep ... | head` gibt
 immer Erfolg zurück, weil `head` gelingt. Die Ausgabe in eine Variable fangen
 und auf leer prüfen.
