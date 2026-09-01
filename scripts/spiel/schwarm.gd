@@ -52,6 +52,10 @@ func _ready() -> void:
     material = stoff
 
 
+## Die Funkenbluete dieser Welle, oder null. `wache.gd` setzt sie.
+var bluete: Bluete = null
+
+
 func _draw() -> void:
     var sichtbar := 0
     for t in tiere:
@@ -64,10 +68,56 @@ func _draw() -> void:
     elif sichtbar >= DICHT_AB:
         stufe = 1
 
+    # Die Bluete zuerst: sie treibt hinter den Raeubern, weil sie nicht zu
+    # ihnen gehoert. Wer sie vor ihnen zeichnete, machte aus einer Gelegenheit
+    # ein Hindernis.
+    if bluete != null and bluete.lebendig and bluete.alter >= 0.0:
+        _zeichne_bluete(bluete)
+
     for t in tiere:
         if not t.lebendig:
             continue
         _zeichne(t, stufe)
+
+
+## Die Funkenbluete: ein Kern in einer offenen Huelle, aus der Faeden treiben.
+##
+## **Sie darf keinem Raeuber aehneln.** Alles andere im Bild ist gerichtet -
+## Spitze voran, Bahn nach unten. Sie ist rund, symmetrisch und warm, und sie
+## treibt quer. Wer eine Sekunde Zeit hat, soll ohne Nachdenken wissen: das
+## will nicht zur Brut.
+func _zeichne_bluete(b: Bluete) -> void:
+    var p := b.ort
+    var offen := 1.0 - b.anteil()
+    var r := 34.0 + 10.0 * offen
+    var warm := Color(1.0, 0.82, 0.42)
+    var puls := 0.5 + 0.5 * sin(b.alter * 2.2 + b.phase)
+    var hell: float = clampf(b.licht, 0.0, 1.0)
+
+    # Faeden, die nach aussen treiben. Sie stehen quer zur Bahn, damit man
+    # die Richtung sieht, in die sie zieht.
+    for i in 10:
+        var w := TAU * float(i) / 10.0 + b.alter * 0.35
+        var weit := r * (1.5 + 0.5 * sin(b.alter * 1.7 + float(i)))
+        var spitze := p + Vector2(cos(w), sin(w) * 0.8) * weit
+        draw_line(p, spitze, Color(warm.r, warm.g, warm.b,
+            0.18 + 0.20 * hell + 0.08 * puls), 1.8)
+        draw_circle(spitze, 2.8 + 1.6 * b.hitze,
+            Color(1.0, 0.94, 0.72, 0.52 + 0.4 * hell))
+
+    # Die Huelle. Sie oeffnet sich, waehrend die Bluete brennt - das ist die
+    # Lebensanzeige, und sie braucht keinen Balken.
+    for i in 6:
+        var w := TAU * float(i) / 6.0 + b.alter * 0.2
+        var mitte := p + Vector2(cos(w), sin(w) * 0.82) * r * (0.5 + 0.5 * offen)
+        draw_circle(mitte, r * 0.36,
+            Color(warm.r, warm.g, warm.b, 0.26 + 0.26 * hell + 0.1 * b.hitze))
+
+    draw_circle(p, r * 1.5, Color(warm.r, warm.g, warm.b, 0.05 + 0.07 * hell))
+    draw_circle(p, r * 0.9, Color(warm.r, warm.g, warm.b, 0.12 + 0.14 * hell))
+    draw_circle(p, r * (0.30 + 0.05 * puls),
+        Color(1.0, 0.90, 0.62, 0.75 + 0.25 * b.hitze))
+    draw_circle(p, r * 0.14, Color(1.0, 1.0, 0.92, 0.95))
 
 
 func _zeichne(t: Raeuber, stufe := 0) -> void:

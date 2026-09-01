@@ -202,6 +202,63 @@ static func radius_in(art: int, nummer: int) -> float:
     return roh
 
 
+## --- Die Funkenbluete ---
+##
+## **Der Welle fehlte ein Grund, den Kegel wegzuziehen.** Alles, was
+## auftaucht, will zur Brut, und der Kegel gehoert dorthin, wo es herkommt.
+## Die einzige Entscheidung war, welchen Raeuber zuerst - und das ist keine,
+## denn es ist immer der vorderste.
+##
+## Die Bluete ist das Gegenteil eines Raeubers: sie greift nichts an, sinkt
+## nicht, und sie treibt quer durchs Bild wieder hinaus. Wer sie will, muss
+## den Kegel **weg** von der Bahn nehmen, auf der die Raeuber kommen. Das ist
+## die Entscheidung, und sie kostet genau das, was sie einbringt: Zeit.
+##
+## **Sie zahlt keinen Naehrstoff.** Das Einkommen ist aus den Kammerkosten
+## abgeleitet (siehe `ertrag()`), und ein Fund, der daneben Naehrstoff
+## ausschuettet, verschiebt die ganze Wirtschaft. Sie zahlt Punkte und Kette -
+## dieselbe Waehrung wie der Lauf selbst.
+##
+## **Und nur der Kegel oeffnet sie.** Das Stosslicht laeuft durch sie hindurch.
+## Ohne diese Regel waere die Entscheidung keine: man wartet, bis der Ring
+## geladen ist, tippt, und bekommt sie geschenkt.
+const BLUETE_AB_WELLE := 4
+const BLUETE_JE_WELLEN := 3
+const BLUETE_SEKUNDEN := 1.7
+const BLUETE_DAUER := 9.5
+const BLUETE_PUNKTE := 400
+const BLUETE_KETTE := 5
+
+
+static func hat_bluete(nummer: int) -> bool:
+    if nummer < BLUETE_AB_WELLE:
+        return false
+    var rng := RandomNumberGenerator.new()
+    rng.seed = SAAT + nummer * 104729
+    return rng.randi() % BLUETE_JE_WELLEN == 0
+
+
+## Wann und wo sie eintritt. Gewuerfelt wie alles andere: aus der Wellenzahl,
+## damit dieselbe Welle immer dieselbe Bluete hat.
+static func bluete_in(nummer: int) -> Dictionary:
+    var rng := RandomNumberGenerator.new()
+    rng.seed = SAAT + nummer * 104729 + 13
+    var seite := -1.0 if rng.randi() % 2 == 0 else 1.0
+    return {
+        &"zeit": rng.randf_range(4.0, 16.0),
+        &"y": rng.randf_range(-260.0, 190.0),
+        &"seite": seite,
+        &"hub": rng.randf_range(24.0, 70.0),
+        &"phase": rng.randf_range(0.0, TAU),
+    }
+
+
+## Wie zaeh sie ist - in Sekunden Kegel auf der Sollstufe, wie beim Leitwesen.
+## Ein fester Wert waere in Welle 200 ein Streifschuss.
+static func bluete_leben(nummer: int) -> float:
+    return Graben.LEISTUNG * Ausbau.leistung_faktor(nummer) * BLUETE_SEKUNDEN
+
+
 ## Ob in dieser Welle ein Leitwesen steht: am Ende jedes Grabenabschnitts.
 static func hat_leitwesen(nummer: int) -> bool:
     return nummer > 0 and nummer % Graben.WELLEN_JE_ABSCHNITT == 0

@@ -53,6 +53,7 @@ const TESTS: PackedStringArray = [
     "_test_gepanzertes_leitwesen_nie_im_dunkeln",
     "_test_stosslicht_steht_in_der_sollkurve",
     "_test_kette_zahlt_punkte_und_keinen_naehrstoff",
+    "_test_bluete_bleibt_ausserhalb_der_wirtschaft",
     "_test_mutationen_tabelle_vollstaendig",
     "_test_mutationen_erst_ab_der_zweiten_umdrehung",
     "_test_mutationen_sind_reproduzierbar",
@@ -1915,6 +1916,57 @@ func _test_kette_zahlt_punkte_und_keinen_naehrstoff() -> bool:
             continue
         if not _melde(not rein.contains("kette"),
                 "wache.gd:%d bringt die Kette mit dem Naehrstoff zusammen"
+                % nummer):
+            return false
+    return true
+
+
+## Die Funkenbluete steht ausserhalb von Wirtschaft und Wellenbudget.
+##
+## Sie ist kein Raeuber: sie greift nichts an, sie steht in keiner
+## `Wellen.auftritte()`, und sie zahlt keinen Naehrstoff. Beides muss so
+## bleiben, und zwar aus zwei verschiedenen Gruenden:
+##
+##   * **Nicht im Budget**, weil `Wellen.staerke()` aus der Sollkurve faellt.
+##     Ein Koerper, der Zeit kostet und nicht bezahlt wurde, macht jede Welle
+##     um seinen Anteil schwerer, als sie entworfen ist.
+##   * **Kein Naehrstoff**, weil das Einkommen aus den Kammerkosten abgeleitet
+##     ist. Dieselbe Regel wie bei der Kette.
+##
+## Und sie muss zaeher werden: ein fester Wert waere in Welle 200 ein
+## Streifschuss.
+func _test_bluete_bleibt_ausserhalb_der_wirtschaft() -> bool:
+    if not _melde(Wellen.bluete_leben(200) > Wellen.bluete_leben(10) * 2.0,
+            "die Bluete muss mit der Sollkurve zaeher werden"):
+        return false
+
+    # Sie darf in keiner Welle als Auftritt gefuehrt werden - dort stuende sie
+    # im Budget und waere ein Raeuber mit anderem Anstrich.
+    var mit := 0
+    for n in range(1, Graben.ZYKLUS + 1):
+        if Wellen.hat_bluete(n):
+            mit += 1
+        if not _melde(Wellen.auftritte(n).size() > 0,
+                "Welle %d hat keine Auftritte" % n):
+            return false
+    if not _melde(mit > 0 and mit < Graben.ZYKLUS,
+            "die Bluete muss manchmal kommen und manchmal nicht, nicht %d von %d"
+            % [mit, Graben.ZYKLUS]):
+        return false
+
+    var quelle := FileAccess.get_file_as_string("res://scripts/spiel/wache.gd")
+    if not _melde(not quelle.is_empty(), "wache.gd nicht lesbar"):
+        return false
+    var nummer := 0
+    for zeile in quelle.split("\n"):
+        nummer += 1
+        var rein := zeile.strip_edges()
+        if rein.begins_with("#"):
+            continue
+        if not (rein.contains("Fortschritt.aendere(") or rein.contains("verdient")):
+            continue
+        if not _melde(not rein.contains("bluete"),
+                "wache.gd:%d bringt die Bluete mit dem Naehrstoff zusammen"
                 % nummer):
             return false
     return true

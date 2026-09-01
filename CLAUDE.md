@@ -258,7 +258,16 @@ unter einer strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
    und jeden Rand auf 12 % der Bildkante deckeln: was darüber liegt, ist eine
    Fehlmessung und keine Kerbe.
 
-18. **Weltpunkt zu Bildschirmpunkt geht über den Viewport, nicht über das
+18. **Was Zeit kostet und nichts zahlt, steht außerhalb des Budgets.** Die
+   Funkenblüte ist kein Räuber: sie steht in keiner `Wellen.auftritte()`,
+   zahlt keinen Nährstoff und wird vom Stoßlicht nicht getroffen. Alle drei
+   Regeln haben denselben Grund — sie ist **optional**. Ein Körper im
+   Wellenbudget müsste bezahlt sein; ein Fund, der Nährstoff ausschüttet,
+   verschöbe die Wirtschaft; und ein Ziel, das der Stoß gratis mitnimmt, ist
+   keine Entscheidung. `_test_bluete_bleibt_ausserhalb_der_wirtschaft` hält
+   die ersten beiden fest.
+
+19. **Weltpunkt zu Bildschirmpunkt geht über den Viewport, nicht über das
    Control.** `Control.get_canvas_transform()` liefert die Verschiebung der
    CanvasLayer, in der das Bedienbild hängt — und die ist die
    Einheitsabbildung. Gebraucht wird `get_viewport().get_canvas_transform()`,

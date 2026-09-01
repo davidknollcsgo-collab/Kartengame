@@ -90,6 +90,13 @@ var _stoss_kuehl := 0.0
 var _stoss_weit := -1.0
 var _stoss_nr := 0
 
+## Die Funkenbluete dieser Welle, oder null. Hoechstens eine je Welle: zwei
+## gleichzeitig waeren keine Entscheidung mehr, sondern eine zweite Front.
+var _bluete: Bluete = null
+
+## Ob in dieser Sitzung schon eine Bluete erklaert wurde.
+var _bluete_gesehen := false
+
 ## --- Kette und Punkte ---
 ##
 ## `kette` ist die Zahl der Abschuesse in Folge, `_kette_zeit` die Restzeit,
@@ -317,6 +324,21 @@ func starte_welle() -> void:
     _kette_zeit = 0.0
     _hud.setze_kette(0, 0.0)
 
+    _bluete = null
+    _schwarm.bluete = null
+    if Wellen.hat_bluete(welle_nummer):
+        var b := Wellen.bluete_in(welle_nummer)
+        _bluete = Bluete.new()
+        _bluete.eintritt = b[&"zeit"]
+        _bluete.seite = b[&"seite"]
+        _bluete.bahn_y = b[&"y"]
+        _bluete.hub = b[&"hub"]
+        _bluete.phase = b[&"phase"]
+        _bluete.leben_voll = Wellen.bluete_leben(welle_nummer)
+        _bluete.leben = _bluete.leben_voll
+        _bluete.ort = _bluete.ort_bei(0.0)
+    _schwarm.bluete = _bluete
+
     welle_in_sitzung += 1
     # Der Lehrpfad wartet an dieser Stelle darauf, dass die Welle wirklich
     # losgeht. Ohne den Schritt stand der Spieler vor einem Knopf, auf den
@@ -455,6 +477,7 @@ func _process(delta: float) -> void:
         _bewege(delta)
         _verbrenne(delta)
         _stosslicht_fuehren(delta)
+        _bluete_fuehren(delta)
         _polypen_feuern(delta)
         _raeume_auf()
         _wellenzeit += delta
@@ -474,6 +497,64 @@ func _process(delta: float) -> void:
 
     _hud.stoss_ladung = stoss_ladung()
     _schwarm.queue_redraw()
+
+
+## Fuehrt die Funkenbluete: treiben, brennen, vergehen.
+##
+## **Nur der Kegel oeffnet sie** - das Stosslicht laeuft durch sie hindurch.
+## Ohne diese Regel waere die Entscheidung keine: man wartet, bis der Ring
+## geladen ist, tippt, und bekommt sie geschenkt. Deshalb steht sie hier und
+## nicht in `_stosslicht_fuehren()`.
+func _bluete_fuehren(delta: float) -> void:
+    if _bluete == null or not _bluete.lebendig:
+        return
+    _bluete.alter = _wellenzeit - _bluete.eintritt
+    if _bluete.alter < 0.0:
+        return
+    if _bluete.vorbei(_bluete.alter):
+        # Sie geht, und das ist kein Fehler - eine Gelegenheit, die man nicht
+        # verpassen kann, ist keine.
+        _bluete.lebendig = false
+        _schwarm.bluete = null
+        return
+
+    if not _bluete_gesehen:
+        # Einmal je Spielstand: was da treibt, erklaert sich nicht von selbst,
+        # und beim zweiten Mal braucht es keine Erklaerung mehr.
+        _bluete_gesehen = true
+        _hud.melde("Sparkbloom - only the beam opens it")
+    _bluete.ort = _bluete.ort_bei(_bluete.alter)
+    _bluete.hitze = maxf(0.0, _bluete.hitze - delta * 2.4)
+    # `_kegel` ist eine untypisierte Knotenreferenz, also ist jedes Feld daran
+    # `Variant` - und ein Produkt daraus laesst sich nicht ableiten. Deshalb
+    # steht der Typ hier von Hand.
+    var hell: float = Schlund.beleuchtung(Graben.WAECHTER, _wirksam,
+        _kegel.halbwinkel, _kegel.reichweite, _bluete.ort,
+        _kegel.rand_kern, _kegel.tiefe_kern) * _kegel.schein
+    _bluete.licht = hell
+    var wirkung := Schlund.schaden_an(leistung(), hell, 0.0, 0.0)
+    if wirkung <= 0.0:
+        return
+
+    _bluete.leben -= wirkung * delta
+    _bluete.hitze = 1.0
+    if _bluete.leben > 0.0:
+        return
+
+    # Aufgebrochen. Sie zahlt Punkte und Kette - keinen Naehrstoff.
+    _bluete.lebendig = false
+    _schwarm.bluete = null
+    kette += Wellen.BLUETE_KETTE
+    kette_hoechste = maxi(kette_hoechste, kette)
+    Fortschritt.setze_ziel(Tagesziel.Ziel.KETTE, kette)
+    _kette_zeit = Graben.KETTE_FENSTER
+    punkte += int(round(float(Wellen.BLUETE_PUNKTE)
+        * Graben.kette_faktor(kette)))
+    _hud.setze_kette(kette, 1.0)
+    _hud.blitze(Color(0.98, 0.84, 0.46), 0.5)
+    _schuetteln = maxf(_schuetteln, 0.55)
+    _funken.platzen(_bluete.ort, Color(1.0, 0.88, 0.52), 54.0)
+    Klang.spiele(Klang.Ton.KAMMER, 1.35, 0.8)
 
 
 ## Ob das Stosslicht gerade bereit ist. Das HUD zeichnet daraus den Ladering.
