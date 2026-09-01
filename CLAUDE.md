@@ -108,6 +108,7 @@ xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 720x1280 \
 | `--endschirm <n>` | 0 gefallen, 1 Sitzung gehalten, 2 Graben durchgestanden |
 | `--stufen <n>` | setzt alle Kammern auf Stufe n |
 | `--lehre <n>` | setzt den Lehrpfad auf Schritt n (0–7) |
+| `--heim` | zeigt die Rückkehrtafel mit Beispielwerten |
 
 **`--stau` braucht man oefter, als es aussieht.** Im Vorlauf steht der
 Finger fest ueber dem Schlund, und der Kegel raeumt in spaeten Wellen alles

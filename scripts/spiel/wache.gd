@@ -129,11 +129,13 @@ func _ready() -> void:
 
     welle_nummer = Fortschritt.stand.naechste_welle()
     brut = Fortschritt.stand.brut_leben()
-    var offline := Fortschritt.begruesse()
+    var heim := Fortschritt.begruesse()
     _stelle_ausbau_ein()
+    # Nach `begruesse()`: die Brut haengt an der Brutkammer, und die kann in
+    # der Abwesenheit fertig geworden sein.
+    brut = Fortschritt.stand.brut_leben()
     _bereite_welle_vor()
-    if offline > 0:
-        _hud.zeige_ausbeute(Graben.WAECHTER + Vector2(0.0, -70.0), offline)
+    _hud.zeige_rueckkehr(heim)
     _zeige_einstieg()
     _lies_entwicklerschalter()
 
@@ -886,6 +888,15 @@ func _beruehrung(gedrueckt: bool, ort: Vector2) -> void:
         return
     _finger = ort
 
+    # Die Rueckkehrtafel liegt ueber allem und hat genau einen Ausgang.
+    # Solange sie steht, darf kein Tipp dahinter ankommen - sonst startet
+    # der erste Griff nach dem Aufwachen die Welle.
+    if _hud.rueckkehr_offen():
+        if _hud.rueckkehrknopf_bei(_bildschirm(ort)):
+            Klang.spiele(Klang.Ton.TIPP)
+            _hud.schliesse_rueckkehr()
+        return
+
     match lage:
         Lage.PAUSE:
             weiter()
@@ -982,6 +993,14 @@ func _lies_entwicklerschalter() -> void:
                 # fuenf davor noch einmal spielt - und ein Bild, das man
                 # nicht nachpruefen kann, ist ein Bild, das schief steht.
                 lehre = int(argumente[i + 1]) if i + 1 < argumente.size() else 0
+            "--heim":
+                # Die Rueckkehrtafel zeigt sich nur nach einer echten Pause
+                # von Stunden. Ohne Schalter muesste man das Spiel schliessen,
+                # die Systemuhr stellen und zurueckkommen.
+                _hud.zeige_rueckkehr({
+                    &"ertrag": 12480, &"stunden": 6.2,
+                    &"kammer": Kammern.Kammer.LEUCHTORGAN, &"tag": true,
+                })
             "--pause":
                 # Die Pause laesst sich sonst nur ansehen, indem man die App
                 # auf einem Telefon in den Hintergrund schiebt.

@@ -99,6 +99,47 @@ var _lehr_ort := Vector2.ZERO
 var _lehr_leben := 0.0
 const LEHRE_VOLL := 14.0
 
+## --- Die Rueckkehrtafel ---
+##
+## Was in der Abwesenheit geschah, stand bisher an zwei Stellen und an keiner
+## richtig: der Offline-Ertrag als schwebende Zahl ueber dem Waechter, die
+## fertige Kammer als Dreisekundenmeldung. Beides ist weg, bevor jemand
+## hinsieht - und beides ist der ganze Grund, warum man wiederkommt.
+##
+## Leer, solange es nichts zu berichten gibt. Wer nach zwei Minuten
+## zurueckkommt, bekommt keine Tafel.
+var _heim := {}
+var _heimknopf := Rect2()
+
+
+func zeige_rueckkehr(was: Dictionary) -> void:
+    var ertrag := int(was.get(&"ertrag", 0))
+    var kammer := int(was.get(&"kammer", -1))
+    var tag := bool(was.get(&"tag", false))
+    # **Ein erster Start ist keine Rueckkehr.** Ein frischer Spielstand hat
+    # `tag == 0`, also meldet `pruefe_tag()` beim allerersten Oeffnen einen
+    # Tageswechsel - und der neue Spieler haette als erstes Bild eine Tafel
+    # bekommen, die ihm erzaehlt, was in seiner Abwesenheit geschehen ist.
+    # Der Tageswechsel ist eine Zeile auf dieser Tafel, nie ihr Anlass.
+    if ertrag <= 0 and kammer < 0:
+        return
+    _heim = was
+    _heim[&"tag"] = tag
+
+
+func rueckkehr_offen() -> bool:
+    return not _heim.is_empty()
+
+
+func rueckkehrknopf_bei(bildschirm: Vector2) -> bool:
+    return rueckkehr_offen() and _heimknopf.has_point(bildschirm)
+
+
+func schliesse_rueckkehr() -> void:
+    _heim = {}
+    _heimknopf = Rect2()
+
+
 ## Ob das Spiel angehalten ist. Siehe `wache.gd::pausiere()`.
 var _pause := false
 
@@ -289,6 +330,9 @@ func _zeichne() -> void:
         _abschnittstafel(breite, hoehe)
     elif _lehre >= 0 and not _ende and not Lehrpfad.in_der_kolonie(_lehre):
         _lehrtafel(breite, hoehe)
+
+    if rueckkehr_offen():
+        _rueckkehrtafel(breite, hoehe)
 
     # Ganz zuletzt, ueber allem: eine Pause, die man nicht sieht, ist ein
     # Absturz.
@@ -736,6 +780,66 @@ func _endschirm(breite: float, hoehe: float) -> void:
 
     _kolonieknopf_zeichnen(breite, hoehe, "COLONY",
         "GO ON" if _sitzung or _gewonnen else "DIVE AGAIN")
+
+
+## Was geschah, waehrend niemand hinsah.
+func _rueckkehrtafel(breite: float, hoehe: float) -> void:
+    _flaeche.draw_rect(Rect2(0.0, 0.0, breite, hoehe), Color(0.01, 0.03, 0.05, 0.86))
+
+    var ertrag := int(_heim.get(&"ertrag", 0))
+    var kammer := int(_heim.get(&"kammer", -1))
+    var stunden: float = _heim.get(&"stunden", 0.0)
+
+    var zeilen := PackedStringArray()
+    if kammer >= 0:
+        zeilen.append("%s finished digging." % Kammern.name_von(kammer))
+    if bool(_heim.get(&"tag", false)):
+        zeilen.append("A new day: goals reset, and the day currents are back.")
+
+    var hoch := 196.0 + float(zeilen.size()) * 22.0
+    var karte := Rect2(RAND, hoehe * 0.26, breite - RAND * 2.0, hoch)
+    var ton := Color(0.52, 0.94, 0.80)
+    _flaeche.draw_rect(karte, Color(0.030, 0.078, 0.098, 0.94))
+    _flaeche.draw_rect(karte, Color(ton.r, ton.g, ton.b, 0.34), false, 1.6)
+    _flaeche.draw_rect(Rect2(karte.position, Vector2(karte.size.x, 3.0)),
+        Color(ton.r, ton.g, ton.b, 0.85))
+
+    var mitte_x := karte.get_center().x
+    _text(Vector2(mitte_x, karte.position.y + 46.0), "WHILE YOU WERE AWAY",
+        22, ton, true)
+    _text(Vector2(mitte_x, karte.position.y + 72.0), _spanne(stunden), 14,
+        Color(0.68, 0.82, 0.86), true)
+
+    _kachel(Rect2(karte.position.x + 18.0, karte.position.y + 96.0,
+        karte.size.x - 36.0, 84.0), Zahl.kurz(ertrag),
+        "NUTRIENTS FILTERED", ton)
+
+    for i in zeilen.size():
+        _text(Vector2(mitte_x, karte.position.y + 206.0 + float(i) * 22.0),
+            zeilen[i], 14, Color(0.72, 0.88, 0.92), true)
+
+    var puls := 0.5 + 0.5 * sin(_zeit * 1.8)
+    _heimknopf = Rect2(RAND + 40.0, karte.end.y + 22.0,
+        breite - RAND * 2.0 - 80.0, KNOPF_HOCH)
+    _flaeche.draw_rect(_heimknopf, Color(0.08, 0.26, 0.28, 0.92))
+    _flaeche.draw_rect(_heimknopf, Color(0.52, 0.94, 0.86, 0.42 + 0.30 * puls),
+        false, 1.8)
+    _text(_heimknopf.get_center() + Vector2(0.0, 7.0), "TAKE IT", 19,
+        Color(0.84, 1.0, 0.94), true)
+
+
+## Eine Zeitspanne in Worten. Der Deckel steht in `KolonieStand`; wer laenger
+## weg war, bekommt "a long while" statt einer Zahl, die nicht stimmt.
+func _spanne(stunden: float) -> String:
+    if stunden >= KolonieStand.OFFLINE_DECKEL_STUNDEN - 0.01:
+        return "The filters ran as long as they can hold"
+    if stunden < 1.0:
+        return "%d minutes down there" % maxi(1, int(round(stunden * 60.0)))
+    var st := int(stunden)
+    var min := int(round((stunden - float(st)) * 60.0))
+    if min <= 0:
+        return "%d hours down there" % st
+    return "%d h %d min down there" % [st, min]
 
 
 ## Eine Ergebniskachel: eine grosse Zahl mit einem kleinen Wort darunter.

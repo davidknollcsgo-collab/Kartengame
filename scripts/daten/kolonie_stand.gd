@@ -358,11 +358,23 @@ func je_stunde() -> float:
 
 
 ## Rechnet den Ertrag der Abwesenheit gut und gibt ihn zurueck.
+## Wie lange die Kolonie unbeaufsichtigt war, in Stunden und gedeckelt.
+##
+## Steht als eigene Funktion da, weil die Rueckkehrtafel sie braucht, bevor
+## `ernte_offline()` den Zeitstempel weiterstellt - und eine zweite Rechnung
+## fuer dieselbe Zeitspanne waere die naechste Stelle, an der zwei Zahlen
+## auseinanderlaufen.
+func abwesend(jetzt: float) -> float:
+    if zuletzt_gesehen <= 0.0:
+        return 0.0
+    return clampf((jetzt - zuletzt_gesehen) / 3600.0, 0.0, OFFLINE_DECKEL_STUNDEN)
+
+
 func ernte_offline(jetzt: float) -> int:
     if zuletzt_gesehen <= 0.0:
         zuletzt_gesehen = jetzt
         return 0
-    var stunden := clampf((jetzt - zuletzt_gesehen) / 3600.0, 0.0, OFFLINE_DECKEL_STUNDEN)
+    var stunden := abwesend(jetzt)
     zuletzt_gesehen = jetzt
     var ertrag := int(floor(je_stunde() * stunden))
     naehrstoffe += ertrag

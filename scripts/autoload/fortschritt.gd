@@ -17,10 +17,15 @@ var stand: KolonieStand
 var _bis_zum_sichern := SICHERN_ALLE
 
 
+## Ob beim Start ein Tageswechsel stattgefunden hat. Die Rueckkehrtafel
+## braucht es, und `pruefe_tag()` laeuft, bevor die Wache ueberhaupt da ist.
+var tag_gewechselt := false
+
+
 func _ready() -> void:
     process_mode = Node.PROCESS_MODE_ALWAYS
     stand = Speicher.lies()
-    pruefe_tag()
+    tag_gewechselt = pruefe_tag()
 
 
 func _process(delta: float) -> void:
@@ -54,13 +59,29 @@ func sichere() -> void:
         Speicher.schreibe(stand)
 
 
-## Rechnet die Abwesenheit ab. Gibt zurueck, was dabei herauskam.
-func begruesse() -> int:
-    var ertrag := stand.ernte_offline(Time.get_unix_time_from_system())
-    if ertrag > 0:
+## Rechnet die Abwesenheit ab und sagt, was dabei herauskam.
+##
+## **Auch der fertige Bau gehoert hierher.** Er wurde bisher erst im ersten
+## `_process()` eingesammelt und als Dreisekundenmeldung durchgereicht - die
+## Kammer, auf die jemand einen halben Tag gewartet hat, meldete sich also
+## als Toast, der vorbei war, bevor man hinsah. Wer zurueckkommt, soll in
+## einem Bild sehen, was in seiner Abwesenheit geschehen ist.
+func begruesse() -> Dictionary:
+    var jetzt := Time.get_unix_time_from_system()
+    var stunden := stand.abwesend(jetzt)
+    var ertrag := stand.ernte_offline(jetzt)
+    var kammer := -1
+    if stand.baut() and stand.restzeit(jetzt) <= 0.0:
+        kammer = stand.hole_bau_ab(jetzt)
+        if kammer >= 0:
+            bau_fertig.emit(kammer)
+    if ertrag > 0 or kammer >= 0:
         stand_geaendert.emit()
         sichere()
-    return ertrag
+    return {
+        &"ertrag": ertrag, &"stunden": stunden, &"kammer": kammer,
+        &"tag": tag_gewechselt,
+    }
 
 
 ## Prueft den Tageswechsel und sichert, wenn einer stattfand.
