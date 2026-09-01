@@ -1371,6 +1371,16 @@ func _tagesfuss(breite: float, y: float, stand: KolonieStand) -> void:
     _text(Vector2(RAND, y + 22.0), "%s in the trench in a row" % tage,
         15, Color(0.72, 0.88, 0.92))
 
+    # **Die Bestmarken gehoeren hierher und nicht nur auf das Schlussbild.**
+    # Dort sieht man sie einmal und dann nie wieder; hier stehen sie, wenn man
+    # ueberlegt, ob man noch eine Sitzung spielt. Eine Bestleistung, die man
+    # nur im Augenblick ihres Entstehens sieht, ist keine Marke, sondern eine
+    # Meldung.
+    if stand.bestpunkte > 0:
+        _text(Vector2(breite - RAND, y + 22.0),
+            "best %s  ·  chain %d" % [Zahl.kurz(stand.bestpunkte),
+                stand.beste_kette], 13, NAEHR, false, true)
+
     # Lautstaerke in Schritten statt als Schieber: einen Schieber trifft man
     # mit dem Daumen schlecht, zwei Knoepfe immer.
     var zeile := y + 44.0

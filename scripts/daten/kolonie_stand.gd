@@ -26,6 +26,16 @@ var linie := Brutlinien.Linie.KEINE
 var naehrstoffe := START_NAEHRSTOFF
 var hoechste_welle := 1
 
+## Die beste Punktzahl einer Sitzung. Sie kostet nichts und schaltet nichts
+## frei - sie ist der Grund, es noch einmal zu versuchen, wenn die Kolonie
+## fuer heute fertig gebaut ist und der naechste Abschnitt noch zu ist.
+var bestpunkte := 0
+
+## Die laengste Kette, die je gehalten wurde. Zweite Bestmarke, weil sie etwas
+## anderes misst als die Punktzahl: die sagt "eine gute Sitzung", diese sagt
+## "ein guter Augenblick".
+var beste_kette := 0
+
 ## Laufender Bau: -1 heisst keiner. `bau_fertig_um` ist Systemzeit in Sekunden.
 var bau_kammer := -1
 var bau_fertig_um := 0.0
@@ -200,6 +210,18 @@ func melde_ziel(index: int, menge := 1) -> void:
         return
     ziel_fortschritt[index] = mini(ziel_fortschritt[index] + menge,
         Tagesziel.menge(index))
+
+
+## Hebt den Fortschritt auf `wert`, wenn er hoeher ist.
+##
+## `melde_ziel()` zaehlt zusammen - richtig fuer "sechzig Raeuber", falsch
+## fuer "eine Kette von zwoelf": dort ist nicht die Summe gefragt, sondern der
+## hoechste erreichte Stand. Zwei Ziele, zwei Rechenarten.
+func setze_ziel(index: int, wert: int) -> void:
+    if index < 0 or index >= ziel_fortschritt.size():
+        return
+    ziel_fortschritt[index] = clampi(maxi(ziel_fortschritt[index], wert),
+        0, Tagesziel.menge(index))
 
 
 func ziel_erfuellt(index: int) -> bool:
@@ -453,6 +475,8 @@ func zu_wort() -> Dictionary:
         &"stufen": Array(stufen),
         &"naehrstoffe": naehrstoffe,
         &"hoechste_welle": hoechste_welle,
+        &"bestpunkte": bestpunkte,
+        &"beste_kette": beste_kette,
         &"linien": Array(linien),
         &"linie": linie,
         &"bau_kammer": bau_kammer,
@@ -491,6 +515,8 @@ static func aus_wort(wort: Dictionary) -> KolonieStand:
 
     s.naehrstoffe = maxi(0, int(wort.get(&"naehrstoffe", START_NAEHRSTOFF)))
     s.hoechste_welle = clampi(int(wort.get(&"hoechste_welle", 1)), 1, Graben.TIEFSTE)
+    s.bestpunkte = maxi(0, int(wort.get(&"bestpunkte", 0)))
+    s.beste_kette = maxi(0, int(wort.get(&"beste_kette", 0)))
     s.bau_kammer = int(wort.get(&"bau_kammer", -1))
     if s.bau_kammer < 0 or s.bau_kammer >= Kammern.zahl():
         s.bau_kammer = -1

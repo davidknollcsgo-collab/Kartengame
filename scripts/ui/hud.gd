@@ -34,6 +34,14 @@ var _verdient := 0
 ## Ergebnisses - Naehrstoff sagt, was man mitnimmt, und das hier, was man
 ## getan hat.
 var _erlegt := 0
+
+## Die Punktzahl der Sitzung und ob sie die bisherige Bestmarke geschlagen
+## hat. Das ist der Teil des Schlussbildes, der nach der naechsten Sitzung
+## ruft - Naehrstoff sagt "du hast etwas verdient", die Punktzahl sagt "das
+## war eine gute Sitzung", und nur die zweite Aussage kann man verbessern,
+## ohne zu bauen.
+var _punkte := 0
+var _bestmarke := false
 var _zeit := 0.0
 var _meldung := ""
 var _meldung_leben := 0.0
@@ -151,6 +159,28 @@ func schliesse_rueckkehr() -> void:
     _heimknopf = Rect2()
 
 
+## --- Die Kette ---
+##
+## Eine grosse Zahl unter der Kopfzeile, mit dem Faktor daneben und einem
+## Bogen, der ablaeuft. Sie erscheint erst ab `Graben.KETTE_AB` - darunter ist
+## sie kein Lauf, sondern der Umstand, dass zwei Tiere kurz nacheinander
+## starben, und eine Anzeige, die staendig aufblitzt, sieht niemand mehr an.
+##
+## `_kette_stoss` ist der Schlag beim Weiterzaehlen: die Zahl springt kurz
+## groesser. Das ist die ganze Rueckmeldung, und sie muss im Augenwinkel
+## ankommen, weil der Blick auf den Raeubern liegt.
+var _kette := 0
+var _kette_rest := 0.0
+var _kette_stoss := 0.0
+
+
+func setze_kette(laenge: int, rest: float) -> void:
+    if laenge > _kette:
+        _kette_stoss = 1.0
+    _kette = laenge
+    _kette_rest = clampf(rest, 0.0, 1.0)
+
+
 ## --- Der Stossknopf ---
 ##
 ## Er steht unten rechts, wo der zweite Daumen ohnehin liegt: der erste zieht
@@ -198,6 +228,8 @@ func _process(delta: float) -> void:
         _blitz -= delta
     if _lehre >= 0:
         _lehr_leben += delta
+    if _kette_stoss > 0.0:
+        _kette_stoss = maxf(0.0, _kette_stoss - delta * 4.0)
     for i in range(_ausbeuten.size() - 1, -1, -1):
         _ausbeuten[i][&"leben"] -= delta
         if _ausbeuten[i][&"leben"] <= 0.0:
@@ -279,25 +311,31 @@ func zeige_bauphase(nummer: int, brut: int, naehrstoffe: int, preis: int,
     setze_zahlen(brut, naehrstoffe, 0)
 
 
-func zeige_ende(gewonnen: bool, nummer: int, verdient: int, erlegt := 0) -> void:
+func zeige_ende(gewonnen: bool, nummer: int, verdient: int, erlegt := 0,
+        punkte := 0, bestmarke := false) -> void:
     _ende = true
     _gewonnen = gewonnen
     _sitzung = false
     _welle = nummer
     _verdient = verdient
     _erlegt = erlegt
+    _punkte = punkte
+    _bestmarke = bestmarke
 
 
 ## Das Ende einer Sitzung - kein Verlust, sondern ein Punkt zum Aufhoeren.
 ## Bewusst anders gefaerbt und anders formuliert als der Fall der Brut: wer
 ## gerade fuenf Wellen gehalten hat, darf das nicht wie eine Niederlage lesen.
-func zeige_sitzungsende(naechste: int, verdient: int, erlegt := 0) -> void:
+func zeige_sitzungsende(naechste: int, verdient: int, erlegt := 0,
+        punkte := 0, bestmarke := false) -> void:
     _ende = true
     _gewonnen = false
     _sitzung = true
     _welle = naechste
     _verdient = verdient
     _erlegt = erlegt
+    _punkte = punkte
+    _bestmarke = bestmarke
 
 
 ## Eine aufsteigende Zahl am Ort des Treffers. Die einzige Stelle, an der das
@@ -363,6 +401,9 @@ func _zeichne() -> void:
         _abschnittstafel(breite, hoehe)
     elif _lehre >= 0 and not _ende and not Lehrpfad.in_der_kolonie(_lehre):
         _lehrtafel(breite, hoehe)
+
+    if _kette >= Graben.KETTE_AB and not _ende and not _bauphase:
+        _kettenanzeige(breite)
 
     if rueckkehr_offen():
         _rueckkehrtafel(breite, hoehe)
@@ -794,11 +835,25 @@ func _endschirm(breite: float, hoehe: float) -> void:
     # Nebeneinander und gross - eine Zahl in einer Zeile Fliesstext ist ein
     # Wort, eine Zahl in einer Kachel ist ein Ergebnis.
     var kachel_y := karte.position.y + 116.0
-    var kachel_b := (karte.size.x - 52.0) * 0.5
+    var kachel_b := (karte.size.x - 60.0) / 3.0
     _kachel(Rect2(karte.position.x + 18.0, kachel_y, kachel_b, 84.0),
         Zahl.kurz(_verdient), "NUTRIENTS", Color(0.52, 0.94, 0.80))
-    _kachel(Rect2(karte.position.x + 34.0 + kachel_b, kachel_y, kachel_b, 84.0),
-        Zahl.kurz(_erlegt), "RAIDERS BURNED", Color(0.72, 0.90, 0.98))
+    _kachel(Rect2(karte.position.x + 30.0 + kachel_b, kachel_y, kachel_b, 84.0),
+        Zahl.kurz(_erlegt), "BURNED", Color(0.72, 0.90, 0.98))
+    var punktfarbe := Color(1.0, 0.86, 0.52) if _bestmarke \
+        else Color(0.86, 0.90, 0.96)
+    _kachel(Rect2(karte.position.x + 42.0 + kachel_b * 2.0, kachel_y,
+        kachel_b, 84.0), Zahl.kurz(_punkte), "SCORE", punktfarbe)
+
+    # Die Bestmarke ist der einzige Anlass auf diesem Bildschirm, laut zu
+    # werden. Ein Band ueber der Punktkachel, damit man weiss, welche der
+    # drei Zahlen gemeint ist.
+    if _bestmarke:
+        var band := Rect2(karte.position.x + 42.0 + kachel_b * 2.0,
+            kachel_y - 16.0, kachel_b, 16.0)
+        _flaeche.draw_rect(band, Color(1.0, 0.86, 0.52, 0.22))
+        _text(band.get_center() + Vector2(0.0, 5.0), "NEW BEST", 11,
+            Color(1.0, 0.92, 0.68), true)
 
     # Die Wertung steht genau hier, weil sie hier wirkt: im Augenblick des
     # Aufhoerens der Grund, es noch einmal zu versuchen.
@@ -878,6 +933,30 @@ func _spanne(stunden: float) -> String:
     if min <= 0:
         return "%d hours down there" % st
     return "%d h %d min down there" % [st, min]
+
+
+## Die Kette: Zahl, Faktor, ablaufender Bogen.
+func _kettenanzeige(breite: float) -> void:
+    var mitte := Vector2(breite * 0.5, 152.0)
+    var stoss := _kette_stoss * _kette_stoss
+    var farbe := Color(0.62, 0.98, 0.86).lerp(Color(1.0, 0.86, 0.52),
+        clampf(float(_kette) / 30.0, 0.0, 1.0))
+
+    # Der Bogen laeuft ab, im Uhrzeigersinn von oben. Er ist die Uhr der
+    # Kette und zugleich ihr Rahmen - eine Zahl ohne Rahmen an dieser Stelle
+    # sieht aus wie eine Meldung.
+    var r := 30.0 + 4.0 * stoss
+    _flaeche.draw_arc(mitte, r, 0.0, TAU, 36,
+        Color(farbe.r, farbe.g, farbe.b, 0.14), 2.0, true)
+    _flaeche.draw_arc(mitte, r, -PI * 0.5, -PI * 0.5 + TAU * _kette_rest, 36,
+        Color(farbe.r, farbe.g, farbe.b, 0.85), 3.0, true)
+    _flaeche.draw_circle(mitte, r - 4.0, Color(0.02, 0.06, 0.09, 0.55))
+
+    _text(mitte + Vector2(0.0, 9.0), str(_kette), int(26.0 + 8.0 * stoss),
+        farbe, true)
+    _text(mitte + Vector2(0.0, 44.0),
+        "CHAIN  x%.1f" % Graben.kette_faktor(_kette), 12,
+        Color(farbe.r, farbe.g, farbe.b, 0.8), true)
 
 
 ## Der Knopf fuer das Stosslicht.

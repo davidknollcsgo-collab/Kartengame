@@ -30,6 +30,7 @@ werden.
 | Mutationen | ab der zweiten Umdrehung tragen Wellen eigene Züge: gepanzert, lichtscheu, unstet, stoßweise, hastig, aufgedunsen |
 | Bestiarium | jede begegnete Art mit ihrer Regel; unbekannte zeigen nur, ab wann sie kommen |
 | Grafische Tiefe | offenes Wasser mit Tiefenverlauf, Staub und wandernde Schlieren im Lichtkegel, Randlicht auf jedem Tier, Schlick im Vordergrund |
+| Die Kette | Abschüsse in Folge bauen eine Kette auf, jede Pause bricht sie. Sie zahlt **Punkte**, keinen Nährstoff — die Wirtschaft ist aus den Kammerkosten abgeleitet und verträgt keinen Multiplikator, der am Können hängt |
 | Das Stoßlicht | ein Ring, den der Wächter abstößt — er trifft alles, was er kreuzt, auch außerhalb des Kegels, und lädt sich selbst nach. Er steht in `Ausbau.durchsatz()`, ist also Teil der Sollkurve und kein Geschenk |
 | Der Einstieg | sieben Schritte mit Titel, Satz und einem Ring auf dem Ding, um das es geht — er schreitet an Ereignissen fort, nicht an einer Uhr |
 | Der Wächter | eigene Figur vor dem Kegel: Haftwurzeln, atmende Kiemen, Adernetz und ein Organ, das beim Feuern aufflammt. Er zuckt, wenn die Brut getroffen wird |

@@ -99,6 +99,10 @@ func melde_ziel(index: int, menge := 1) -> void:
     stand.melde_ziel(index, menge)
 
 
+func setze_ziel(index: int, wert: int) -> void:
+    stand.setze_ziel(index, wert)
+
+
 func aendere(betrag: int) -> void:
     stand.naehrstoffe = maxi(0, stand.naehrstoffe + betrag)
     stand_geaendert.emit()

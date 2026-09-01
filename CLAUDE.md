@@ -241,7 +241,16 @@ unter einer strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
    `_test_gepanzertes_leitwesen_nie_im_dunkeln` ist der Grund, warum das von
    Hand bleiben darf.
 
-16. **Weltpunkt zu Bildschirmpunkt geht über den Viewport, nicht über das
+16. **Die Kette zahlt Punkte, niemals Nährstoff.** Einkommen und Kosten sind
+   aneinander gekoppelt (Punkt 10); ein Multiplikator, der am Können hängt,
+   hätte daneben keinen Platz — wer gut spielt, wäre nicht schneller fertig,
+   sondern in einer anderen Wirtschaft. Die Kette ist deshalb bewusst keine
+   Währung, sondern eine Bestmarke.
+   `_test_kette_zahlt_punkte_und_keinen_naehrstoff` liest den Quelltext:
+   `Fortschritt.aendere()` und `verdient` dürfen nie in derselben Anweisung
+   stehen wie `kette`.
+
+17. **Weltpunkt zu Bildschirmpunkt geht über den Viewport, nicht über das
    Control.** `Control.get_canvas_transform()` liefert die Verschiebung der
    CanvasLayer, in der das Bedienbild hängt — und die ist die
    Einheitsabbildung. Gebraucht wird `get_viewport().get_canvas_transform()`,

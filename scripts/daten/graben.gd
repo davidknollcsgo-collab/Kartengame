@@ -160,6 +160,32 @@ const STOSS_ABKUEHLUNG := 11.0
 const STOSS_TEMPO := 820.0
 
 
+## --- Die Kette ---
+##
+## **Eine Welle hatte kein Innenleben.** Man raeumt sie ab, sie ist vorbei,
+## die naechste kommt. Ob man sie sauber oder schlampig gespielt hat, sah man
+## nur an der Brutzahl - und die aendert sich bei gutem Spiel gar nicht.
+##
+## Die Kette macht daraus einen Verlauf: jeder Abschuss innerhalb von
+## `KETTE_FENSTER` Sekunden nach dem letzten verlaengert sie, jede Pause
+## bricht sie ab. Sie zahlt **keinen Naehrstoff** - die Wirtschaft ist aus den
+## Kammerkosten abgeleitet und vertraegt keinen Multiplikator, der am Koennen
+## haengt. Sie zahlt Punkte, und Punkte sind der Grund, es noch einmal zu
+## versuchen, wenn die Kolonie fuer heute fertig gebaut ist.
+const KETTE_FENSTER := 2.6
+const KETTE_JE_STUFE := 0.08
+const KETTE_DECKEL := 4.0
+
+## Ab welcher Laenge die Kette angezeigt wird. Darunter ist sie kein Lauf,
+## sondern nur der Umstand, dass zwei Tiere kurz nacheinander starben.
+const KETTE_AB := 3
+
+
+## Der Faktor, mit dem eine Kette dieser Laenge zahlt.
+static func kette_faktor(laenge: int) -> float:
+    return minf(KETTE_DECKEL, 1.0 + float(maxi(0, laenge - 1)) * KETTE_JE_STUFE)
+
+
 ## --- Brut ---
 
 const BRUT_LEBEN := 12

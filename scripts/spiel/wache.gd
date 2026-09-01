@@ -90,6 +90,17 @@ var _stoss_kuehl := 0.0
 var _stoss_weit := -1.0
 var _stoss_nr := 0
 
+## --- Kette und Punkte ---
+##
+## `kette` ist die Zahl der Abschuesse in Folge, `_kette_zeit` die Restzeit,
+## in der sie weitergeht. `punkte` sammelt ueber die ganze Sitzung, nicht ueber
+## die Welle: eine Bestmarke, die sich nach fuenf Wellen entscheidet, ist eine
+## Sitzung wert - eine, die sich nach einer entscheidet, ist ein Wuerfelwurf.
+var kette := 0
+var kette_hoechste := 0
+var punkte := 0
+var _kette_zeit := 0.0
+
 ## Wieviele Raeuber diese Sitzung gekostet hat. Steht auf dem Schlussbild
 ## neben dem Naehrstoff - die eine Zahl sagt, was man mitnimmt, die andere,
 ## was man getan hat.
@@ -165,6 +176,17 @@ func _zeige_einstieg() -> void:
     # zweite Beschreibung derselben Sache.
     _hud.zeige_einstieg(schritt, _lehr_ort(schritt))
     _koloniebild.zeige_einstieg(schritt)
+
+
+## Traegt die Punktzahl der Sitzung in die Bestmarke ein und sagt, ob sie
+## eine neue ist. Wird genau einmal je Schlussbild gerufen.
+func _bestmarke_setzen() -> bool:
+    var stand: KolonieStand = Fortschritt.stand
+    stand.beste_kette = maxi(stand.beste_kette, kette_hoechste)
+    if punkte <= stand.bestpunkte:
+        return false
+    stand.bestpunkte = punkte
+    return true
 
 
 ## Der Weltpunkt, auf den der Ring dieses Schritts zeigt.
@@ -288,6 +310,12 @@ func starte_welle() -> void:
     # einer Handlung, die man im Augenblick trifft.
     _stoss_kuehl = 0.0
     _stoss_weit = -1.0
+    # Die Kette gilt je Welle. Ueber die Bauphase hinweg weiterzuzaehlen
+    # hiesse, sie im Stehen zu halten - und eine Kette, die man nicht
+    # verlieren kann, ist keine.
+    kette = 0
+    _kette_zeit = 0.0
+    _hud.setze_kette(0, 0.0)
 
     welle_in_sitzung += 1
     # Der Lehrpfad wartet an dieser Stelle darauf, dass die Welle wirklich
@@ -431,6 +459,14 @@ func _process(delta: float) -> void:
         _raeume_auf()
         _wellenzeit += delta
         _folge = maxf(0.0, _folge - delta * 6.0)
+        if kette > 0:
+            _kette_zeit -= delta
+            if _kette_zeit <= 0.0:
+                kette = 0
+                _hud.setze_kette(0, 0.0)
+            else:
+                _hud.setze_kette(kette,
+                    _kette_zeit / Graben.KETTE_FENSTER)
         if _offen <= 0:
             _welle_geschafft()
     elif lage == Lage.BAUEN:
@@ -660,6 +696,22 @@ func _raeume_auf() -> void:
             _funken.zerfall(r.ort, Arten.farbe(r.art), Wellen.radius_in(r.art, r.welle),
                 r.richtung)
             _hud.zeige_ausbeute(r.ort, lohn)
+
+            # Die Kette: jeder Abschuss innerhalb des Fensters verlaengert
+            # sie. Punkte fallen mit ihrem Faktor an - Naehrstoff nicht, denn
+            # die Wirtschaft ist aus den Kammerkosten abgeleitet und vertraegt
+            # keinen Multiplikator, der am Koennen haengt.
+            kette += 1
+            kette_hoechste = maxi(kette_hoechste, kette)
+            Fortschritt.setze_ziel(Tagesziel.Ziel.KETTE, kette)
+            _kette_zeit = Graben.KETTE_FENSTER
+            punkte += int(round(float(Wellen.wert_in(r.art, welle_nummer))
+                * Graben.kette_faktor(kette)))
+            _hud.setze_kette(kette, 1.0)
+            if kette >= Graben.KETTE_AB and kette % 5 == 0:
+                _funken.platzen(r.ort, Color(0.72, 1.0, 0.92), 24.0)
+                _schuetteln = maxf(_schuetteln, 0.35)
+
             _folge = minf(24.0, _folge + 1.0)
             Fortschritt.melde_ziel(Tagesziel.Ziel.RAEUBER)
             erlegt += 1
@@ -682,6 +734,12 @@ func _raeume_auf() -> void:
             if not _brut_unverwundbar:
                 brut = maxi(0, brut - Arten.wucht(r.art))
             _schuetteln = 0.8 + 0.3 * float(vorher - brut)
+            # Ein Treffer an der Brut bricht die Kette. Das ist der Preis, der
+            # sie zur Spannung macht: sonst waere sie eine Zahl, die nur
+            # steigt.
+            kette = 0
+            _kette_zeit = 0.0
+            _hud.setze_kette(0, 0.0)
             _folge = 0.0
             Klang.spiele(Klang.Ton.BRUT_FAELLT, 1.0, 0.85)
             # Der Waechter zuckt, und das Bild bekommt einen roten Rand. Wer
@@ -821,12 +879,14 @@ func _welle_geschafft() -> void:
     welle_nummer += 1
     if abgeschlossen % Graben.ZYKLUS == 0:
         lage = Lage.GESCHAFFT
-        _hud.zeige_ende(true, abgeschlossen, verdient, erlegt)
+        _hud.zeige_ende(true, abgeschlossen, verdient, erlegt, punkte,
+            _bestmarke_setzen())
         return
     if welle_in_sitzung >= Graben.WELLEN_JE_SITZUNG:
         lage = Lage.SITZUNG_ENDE
         _einstieg_weiter(8)
-        _hud.zeige_sitzungsende(welle_nummer, verdient, erlegt)
+        _hud.zeige_sitzungsende(welle_nummer, verdient, erlegt, punkte,
+            _bestmarke_setzen())
         return
     _bereite_welle_vor()
 
@@ -834,7 +894,8 @@ func _welle_geschafft() -> void:
 func _verloren() -> void:
     lage = Lage.VERLOREN
     _schuetteln = 1.6
-    _hud.zeige_ende(false, welle_nummer, verdient, erlegt)
+    _hud.zeige_ende(false, welle_nummer, verdient, erlegt, punkte,
+        _bestmarke_setzen())
 
 
 ## Nach einem Fall: die Sitzung beginnt neu, die Kolonie bleibt.
@@ -846,6 +907,9 @@ func neu_anfangen() -> void:
     brut = Fortschritt.stand.brut_leben()
     verdient = 0
     erlegt = 0
+    punkte = 0
+    kette = 0
+    kette_hoechste = 0
     polypen.clear()
     welle_in_sitzung = 0
     welle_nummer = Fortschritt.stand.naechste_welle()
@@ -1116,16 +1180,20 @@ func _lies_entwicklerschalter() -> void:
     if endschirm >= 0:
         verdient = 1840
         erlegt = 214
+        punkte = 38420
         match endschirm:
             1:
                 lage = Lage.SITZUNG_ENDE
-                _hud.zeige_sitzungsende(welle_nummer + 1, verdient, erlegt)
+                _hud.zeige_sitzungsende(welle_nummer + 1, verdient, erlegt,
+                    punkte, true)
             2:
                 lage = Lage.GESCHAFFT
-                _hud.zeige_ende(true, Graben.ZYKLUS * 2, verdient, erlegt)
+                _hud.zeige_ende(true, Graben.ZYKLUS * 2, verdient, erlegt,
+                    punkte, true)
             _:
                 lage = Lage.VERLOREN
-                _hud.zeige_ende(false, welle_nummer, verdient, erlegt)
+                _hud.zeige_ende(false, welle_nummer, verdient, erlegt, punkte,
+        _bestmarke_setzen())
     if bild.is_empty():
         if reiter >= 0:
             oeffne_kolonie()

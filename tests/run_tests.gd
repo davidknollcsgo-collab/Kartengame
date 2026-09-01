@@ -52,6 +52,7 @@ const TESTS: PackedStringArray = [
     "_test_leitwesen_stehen_an_den_abschnittsenden",
     "_test_gepanzertes_leitwesen_nie_im_dunkeln",
     "_test_stosslicht_steht_in_der_sollkurve",
+    "_test_kette_zahlt_punkte_und_keinen_naehrstoff",
     "_test_mutationen_tabelle_vollstaendig",
     "_test_mutationen_erst_ab_der_zweiten_umdrehung",
     "_test_mutationen_sind_reproduzierbar",
@@ -1869,3 +1870,51 @@ func _test_stosslicht_steht_in_der_sollkurve() -> bool:
     var gespiegelt := Schlund.schaden_an(100.0, 1.0, 0.0, 0.0, 0.78)
     return _melde(gespiegelt < voll,
         "ein Spiegler darf den Stoss nicht voll abbekommen")
+
+
+## Die Kette zahlt Punkte, niemals Naehrstoff.
+##
+## Zusicherung: **Einkommen und Kosten wachsen mit derselben Rate**, und beide
+## Einkommensquellen sind aus `Kammern.rundenkosten()` abgeleitet. Ein
+## Multiplikator, der am Koennen haengt, haette daneben keinen Platz: wer gut
+## spielt, waere nicht schneller fertig, sondern in einer anderen Wirtschaft.
+## Deshalb ist die Kette bewusst **keine** Waehrung - sie ist eine Bestmarke.
+##
+## Geprueft am Quelltext, weil die Regel eine ueber den Aufbau ist und keine
+## ueber einen Wert: jede Zeile in `wache.gd`, die den Kettenfaktor benutzt,
+## muss ihn in die Punkte schreiben. Sobald er einmal neben `aendere()` oder
+## `verdient` auftaucht, ist die Ableitung der Wirtschaft still gebrochen.
+func _test_kette_zahlt_punkte_und_keinen_naehrstoff() -> bool:
+    # Erst die Zahlen: ab eins, steigend, gedeckelt.
+    if not _melde(absf(Graben.kette_faktor(1) - 1.0) < 0.001,
+            "eine Kette von eins darf nichts multiplizieren"):
+        return false
+    if not _melde(Graben.kette_faktor(10) > Graben.kette_faktor(5),
+            "der Kettenfaktor muss steigen"):
+        return false
+    if not _melde(absf(Graben.kette_faktor(9999) - Graben.KETTE_DECKEL) < 0.001,
+            "der Kettenfaktor braucht einen Deckel"):
+        return false
+
+    var quelle := FileAccess.get_file_as_string("res://scripts/spiel/wache.gd")
+    if not _melde(not quelle.is_empty(), "wache.gd nicht lesbar"):
+        return false
+
+    # **Die Regel als Satz:** Naehrstoff und Kette treffen sich nirgends.
+    # Geprueft wird deshalb nicht, wo der Faktor steht, sondern dass die
+    # beiden Woerter nie in derselben Anweisung vorkommen - `Fortschritt.
+    # aendere()` und `verdient` sind die einzigen zwei Stellen, an denen
+    # Naehrstoff entsteht.
+    var nummer := 0
+    for zeile in quelle.split("\n"):
+        nummer += 1
+        var rein := zeile.strip_edges()
+        if rein.begins_with("#"):
+            continue
+        if not (rein.contains("Fortschritt.aendere(") or rein.contains("verdient")):
+            continue
+        if not _melde(not rein.contains("kette"),
+                "wache.gd:%d bringt die Kette mit dem Naehrstoff zusammen"
+                % nummer):
+            return false
+    return true

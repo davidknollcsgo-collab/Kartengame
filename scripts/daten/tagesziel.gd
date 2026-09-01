@@ -11,7 +11,7 @@ extends RefCounted
 ##
 ## Reine Datenschicht: keine Szenen-, keine Autoload-Bezuege.
 
-enum Ziel { WELLEN, RAEUBER, AUSBAU }
+enum Ziel { WELLEN, RAEUBER, AUSBAU, KETTE }
 
 const TABELLE: Array[Dictionary] = [
     {
@@ -28,6 +28,16 @@ const TABELLE: Array[Dictionary] = [
         &"name": "Upgrade one chamber",
         &"menge": 1,
         &"lohn": 200,
+    },
+    {
+        # **Das einzige Ziel, das Koennen verlangt statt Ausdauer.** Die drei
+        # anderen erfuellt man, indem man spielt; dieses erfuellt man, indem
+        # man gut spielt. Genau deshalb steht es dabei: ein Tagespensum aus
+        # lauter Anwesenheitshaken ist eine Pflicht, keines mit einer Probe
+        # darin ist ein Angebot.
+        &"name": "Hold a chain of twelve",
+        &"menge": 12,
+        &"lohn": 180,
     },
 ]
 
