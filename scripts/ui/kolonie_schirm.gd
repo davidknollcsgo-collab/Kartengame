@@ -360,7 +360,10 @@ func _zeichne() -> void:
 
     if _sicht == Sicht.TAG:
         y = _zuchtkalender(breite, y + 8.0, stand)
-        _grabenwertung(breite, y + 18.0, stand)
+        # Der Fuss haengt am unteren Rand; was dazwischen frei bleibt,
+        # bekommt die Wertung.
+        _grabenwertung(breite, y + 18.0, stand,
+            (hoehe - FUSS - 186.0) - (y + 18.0) - 8.0)
         # Der Fuss haengt unten, nicht hinter dem Kalender. Sonst stand die
         # untere Haelfte des Tagesreiters leer und der Loeschknopf mitten im
         # Bild - genau dort, wo der Daumen ohnehin liegt.
@@ -1219,11 +1222,21 @@ func _artsinnbild(p: Vector2, r: float, index: int, farbe: Color, kennt: bool) -
 ##
 ## Nicht die ganze Liste, sondern der eigene Platz mit zwei Namen darueber und
 ## zwei darunter. Elf Zeilen waeren eine Tabelle; fuenf sind eine Aussage.
-func _grabenwertung(breite: float, y: float, stand: KolonieStand) -> float:
-    const ZEIGEN := 5
+## **Wieviele Zeilen, richtet sich nach dem Platz.**
+##
+## Hier standen fest fuenf, und darunter blieben auf dem Tagesreiter
+## hundertsiebzig Pixel leer - eine Luecke mitten im Bildschirm, die aussieht,
+## als fehle dort etwas. Es fehlte auch etwas: sechs weitere Kolonien, die
+## ohnehin in der Liste stehen. Der Platz ist da, die Daten sind da; es gab
+## keinen Grund, beides nicht zusammenzubringen.
+func _grabenwertung(breite: float, y: float, stand: KolonieStand,
+        raum := 0.0) -> float:
+    var zeigen := 5
+    if raum > 0.0:
+        zeigen = clampi(int((raum - 24.0) / 34.0), 3, Geister.zahl() + 1)
     var liste := Geister.rangliste(stand.hoechste_welle)
     var eigen := Geister.platz(stand.hoechste_welle) - 1
-    var erste := clampi(eigen - 2, 0, maxi(0, liste.size() - ZEIGEN))
+    var erste := clampi(eigen - 2, 0, maxi(0, liste.size() - zeigen))
 
     _text(Vector2(RAND, y + 14.0), "TRENCH STANDINGS", 13, LEISE)
     var vor := Geister.naechster_vor(stand.hoechste_welle)
@@ -1237,7 +1250,7 @@ func _grabenwertung(breite: float, y: float, stand: KolonieStand) -> float:
             false, true)
 
     var zeile_y := y + 24.0
-    for i in range(erste, mini(erste + ZEIGEN, liste.size())):
+    for i in range(erste, mini(erste + zeigen, liste.size())):
         var eintrag := liste[i]
         var selbst: bool = eintrag[&"selbst"]
         var kasten := Rect2(RAND, zeile_y, breite - RAND * 2.0, 32.0)

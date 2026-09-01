@@ -56,39 +56,51 @@ const HINWEISE: PackedStringArray = [
 ## schwarz - es ist sehr dunkles Blau, und der Unterschied ist genau der,
 ## dass man in das eine hineinsieht und auf das andere schaut. Die Abstaende
 ## zwischen den Abschnitten bleiben, nur der Boden ist angehoben.
+## **Sie waren richtig gemischt und viel zu dunkel.**
+##
+## Die Farbtoene stimmten - kaltes Blau, gruenlicher Schlamm, Eisenrot -, nur
+## lagen sie alle zwischen 0.012 und 0.044. Nach der seitlichen Verdunkelung
+## des Shaders kam davon RGB 2 bis 8 auf dem Bild an, und acht Abschnitte, die
+## sich unterscheiden sollen, sahen alle schwarz aus. Eine Farbe, die man nur
+## mit der Pipette findet, ist keine.
+##
+## Gehoben, nicht umgefaerbt: dieselben Toene, gut doppelt so hell. Das Bild
+## bleibt dunkel - der Kegel und die Tiere sind additiv und liegen um ein
+## Vielfaches darueber -, aber der Graben hat jetzt in jedem Abschnitt eine
+## Farbe, die man beim Hinsehen sieht statt beim Messen.
 const TIEF_FARBEN: PackedColorArray = [
-    Color(0.016, 0.034, 0.058),   ## Rim Gorge - offenes, kaltes Blau
-    Color(0.012, 0.036, 0.070),   ## Current Rift - klarer und kaelter
-    Color(0.024, 0.044, 0.036),   ## Murky Deep - gruenlicher Schlamm
-    Color(0.020, 0.016, 0.038),   ## Dark Band - fast schwarz, violett
-    Color(0.034, 0.050, 0.068),   ## Scatterlight Zone - milchig aufgehellt
-    Color(0.044, 0.026, 0.024),   ## Trench Storm - eisenrot und schwer
-    Color(0.014, 0.042, 0.050),   ## Still Trench - klar und kuehl, viel Sicht
-    Color(0.018, 0.014, 0.046),   ## The Weight - tiefes Indigo, schwer
+    Color(0.034, 0.071, 0.122),   ## Rim Gorge - offenes, kaltes Blau
+    Color(0.025, 0.076, 0.147),   ## Current Rift - klarer und kaelter
+    Color(0.050, 0.092, 0.076),   ## Murky Deep - gruenlicher Schlamm
+    Color(0.042, 0.034, 0.080),   ## Dark Band - fast schwarz, violett
+    Color(0.071, 0.105, 0.143),   ## Scatterlight Zone - milchig aufgehellt
+    Color(0.092, 0.055, 0.050),   ## Trench Storm - eisenrot und schwer
+    Color(0.029, 0.088, 0.105),   ## Still Trench - klar und kuehl, viel Sicht
+    Color(0.038, 0.029, 0.097),   ## The Weight - tiefes Indigo, schwer
 ]
 
 ## Das Wasser in mittlerer Hoehe.
 const GRUND_FARBEN: PackedColorArray = [
-    Color(0.020, 0.062, 0.085),
-    Color(0.016, 0.058, 0.100),
-    Color(0.034, 0.066, 0.046),
-    Color(0.022, 0.018, 0.040),
-    Color(0.052, 0.078, 0.094),
-    Color(0.062, 0.032, 0.030),
-    Color(0.018, 0.070, 0.078),   ## Still Trench
-    Color(0.020, 0.016, 0.052),   ## The Weight
+    Color(0.039, 0.121, 0.166),
+    Color(0.031, 0.113, 0.195),
+    Color(0.066, 0.129, 0.090),
+    Color(0.043, 0.035, 0.078),
+    Color(0.101, 0.152, 0.183),
+    Color(0.121, 0.062, 0.058),
+    Color(0.035, 0.137, 0.152),   ## Still Trench
+    Color(0.039, 0.031, 0.101),   ## The Weight
 ]
 
 ## Der Schein der Kolonie, der von unten heraufkommt.
 const SCHEIN_FARBEN: PackedColorArray = [
-    Color(0.055, 0.180, 0.190),
-    Color(0.040, 0.170, 0.210),
-    Color(0.070, 0.170, 0.110),
-    Color(0.070, 0.050, 0.140),
-    Color(0.110, 0.170, 0.190),
-    Color(0.170, 0.080, 0.060),
-    Color(0.050, 0.185, 0.180),   ## Still Trench
-    Color(0.075, 0.045, 0.165),   ## The Weight
+    Color(0.067, 0.220, 0.232),
+    Color(0.049, 0.207, 0.256),
+    Color(0.085, 0.207, 0.134),
+    Color(0.085, 0.061, 0.171),
+    Color(0.134, 0.207, 0.232),
+    Color(0.207, 0.098, 0.073),
+    Color(0.061, 0.226, 0.220),   ## Still Trench
+    Color(0.091, 0.055, 0.201),   ## The Weight
 ]
 
 ## Wieviel Schwebstoff im Wasser haengt. Mehr heisst weniger Sicht - und in

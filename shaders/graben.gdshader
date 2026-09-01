@@ -116,9 +116,13 @@ void fragment() {
     // gespielt wird. **Zuletzt**, nicht wie vorher vor allem anderen: sonst
     // leuchteten Saeulen und Flocken am Rand ungedaempft weiter und hoben die
     // Fuehrung wieder auf.
+    // **Der Rand darf nicht schwarz werden.** Bei 0.42 blieb vom Wasser am
+    // Bildrand ein Fuenfundzwanzigstel uebrig - dort, wo die Raeuber
+    // eintreten und wo die Farbe des Abschnitts am ehesten auffallen wuerde.
+    // Fuehrung heisst Gefaelle, nicht Ausloeschung.
     float rand = mix(0.5, 0.30, enge);
     float seitlich = smoothstep(rand, 0.02, abs(uv.x - 0.5));
-    farbe *= mix(0.42, 0.22, enge) + (0.58 - 0.18 * enge) * seitlich;
+    farbe *= mix(0.52, 0.26, enge) + (0.48 - 0.14 * enge) * seitlich;
 
     COLOR = vec4(farbe, 1.0);
 }
