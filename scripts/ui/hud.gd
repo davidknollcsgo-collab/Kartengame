@@ -426,11 +426,17 @@ func _lehrring(breite: float, hoehe: float, puls: float) -> void:
                 var p := Vector2(breite * (0.5 + 0.26 * alt_t), hoehe * 0.46)
                 _flaeche.draw_circle(p, 5.0 - float(i) * 0.6,
                     Color(0.72, 1.0, 0.92, 0.18 - float(i) * 0.026))
+        # **Ein Knopf bekommt einen Rahmen, keinen Kreis.** Die beiden
+        # Knoepfe sind gut vierhundert Pixel breit und achtundfuenfzig hoch;
+        # ein Kreis darauf zeigt auf ihre Mitte und laesst offen, wie weit
+        # das Ding reicht, auf das er zeigt. Ein Ring ist die richtige Form
+        # fuer einen Punkt und die falsche fuer eine Flaeche.
         Lehrpfad.Ziel.KOLONIEKNOPF:
-            if _kolonieknopf.size.x <= 0.0:
-                return
-            wo = _kolonieknopf.get_center()
-            r = _kolonieknopf.size.y * 0.62
+            _lehrrahmen(_kolonieknopf, puls)
+            return
+        Lehrpfad.Ziel.WELLENKNOPF:
+            _lehrrahmen(_wellenknopf, puls)
+            return
         _:
             wo = _auf_bildschirm(_lehr_ort)
 
@@ -442,6 +448,19 @@ func _lehrring(breite: float, hoehe: float, puls: float) -> void:
         Color(0.72, 1.0, 0.92, 0.34 * (1.0 - welle)), 2.0, true)
     _flaeche.draw_arc(wo, r, 0.0, TAU, 32,
         Color(0.72, 1.0, 0.92, 0.34 + 0.26 * puls), 2.2, true)
+
+
+## Derselbe Hinweis fuer eine Flaeche: ein Rahmen, der nach aussen laeuft und
+## ausblendet, und einer, der steht.
+func _lehrrahmen(kasten: Rect2, puls: float) -> void:
+    if kasten.size.x <= 0.0:
+        return
+    var welle := fmod(_zeit * 0.9, 1.0)
+    var weit := welle * 14.0
+    _flaeche.draw_rect(kasten.grow(weit),
+        Color(0.72, 1.0, 0.92, 0.30 * (1.0 - welle)), false, 2.0)
+    _flaeche.draw_rect(kasten.grow(3.0),
+        Color(0.72, 1.0, 0.92, 0.32 + 0.26 * puls), false, 2.2)
 
 
 ## Bricht einen Satz auf die gegebene Breite um. `draw_string` kann das

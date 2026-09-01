@@ -32,6 +32,7 @@ extends RefCounted
 enum Ziel {
     KEINS,          ## Kein Ring - der Satz steht fuer sich.
     KEGEL,          ## Ein wandernder Ring im unteren Drittel: der Daumen.
+    WELLENKNOPF,    ## Der Knopf, der die Welle losschickt.
     BRUT,           ## Das Gelege.
     NISCHE,         ## Die naechste freie Knospe an der Ranke.
     KOLONIEKNOPF,   ## Der Weg in die Kolonie.
@@ -47,6 +48,12 @@ const TAFEL: Array[Dictionary] = [
         &"titel": "HOLD AND SWEEP",
         &"satz": "Press anywhere and drag. The light cone follows your finger.",
         &"ziel": Ziel.KEGEL,
+    },
+    {
+        &"kennung": &"STARTEN",
+        &"titel": "SEND FOR THEM",
+        &"satz": "Nothing comes out of the dark until you call it. Five waves make one session.",
+        &"ziel": Ziel.WELLENKNOPF,
     },
     {
         &"kennung": &"BRENNEN",

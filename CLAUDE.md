@@ -107,7 +107,7 @@ xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 720x1280 \
 | `--kolonie <n>` | öffnet den Koloniebildschirm: 0 Kammern, 1 Linien, 2 Arten, 3 Züge, 4 Tag |
 | `--endschirm <n>` | 0 gefallen, 1 Sitzung gehalten, 2 Graben durchgestanden |
 | `--stufen <n>` | setzt alle Kammern auf Stufe n |
-| `--lehre <n>` | setzt den Lehrpfad auf Schritt n (0–6) |
+| `--lehre <n>` | setzt den Lehrpfad auf Schritt n (0–7) |
 
 **`--stau` braucht man oefter, als es aussieht.** Im Vorlauf steht der
 Finger fest ueber dem Schlund, und der Kegel raeumt in spaeten Wellen alles

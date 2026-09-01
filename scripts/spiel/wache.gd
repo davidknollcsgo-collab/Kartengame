@@ -186,7 +186,7 @@ func _bau_fertig(kammer: int) -> void:
             Color(0.62, 0.94, 1.0), 26.0)
     Klang.spiele(Klang.Ton.KAMMER, 1.0, 0.7)
     _hud.melde("%s finished" % Kammern.name_von(kammer))
-    _einstieg_weiter(5)
+    _einstieg_weiter(6)
 
     # Ein Schacht, der einen Abschnitt oeffnet, ist mehr als eine Stufe mehr:
     # er gibt den Weg frei, auf dem der Spieler gerade steht.
@@ -218,7 +218,7 @@ func oeffne_kolonie() -> void:
             Lage.SITZUNG_ENDE]:
         return
     _hud.visible = false
-    _einstieg_weiter(4)
+    _einstieg_weiter(5)
     _koloniebild.oeffne()
 
 
@@ -272,6 +272,10 @@ func starte_welle() -> void:
         _tiere.append(r)
 
     welle_in_sitzung += 1
+    # Der Lehrpfad wartet an dieser Stelle darauf, dass die Welle wirklich
+    # losgeht. Ohne den Schritt stand der Spieler vor einem Knopf, auf den
+    # nichts zeigte, und mit einem Satz ueber Licht, das noch nichts trifft.
+    _einstieg_weiter(1)
     _stroemung = Fortschritt.stand.nutze_stroemung()
     _hud.stroemung = _stroemung
     _offen = _tiere.size()
@@ -574,7 +578,7 @@ func _raeume_auf() -> void:
             _folge = minf(24.0, _folge + 1.0)
             Fortschritt.melde_ziel(Tagesziel.Ziel.RAEUBER)
             erlegt += 1
-            _einstieg_weiter(1)
+            _einstieg_weiter(2)
             Klang.spiele(Klang.Ton.TOD, 0.82 + _folge * 0.025, 0.5)
             _waechter.feuer()
 
@@ -710,7 +714,7 @@ func _stimmung_nachfuehren(delta: float) -> void:
 
 func _welle_geschafft() -> void:
     Fortschritt.melde_ziel(Tagesziel.Ziel.WELLEN)
-    _einstieg_weiter(2)
+    _einstieg_weiter(3)
     Fortschritt.merke_welle(welle_nummer + 1)
     # Der Graben gibt nur her, was der Tiefenschacht geoeffnet hat. Wer am
     # Ende des Abschnitts steht, spielt ihn weiter - und erfaehrt, woran es
@@ -736,7 +740,7 @@ func _welle_geschafft() -> void:
         return
     if welle_in_sitzung >= Graben.WELLEN_JE_SITZUNG:
         lage = Lage.SITZUNG_ENDE
-        _einstieg_weiter(6)
+        _einstieg_weiter(7)
         _hud.zeige_sitzungsende(welle_nummer, verdient, erlegt)
         return
     _bereite_welle_vor()
@@ -781,7 +785,7 @@ func baue_polyp(nische: int) -> bool:
     polypen.append(ort)
     _funken.platzen(ort, Color(0.52, 0.94, 0.80), 20.0)
     Klang.spiele(Klang.Ton.POLYP)
-    _einstieg_weiter(3)
+    _einstieg_weiter(4)
     _aktualisiere_kolonie()
     _hud.zeige_bauphase(welle_nummer, brut, Fortschritt.stand.naehrstoffe,
         Fortschritt.stand.polyp_kosten(polypen.size()), polypen.size())
