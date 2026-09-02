@@ -84,6 +84,19 @@ const tipp = async (fy, fx = 0.5, warte = 900) => {
 };
 
 if (k) {
+    // 0. Vom Titelbildschirm in die Schlundwache.
+    //
+    // Seit die App im Menue startet, ist das der erste Schritt jedes
+    // Spielers - und damit auch der erste des Tests. Der Knopf TRENCH WATCH
+    // ist der fuenfte in der Spalte; seine Mitte liegt bei y = 16 + 74 +
+    // 4 * 56 + 23 im Entwurfsmass, x bei 22 + 116.
+    //
+    // **Ein Klick, der ins Leere geht, faellt hier nicht auf** - die Szene
+    // bliebe im Menue stehen, und alle folgenden Klicks traefen den
+    // Hintergrund. Deshalb wird danach geprueft, dass das Menue weg ist:
+    // die Schlundwache hat unten einen Wellenknopf, das Menue nicht.
+    await tipp(anteil(0.16 * H + 74 + 4 * 56 + 23), (22 + 116) / 720, 1600);
+
     // 1. Kolonie oeffnen und alle Reiter besuchen.
     await tipp(anteil(H - 58 - 26 + 29), 0.20);
     const reiterY = anteil(96 + 12 + 18);

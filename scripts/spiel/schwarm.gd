@@ -55,6 +55,59 @@ func _ready() -> void:
 ## Die Funkenbluete dieser Welle, oder null. `wache.gd` setzt sie.
 var bluete: Bluete = null
 
+## --- Leuchtroehren statt Papierschnitt ---
+##
+## Im Rundumlauf sollen die Tiere aussehen wie Leuchtlinien: kein Koerper aus
+## Farbe, sondern ein Zug, der glimmt. Das ist nicht bloss Geschmack - dort
+## laeuft eine Nachbearbeitung mit Gluehen, und ein Gluehen greift an
+## **hellen, schmalen** Stellen. Eine breite Flaeche mit halber Deckung wird
+## davon nur milchig; eine helle duenne Linie wird davon zu einer Roehre.
+##
+## Der Schalter steht hier und nicht im Rundumlauf, weil die zwoelf
+## Zeichenfunktionen hier stehen - und weil der Schlund unveraendert bleiben
+## soll. Ohne ihn aendert sich dort nichts: `led` ist aus.
+var led := false
+
+
+## Eine Fuellung. Bei Leuchtroehren faellt sie fast ganz weg - was bleibt, ist
+## gerade genug, damit ein Tier vor einem Felsen nicht durchsichtig wirkt.
+func _fuellung(punkte: PackedVector2Array, farbe: Color) -> void:
+    if punkte.size() < 3:
+        return
+    if led:
+        draw_colored_polygon(punkte, Color(farbe.r * 0.22, farbe.g * 0.22,
+            farbe.b * 0.22, farbe.a * 0.45))
+        return
+    draw_colored_polygon(punkte, farbe)
+
+
+## Ein Linienzug. Bei Leuchtroehren zweimal: ein weiter blasser Hof und ein
+## schmaler heller Kern darauf. Das ist dieselbe Machart wie beim Boot und
+## bei den Ranken.
+func _zug(punkte: PackedVector2Array, farbe: Color, dicke: float) -> void:
+    if punkte.size() < 2:
+        return
+    if led:
+        draw_polyline(punkte, Color(farbe.r, farbe.g, farbe.b,
+            farbe.a * 0.22), dicke * 3.4, true)
+        draw_polyline(punkte, Color(minf(1.0, farbe.r * 1.5),
+            minf(1.0, farbe.g * 1.5), minf(1.0, farbe.b * 1.5),
+            minf(1.0, farbe.a * 1.7)), maxf(1.0, dicke * 0.9), true)
+        return
+    draw_polyline(punkte, farbe, dicke, true)
+
+
+## Dasselbe fuer eine einzelne Strecke.
+func _strich(a: Vector2, b: Vector2, farbe: Color, dicke: float) -> void:
+    if led:
+        draw_line(a, b, Color(farbe.r, farbe.g, farbe.b, farbe.a * 0.22),
+            dicke * 3.4, true)
+        draw_line(a, b, Color(minf(1.0, farbe.r * 1.5),
+            minf(1.0, farbe.g * 1.5), minf(1.0, farbe.b * 1.5),
+            minf(1.0, farbe.a * 1.7)), maxf(1.0, dicke * 0.9), true)
+        return
+    draw_line(a, b, farbe, dicke, true)
+
 
 func _draw() -> void:
     var sichtbar := 0
@@ -235,9 +288,9 @@ func _knapp(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> voi
         p - k * r * 1.0,
         p - quer * r * 0.62,
     ])
-    draw_colored_polygon(leib, Color(farbe.r, farbe.g, farbe.b, 0.30 + 0.35 * hitze))
-    draw_polyline(leib + PackedVector2Array([leib[0]]),
-        farbe.lerp(Color(1.0, 0.98, 0.94), 0.4 + 0.4 * hitze), 1.4, true)
+    _fuellung(leib, Color(farbe.r, farbe.g, farbe.b, 0.30 + 0.35 * hitze))
+    _zug(leib + PackedVector2Array([leib[0]]),
+        farbe.lerp(Color(1.0, 0.98, 0.94), 0.4 + 0.4 * hitze), 1.4)
 
 
 ## Weicher Schein aus gestapelten Kreisen. Billiger als ein Shader je Tier und
@@ -278,14 +331,14 @@ func _koerper(punkte: PackedVector2Array, farbe: Color, hitze: float) -> void:
         var lage := PackedVector2Array()
         for v in rund:
             lage.append(mitte + (v - mitte) * schrumpf)
-        draw_colored_polygon(lage, Color(farbe.r, farbe.g, farbe.b,
+        _fuellung(lage, Color(farbe.r, farbe.g, farbe.b,
             (0.10 + 0.09 * t) + (0.10 + 0.07 * t) * hitze))
 
     var geschlossen := rund + PackedVector2Array([rund[0]])
-    draw_polyline(geschlossen, Color(farbe.r, farbe.g, farbe.b,
-        0.26 + 0.28 * hitze), 3.4, true)
-    draw_polyline(geschlossen, farbe.lerp(Color(1.0, 0.98, 0.94),
-        0.45 + 0.45 * hitze), 1.3, true)
+    _zug(geschlossen, Color(farbe.r, farbe.g, farbe.b,
+        0.26 + 0.28 * hitze), 3.4)
+    _zug(geschlossen, farbe.lerp(Color(1.0, 0.98, 0.94),
+        0.45 + 0.45 * hitze), 1.3)
 
 
 ## Eckenschneiden nach Chaikin: jede Kante gibt zwei Punkte auf einem Viertel
@@ -338,9 +391,9 @@ func _zahnkiefer(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -
         p - k * r * 1.25,
         p - k * r * 1.75 - quer * r * (0.72 - flossen),
     ])
-    draw_colored_polygon(schwanz, Color(farbe.r, farbe.g, farbe.b, 0.28))
-    draw_polyline(schwanz + PackedVector2Array([schwanz[0]]),
-        farbe.lightened(0.25), 1.2, true)
+    _fuellung(schwanz, Color(farbe.r, farbe.g, farbe.b, 0.28))
+    _zug(schwanz + PackedVector2Array([schwanz[0]]),
+        farbe.lightened(0.25), 1.2)
 
     # Rumpf: vorn hoch, hinten schmal.
     var leib := PackedVector2Array([
@@ -398,9 +451,9 @@ func _schleier(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> 
         var w := lerpf(-PI * 0.5, PI * 0.5, float(i) / 8.0)
         schirm.append(p + (k * cos(w) * 1.05 + quer * sin(w) * 1.25) * r)
     schirm.append(p - k * r * 0.35)
-    draw_colored_polygon(schirm, Color(farbe.r, farbe.g, farbe.b,
+    _fuellung(schirm, Color(farbe.r, farbe.g, farbe.b,
         0.42 + 0.42 * hitze))
-    draw_polyline(schirm, farbe.lightened(0.45), 1.2, true)
+    _zug(schirm, farbe.lightened(0.45), 1.2)
 
     for i in 4:
         var s := (float(i) - 1.5) * 0.42
@@ -531,7 +584,7 @@ func _schildkoralle(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float
             vorn - k * r * 0.30 - quer * halb * 0.82,
             vorn - k * r * 0.30 + quer * halb * 0.82,
         ])
-        draw_colored_polygon(platte, Color(farbe.r, farbe.g, farbe.b,
+        _fuellung(platte, Color(farbe.r, farbe.g, farbe.b,
             0.16 + 0.22 * hitze))
         # Die Fuge, nicht die Platte, traegt das Licht.
         draw_line(vorn + quer * halb, vorn - quer * halb,
@@ -554,10 +607,10 @@ func _glutqualle(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -
         var welle := 1.0 + 0.10 * sin(t.alter * 2.2 + float(i) * 0.9 + t.phase)
         schirm.append(p + (k * cos(w) * 1.02 + quer * sin(w) * 1.28) * r * welle)
     schirm.append(p - k * r * 0.52)
-    draw_colored_polygon(schirm, Color(farbe.r, farbe.g, farbe.b,
+    _fuellung(schirm, Color(farbe.r, farbe.g, farbe.b,
         0.13 + 0.20 * hitze))
-    draw_polyline(schirm + PackedVector2Array([schirm[0]]),
-        Color(farbe.r, farbe.g, farbe.b, 0.34 + 0.30 * hitze), 1.3, true)
+    _zug(schirm + PackedVector2Array([schirm[0]]),
+        Color(farbe.r, farbe.g, farbe.b, 0.34 + 0.30 * hitze), 1.3)
 
     for i in 5:
         var s := (float(i) - 2.0) * 0.34
@@ -586,7 +639,7 @@ func _treibanker(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -
         schleppe.append(p - zug * r * (0.6 + 2.3 * f)
             - k * r * 0.5 * f
             + quer * sin(t.alter * 3.0 + f * 3.4) * r * 0.22 * f)
-    draw_polyline(schleppe, Color(farbe.r, farbe.g, farbe.b, 0.34), 1.6)
+    _zug(schleppe, Color(farbe.r, farbe.g, farbe.b, 0.34), 1.6)
     draw_circle(schleppe[schleppe.size() - 1], r * 0.16,
         Color(farbe.r, farbe.g, farbe.b, 0.42))
 
@@ -703,7 +756,7 @@ func _kalkrochen(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -
         schwanz.append(p - k * r * (0.5 + 2.0 * u)
             + quer * schlag * r * 0.34 * u * u)
     draw_polyline(schwanz, Color(farbe.r, farbe.g, farbe.b, 0.30 + 0.24 * hitze),
-        3.4, true)
+        3.4)
     draw_circle(schwanz[schwanz.size() - 1], r * 0.09,
         Color(1.0, 0.96, 0.88, 0.40 + 0.40 * hitze))
 

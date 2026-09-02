@@ -22,7 +22,7 @@ GROESSE="1080x1920"
 schuss () {
   local name="$1"; shift
   xvfb-run -a godot --path . --rendering-driver opengl3 \
-    --resolution "$GROESSE" -- --schuss "$ZIEL/$name.png" "$@" \
+    --resolution "$GROESSE" -- --schlund --schuss "$ZIEL/$name.png" "$@" \
     > /dev/null 2>&1
   echo "  $ZIEL/$name.png"
 }

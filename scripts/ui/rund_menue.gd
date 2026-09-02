@@ -26,6 +26,10 @@ const KNOEPFE: Array[Dictionary] = [
     {&"kennung": &"SCHIFFE", &"text": "LINES"},
     {&"kennung": &"AUSBAU", &"text": "UPGRADES"},
     {&"kennung": &"AUFTRAEGE", &"text": "MISSIONS"},
+    # Die alte Schleife bleibt erreichbar. Sie ist fertig, geprueft und
+    # verkaufbar - sie hinter einem Kommandozeilenschalter zu begraben, waere
+    # das Wegwerfen von Monaten.
+    {&"kennung": &"SCHLUND", &"text": "TRENCH WATCH"},
 ]
 
 var lauf: Node = null
@@ -75,6 +79,8 @@ func _gewaehlt(i: int) -> void:
     match KNOEPFE[i][&"kennung"]:
         &"SPIELEN":
             lauf.starte()
+        &"SCHLUND":
+            get_tree().change_scene_to_file("res://scenes/schlund.tscn")
         _:
             # Die drei anderen fuehren in den Koloniebildschirm, sobald er
             # hier haengt. Bis dahin sagt der Knopf ehrlich nichts - ein

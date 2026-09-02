@@ -36,6 +36,9 @@ extends Node2D
 ## Feldliteral keinen Typ ableitet - siehe die Konventionen.
 const SEITEN: PackedFloat32Array = [-1.0, 1.0]
 
+## Wieviele Wellen gleichzeitig laufen. Siehe `_bereite_welle_vor()`.
+const DICHTE := 3
+
 const BOOT_TEMPO := 260.0
 const BOOT_TRAEGHEIT := 6.0
 const BOOT_RADIUS := 32.0
@@ -84,6 +87,9 @@ enum Lage { MENUE, SPIEL }
 
 var lage := Lage.MENUE
 
+## Gesetzt, wenn diese Szene sofort wieder verlassen wird.
+var _abgetreten := false
+
 var welle_nummer := 1
 var huelle := 12
 var huelle_voll := 12
@@ -130,8 +136,17 @@ var _neigung := 0.0
 
 
 func _ready() -> void:
+    # Der Gegenweg zu `--rundum`: die Werkzeuge (Ladenbilder, Schuesse,
+    # Bildratenmessung) wollen direkt in die Schlundwache.
+    if "--schlund" in OS.get_cmdline_user_args():
+        _abgetreten = true
+        get_tree().change_scene_to_file.call_deferred(
+            "res://scenes/schlund.tscn")
+        return
+
     _lies_argumente()
     _vorn.draw.connect(_zeichne_vorn)
+    _schwarm.led = true
     _hud.lauf = self
     _menue.lauf = self
     _kamera.position = _ort
@@ -150,8 +165,28 @@ func _bereite_welle_vor() -> void:
     _wellenzeit = 0.0
     var rng := RandomNumberGenerator.new()
     rng.seed = 0x52554e44 + welle_nummer
-    # Dieselbe Zusammensetzung wie im Schlund - nur der Weg ist ein anderer.
-    for eintrag in Wellen.auftritte(welle_nummer):
+    # **Mehr Tiere als im Schlund, und das ist Absicht.** Dort steht der
+    # Waechter fest und der Kegel deckt einen Sektor; hier faehrt man, sieht
+    # in alle Richtungen und hat drei Begleiter dabei. Eine Wellenstaerke,
+    # die fuer einen festen Posten gerechnet ist, fuehlt sich in Fahrt leer
+    # an.
+    #
+    # Genommen werden deshalb `DICHTE` Wellen auf einmal, ineinander
+    # geschoben. Dass das hier gehen darf und im Schlund nicht, hat einen
+    # Grund: der Wellenpruefer misst diese Schleife nicht - ein simulierter
+    # Daumen ersetzt kein Fahrkoennen -, also haengt an dieser Zahl auch
+    # keine Zusage. Sie wird von Hand gesetzt und von Hand nachgesehen.
+    var eintraege: Array[Dictionary] = []
+    for versatz in DICHTE:
+        for e in Wellen.auftritte(welle_nummer + versatz):
+            var kopie := e.duplicate()
+            # Ineinander statt hintereinander: sonst kaeme Welle zwei erst,
+            # wenn Welle eins durch ist, und das waere dreimal so lang statt
+            # dreimal so voll.
+            kopie[&"zeit"] = float(e[&"zeit"]) \
+                + float(versatz) * rng.randf_range(0.4, 1.6)
+            eintraege.append(kopie)
+    for eintrag in eintraege:
         var t := Raeuber.new()
         t.art = int(eintrag[&"art"])
         t.welle = welle_nummer
@@ -173,6 +208,8 @@ func _bereite_welle_vor() -> void:
 
 
 func _process(delta: float) -> void:
+    if _abgetreten:
+        return
     delta = Graben.takt(delta)
     _wellenzeit += delta
     _schuetteln = maxf(0.0, _schuetteln - delta * 4.0)
@@ -839,40 +876,63 @@ func _zeichne_huellring(r: float) -> void:
 func _zeichne_begleiter() -> void:
     for i in _begleiter.size():
         var p: Vector2 = _begleiter[i]
-        var atem := 0.5 + 0.5 * sin(_wellenzeit * BEGLEITER_TAKT + float(i) * 2.1)
+        var atem := 0.5 + 0.5 * sin(_wellenzeit * BEGLEITER_TAKT
+            + float(i) * 2.1)
         var k := (p - _ort)
         if k.length_squared() < 1.0:
             k = -_blick
         k = k.normalized()
         var quer := k.orthogonal()
-        var gr := 11.0
+        var gr := 13.0
+        var grund := Color(0.34, 0.94, 0.76)
 
-        # Fangarme nach hinten, leicht faechernd.
+        # Fangarme nach hinten, in die Stroemung. Jeder ist ein Zug mit Hof -
+        # dieselbe Machart wie beim Boot, damit Begleiter und Boot als
+        # dieselbe Kolonie lesbar sind.
         for a in 5:
             var t := float(a) / 4.0
             var w := lerpf(-0.9, 0.9, t)
-            var spitze := p + (k * gr * 2.1).rotated(w * 0.55) \
-                + quer * sin(_wellenzeit * 1.7 + float(a) + float(i)) * 2.4
-            _vorn.draw_line(p + k * gr * 0.5, spitze,
-                Color(0.34, 0.86, 0.72, 0.30), 1.3, true)
-            _vorn.draw_circle(spitze, 1.4, Color(0.62, 1.0, 0.86, 0.55))
+            var arm := PackedVector2Array()
+            for j in 5:
+                var u := float(j) / 4.0
+                var wiege := sin(_wellenzeit * 2.1 + float(a) + float(i)) \
+                    * 0.30 * u * u
+                arm.append(p + (k * gr * (0.5 + 1.9 * u)).rotated(
+                    w * 0.55 + wiege))
+            _leitzug(arm, grund, 0.30 + 0.10 * atem, 1.2)
 
-        # Der Kelch, gegen die Fahrtrichtung geoeffnet.
-        _vorn.draw_circle(p, gr * (1.5 + 0.12 * atem), Color(0.34, 0.86, 0.72, 0.07))
-        _vorn.draw_circle(p, gr * 0.72, Color(0.030, 0.115, 0.100))
-        _vorn.draw_arc(p, gr * 0.72, 0.0, TAU, 20,
-            Color(0.46, 0.94, 0.78, 0.55), 1.3, true)
-        _vorn.draw_circle(p, gr * (0.28 + 0.06 * atem),
-            Color(0.72, 1.0, 0.90, 0.85))
+        # Der Kelch: zwei Ringe statt einer Scheibe. Eine Scheibe wird vom
+        # Gluehen milchig, ein Ring wird davon zu einer Roehre.
+        _vorn.draw_arc(p, gr * 0.74, 0.0, TAU, 22,
+            Color(grund.r, grund.g, grund.b, 0.16), 4.2, true)
+        _vorn.draw_arc(p, gr * 0.74, 0.0, TAU, 22,
+            Color(0.66, 1.0, 0.90, 0.75), 1.5, true)
+        _vorn.draw_arc(p, gr * 0.40, 0.0, TAU, 16,
+            Color(0.52, 0.98, 0.84, 0.42), 1.1, true)
+        # Der Kern - der einzige gefuellte Fleck, und er ist winzig.
+        _vorn.draw_circle(p, gr * (0.17 + 0.05 * atem),
+            Color(0.86, 1.0, 0.94, 0.95))
 
-        # Der Strahl auf sein Ziel. Er ist die einzige Anzeige dafuer, dass
-        # ein Begleiter etwas tut - ohne ihn schwimmen drei Polypen mit.
+        # Der Strahl auf sein Ziel.
         var n: int = _begleiter_ziel[i]
         if n >= 0 and n < _tiere.size() and _tiere[n].lebendig:
             var ziel: Vector2 = _tiere[n].ort
-            _vorn.draw_line(p, ziel, Color(0.46, 0.94, 0.78, 0.10), 3.4, true)
-            _vorn.draw_line(p, ziel, Color(0.72, 1.0, 0.90, 0.26 + 0.12 * atem),
-                1.2, true)
+            _vorn.draw_line(p, ziel, Color(grund.r, grund.g, grund.b, 0.12),
+                4.0, true)
+            _vorn.draw_line(p, ziel, Color(0.80, 1.0, 0.92,
+                0.42 + 0.18 * atem), 1.3, true)
+
+
+## Ein Leuchtzug: weiter blasser Hof, schmaler heller Kern.
+func _leitzug(punkte: PackedVector2Array, farbe: Color, deckung: float,
+        dicke: float) -> void:
+    if punkte.size() < 2:
+        return
+    _vorn.draw_polyline(punkte, Color(farbe.r, farbe.g, farbe.b,
+        deckung * 0.30), dicke * 3.4, true)
+    _vorn.draw_polyline(punkte, Color(minf(1.0, farbe.r * 1.4),
+        minf(1.0, farbe.g * 1.4), minf(1.0, farbe.b * 1.4), deckung * 1.9),
+        dicke, true)
 
 
 # --- Aufnahme ---------------------------------------------------------------
@@ -884,6 +944,7 @@ func _zeichne_begleiter() -> void:
 var _schuss := ""
 var _vorlauf := 0.0
 var _finger_fest := false
+var _sofort := false
 
 
 func _lies_argumente() -> void:
@@ -899,9 +960,14 @@ func _lies_argumente() -> void:
             "--schuss":
                 if i + 1 < argumente.size():
                     _schuss = argumente[i + 1]
+            "--spiel":
+                # Nicht im Menue aufnehmen, sondern im Spiel.
+                _sofort = true
 
 
 func _spiele_vor() -> void:
+    if _sofort:
+        starte()
     # Fester Takt, damit dasselbe Bild entsteht, egal wie schnell der Rechner
     # ist - genauso wie `wache.gd::_nimm_auf()` es macht.
     _finger_fest = true

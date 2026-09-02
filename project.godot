@@ -6,7 +6,16 @@ config_version=5
 config/name="Nekton"
 config/description="Maw Watch: a cone of light on your fingertip against everything that rises from the trench."
 config/version="1.0.0"
-run/main_scene="res://scenes/schlund.tscn"
+; **Der Titelbildschirm ist der Eingang.** Vorher startete die App direkt in
+; der Schlundwache; auf einem Telefon gibt es keine Kommandozeile, also war
+; der Rundumlauf dort ueberhaupt nicht erreichbar. Jetzt fuehrt das Menue in
+; beide - und `--schlund` springt fuer die Werkzeuge direkt in die alte Szene,
+; so wie `--rundum` vorher andersherum.
+;
+; **Kommentare hier fangen mit Strichpunkt an.** Mit `#` gesetzt zerreisst es
+; die Sektion, und Godot meldet "no main scene defined" - was wie ein
+; fehlender Eintrag aussieht und keiner ist.
+run/main_scene="res://scenes/rundum.tscn"
 ; **Die Zurueck-Taste beendet nicht die App.**
 ;
 ; Godots Voreinstellung ist, bei Zurueck sofort zu beenden - auf Android also
@@ -48,10 +57,9 @@ window/stretch/aspect="expand"
 
 textures/vram_compression/import_etc2_astc=true
 
-# **Glühen braucht einen HDR-Puffer.** Ohne ihn wird alles über 1.0
-# vorher abgeschnitten, und die Schwelle des Leuchtens hat nichts mehr,
-# woran sie greifen kann - das Bild sieht dann aus wie vorher, nur
-# weicher.
+; **Gluehen braucht einen HDR-Puffer.** Ohne ihn wird alles ueber 1.0 vorher
+; abgeschnitten, und die Schwelle des Leuchtens hat nichts mehr, woran sie
+; greifen kann - das Bild sieht dann aus wie vorher, nur weicher.
 viewport/hdr_2d=true
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"

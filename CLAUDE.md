@@ -371,6 +371,26 @@ unter einer strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
    daneben, und das ist gewollt: ein Bogen, den jede Welle exakt gleich
    trägt, wäre wieder dasselbe Förderband mit anderer Steigung.
 
+## Der Rundumlauf
+
+**Die App startet jetzt im Titelbildschirm** (`scenes/rundum.tscn`), und das
+Menü führt in beide Schleifen: `PLAY` in den Rundumlauf, `TRENCH WATCH` in die
+Schlundwache. Auf einem Telefon gibt es keine Kommandozeile — hinter einem
+Schalter war der Rundumlauf dort überhaupt nicht erreichbar.
+
+Für die Werkzeuge gibt es den Gegenweg: **`--schlund`** springt direkt in die
+alte Szene, so wie `--rundum` vorher andersherum. `tools/ladenbilder.sh` und
+alle Schuss-Aufrufe brauchen ihn.
+
+```bash
+godot --path . -- --schlund --schuss /pfad/bild.png --welle 22
+godot --path . -- --schuss /pfad/bild.png --spiel --welle 24 --zeit 30
+```
+
+**Kommentare in `project.godot` fangen mit Strichpunkt an.** Mit `#` gesetzt
+zerreißt es die Sektion, und Godot meldet `no main scene defined` — was wie
+ein fehlender Eintrag aussieht und keiner ist.
+
 ## Der Rundumlauf (Versuch, nicht Ersatz)
 
 ```bash
