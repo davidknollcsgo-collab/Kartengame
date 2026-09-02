@@ -17,6 +17,14 @@ const KOPF := 96.0
 const FUSS := 78.0
 const BAND := 116.0
 const BAND_TAG := 68.0
+## **Ein Zug ist zwei Zeilen, kein halbes Blatt.** Hier wurde die Bandhoehe
+## einmal auf die freie Flaeche gestreckt, weil sechs Eintraege in
+## Normalhoehe das untere Drittel leer liessen - "das sieht nach fehlendem
+## Inhalt aus". Das Ergebnis war schlimmer als der Anlass: sechs Kaesten von
+## zweihundertzwanzig Pixeln mit je einem Namen und einer Zeile darin, also
+## sechsmal ein Loch statt eines am Ende. Rand unter einer kurzen Liste ist
+## Rand; ein aufgeblasener Eintrag ist ein Fehler.
+const BAND_ZUG := 88.0
 const LUECKE := 10.0
 
 const GRUND := Color(0.020, 0.052, 0.070)
@@ -376,15 +384,13 @@ func _zeichne() -> void:
     # gezeichnet stand darunter jedesmal ein Handbreit Nichts. Vier Ziele
     # verbrauchten so zweihundert Pixel, die Kalender und Rangliste
     # gebrauchen koennen.
-    var passt := BAND_TAG if _sicht == Sicht.TAG else BAND
+    var passt := BAND
+    if _sicht == Sicht.TAG:
+        passt = BAND_TAG
+    elif _sicht == Sicht.ZUEGE:
+        passt = BAND_ZUG
     var gebraucht := float(anzahl) * (passt + LUECKE)
     if gebraucht > verfuegbar:
-        passt = verfuegbar / float(anzahl) - LUECKE
-        gebraucht = verfuegbar
-    elif _sicht == Sicht.ZUEGE:
-        # Unter den Zuegen steht kein Bild, das den Rest fuellen koennte -
-        # sechs Baender in Normalhoehe liessen das untere Drittel leer, und
-        # das sieht nach fehlendem Inhalt aus statt nach sechs Eintraegen.
         passt = verfuegbar / float(anzahl) - LUECKE
         gebraucht = verfuegbar
 
@@ -899,8 +905,6 @@ func _linienbild(breite: float, oben: float, unten: float,
     if hoch < 150.0:
         return
 
-    _text(Vector2(RAND, oben + 12.0), "WHAT THE LINE CHANGES", 13, LEISE)
-
     # **Der Kegel darf den Platz nehmen, den er hat - aber nicht den des
     # Nachbarn.**
     #
@@ -917,7 +921,10 @@ func _linienbild(breite: float, oben: float, unten: float,
     # zum **Vergleichen** da: vier aufrechte Kegel lassen sich in Weite und
     # Hitze nebeneinanderlegen, vier verschieden gekippte nicht. Die Hoehe
     # kommt jetzt aus der Spaltenbreite, damit keiner uebersteht.
-    var breit := (breite - RAND * 2.0) / float(Brutlinien.zahl())
+    # Ein Rand innen, sonst laeuft die Beschriftung der aeussersten Spalte
+    # ueber die Bildkante - "Duskveil" stand rechts angeschnitten.
+    var streifen := breite - RAND * 2.0 - 24.0
+    var breit := streifen / float(Brutlinien.zahl())
     # **Der laengste Kegel gibt den Massstab.**
     #
     # Tiefenblick reicht anderthalbmal so weit wie die anderen. Zeichnet man
@@ -943,8 +950,16 @@ func _linienbild(breite: float, oben: float, unten: float,
     if block + 70.0 > hoch:
         mitte_y = oben + 40.0 + kegelhoch * 0.5
 
+    # **Die Ueberschrift wandert mit.** Sie stand fest unter der Liste,
+    # waehrend das Bild in der freien Flaeche mittig sitzt - auf einem
+    # 20:9-Schirm klafften dazwischen hundertneunzig Pixel, und eine
+    # Ueberschrift ohne etwas darunter liest sich als fehlender Inhalt.
+    # Sie gehoert an das Bild und nicht an die Kante.
+    _text(Vector2(RAND, maxf(oben + 12.0, mitte_y - kegelhoch * 0.5 - 16.0)),
+        "WHAT THE LINE CHANGES", 13, LEISE)
+
     for index in Brutlinien.zahl():
-        var mitte_x := RAND + breit * (float(index) + 0.5)
+        var mitte_x := RAND + 12.0 + breit * (float(index) + 0.5)
         var traegt := stand.linie == index
         var hat := stand.hat_linie(index)
         var farbe := Brutlinien.farbe(index)
