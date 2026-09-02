@@ -1,0 +1,36 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/spiel/rundlauf.gd" id="1_rundlauf"]
+[ext_resource type="Script" path="res://scripts/spiel/kegel.gd" id="2_kegel"]
+[ext_resource type="Script" path="res://scripts/spiel/schwarm.gd" id="3_schwarm"]
+[ext_resource type="Script" path="res://scripts/spiel/funken.gd" id="4_funken"]
+[ext_resource type="Shader" path="res://shaders/graben.gdshader" id="5_graben"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_graben"]
+shader = ExtResource("5_graben")
+
+[node name="Rundlauf" type="Node2D"]
+script = ExtResource("1_rundlauf")
+
+[node name="Wasser" type="CanvasLayer" parent="."]
+layer = -10
+
+[node name="Flaeche" type="ColorRect" parent="Wasser"]
+material = SubResource("ShaderMaterial_graben")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Kamera" type="Camera2D" parent="."]
+
+[node name="Kegel" type="Node2D" parent="."]
+script = ExtResource("2_kegel")
+
+[node name="Schwarm" type="Node2D" parent="."]
+script = ExtResource("3_schwarm")
+
+[node name="Funken" type="Node2D" parent="."]
+script = ExtResource("4_funken")

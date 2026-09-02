@@ -67,6 +67,9 @@ const TESTS: PackedStringArray = [
     "_test_wellen_bleiben_im_feld",
     "_test_wellen_zeiten_sortiert",
     "_test_die_welle_hat_einen_bogen",
+    "_test_rundum_haelt_das_feld",
+    "_test_rundum_verfolgt_ohne_zu_beschleunigen",
+    "_test_rundum_begleiter_bleiben_hinten",
     "_test_leitwesen_tritt_zuletzt_ein",
     "_test_wellen_dauer_im_rahmen",
     "_test_wellen_treffen_ihr_budget",
@@ -662,6 +665,108 @@ func _test_wellen_bleiben_im_feld() -> bool:
             if art < 0 or art >= Arten.zahl():
                 return _melde(false, "Welle %d nennt Art %d" % [n, art])
     return true
+
+
+## Der Rundumlauf haelt sein Feld, und der Finger steuert stetig.
+func _test_rundum_haelt_das_feld() -> bool:
+    for i in 64:
+        var w := TAU * float(i) / 64.0
+        var e := Rundum.eintritt(w)
+        if not _melde(e.length() > Rundum.FELD_RADIUS,
+                "der Eintritt bei %.2f liegt im Feld" % w):
+            return false
+
+    for i in 40:
+        var w := TAU * float(i) / 40.0
+        var weit := Vector2.RIGHT.rotated(w) * 4000.0
+        var d := Rundum.gehalten(weit, 30.0)
+        if not _melde(absf(d.length() - (Rundum.FELD_RADIUS - 30.0)) < 0.01,
+                "gehalten() legt %.1f statt %.1f zurueck"
+                % [d.length(), Rundum.FELD_RADIUS - 30.0]):
+            return false
+    # Innen wird nichts verschoben - sonst zappelte das Boot in der Mitte.
+    var drin := Vector2(40.0, -20.0)
+    if not _melde(Rundum.gehalten(drin, 30.0) == drin,
+            "gehalten() verschiebt einen Ort mitten im Feld"):
+        return false
+
+    # Der Finger: in der Totzone steht das Boot, danach faehrt es stetig an
+    # und nie schneller als erlaubt.
+    var ort := Vector2.ZERO
+    if not _melde(Rundum.fahrt(ort, Vector2(0.0, -Rundum.TOTZONE * 0.9),
+            300.0) == Vector2.ZERO, "in der Totzone darf nichts fahren"):
+        return false
+    var vorher := 0.0
+    for i in range(0, 61):
+        var weite := Rundum.TOTZONE + float(i) * 8.0
+        var v := Rundum.fahrt(ort, Vector2(0.0, -weite), 300.0).length()
+        if not _melde(v >= vorher - 0.001,
+                "die Fahrt faellt bei %.0f" % weite):
+            return false
+        if not _melde(v <= 300.0 + 0.001,
+                "die Fahrt uebersteigt das Hoechsttempo: %.1f" % v):
+            return false
+        vorher = v
+    return _melde(vorher > 299.0, "die volle Fahrt wird nie erreicht")
+
+
+## Ein Raeuber naehert sich, und er wird beim Ausweichen nicht schneller.
+##
+## Das Pendeln sitzt deshalb im Ziel und nicht in der Geschwindigkeit. Waere
+## es andersherum, koennte ein Tier sein eigenes Tempo ueberschreiten - und
+## der Wellenpruefer rechnete mit einem langsameren Tier, als das Spiel
+## zeigt.
+func _test_rundum_verfolgt_ohne_zu_beschleunigen() -> bool:
+    var delta := 1.0 / 60.0
+    for versuch in 6:
+        var phase := float(versuch) * 1.11
+        var ort := Rundum.eintritt(float(versuch) * 0.9)
+        var ziel := Vector2(30.0, -40.0)
+        var tempo := 90.0 + float(versuch) * 12.0
+        var zeit := 0.0
+        var schritte := 0
+        while ort.distance_to(ziel) > 12.0 and schritte < 3000:
+            var vorher := ort
+            ort = Rundum.schritt(ort, ziel, tempo, 46.0, 2.2, phase, zeit,
+                delta, 12.0)
+            var weg := vorher.distance_to(ort)
+            if not _melde(weg <= tempo * delta + 0.001,
+                    "Schritt %d legt %.3f zurueck, erlaubt sind %.3f"
+                    % [schritte, weg, tempo * delta]):
+                return false
+            zeit += delta
+            schritte += 1
+        if not _melde(schritte < 3000,
+                "Versuch %d kommt nie an" % versuch):
+            return false
+    return true
+
+
+## Die Begleiter bleiben hinter dem Boot und im Kegel steht keiner.
+func _test_rundum_begleiter_bleiben_hinten() -> bool:
+    var fuehrer := Vector2(20.0, 60.0)
+    for anzahl in range(1, 9):
+        for i in anzahl:
+            for w in [0.0, 1.3, 3.0, -2.2]:
+                var blick := Vector2.UP.rotated(w)
+                var p := Rundum.begleiter_ziel(i, anzahl, fuehrer, blick, 90.0)
+                var hin := p - fuehrer
+                if not _melde(absf(hin.length() - 90.0) < 0.01,
+                        "Begleiter %d/%d haelt %.1f statt 90 Abstand"
+                        % [i, anzahl, hin.length()]):
+                    return false
+                # Hinter dem Boot heisst: mehr als ein rechter Winkel weg
+                # von der Blickrichtung.
+                if not _melde(hin.normalized().dot(blick) < 0.0,
+                        "Begleiter %d/%d steht vor dem Boot" % [i, anzahl]):
+                    return false
+    # Und ein Ziel ausserhalb der Reichweite wird nicht genommen.
+    var orte: Array[Vector2] = [Vector2(400.0, 0.0), Vector2(30.0, 40.0)]
+    if not _melde(Rundum.naechstes_ziel(Vector2.ZERO, orte, 120.0) == 1,
+            "der Begleiter nimmt nicht das naechste Ziel"):
+        return false
+    return _melde(Rundum.naechstes_ziel(Vector2.ZERO, orte, 10.0) == -1,
+        "der Begleiter schiesst ueber seine Reichweite hinaus")
 
 
 ## Die Welle hat einen Bogen: hinten dichter als vorn.

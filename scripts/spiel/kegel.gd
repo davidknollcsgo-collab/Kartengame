@@ -60,6 +60,14 @@ const KORN_GROESSTE := 1.7
 const KORN_HOF := 3.6
 
 
+## Wo der Kegel ansetzt.
+##
+## Stand als Konstante `Graben.WAECHTER` in `_draw()`. Der Rundumlauf laesst
+## den Waechter fahren, und ein Kegel, dessen Spitze festgenagelt ist, kann
+## dabei nicht mitkommen. Der Standardwert ist derselbe wie vorher, die
+## bestehende Szene setzt ihn nie - fuer sie aendert sich also nichts.
+var spitze := Graben.WAECHTER
+
 var richtung := Vector2.UP
 var halbwinkel := Graben.HALBWINKEL
 var reichweite := Graben.REICHWEITE
@@ -116,7 +124,6 @@ func _process(delta: float) -> void:
 
 
 func _draw() -> void:
-    var spitze := Graben.WAECHTER
     var puls := 1.0 + 0.035 * sin(flackern)
 
     for ring in RINGE:

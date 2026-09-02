@@ -146,7 +146,22 @@ var _farbmischung := 1.0
 var _stroemung := false
 
 
+## Gesetzt, wenn diese Szene sofort wieder verlassen wird. Ohne das Feld
+## liefe `_process` noch ein paar Bilder auf halb aufgebautem Zustand.
+var _abgetreten := false
+
+
 func _ready() -> void:
+    # **Der Rundumlauf liegt daneben, nicht darin.** `--rundum` schaltet auf
+    # eine eigene Szene um; ohne den Schalter aendert sich an diesem Weg
+    # nichts. Ein Versuch, der das laufende Spiel anfasst, ist kein Versuch
+    # mehr, sondern ein Umbau.
+    if "--rundum" in OS.get_cmdline_user_args():
+        _abgetreten = true
+        get_tree().change_scene_to_file.call_deferred(
+            "res://scenes/rundum.tscn")
+        return
+
     # Der Fels soll vom selben Kegel angeleuchtet werden, der auch Schaden
     # macht. Deshalb bekommt die Kolonie den Knoten selbst, nicht eine Kopie
     # seiner Werte - eine Kopie liefe irgendwann auseinander.
@@ -456,6 +471,8 @@ func _richte_kamera() -> void:
 
 
 func _process(delta: float) -> void:
+    if _abgetreten:
+        return
     # **Der Deckel steht vor allem anderen.** Siehe `Graben.takt()`: das erste
     # Bild nach einer Pause bringt die volle verstrichene Zeit mit, und ein
     # einziger ungebremster Schritt raeumt die ganze Brut ab.

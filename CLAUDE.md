@@ -371,6 +371,47 @@ unter einer strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
    daneben, und das ist gewollt: ein Bogen, den jede Welle exakt gleich
    trägt, wäre wieder dasselbe Förderband mit anderer Steigung.
 
+## Der Rundumlauf (Versuch, nicht Ersatz)
+
+```bash
+godot --path . -- --rundum
+xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 720x1600 \
+  -- --rundum --schuss /pfad/bild.png --welle 14 --zeit 24
+```
+
+Ein bewegliches Boot in offenem Wasser, Räuber aus allen Richtungen, Polypen
+als Begleiter. Liegt **neben** dem Spiel: `--rundum` schaltet in
+`scenes/rundum.tscn` um, ohne den Schalter ändert sich am bestehenden Weg
+nichts.
+
+Der Umbau war deutlich billiger als geschätzt, aus zwei Gründen, die beide
+schon im Code standen:
+
+* **`Schlund` ist längst rundum.** `beleuchtung()`, `getroffen()`,
+  `zielrichtung()`, `gedreht()` rechnen mit freien Vektoren und wissen nichts
+  von oben und unten. Sie werden unverändert weiterverwendet — die Zusage,
+  dass gezeichnetes Licht und Schaden dieselbe Rechnung sind, überlebt den
+  Umbau.
+* **Die Tierkunst kennt kein Oben.** Jede der zwölf Arten wird relativ zu
+  `t.richtung` und deren Senkrechten gezeichnet. Sie sehen in jeder
+  Blickrichtung richtig aus, ohne dass eine Linie neu gezogen wurde. Die
+  Kostenschätzung „zwölf Arten von oben neu zeichnen" war damit falsch — es
+  war null.
+
+Neu ist nur: `Rundum.schritt()` (der Weg kann keine geschlossene Formel mehr
+sein, weil das Ziel sich bewegt — deterministisch bleibt er trotzdem),
+`Rundum.fahrt()` (ein Finger für Blick und Fahrt, Totzone dazwischen),
+`Rundum.begleiter_ziel()` und die **Hülle anstelle der Brut**: `Arten.wucht()`
+sagt weiter, was ein Durchkommen kostet, und die Brutkammer hebt weiter die
+Zahl der Fehler, die man übersteht. Die Meta-Ebene gilt unverändert.
+
+**Was noch offen ist:** das Feld ist ein Kreis mit Radius aus der *Breite*
+(330), weil die Breite bei `aspect="expand"` festliegt und die Höhe nicht —
+auf einem 20:9-Telefon bleibt oben und unten Hintergrund übrig. Kamera folgt
+noch nicht, es gibt keine Wellenpausen, keinen Koloniezugang, kein Stoßlicht
+und keinen Prüfer. Der Wellenprüfer kann diese Schleife **nicht** messen: ein
+simulierter Daumen ersetzt kein Fahrkönnen.
+
 ## Fuer den Laden
 
 `STORE.md` ist die Abgabemappe: was der Bauauftrag liefert, was nur von Hand
