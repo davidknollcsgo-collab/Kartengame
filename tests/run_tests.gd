@@ -55,6 +55,8 @@ const TESTS: PackedStringArray = [
     "_test_kette_zahlt_punkte_und_keinen_naehrstoff",
     "_test_bluete_bleibt_ausserhalb_der_wirtschaft",
     "_test_lehrpfad_wird_von_der_tafel_nicht_verdeckt",
+    "_test_toene_sind_hoerbar_und_sauber",
+    "_test_grundton_schliesst_die_schleife",
     "_test_mutationen_tabelle_vollstaendig",
     "_test_mutationen_erst_ab_der_zweiten_umdrehung",
     "_test_mutationen_sind_reproduzierbar",
@@ -1920,6 +1922,171 @@ func _test_kette_zahlt_punkte_und_keinen_naehrstoff() -> bool:
                 % nummer):
             return false
     return true
+
+
+## Die gerechneten Toene sind hoerbar, unverzerrt und knacksfrei.
+##
+## **Dieses Spiel ist nie gehoert worden.** Der Container hat kein Audiogeraet,
+## und in CI erst recht keines - `klang.gd` rechnet seine Puffer also seit
+## Beginn ins Blinde. Ein Vorzeichenfehler in einer Huellkurve, ein Faktor,
+## der ueber eins geht, eine Laenge von null: nichts davon faellt irgendwo
+## auf, weil nichts davon einen Fehler wirft. Der Ton waere einfach falsch,
+## und niemand wuesste es vor dem ersten Telefon.
+##
+## Ein Puffer laesst sich aber messen, auch ohne Lautsprecher. Vier Dinge
+## muessen stimmen, und jedes steht fuer einen Fehler, den man sonst hoert:
+##
+##   * **Ausschlag** - zu leise ist kein Ton, zu laut ist Zerren.
+##   * **Uebersteuerung** - einzelne Anschlaege am Rand sind normal, ein
+##     nennenswerter Anteil ist eine Rechnung, die aus dem Rahmen laeuft.
+##   * **Anfang und Ende bei null** - ein Puffer, der mitten im Ausschlag
+##     beginnt oder endet, knackt. Das ist der haeufigste Fehler bei
+##     gerechnetem Ton und im Bild unsichtbar.
+##   * **Ausklang** - hinten leiser als vorn. Ein Ton, der auf voller
+##     Lautstaerke abbricht, ist derselbe Knacks noch einmal.
+func _test_toene_sind_hoerbar_und_sauber() -> bool:
+    var quelle := load("res://scripts/spiel/klang.gd")
+    if not _melde(quelle != null, "klang.gd nicht ladbar"):
+        return false
+
+    # Die Einzeltoene. Der Grundton laeuft in Schleife und wird getrennt
+    # geprueft - fuer ihn gelten Ausklang und Nullende gerade nicht.
+    var namen := ["_treffer", "_tod", "_brut_faellt", "_polyp", "_kammer",
+        "_welle", "_tipp"]
+    var gesehen := {}
+
+    for name in namen:
+        var strom: AudioStreamWAV = quelle.call(name)
+        if not _melde(strom != null, "%s() gibt keinen Strom" % name):
+            return false
+        var w := _abtastung(strom)
+        if not _melde(w.size() > 200, "%s(): Puffer zu kurz" % name):
+            return false
+
+        var spitze := 0.0
+        var rand := 0
+        for v in w:
+            spitze = maxf(spitze, absf(v))
+            if absf(v) > 0.995:
+                rand += 1
+        if not _melde(spitze > 0.10, "%s(): fast stumm (Spitze %.3f)"
+                % [name, spitze]):
+            return false
+        if not _melde(float(rand) / float(w.size()) < 0.01,
+                "%s(): %d von %d Werten am Anschlag - das zerrt"
+                % [name, rand, w.size()]):
+            return false
+
+        # Anfang und Ende: die ersten und letzten Millisekunden muessen
+        # deutlich unter der Spitze liegen, sonst setzt der Ton mit einem
+        # Sprung ein oder bricht mit einem ab.
+        var kante := maxi(8, w.size() / 200)
+        var vorn := 0.0
+        var hinten := 0.0
+        for i in kante:
+            vorn = maxf(vorn, absf(w[i]))
+            hinten = maxf(hinten, absf(w[w.size() - 1 - i]))
+        if not _melde(vorn < spitze * 0.5,
+                "%s(): setzt mit einem Knacks ein (%.3f von %.3f)"
+                % [name, vorn, spitze]):
+            return false
+        if not _melde(hinten < spitze * 0.5,
+                "%s(): bricht mit einem Knacks ab (%.3f von %.3f)"
+                % [name, hinten, spitze]):
+            return false
+
+        # Ausklang: das letzte Viertel traegt weniger Energie als das erste.
+        var viertel := w.size() / 4
+        var e_vorn := 0.0
+        var e_hinten := 0.0
+        for i in viertel:
+            e_vorn += w[i] * w[i]
+            e_hinten += w[w.size() - 1 - i] * w[w.size() - 1 - i]
+        if not _melde(e_hinten < e_vorn,
+                "%s(): klingt nicht aus" % name):
+            return false
+
+        # Und keine zwei Toene duerfen derselbe Puffer sein - das waere ein
+        # Tippfehler in `_ready()`, den man an sieben gleichen Geraeuschen
+        # merkt und sonst nirgends.
+        var schluessel := strom.data.size()
+        if gesehen.has(schluessel):
+            var anderer: PackedFloat32Array = gesehen[schluessel]
+            var gleich := anderer.size() == w.size()
+            if gleich:
+                for i in w.size():
+                    if absf(w[i] - anderer[i]) > 0.0001:
+                        gleich = false
+                        break
+            if not _melde(not gleich, "%s() klingt wie ein anderer Ton" % name):
+                return false
+        gesehen[schluessel] = w
+    return true
+
+
+## Der Grundton laeuft in Schleife: an der Naht darf es nicht knacken.
+##
+## Fuer ihn gilt das Gegenteil der Regel oben - er soll gerade **nicht**
+## ausklingen und nicht bei null enden. Was er stattdessen muss: an der
+## Nahtstelle stetig sein, sonst hoert man alle sechs Sekunden einen Schlag.
+## `_grund()` blendet dafuer das Ende ueber den Anfang; geprueft wird, dass
+## die Blende wirkt - und dass die Abschnitte wirklich verschieden klingen,
+## denn sonst waere der Wechsel eine Zusage ohne Deckung.
+func _test_grundton_schliesst_die_schleife() -> bool:
+    var quelle := load("res://scripts/spiel/klang.gd")
+    if not _melde(quelle != null, "klang.gd nicht ladbar"):
+        return false
+
+    var vorher := PackedFloat32Array()
+    for abschnitt in Graben.ABSCHNITTE:
+        var w := _abtastung(quelle.call("_grund", abschnitt))
+        if not _melde(w.size() > 1000, "Grundton %d: Puffer zu kurz" % abschnitt):
+            return false
+
+        var spitze := 0.0
+        for v in w:
+            spitze = maxf(spitze, absf(v))
+        if not _melde(spitze > 0.10 and spitze <= 1.0,
+                "Grundton %d: Ausschlag %.3f" % [abschnitt, spitze]):
+            return false
+
+        # Die Naht: der Sprung vom letzten zum ersten Wert muss klein sein
+        # gegen den groessten Sprung im Inneren. Ein absoluter Grenzwert
+        # waere hier falsch - wie gross ein Schritt sein darf, sagt das
+        # Signal selbst.
+        var groesster := 0.0
+        for i in range(1, w.size()):
+            groesster = maxf(groesster, absf(w[i] - w[i - 1]))
+        var naht := absf(w[0] - w[w.size() - 1])
+        if not _melde(naht <= groesster * 1.5,
+                "Grundton %d knackt an der Naht (%.4f gegen %.4f)"
+                % [abschnitt, naht, groesster]):
+            return false
+
+        if abschnitt > 0:
+            var gleich := vorher.size() == w.size()
+            if gleich:
+                for i in w.size():
+                    if absf(w[i] - vorher[i]) > 0.0001:
+                        gleich = false
+                        break
+            if not _melde(not gleich,
+                    "Grundton %d klingt wie der vorige" % abschnitt):
+                return false
+        vorher = w
+    return true
+
+
+## Liest einen gerechneten Strom in Gleitkommawerte zurueck - dieselben, die
+## `_stream()` hineingeschrieben hat.
+func _abtastung(strom: AudioStreamWAV) -> PackedFloat32Array:
+    var w := PackedFloat32Array()
+    var daten := strom.data
+    var anzahl := daten.size() / 2
+    w.resize(anzahl)
+    for i in anzahl:
+        w[i] = float(daten.decode_s16(i * 2)) / 32767.0
+    return w
 
 
 ## Der Lehrpfad wird von der Abschnittstafel nicht verdeckt.

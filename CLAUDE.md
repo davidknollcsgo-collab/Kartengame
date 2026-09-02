@@ -277,6 +277,19 @@ unter einer strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
    wurde er erst, als der Lehrring auf eine Knospe zeigen sollte und gar nicht
    im Bild auftauchte.
 
+20. **Der Ton wird gemessen, nicht gehört.** Es gibt hier kein Audiogerät und
+   in CI erst recht keines — `klang.gd` rechnet seine Puffer seit Beginn ins
+   Blinde, und ein falscher Ton wirft keinen Fehler. Die beiden Prüfer lesen
+   deshalb die Abtastwerte zurück: Ausschlag, Übersteuerung, Anfang und Ende
+   bei null, Ausklang — und beim Grundton die Naht der Schleife. Sie fanden
+   auf dem ersten Lauf zwei echte Fehler: der Verlustton setzte nach 2 ms bei
+   der halben Spitze ein (ein Knacks, kein Schlag), und die Blende des
+   Grundtons mischte zwei Stellen zusammen, die eine Vierteltonne
+   auseinanderlagen — der Sprung an der Naht war doppelt so groß wie der
+   größte Schritt im Inneren und schlug alle sechs Sekunden einmal. Eine
+   Blende braucht **Überhang**: Material von hinter dem Ende, sonst schließt
+   sie nichts.
+
 ## Fuer den Laden
 
 `STORE.md` ist die Abgabemappe: was der Bauauftrag liefert, was nur von Hand

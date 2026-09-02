@@ -109,8 +109,14 @@ func _bus_setzen() -> void:
 ## der Nahtstelle.
 static func _grund(abschnitt: int) -> AudioStreamWAV:
     var laenge := int(RATE * GRUND_LAENGE)
+    # **Ueberhang.** Gerechnet wird laenger als die Schleife: die Blende
+    # braucht Material von *hinter* dem Ende, sonst blendet sie zwei Stellen
+    # zusammen, die eine Vierteltonne auseinanderliegen. Genau das tat sie -
+    # der Sprung an der Naht war mehr als doppelt so gross wie der groesste
+    # Schritt im Inneren, und das schlug alle sechs Sekunden einmal.
+    var blende := int(RATE * 0.25)
     var m := PackedFloat32Array()
-    m.resize(laenge)
+    m.resize(laenge + blende)
 
     # Je tiefer der Abschnitt, desto tiefer der Ton und desto mehr Stroemung.
     var t_ab := float(clampi(abschnitt, 0, 5)) / 5.0
@@ -124,7 +130,7 @@ static func _grund(abschnitt: int) -> AudioStreamWAV:
     var p0 := 0.0
     var p1 := 0.0
 
-    for i in laenge:
+    for i in laenge + blende:
         var t := float(i) / float(laenge)
         p0 += TAU * f0 / float(RATE)
         p1 += TAU * f1 / float(RATE)
@@ -135,12 +141,14 @@ static func _grund(abschnitt: int) -> AudioStreamWAV:
         m[i] = (sin(p0) * 0.62 + sin(p1) * 0.24
             + glatt * rauschen_anteil) * atem * 0.5
 
-    # Naht schliessen: die letzten Zehntel ueber den Anfang blenden.
-    var blende := int(RATE * 0.25)
+    # Naht schliessen: der Anfang wird aus dem Ueberhang und sich selbst
+    # gemischt. Danach gilt `o[laenge - 1] = s[laenge - 1]` und
+    # `o[0] = s[laenge]` - zwei aufeinanderfolgende Werte desselben stetigen
+    # Signals. Die Schleife springt also nicht mehr, sie laeuft durch.
     for i in blende:
         var f := float(i) / float(blende)
-        var j := laenge - blende + i
-        m[j] = lerpf(m[j], m[i], f)
+        m[i] = lerpf(m[laenge + i], m[i], f)
+    m.resize(laenge)
 
     return _stream(m)
 
@@ -237,7 +245,12 @@ static func _brut_faellt() -> AudioStreamWAV:
     var laenge := int(RATE * 0.55)
     var m := PackedFloat32Array()
     m.resize(laenge)
-    var h := _huelle(laenge, 0.004, 1.5)
+    # **Der Anstieg war 2 ms lang und damit ein Knacks.** Bei 150 Hz steht
+    # der Sinus nach zwei Millisekunden schon bei knapp neunzig Prozent - der
+    # Ton setzte also mit einem Sprung ein statt mit einem Schlag. Bei einem
+    # Geraeusch, das bis 44 Hz hinunterlaeuft, ist eine Zehntelperiode
+    # Anstieg kein weicher Einsatz, sondern gar keiner.
+    var h := _huelle(laenge, 0.02, 1.5)
     var phase := 0.0
     var phase2 := 0.0
     for i in laenge:
