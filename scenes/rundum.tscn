@@ -34,3 +34,5 @@ script = ExtResource("3_schwarm")
 
 [node name="Funken" type="Node2D" parent="."]
 script = ExtResource("4_funken")
+
+[node name="Vorn" type="Node2D" parent="."]

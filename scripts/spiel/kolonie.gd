@@ -343,7 +343,16 @@ func _zeichne_geroell(nr: int, kraft: float) -> void:
             farben.append(_grundfarbe(
                 boden.lerp(Color(0.034, 0.048, 0.055), sin(w)), kraft))
         # Unterkante: tief in den Ruecken hinein, damit sie begraben bleibt.
-        for seite: float in SEITEN:
+        #
+        # **Erst rechts, dann links** - und das ist kein Geschmack, sondern
+        # der Umlaufsinn. Die Kuppe laeuft von links nach rechts; wer danach
+        # unten wieder links anfaengt, kreuzt seine eigene Kante, und Godot
+        # meldet "Invalid polygon data, triangulation failed" und zeichnet
+        # gar nichts. Der Fehler stand seit dem Riff-Commit im Spiel und fiel
+        # nicht auf, weil ich in den Schuessen nur nach `SCRIPT ERROR` gesucht
+        # hatte - eine fehlgeschlagene Triangulierung ist aber ein `ERROR`.
+        for i in SEITEN.size():
+            var seite := SEITEN[SEITEN.size() - 1 - i]
             punkte.append(mitte + Vector2(seite * b, h * 2.2).rotated(kipp))
             farben.append(_grundfarbe(boden, kraft))
         draw_polygon(punkte, farben)

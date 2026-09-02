@@ -32,9 +32,13 @@ extends Node2D
 ## Zahl der Fehler, die man uebersteht. Die ganze Meta-Ebene bleibt damit
 ## gueltig, ohne dass eine Zahl umgerechnet werden muesste.
 
+## Links und rechts. Als Konstante mit Typ, weil GDScript aus einem
+## Feldliteral keinen Typ ableitet - siehe die Konventionen.
+const SEITEN: PackedFloat32Array = [-1.0, 1.0]
+
 const BOOT_TEMPO := 260.0
 const BOOT_TRAEGHEIT := 6.0
-const BOOT_RADIUS := 26.0
+const BOOT_RADIUS := 32.0
 const DREH_TEMPO := 7.0
 
 const BEGLEITER_ABSTAND := 96.0
@@ -49,6 +53,13 @@ const BISS_SPERRE := 0.9
 @onready var _kegel: Node2D = $Kegel
 @onready var _funken: Node2D = $Funken
 @onready var _kamera: Camera2D = $Kamera
+## **Das Boot gehoert ueber den Kegel.** Godot zeichnet erst den
+## Elternknoten und dann die Kinder - stand das Boot in `_draw()`
+## des Rundlaufs, malte der Kegel seinen Nahbereich darueber, und
+## der Rumpf verschwand hinter einer blassen Scheibe. Dieser leere
+## Knoten steht in der Szene hinter allen anderen; was auf sein
+## `draw` haengt, liegt vorn.
+@onready var _vorn: Node2D = $Vorn
 
 var welle_nummer := 1
 var huelle := 12
@@ -70,9 +81,19 @@ var _schuetteln := 0.0
 var _begleiter: Array[Vector2] = []
 var _begleiter_ziel: Array[int] = []
 
+## Kielwasser: die letzten Orte des Bootes. Ein Schiff ohne Spur sieht aus,
+## als stuende das Wasser still.
+var _spur: Array[Vector2] = []
+
+## Wie stark das Boot in die Kurve legt. Aus der Drehrate gerechnet, nicht
+## gewuerfelt - wer nach rechts zieht, sieht das Boot nach rechts kippen, und
+## genau das macht eine Bewegung lesbar, bevor sie stattgefunden hat.
+var _neigung := 0.0
+
 
 func _ready() -> void:
     _lies_argumente()
+    _vorn.draw.connect(_zeichne_vorn)
     _kamera.position = Vector2.ZERO
     _kegel.halbwinkel = Graben.HALBWINKEL
     _kegel.reichweite = Graben.REICHWEITE
@@ -125,19 +146,35 @@ func _process(delta: float) -> void:
         _bereite_welle_vor()
 
     _schwarm.queue_redraw()
+    _vorn.queue_redraw()
     queue_redraw()
 
 
 ## Ein Finger, zwei Aufgaben: Blickrichtung immer, Fahrt ab der Totzone.
 func _fuehre_boot(delta: float) -> void:
     var soll := Schlund.zielrichtung(_ort, _finger, _blick)
+    var vorher := _blick
     _blick = Schlund.gedreht(_blick, soll, DREH_TEMPO, delta)
+
+    # Neigung aus der tatsaechlichen Drehung, gedaempft. Ein Sprung waere ein
+    # Zucken; die Daempfung macht daraus ein Einlegen und Aufrichten.
+    var gedreht := angle_difference(vorher.angle(), _blick.angle())
+    var ziel_neigung := clampf(gedreht / maxf(0.0001, DREH_TEMPO * delta),
+        -1.0, 1.0)
+    _neigung = lerpf(_neigung, ziel_neigung, clampf(6.0 * delta, 0.0, 1.0))
 
     var wunsch := Vector2.ZERO
     if _zieht:
         wunsch = Rundum.fahrt(_ort, _finger, BOOT_TEMPO)
     _fahrt = _fahrt.lerp(wunsch, clampf(BOOT_TRAEGHEIT * delta, 0.0, 1.0))
     _ort = Rundum.gehalten(_ort + _fahrt * delta, BOOT_RADIUS)
+
+    # Die Spur wird nur gesetzt, wenn sich wirklich etwas bewegt - sonst
+    # sammelt ein stehendes Boot hundert Punkte an derselben Stelle.
+    if _spur.is_empty() or _spur[_spur.size() - 1].distance_to(_ort) > 7.0:
+        _spur.append(_ort)
+        if _spur.size() > SPUR_LAENGE:
+            _spur.remove_at(0)
 
     _kegel.spitze = _ort
     _kegel.richtung = _blick
@@ -263,11 +300,19 @@ func _welt(bild: Vector2) -> Vector2:
 # Licht der `Kegel` - beides unveraendert.
 
 const HAUT := Color(0.62, 0.88, 0.94)
-const HAUT_TIEF := Color(0.10, 0.24, 0.30)
+const HAUT_TIEF := Color(0.055, 0.135, 0.170)
+const GLUT := Color(1.0, 0.86, 0.58)
+const SPUR_LAENGE := 26
 
 
+## Hinter allem: nur der Rand des Feldes.
 func _draw() -> void:
     _zeichne_rand()
+
+
+## Vor allem: Spur, Begleiter, Boot.
+func _zeichne_vorn() -> void:
+    _zeichne_spur()
     _zeichne_begleiter()
     _zeichne_boot()
 
@@ -287,51 +332,379 @@ func _zeichne_rand() -> void:
     draw_polyline(punkte, Color(0.26, 0.48, 0.52, 0.08), 1.2, true)
 
 
+## Kielwasser: aufgewirbeltes Wasser hinter dem Boot, das ausblendet.
+##
+## Es wird **von hinten nach vorn** gezeichnet und dabei breiter und heller,
+## damit die Spur zum Boot hin anwaechst statt gleichmaessig zu liegen. Eine
+## Spur von gleicher Dicke ist ein Strich, keine Bewegung.
+func _zeichne_spur() -> void:
+    if _spur.size() < 3:
+        return
+    var tempo := clampf(_fahrt.length() / BOOT_TEMPO, 0.0, 1.0)
+    for i in range(1, _spur.size()):
+        var t := float(i) / float(_spur.size())
+        var a := 0.10 * t * t * (0.25 + 0.75 * tempo)
+        _vorn.draw_line(_spur[i - 1], _spur[i],
+            Color(0.56, 0.86, 0.92, a), 1.0 + 7.0 * t * t, true)
+
+
+## --- Das Boot ---
+##
+## **Drei Anlaeufe, und die ersten beiden waren derselbe Fehler.** Erst ein
+## Sechseck, dann ein Klotz mit acht Ecken und einer Kanzel, die halb so gross
+## war wie der Rumpf. Beide Male eine **Flaeche mit Umriss darauf** - und
+## damit an der Sprache des Spiels vorbei.
+##
+## Alles andere hier - die zwoelf Arten, die Ranken, der Waechter - ist aus
+## **Linien** gebaut: ein weiter, blasser Zug als Hof und ein schmaler,
+## heller darauf. Die Flaeche ist nur dazu da, das Dahinter abzudecken. Das
+## hat zwei Gruende, und der zweite ist technisch:
+##
+##   1. In der Tiefsee traegt die Kante die Form, nicht der Koerper. Ein
+##      Rumpf, der als Flaeche erzaehlt wird, sieht aus wie ausgeschnittenes
+##      Papier.
+##   2. **`draw_polygon` ist in Godot nicht kantengeglaettet, `draw_polyline`
+##      schon.** Ein Umriss aus Polygonkanten ist auf einem Telefon eine
+##      Treppe. Genau das war mit "zu pixelig" gemeint.
+##
+## Und der Umriss ist jetzt eine **Kurve**, keine Kette aus acht Geraden: die
+## Halbbreite kommt aus einer glatten Funktion, abgetastet in 64 Schritten.
+##
+## Alles relativ zu `_blick` und dessen Senkrechten, wie die Tierkunst auch -
+## deshalb sieht das Boot in jeder Fahrtrichtung richtig aus.
+
+## Wie fein der Rumpf abgetastet wird. 64 ist der Punkt, ab dem man auf einem
+## Telefon keine Ecke mehr sieht; darueber kostet es nur noch.
+const RUMPF_STUFEN := 64
+
+## Die Form: `(1 - u)^NASE * (1 + u)^HECK`, mit `u` von -1 am Heck bis 1 an
+## der Nase. Der groessere Wert am Heck macht es schlank, der kleinere an der
+## Nase rund - ein Tauchboot ist vorn stumpf und hinten spitz, nicht
+## umgekehrt. Die breiteste Stelle liegt damit bei `(HECK - NASE) /
+## (HECK + NASE)`, also gut ein Drittel vor der Mitte.
+const FORM_NASE := 0.52
+const FORM_HECK := 1.30
+const RUMPF_LANG := 1.85
+const RUMPF_BREIT := 0.50
+
+var _profil: PackedVector2Array = []
+
+
+## Einmal rechnen, nicht je Bild: `pow()` 64-mal je Bild waere fuer eine
+## Form, die sich nie aendert, verschenkt.
+func _baue_profil() -> void:
+    _profil.resize(RUMPF_STUFEN)
+    var groesste := 0.0
+    for i in RUMPF_STUFEN:
+        var u := lerpf(-1.0, 1.0, float(i) / float(RUMPF_STUFEN - 1))
+        var b := pow(1.0 - u, FORM_NASE) * pow(1.0 + u, FORM_HECK)
+        groesste = maxf(groesste, b)
+        _profil[i] = Vector2(u, b)
+    for i in RUMPF_STUFEN:
+        _profil[i].y /= maxf(0.0001, groesste)
+
+
 func _zeichne_boot() -> void:
     var k := _blick
     var quer := k.orthogonal()
     var r := BOOT_RADIUS
+    var tempo := clampf(_fahrt.length() / BOOT_TEMPO, 0.0, 1.0)
+    # Die Neigung staucht die Silhouette auf der Innenseite der Kurve. Ein
+    # gekipptes Boot zeigt weniger Breite - mehr Perspektive braucht es
+    # nicht, um "es legt sich in die Kurve" zu erzaehlen.
+    var eng := Vector2(1.0 - 0.30 * maxf(0.0, _neigung),
+        1.0 - 0.30 * maxf(0.0, -_neigung))
 
-    # Rumpf: vorn spitz, hinten stumpf - man sieht ihm an, wohin er faehrt,
-    # auch wenn er steht.
-    var rumpf := PackedVector2Array([
-        _ort + k * r * 1.7,
-        _ort + k * r * 0.5 + quer * r * 0.72,
-        _ort - k * r * 0.9 + quer * r * 0.58,
-        _ort - k * r * 1.25,
-        _ort - k * r * 0.9 - quer * r * 0.58,
-        _ort + k * r * 0.5 - quer * r * 0.72,
-    ])
-    draw_colored_polygon(rumpf, HAUT_TIEF)
-    draw_polyline(rumpf + PackedVector2Array([rumpf[0]]), HAUT, 1.6, true)
-
-    # Die Lampe sitzt dort, wo der Kegel ansetzt. Was leuchtet, macht
-    # Schaden - dann soll man auch sehen, woher es kommt.
-    draw_circle(_ort + k * r * 1.25, r * 0.30, Color(0.80, 1.0, 0.96, 0.30))
-    draw_circle(_ort + k * r * 1.25, r * 0.16, Color(1.0, 1.0, 0.96, 0.95))
-
-    # Huelle als Ring um das Boot: keine Leiste am Bildrand, sondern dort,
-    # wo der Daumen ohnehin hinsieht.
-    var anteil := clampf(float(huelle) / float(maxi(1, huelle_voll)), 0.0, 1.0)
-    if anteil < 1.0:
-        draw_arc(_ort, r * 1.9, -PI * 0.5, -PI * 0.5 + TAU * anteil, 40,
-            Color(1.0, 0.62, 0.44, 0.65), 2.6, true)
+    var umriss := _boot_umriss(k, quer, r, eng)
+    _zeichne_antrieb(k, quer, r, tempo)
+    _zeichne_flossen(k, quer, r, eng)
+    _zeichne_rumpf(umriss, k, r)
+    _zeichne_spanten(k, quer, r, eng)
+    _zeichne_turm(k, quer, r)
+    _zeichne_kanzel(k, quer, r)
+    _zeichne_scheinwerfer(k, quer, r)
+    _zeichne_huellring(r)
 
 
+## Der geschlossene Umriss: einmal die eine Flanke entlang, dann die andere
+## zurueck. In dieser Reihenfolge, damit er sich nicht selbst kreuzt.
+func _boot_umriss(k: Vector2, quer: Vector2, r: float,
+        eng: Vector2) -> PackedVector2Array:
+    if _profil.is_empty():
+        _baue_profil()
+    var punkte := PackedVector2Array()
+    for i in RUMPF_STUFEN:
+        var pr := _profil[i]
+        punkte.append(_ort + k * pr.x * r * RUMPF_LANG
+            + quer * pr.y * r * RUMPF_BREIT * eng.y)
+    for j in RUMPF_STUFEN:
+        var pr := _profil[RUMPF_STUFEN - 1 - j]
+        punkte.append(_ort + k * pr.x * r * RUMPF_LANG
+            - quer * pr.y * r * RUMPF_BREIT * eng.x)
+    return punkte
+
+
+## Der Rumpf: dunkle Flaeche zum Abdecken, darauf Linienzuege.
+##
+## **In einem Stueck, nicht abschnittsweise.** Der Anlauf davor zog jede
+## Kante einzeln, um den Saum vorn hell und hinten dunkel zu bekommen. Bei
+## 128 Abschnitten auf hundert Pixeln ist jeder zwei Pixel lang - und
+## `draw_line` setzt an jedes Ende eine runde Kappe. Die Kappen ueberlappten
+## sich zu einer Perlenkette; im Bild sah der Saum gepunktet aus. Ein
+## `draw_polyline` zieht den ganzen Zug mit einer Kappe.
+##
+## Vorn hell und hinten dunkel kommt jetzt daher, dass der helle Zug **nur
+## ueber die vordere Haelfte** laeuft - zwei Zuege statt hundert Abschnitten.
+func _zeichne_rumpf(umriss: PackedVector2Array, k: Vector2, r: float) -> void:
+    _vorn.draw_colored_polygon(umriss, Color(0.020, 0.052, 0.068))
+    var ring := umriss + PackedVector2Array([umriss[0]])
+    _vorn.draw_polyline(ring, Color(HAUT.r, HAUT.g, HAUT.b, 0.09), 5.0, true)
+    _vorn.draw_polyline(ring, Color(HAUT.r, HAUT.g, HAUT.b, 0.30), 1.5, true)
+
+    # Der vordere Bogen noch einmal, heller. Wo "vorn" ist, sagt das Profil
+    # und nicht eine zweite Zahl.
+    var vorne := PackedVector2Array()
+    for punkt in ring:
+        if (punkt - _ort).dot(k) > 0.0:
+            vorne.append(punkt)
+    if vorne.size() > 2:
+        _vorn.draw_polyline(vorne, Color(HAUT.r, HAUT.g, HAUT.b, 0.52),
+            1.5, true)
+
+
+## Spanten und Kiellinie - die Linien, die aus einem Umriss einen Koerper
+## machen. Sie folgen der Rumpfbreite an ihrer Stelle, laufen also nie ueber
+## die Kante hinaus.
+func _zeichne_spanten(k: Vector2, quer: Vector2, r: float,
+        eng: Vector2) -> void:
+    _vorn.draw_line(_ort - k * r * RUMPF_LANG * 0.72,
+        _ort + k * r * RUMPF_LANG * 0.86,
+        Color(HAUT.r, HAUT.g, HAUT.b, 0.16), 1.0, true)
+
+    for anteil: float in [-0.30, 0.10, 0.48]:
+        var i := int(clampf((anteil + 1.0) * 0.5, 0.0, 1.0)
+            * float(RUMPF_STUFEN - 1))
+        var breit: float = _profil[i].y * r * RUMPF_BREIT
+        var mitte := _ort + k * _profil[i].x * r * RUMPF_LANG
+        var bogen := PackedVector2Array()
+        for j in 9:
+            var t := lerpf(-1.0, 1.0, float(j) / 8.0)
+            var seit: float = eng.x if t < 0.0 else eng.y
+            # Ein leichter Bogen statt einer Geraden: ein Spant liegt auf
+            # einem runden Rumpf und ist deshalb im Bild gekruemmt.
+            bogen.append(mitte + quer * t * breit * seit
+                + k * (1.0 - t * t) * r * 0.09)
+        _vorn.draw_polyline(bogen, Color(HAUT.r, HAUT.g, HAUT.b, 0.17),
+            1.0, true)
+
+
+## Die Tiefenruder am Heck.
+##
+## **Sie sassen erst mittschiffs und waren zu gross** - 1.34 Rumpfradien nach
+## aussen bei 0.66 Rumpfbreite, also viermal so breit wie das Boot, und sie
+## legten sich als zwei grosse Boegen quer darueber. Ein Ruder ist ein
+## Anhang, kein zweiter Rumpf, und es sitzt hinten: dort, wo es lenkt.
+##
+## **Und es ist ein Blatt mit vier Ecken, keine zwei Kurven auf eine Spitze
+## zu.** Der Anlauf davor zog zwei Bezier von den beiden Wurzeln auf denselben
+## Punkt, mit Kontrollpunkten, die gegeneinander liefen - bei schmalem Heck
+## kreuzten sie sich, und Godot meldete "triangulation failed" und zeichnete
+## gar nichts. Vier Ecken, aussen herum in einer Richtung, koennen das nicht.
+func _zeichne_flossen(k: Vector2, quer: Vector2, r: float,
+        eng: Vector2) -> void:
+    if _profil.is_empty():
+        _baue_profil()
+    for seite: float in SEITEN:
+        var s: float = eng.x if seite < 0.0 else eng.y
+        var i_vorn := int(0.32 * float(RUMPF_STUFEN - 1))
+        var i_hinten := int(0.10 * float(RUMPF_STUFEN - 1))
+        var wurzel_vorn := _ort + k * _profil[i_vorn].x * r * RUMPF_LANG \
+            + quer * seite * _profil[i_vorn].y * r * RUMPF_BREIT * s
+        var wurzel_hinten := _ort + k * _profil[i_hinten].x * r * RUMPF_LANG \
+            + quer * seite * _profil[i_hinten].y * r * RUMPF_BREIT * s
+        var spitze_vorn := _ort - k * r * 1.02 + quer * seite * r * 0.76 * s
+        var spitze_hinten := _ort - k * r * 1.46 + quer * seite * r * 0.60 * s
+
+        var kante := PackedVector2Array()
+        # Vorderkante: leicht gewoelbt nach vorn, damit das Blatt nicht wie
+        # ein Dreieck aus dem Bausatz aussieht.
+        for j in 9:
+            var t := float(j) / 8.0
+            var g := 1.0 - t
+            kante.append(wurzel_vorn * (g * g)
+                + (wurzel_vorn + quer * seite * r * 0.30 * s) * (2.0 * g * t)
+                + spitze_vorn * (t * t))
+        kante.append(spitze_hinten)
+        kante.append(wurzel_hinten)
+
+        _vorn.draw_colored_polygon(kante, Color(0.016, 0.042, 0.058))
+        var zu := kante + PackedVector2Array([kante[0]])
+        _vorn.draw_polyline(zu, Color(HAUT.r, HAUT.g, HAUT.b, 0.07), 3.2, true)
+        _vorn.draw_polyline(zu, Color(HAUT.r, HAUT.g, HAUT.b, 0.34), 1.1, true)
+        _vorn.draw_circle(spitze_vorn, 1.6, Color(0.52, 0.96, 0.86, 0.75))
+
+
+## Zwei Duesen hinten. Ein Strahl, der schmaler wird - kein Balken.
+func _zeichne_antrieb(k: Vector2, quer: Vector2, r: float,
+        tempo: float) -> void:
+    for seite: float in SEITEN:
+        var duese := _ort - k * r * 1.28 + quer * seite * r * 0.28
+        var laenge := r * (0.30 + 2.2 * tempo)
+        var glut := 0.14 + 0.70 * tempo
+        # In Abschnitten, jeder duenner und blasser als der davor. Ein
+        # `draw_line` hat ueberall dieselbe Dicke und endet als Klotz;
+        # genau so sah es aus.
+        var stufen := 7
+        for i in stufen:
+            var t0 := float(i) / float(stufen)
+            var t1 := float(i + 1) / float(stufen)
+            var a := duese - k * laenge * t0
+            var b := duese - k * laenge * t1
+            var dick := r * 0.26 * (1.0 - t0) * (1.0 - t0)
+            _vorn.draw_line(a, b, Color(0.44, 0.82, 1.0,
+                0.30 * glut * (1.0 - t0)), maxf(0.6, dick), true)
+        _vorn.draw_circle(duese, r * 0.10,
+            Color(0.72, 0.94, 1.0, 0.30 + 0.5 * glut))
+
+
+## Der Turm.
+##
+## **Das ist das eine Merkmal, an dem man ein Tauchboot von oben erkennt.**
+## Ohne ihn war der Rumpf ein Blatt mit Streben darauf - laenglich, spitz,
+## symmetrisch, und man haette ebenso gut einen Fisch darin sehen koennen.
+## Ein Turm bricht die Symmetrie in der Laengsachse und sagt in einer Form,
+## wo vorn ist und dass jemand darin sitzt.
+##
+## Er steht ein Drittel hinter dem Bug, wie bei einem echten Boot auch, und
+## er ist schmal: er soll den Rumpf gliedern, nicht ihn ersetzen.
+func _zeichne_turm(k: Vector2, quer: Vector2, r: float) -> void:
+    var mitte := _ort + k * r * 0.42
+    var lang := r * 0.52
+    var breit := r * 0.21
+
+    var umriss := PackedVector2Array()
+    var stufen := 22
+    for i in stufen:
+        var w := TAU * float(i) / float(stufen)
+        # Vorn spitzer als hinten - auch der Turm zeigt, wohin es geht.
+        var laengs := cos(w)
+        var voll := 1.0 + 0.18 * laengs
+        umriss.append(mitte + k * laengs * lang
+            + quer * sin(w) * breit * voll)
+    _vorn.draw_colored_polygon(umriss, Color(0.030, 0.078, 0.098))
+    var zu := umriss + PackedVector2Array([umriss[0]])
+    _vorn.draw_polyline(zu, Color(HAUT.r, HAUT.g, HAUT.b, 0.10), 4.0, true)
+    _vorn.draw_polyline(zu, Color(HAUT.r, HAUT.g, HAUT.b, 0.62), 1.4, true)
+
+    # Zwei Vorflossen am Turm - die Ruder, mit denen ein Boot steigt und
+    # sinkt. Zwei kurze Striche, mehr braucht es bei dieser Groesse nicht.
+    for seite: float in SEITEN:
+        var wurzel := mitte + quer * seite * breit * 0.9
+        _vorn.draw_line(wurzel, wurzel + quer * seite * r * 0.40
+            - k * r * 0.06, Color(HAUT.r, HAUT.g, HAUT.b, 0.38), 2.2, true)
+
+
+## Die Druckkanzel. Der einzige warme Punkt am ganzen Boot - alles andere ist
+## kalt und blau, und deshalb sieht man sofort, wo jemand sitzt.
+##
+## **Klein und leise.** Im zweiten Anlauf hatte sie einen halben Rumpf
+## Durchmesser und drei Lagen Glut darin; im Bild war das ein weisser Fleck,
+## der den Rumpf verschluckte. Ein Fenster ist kein Scheinwerfer.
+func _zeichne_kanzel(k: Vector2, quer: Vector2, r: float) -> void:
+    var mitte := _ort + k * r * 0.54
+    _vorn.draw_circle(mitte, r * 0.17, Color(0.014, 0.040, 0.056))
+    _vorn.draw_circle(mitte, r * 0.105, Color(GLUT.r, GLUT.g, GLUT.b, 0.42))
+    _vorn.draw_arc(mitte, r * 0.17, 0.0, TAU, 20,
+        Color(HAUT.r, HAUT.g, HAUT.b, 0.55), 1.1, true)
+    # Zwei Streben ueber die Kuppel: das ist der Unterschied zwischen einem
+    # Fenster und einem Fleck.
+    for versatz: float in SEITEN:
+        var m := (k * 0.4 + quer * versatz).normalized()
+        _vorn.draw_line(mitte - m * r * 0.16, mitte + m * r * 0.16,
+            Color(HAUT.r, HAUT.g, HAUT.b, 0.26), 0.9, true)
+    _vorn.draw_circle(mitte + (k + quer).normalized() * r * 0.08, r * 0.035,
+        Color(1.0, 0.98, 0.92, 0.55))
+
+
+## Das Scheinwerfergehaeuse. Es sitzt dort, wo `Schlund.beleuchtung()` ihre
+## Spitze hat - was leuchtet, macht Schaden, also soll man sehen, woher es
+## kommt.
+func _zeichne_scheinwerfer(k: Vector2, quer: Vector2, r: float) -> void:
+    var nase := _ort + k * r * 1.42
+    var buegel := PackedVector2Array()
+    for j in 11:
+        var t := lerpf(-1.0, 1.0, float(j) / 10.0)
+        buegel.append(nase + quer * t * r * 0.30 - k * (t * t) * r * 0.26)
+    _vorn.draw_polyline(buegel, Color(HAUT.r, HAUT.g, HAUT.b, 0.10), 3.0, true)
+    _vorn.draw_polyline(buegel, Color(HAUT.r, HAUT.g, HAUT.b, 0.62), 1.3, true)
+    _vorn.draw_circle(nase, r * 0.17, Color(0.80, 1.0, 0.96, 0.14))
+    _vorn.draw_circle(nase, r * 0.075, Color(1.0, 1.0, 0.96, 0.92))
+
+
+## Die Huelle als Ring um das Boot - keine Leiste am Bildrand, sondern dort,
+## wo der Daumen ohnehin hinsieht.
+##
+## Gezeichnet werden **Striche je Punkt Huelle**, nicht ein Bogen: bei einem
+## Bogen sieht man, dass etwas fehlt, aber nicht wieviel, und "wieviele Fehler
+## habe ich noch" ist die einzige Zahl, die waehrend der Fahrt zaehlt.
+## Eng am Rumpf und duenn - ein Messgeraet, kein Schmuck.
+func _zeichne_huellring(r: float) -> void:
+    if huelle_voll <= 0:
+        return
+    var radius := r * 1.72
+    var luecke := TAU / float(huelle_voll)
+    for i in huelle_voll:
+        var von := -PI * 0.5 + luecke * float(i) + luecke * 0.24
+        var bis := von + luecke * 0.52
+        var voll := i < huelle
+        _vorn.draw_arc(_ort, radius, von, bis, 5,
+            Color(0.50, 0.90, 0.88, 0.26) if voll
+            else Color(0.90, 0.36, 0.28, 0.18), 1.4, true)
+
+
+## --- Die Begleiter ---
+##
+## Wehrpolypen, die mitfahren. Vorher drei Kreise; das sagte weder, was sie
+## sind, noch dass sie zur Kolonie gehoeren. Ein Polyp ist ein Kelch auf einem
+## Stiel mit Fangarmen - und weil er mitschwimmt, stehen die Arme nach hinten,
+## in die Stroemung.
 func _zeichne_begleiter() -> void:
     for i in _begleiter.size():
         var p: Vector2 = _begleiter[i]
         var atem := 0.5 + 0.5 * sin(_wellenzeit * BEGLEITER_TAKT + float(i) * 2.1)
-        draw_circle(p, 13.0 + 2.0 * atem, Color(0.34, 0.86, 0.72, 0.10))
-        draw_circle(p, 6.0 + 1.2 * atem, Color(0.46, 0.94, 0.78, 0.55))
-        draw_circle(p, 2.6, Color(0.86, 1.0, 0.92, 0.9))
+        var k := (p - _ort)
+        if k.length_squared() < 1.0:
+            k = -_blick
+        k = k.normalized()
+        var quer := k.orthogonal()
+        var gr := 11.0
+
+        # Fangarme nach hinten, leicht faechernd.
+        for a in 5:
+            var t := float(a) / 4.0
+            var w := lerpf(-0.9, 0.9, t)
+            var spitze := p + (k * gr * 2.1).rotated(w * 0.55) \
+                + quer * sin(_wellenzeit * 1.7 + float(a) + float(i)) * 2.4
+            _vorn.draw_line(p + k * gr * 0.5, spitze,
+                Color(0.34, 0.86, 0.72, 0.30), 1.3, true)
+            _vorn.draw_circle(spitze, 1.4, Color(0.62, 1.0, 0.86, 0.55))
+
+        # Der Kelch, gegen die Fahrtrichtung geoeffnet.
+        _vorn.draw_circle(p, gr * (1.5 + 0.12 * atem), Color(0.34, 0.86, 0.72, 0.07))
+        _vorn.draw_circle(p, gr * 0.72, Color(0.030, 0.115, 0.100))
+        _vorn.draw_arc(p, gr * 0.72, 0.0, TAU, 20,
+            Color(0.46, 0.94, 0.78, 0.55), 1.3, true)
+        _vorn.draw_circle(p, gr * (0.28 + 0.06 * atem),
+            Color(0.72, 1.0, 0.90, 0.85))
+
         # Der Strahl auf sein Ziel. Er ist die einzige Anzeige dafuer, dass
-        # ein Begleiter etwas tut - ohne ihn sind es drei Punkte, die
-        # mitschwimmen.
+        # ein Begleiter etwas tut - ohne ihn schwimmen drei Polypen mit.
         var n: int = _begleiter_ziel[i]
         if n >= 0 and n < _tiere.size() and _tiere[n].lebendig:
-            draw_line(p, _tiere[n].ort,
-                Color(0.46, 0.94, 0.78, 0.16 + 0.10 * atem), 1.4, true)
+            var ziel: Vector2 = _tiere[n].ort
+            _vorn.draw_line(p, ziel, Color(0.46, 0.94, 0.78, 0.10), 3.4, true)
+            _vorn.draw_line(p, ziel, Color(0.72, 1.0, 0.90, 0.26 + 0.12 * atem),
+                1.2, true)
 
 
 # --- Aufnahme ---------------------------------------------------------------
@@ -378,6 +751,9 @@ func _nimm_auf() -> void:
     if _schuss.is_empty():
         return
     _spiele_vor()
+    # Wo das Boot steht, damit man den Ausschnitt nicht im Bild suchen muss.
+    print("BOOT %.1f %.1f  BLICK %.2f  FAHRT %.0f"
+        % [_ort.x, _ort.y, _blick.angle(), _fahrt.length()])
     await RenderingServer.frame_post_draw
     var bild := get_viewport().get_texture().get_image()
     bild.save_png(_schuss)
