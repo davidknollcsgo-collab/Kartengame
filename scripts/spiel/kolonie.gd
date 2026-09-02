@@ -59,6 +59,7 @@ var _treiber: Array[Dictionary] = []
 ## Das Riff am Grund, rings um den Kalkwulst. Warme und violette Toene gegen
 ## das Blau - ein Bild mit einem Farbton ist eine Tonung, keine Farbgebung.
 var _korallen: Array[Dictionary] = []
+var _geroell: Array[Dictionary] = []
 
 ## Der Kegel, um Ranken und Riff von ihm anleuchten zu lassen. Gesetzt von
 ## `wache.gd`. Dieselbe `Schlund.beleuchtung()` wie ueberall - was hell
@@ -70,6 +71,7 @@ func _ready() -> void:
     var rng := RandomNumberGenerator.new()
     rng.seed = 0x4e454b7f
     _baue_treiber(rng)
+    _baue_geroell(rng)
     _baue_korallen(rng)
 
 
@@ -128,6 +130,237 @@ const KORALL_FARBEN: PackedColorArray = [
 ]
 
 
+## --- Der Grund, auf dem das Riff sitzt ---
+##
+## **Die Korallen wuchsen aus dem Nichts.** Sie standen frei im Wasser, jede
+## auf ihrer eigenen Hoehe, und wo ihre Arme anfingen, fing auch das Bild an.
+## Eine Koralle ist aber ein Tier, das auf etwas festwaechst - ohne den Halt
+## darunter ist sie eine Zeichnung und kein Wesen, und der ganze untere
+## Bildrand las sich als unfertig.
+##
+## Was hier hinkommt, ist ausdruecklich **kein Boden**. Der Graben hat keinen,
+## und ein durchgehender Grund waere eine Zusage, die das Spiel nicht haelt.
+## Es sind Sedimentruecken: Wuelste, die sich um den Kalksockel der Kolonie
+## gelegt haben und zu beiden Seiten in die Tiefe abfallen. Was darunter
+## liegt, bleibt dunkel.
+##
+## **Drei davon, hintereinander.** Ein einzelner Ruecken haette das Riff auf
+## eine Linie gelegt und die Tiefe genommen, die es vorher durch seine
+## Streuung hatte. Der hinterste steht hoeher im Bild, ist blasser und traegt
+## kleinere Korallen; der vorderste liegt tief und dunkel. Das ist dieselbe
+## Ordnung wie bei den Treibern - Tiefe entsteht aus Helligkeit und Groesse,
+## nicht aus einer Perspektivrechnung.
+const RUECKEN := 3
+
+## Wie weit der Ruecken gegen `BRUT_Y + GRUND_TIEFE` verschoben ist. Hinten
+## negativ, also weiter oben im Bild.
+const RUECKEN_VERSATZ: PackedFloat32Array = [-58.0, 4.0, 68.0]
+
+## Wie stark er gezeichnet wird. Hinten blasser - das ist die Tiefe.
+const RUECKEN_KRAFT: PackedFloat32Array = [0.42, 0.72, 1.0]
+
+const GRUND_TIEFE := 158.0
+
+## Wie weit die Ruecken seitlich ueber das Feld hinausreichen. Auf einem
+## langen Telefon steht die Kamera tiefer (siehe `Graben.kamera_y`), und ein
+## Ruecken, der am Bildrand aufhoert, ist wieder eine Kante aus dem Nichts.
+const GRUND_UEBERSTAND := 90.0
+
+
+## Die Oberkante eines Ruecken an der Stelle `x`.
+##
+## Drei Sinus mit unrunden Verhaeltnissen - dadurch wiederholt sich das
+## Profil im sichtbaren Bereich nicht. Je weiter vorn der Ruecken, desto
+## kuerzer die Wellen: was nah ist, hat mehr Detail.
+func _ruecken_y(nr: int, x: float) -> float:
+    var f := 1.0 + float(nr) * 0.32
+    return Graben.BRUT_Y + GRUND_TIEFE + RUECKEN_VERSATZ[nr] \
+        + 23.0 * sin(x * 0.0067 * f + 0.7 + float(nr) * 1.9) \
+        + 11.0 * sin(x * 0.0170 * f - 1.9 + float(nr)) \
+        + 5.0 * sin(x * 0.0380 * f + 2.6)
+
+
+## Zeichnet die drei Ruecken. Jeder ist **eine** Flaeche mit Farbe je
+## Eckpunkt: oben faengt er das Licht des Kegels, nach unten laeuft er aus.
+##
+## Zwei gestapelte deckende Polygone haetten so viele harte Kanten wie Lagen
+## - deshalb eine Flaeche und ein Saum darauf, wie beim Sockel und bei den
+## Ranken auch.
+func _zeichne_grund() -> void:
+    var links := Graben.FELD.position.x - GRUND_UEBERSTAND
+    var rechts := Graben.FELD.end.x + GRUND_UEBERSTAND
+    # Weit genug nach unten, dass auch ein 21:9-Bild keine Unterkante sieht.
+    var tief := Graben.BRUT_Y + 1100.0
+    var schritte := 44
+
+    for nr in RUECKEN:
+        var kraft: float = RUECKEN_KRAFT[nr]
+        var kante := PackedVector2Array()
+        var flaeche := PackedVector2Array()
+        var farben := PackedColorArray()
+
+        for i in schritte + 1:
+            var x := lerpf(links, rechts, float(i) / float(schritte))
+            var y := _ruecken_y(nr, x)
+            kante.append(Vector2(x, y))
+            flaeche.append(Vector2(x, y))
+            # Der Kegel steht darueber: die Oberkante nimmt sein Licht an,
+            # und zwar mit derselben `beleuchtung()`, die auch Schaden macht.
+            # Er zeigt normalerweise nach oben, also ist das fast immer null -
+            # sichtbar wird es erst, wenn jemand den Daumen nach unten zieht.
+            var hell := _licht_auf(Vector2(x, y))
+            farben.append(_grundfarbe(
+                Color(0.020, 0.030, 0.036).lerp(Color(0.10, 0.17, 0.18),
+                hell * 0.6), kraft))
+        # Zurueck am unteren Rand entlang, damit die Flaeche geschlossen ist.
+        #
+        # **Nur der vorderste Ruecken reicht bis ganz nach unten.** Anfangs
+        # taten es alle drei, und damit wurde das untere Bilddrittel dreimal
+        # uebereinander gefuellt - gemessen 15 Prozent mehr Bildzeit fuer
+        # Flaeche, die ohnehin verdeckt ist. Die hinteren hoeren knapp unter
+        # dem Kamm des naechsten auf.
+        var unten := tief
+        if nr < RUECKEN - 1:
+            unten = Graben.BRUT_Y + GRUND_TIEFE + RUECKEN_VERSATZ[nr + 1] + 52.0
+        for i in schritte + 1:
+            var x := lerpf(rechts, links, float(i) / float(schritte))
+            flaeche.append(Vector2(x, unten))
+            farben.append(_grundfarbe(Color(0.004, 0.007, 0.010), kraft))
+
+        _flaeche_zeichnen(flaeche, farben)
+
+        # Der Saum. Ohne ihn ist der Ruecken ein Fleck; mit ihm ist er eine
+        # Oberflaeche, auf der etwas stehen kann.
+        #
+        # **Aber nicht durchgehend.** Der erste Anlauf zog drei helle Linien
+        # quer durchs ganze Bild - das las sich als Kabel und nicht als
+        # Sedimentkante. Eine Kante ist nur dort zu sehen, wo sie sich dem
+        # Licht zuwendet; dazwischen verschwindet sie. Ein langsamer Sinus
+        # ueber x macht genau das, und er ist billiger als jede Rechnung mit
+        # Normalen, die hier ohnehin niemand nachpruefen koennte.
+        for i in schritte:
+            var welle := 0.5 + 0.5 * sin(kante[i].x * 0.0104
+                + float(nr) * 2.3 - 0.6)
+            var a := (0.05 + 0.16 * welle * welle) * kraft
+            draw_line(kante[i], kante[i + 1],
+                Color(0.34, 0.56, 0.58, a), 1.0 + 0.6 * kraft, true)
+
+        # Und darauf, was den Ruecken erst zu einer Oberflaeche macht.
+        _zeichne_geroell(nr, kraft)
+
+
+## Godot nimmt fuer `draw_polygon` Punkte und Farben getrennt; das hier ist
+## nur der Aufruf mit Namen, damit oben lesbar bleibt, was passiert.
+func _flaeche_zeichnen(punkte: PackedVector2Array,
+        farben: PackedColorArray) -> void:
+    draw_polygon(punkte, farben)
+
+
+## Tiefe wirkt auf die Farbe, nicht auf die Deckung.
+##
+## `Color(...) * kraft` skaliert in Godot auch das Alpha - der hintere
+## Ruecken wurde damit halb durchsichtig und liess die Treiber durchscheinen,
+## die er verdecken soll. Ein Sedimentruecken ist undurchsichtig; was ihn
+## fern aussehen laesst, ist seine Farbe und nicht seine Deckung.
+##
+## **Und er ist dunkler als das Wasser davor.** Gemessen lag der Grund im
+## ersten Anlauf bei RGB 10 bis 28, das Wasser dort bei 5 bis 12 - der Grund
+## war also zwei- bis dreimal heller als das, wovor er liegt, und las sich
+## als Nebelbank. Fels unter einer fernen Lampe schluckt Licht, das Wasser
+## davor streut es: der Grund muss unter dem Wasser liegen, und hell ist nur
+## der Saum.
+func _grundfarbe(farbe: Color, kraft: float) -> Color:
+    return Color(farbe.r * kraft, farbe.g * kraft, farbe.b * kraft, 1.0)
+
+
+## Geroell auf den Ruecken.
+##
+## Ein Ruecken ohne Bruch ist eine Boeschung, kein Grund - die Kante lief als
+## ruhige Welle durchs Bild, und ruhige Wellen liest man als Nebel. Was eine
+## Oberflaeche zur Oberflaeche macht, ist das, was **darauf** liegt.
+##
+## Die Steine sitzen deshalb genau **auf** der Kante und nicht darin: ihre
+## obere Haelfte steht ueber der Linie und bricht sie. Innen waeren sie
+## unsichtbar - dunkel auf dunkel -, und das war der erste Versuch wert zu
+## bemerken, bevor man ihn zeichnet.
+func _baue_geroell(rng: RandomNumberGenerator) -> void:
+    _geroell.clear()
+    for nr in RUECKEN:
+        for _i in 9 + nr * 4:
+            var x := rng.randf_range(
+                Graben.FELD.position.x - GRUND_UEBERSTAND,
+                Graben.FELD.end.x + GRUND_UEBERSTAND)
+            var gross := lerpf(0.55, 1.0, float(nr) / float(RUECKEN - 1))
+            _geroell.append({
+                &"ruecken": nr,
+                &"x": x,
+                &"breit": rng.randf_range(14.0, 46.0) * gross,
+                &"hoch": rng.randf_range(7.0, 22.0) * gross,
+                # **Wie tief der Stein steckt.** Beim ersten Versuch lag die
+                # Mitte fast auf der Kante, und damit stand die flache
+                # Unterseite ueber dem Sediment: im Bild ein Ziegel, kein
+                # Findling. Er muss so tief sitzen, dass nur die Kuppe
+                # herausschaut - dann ist die gerade Unterkante begraben und
+                # die einzige sichtbare Linie ist eine gebogene.
+                &"sitz": rng.randf_range(0.30, 0.75),
+                &"kipp": rng.randf_range(-0.16, 0.16),
+                &"beule": rng.randf_range(0.16, 0.42),
+                &"phase": rng.randf_range(0.0, TAU),
+            })
+
+
+## Zeichnet die Steine eines Ruecken. Der Koerper ist dunkler als das
+## Sediment, der Saum oben etwas heller - dieselbe Ordnung wie beim Ruecken
+## selbst, nur eine Stufe kraeftiger, damit die Form ueberhaupt ankommt.
+func _zeichne_geroell(nr: int, kraft: float) -> void:
+    for g in _geroell:
+        if int(g[&"ruecken"]) != nr:
+            continue
+        var x: float = g[&"x"]
+        var b: float = g[&"breit"]
+        var h: float = g[&"hoch"]
+        var mitte := Vector2(x, _ruecken_y(nr, x) + h * float(g[&"sitz"]))
+        var kipp: float = g[&"kipp"]
+
+        # **Der Koerper hat dieselbe Farbe wie das Sediment.** Auch das war
+        # im ersten Versuch anders - dunkler -, und ein dunkler Fleck auf dem
+        # Ruecken ist kein Stein, sondern ein Loch. Was den Stein sichtbar
+        # macht, ist allein seine Kuppe gegen das Wasser darueber und der
+        # Saum darauf; wo er im Sediment steckt, soll man die Naht nicht
+        # sehen.
+        var boden := Color(0.020, 0.030, 0.036)
+        var punkte := PackedVector2Array()
+        var farben := PackedColorArray()
+        var stufen := 14
+        for i in stufen + 1:
+            var t := float(i) / float(stufen)
+            var w := PI * (1.0 - t)
+            # Eine Beule je Stein, damit nicht vierzig gleiche Kuppeln
+            # nebeneinander liegen.
+            var r := 1.0 + float(g[&"beule"]) * sin(w * 2.0 + float(g[&"phase"]))
+            var p := mitte + Vector2(cos(w) * b * r, -sin(w) * h * r).rotated(kipp)
+            punkte.append(p)
+            farben.append(_grundfarbe(
+                boden.lerp(Color(0.034, 0.048, 0.055), sin(w)), kraft))
+        # Unterkante: tief in den Ruecken hinein, damit sie begraben bleibt.
+        for seite: float in SEITEN:
+            punkte.append(mitte + Vector2(seite * b, h * 2.2).rotated(kipp))
+            farben.append(_grundfarbe(boden, kraft))
+        draw_polygon(punkte, farben)
+
+        # Der Saum auf der Kuppe. Er traegt die Form allein, seit der Koerper
+        # dieselbe Farbe hat wie der Grund - eine kurze Linie, kein Umriss;
+        # ein umrandeter Stein sieht aus wie ein Aufkleber.
+        var scheitel := PackedVector2Array()
+        for i in range(2, stufen - 1):
+            var t := float(i) / float(stufen)
+            var w := PI * (1.0 - t)
+            var r := 1.0 + float(g[&"beule"]) * sin(w * 2.0 + float(g[&"phase"]))
+            scheitel.append(mitte
+                + Vector2(cos(w) * b * r, -sin(w) * h * r).rotated(kipp))
+        draw_polyline(scheitel, Color(0.34, 0.56, 0.58, 0.22 * kraft), 1.1, true)
+
+
 func _baue_korallen(rng: RandomNumberGenerator) -> void:
     _korallen.clear()
     # **Am Grund, nicht am Rand.**
@@ -137,26 +370,34 @@ func _baue_korallen(rng: RandomNumberGenerator) -> void:
     # ein Riff waechst dort, wo Halt und Naehrstoff sind, und beides gibt es
     # am Kalkwulst der Kolonie. Es liegt damit **unter** dem Geschehen statt
     # daneben, und der Blick geht ueber es hinweg nach oben in die Dunkelheit.
-    var grund := Graben.BRUT_Y + 158.0
-    for i in 24:
+    for i in 30:
         # Zur Mitte hin flacher: dort steht der Waechter, und Bewuchs, der
         # ihm ins Bild waechst, verdeckt genau die Figur, auf die man sieht.
-        var x := rng.randf_range(Graben.FELD.position.x - 30.0,
-            Graben.FELD.end.x + 30.0)
+        var x := rng.randf_range(Graben.FELD.position.x - GRUND_UEBERSTAND * 0.6,
+            Graben.FELD.end.x + GRUND_UEBERSTAND * 0.6)
         var aussen := clampf(absf(x) / 360.0, 0.0, 1.0)
         if absf(x) < 118.0 and rng.randf() < 0.72:
             continue
         var arme := PackedFloat32Array()
         for _a in rng.randi_range(6, 11):
             arme.append(rng.randf_range(0.5, 1.0))
+        # **Auf einem Ruecken, nicht irgendwo.** Der Fuss sinkt ein paar
+        # Pixel ein, damit der Ansatz im Sediment verschwindet statt darauf
+        # zu stehen - eine Koralle, die den Grund beruehrt, sieht aufgestellt
+        # aus; eine, die ein Stueck darin steckt, sieht gewachsen aus.
+        var ruecken := rng.randi() % RUECKEN
         _korallen.append({
-            &"ort": Vector2(x, grund + rng.randf_range(-38.0, 92.0)),
+            &"ruecken": ruecken,
+            &"ort": Vector2(x, _ruecken_y(ruecken, x) + rng.randf_range(2.0, 11.0)),
             # `innen` war die Wachstumsrichtung von der Wand weg. Am Grund
             # waechst alles nach oben; die Zahl bleibt als Neigung erhalten,
             # damit die drei Zeichenformen unveraendert weiterlaufen.
             &"innen": -signf(x) if x != 0.0 else 1.0,
             &"art": rng.randi() % 3,
-            &"gross": lerpf(24.0, 88.0, aussen) * rng.randf_range(0.7, 1.25),
+            # Was hinten steht, ist kleiner. Dieselbe Ordnung wie beim
+            # Ruecken selbst.
+            &"gross": lerpf(24.0, 88.0, aussen) * rng.randf_range(0.7, 1.25)
+                * lerpf(0.62, 1.0, float(ruecken) / float(RUECKEN - 1)),
             &"neigung": rng.randf_range(-0.5, 0.5),
             &"arme": arme,
             &"takt": rng.randf_range(0.25, 0.7),
@@ -181,7 +422,11 @@ func _zeichne_korallen() -> void:
         # Halbdunkel; am Grund liegt es unter der Brut, und dort ist der
         # hellste Punkt des Bildes. Mit der alten Deckung war es eine Reihe
         # bunter Wimpel direkt unter dem Einzigen, worauf man sehen muss.
-        var kraft := 0.20 + 0.34 * hell
+        # Und was hinten steht, ist blasser - sonst haengt eine kleine
+        # Koralle in voller Deckung vor einem blassen Ruecken und liest sich
+        # als naeher statt als ferner.
+        var tiefe: float = RUECKEN_KRAFT[int(k.get(&"ruecken", RUECKEN - 1))]
+        var kraft := (0.20 + 0.34 * hell) * lerpf(0.55, 1.0, tiefe)
 
         match int(k[&"art"]):
             0:
@@ -402,6 +647,9 @@ func _draw() -> void:
     # nicht reicher, indem man mehr hineinlegt - es wird reicher, wenn das,
     # was drin ist, groesser ist und Platz hat.
     _zeichne_treiber()
+    # Der Grund vor die Treiber: was hinter einem Sedimentruecken schwebt,
+    # ist verdeckt. Und hinter die Korallen, weil sie darauf wachsen.
+    _zeichne_grund()
     _zeichne_korallen()
     _zeichne_ranken()
     _zeichne_nischen()
