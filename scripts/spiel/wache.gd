@@ -953,8 +953,12 @@ func _welle_geschafft() -> void:
     # liegt. Eine Wand ohne Grund ist ein Fehler; eine mit Grund ist ein Ziel.
     var stand: KolonieStand = Fortschritt.stand
     if welle_nummer + 1 > stand.offene_welle():
-        _hud.melde("The trench ends here - deep shaft level %d digs on"
-            % stand.naechste_tiefe())
+        # `naechste_tiefe()` gibt 0 zurueck, wenn gar nichts mehr verschlossen
+        # ist. Dann liegt es nicht am Schacht, und "level 0 digs on" waere
+        # eine Wand mit einem falschen Grund - schlimmer als eine ohne.
+        var tiefe := stand.naechste_tiefe()
+        _hud.melde("The trench ends here - deep shaft level %d digs on" % tiefe
+            if tiefe > 0 else "You have reached the bottom of the trench")
         welle_in_sitzung = 0
         _bereite_welle_vor()
         return

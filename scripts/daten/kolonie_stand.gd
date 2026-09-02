@@ -123,9 +123,20 @@ func graben_haelt() -> bool:
 
 ## Welche Schachtstufe den naechsten Abschnitt oeffnet - 0, wenn keiner mehr
 ## aussteht.
+##
+## **Die Null gab es hier nie**, obwohl der Satz darueber sie versprach: der
+## Rumpf gab immer die Stufe des naechsten Abschnitts zurueck, mit der
+## Begruendung, es gebe immer einen naechsten - der Graben hat keinen Boden.
+## Das stimmt fuer die Abschnitte und nicht fuer den Schacht. `stufe_soll()`
+## ist auf `Kammern.HOECHSTSTUFE` gedeckelt (Zusage 12), also saettigt der
+## Bedarf bei `HOECHSTSTUFE - SCHACHT_VORSPRUNG`, und ab da ist gar nichts
+## mehr verschlossen. Auf Stufe 80 stand deshalb im Bild "shaft 80 of 76" und
+## daneben "Current Rift opens at level 76" - ein Ziel unter dem Stand und
+## eine Bedingung, die laengst erfuellt war.
 func naechste_tiefe() -> int:
-    # Es gibt immer einen naechsten Abschnitt - der Graben hat keinen Boden.
-    return Ausbau.schacht_fuer_abschnitt(Graben.abschnitt_gesamt(offene_welle()) + 1)
+    var noetig := Ausbau.schacht_fuer_abschnitt(
+        Graben.abschnitt_gesamt(offene_welle()) + 1)
+    return 0 if noetig <= schacht() else noetig
 
 
 # --- Bauen -----------------------------------------------------------------

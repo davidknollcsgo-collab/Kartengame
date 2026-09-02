@@ -1066,9 +1066,27 @@ func _test_grabentiefe_deckelt_den_fortschritt() -> bool:
         return false
     if not _melde(not stand.graben_haelt(), "der volle Schacht darf hier nichts halten"):
         return false
-    # Und es gibt immer eine naechste Tiefe: der Graben hat keinen Boden.
-    return _melde(stand.naechste_tiefe() > 0,
-        "unter jedem Abschnitt muss ein weiterer liegen")
+    # **Und auf dem vollen Schacht gibt es keine naechste Tiefe mehr.**
+    #
+    # Hier stand das Gegenteil - "es gibt immer eine naechste Tiefe, der
+    # Graben hat keinen Boden". Das stimmt fuer die Abschnitte und nicht fuer
+    # den Schacht: `Ausbau.stufe_soll()` ist auf `Kammern.HOECHSTSTUFE`
+    # gedeckelt (Zusage 12), also saettigt der Bedarf bei
+    # `HOECHSTSTUFE - SCHACHT_VORSPRUNG`, und ab da ist nichts mehr
+    # verschlossen. Der Test hielt die falsche Behauptung fest, und im Bild
+    # stand dafuer "shaft 80 of 76" - ein Ziel unter dem eigenen Stand.
+    if not _melde(stand.naechste_tiefe() == 0,
+            "der volle Schacht darf keine naechste Tiefe mehr nennen, "
+            + "gemeldet wurde %d" % stand.naechste_tiefe()):
+        return false
+
+    # Und unterhalb des Deckels muss sie eine Stufe nennen, die ueber dem
+    # Stand liegt - sonst waere die Null oben keine Aussage, sondern immer.
+    stand.stufen[Kammern.Kammer.TIEFENSCHACHT] = 1
+    var tiefe := stand.naechste_tiefe()
+    return _melde(tiefe > 1,
+        "unterhalb des Deckels muss eine hoehere Stufe anstehen, nicht %d"
+        % tiefe)
 
 
 func _test_tagesstroemung_ist_je_tag_gedeckelt() -> bool:

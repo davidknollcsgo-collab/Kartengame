@@ -720,7 +720,11 @@ func _schnitt(breite: float, oben: float, unten: float, stand: KolonieStand,
     # sind immer angeschlossen; das untere Viertel ist die Anzeige.
     var offen_nr := Graben.abschnitt_gesamt(stand.offene_welle())
     var von := Ausbau.schacht_fuer_abschnitt(offen_nr)
+    # Null heisst: nichts mehr verschlossen. Dann ist der Deckel des Spiels
+    # das Ziel, sonst stuende hier "of 0" und der Balken teilte durch nichts.
     var ziel_stufe := stand.naechste_tiefe()
+    if ziel_stufe <= 0:
+        ziel_stufe = Kammern.HOECHSTSTUFE
     var anteil := clampf(float(tiefste - von) / maxf(1.0, float(ziel_stufe - von)),
         0.0, 1.0)
     var letzte_kammer := 0.10 + 0.21 * 3.0
@@ -1784,8 +1788,16 @@ func _ausbauknopf(knopf: Rect2, k: int, stand: KolonieStand, jetzt: float,
         return
 
     if stufe >= deckel:
-        var was := "MAXED" if k == Kammern.Kammer.TIEFENSCHACHT else "SHAFT TOO"
-        var zweite := "" if k == Kammern.Kammer.TIEFENSCHACHT else "SHALLOW"
+        # **Der Grund entscheidet ueber den Text, nicht die Kammerart.** Hier
+        # stand "SHAFT TOO SHALLOW" fuer jede Kammer ausser dem Schacht - und
+        # auf Stufe 80 meldeten damit alle vier, der Schacht sei zu flach,
+        # waehrend er daneben mit MAXED bei 80 von 80 stand. Wer am Deckel des
+        # Spiels angekommen ist, hat kein Schachtproblem.
+        var voll := stufe >= Kammern.HOECHSTSTUFE
+        var was := "MAXED" if voll or k == Kammern.Kammer.TIEFENSCHACHT \
+            else "SHAFT TOO"
+        var zweite := "" if voll or k == Kammern.Kammer.TIEFENSCHACHT \
+            else "SHALLOW"
         _flaeche.draw_rect(knopf, Color(0.10, 0.11, 0.12, 0.55))
         _flaeche.draw_rect(knopf, Color(SPERRE.r, SPERRE.g, SPERRE.b, 0.35),
             false, 1.4)
