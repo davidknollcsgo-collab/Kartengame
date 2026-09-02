@@ -336,14 +336,40 @@ unter einer strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
    Kammerstufen** und ganzen neun Nährstoff Unterschied am fünften Tag. Der
    Wellenprüfer blieb dabei grün, und es fiel keine einzige Sitzung.
 
-   Zwei Lehren. Erstens: eine Änderung am Eintrittsfenster ist **nicht**
-   wirkungsfrei, obwohl `staerke()` proportional dazu ist — die Anordnung der
-   Auftritte ändert, welchen Bruchteil einer Welle der simulierte Daumen
-   räumt, und ein Prozent davon reicht hier. Zweitens: die Schranke wird
-   **nicht** gelockert, damit eine Änderung durchgeht. Sie ist abgeleitet
-   (ein Abschnitt geht als Block auf), und wer sie hochsetzt, damit sein
-   Commit grün wird, hat den Prüfer abgeschafft und nicht das Problem gelöst.
-   Wer die Wellen wirklich kürzen will, muss vorher die Marge schaffen.
+   Zwei Lehren. Erstens: die Schranke wird **nicht** gelockert, damit eine
+   Änderung durchgeht. Sie ist abgeleitet (ein Abschnitt geht als Block auf),
+   und wer sie hochsetzt, damit sein Commit grün wird, hat den Prüfer
+   abgeschafft und nicht das Problem gelöst. Wer die Wellen wirklich kürzen
+   will, muss vorher die Marge schaffen.
+
+   Zweitens — und das stand hier zuerst falsch: schuld war **nicht** die
+   Anordnung der Auftritte. Ich hatte notiert, der simulierte Daumen räume
+   bei anderer Anordnung einen anderen Bruchteil der Welle. Das Crescendo
+   (Zusage 26) hat es widerlegt: es ordnet jede Welle um und der Kolonielauf
+   kommt **zahlengleich** heraus, bis auf den letzten Nährstoff. Was den Lauf
+   verschob, war das Budget selbst — ein kürzeres Fenster macht `staerke()`
+   kleiner, und damit fallen Tierzahl und Rundung des Ertrags anders. Wer die
+   Verteilung anfasst, ist frei; wer `staerke()` anfasst, nicht.
+
+26. **Die Welle hat einen Bogen.** `Wellen.anlauf()` bildet den Platz einer
+   Gruppe in der Reihe auf ihren Anteil am Eintrittsfenster ab — `pow(lage,
+   0.75)`. Vorher war das die Einheitsabbildung, und eine Welle fühlte sich
+   am Ende an wie am Anfang: ein Förderband, kein Angriff. Über 240 Wellen
+   gemessen liegen die Auftritte jetzt bei **23 / 35 / 42 %** über die drei
+   Drittel des Fensters, und die Welle setzt ein bis drei Sekunden später
+   ein.
+
+   Zwei Dinge, die dabei zu lernen waren. Erstens: das Budget bleibt
+   unberührt — `staerke()` kennt diese Funktion nicht, und der Kolonielauf
+   kommt zahlengleich heraus. Was sich ändert, ist wie viel gleichzeitig im
+   Kegel steht, und ob das noch spielbar ist, sagt der Wellenprüfer und nicht
+   die Rechnung (240 Wellen ohne Verlust). Zweitens: **der Bogen ist eine
+   Eigenschaft der Verteilung, nicht jeder einzelnen Welle.** Der erste Test
+   verlangte ihn von jeder und fiel bei Welle 22 mit 8 zu 8 um — Gruppen sind
+   verschieden groß, ein Schleierschwarm bringt fünf Tiere auf einen Schlag,
+   und wo der landet, entscheidet der Wurf. Sechs von 240 Wellen fallen
+   daneben, und das ist gewollt: ein Bogen, den jede Welle exakt gleich
+   trägt, wäre wieder dasselbe Förderband mit anderer Steigung.
 
 ## Fuer den Laden
 

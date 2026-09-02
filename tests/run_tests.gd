@@ -66,6 +66,7 @@ const TESTS: PackedStringArray = [
     "_test_wellen_sind_reproduzierbar",
     "_test_wellen_bleiben_im_feld",
     "_test_wellen_zeiten_sortiert",
+    "_test_die_welle_hat_einen_bogen",
     "_test_leitwesen_tritt_zuletzt_ein",
     "_test_wellen_dauer_im_rahmen",
     "_test_wellen_treffen_ihr_budget",
@@ -661,6 +662,101 @@ func _test_wellen_bleiben_im_feld() -> bool:
             if art < 0 or art >= Arten.zahl():
                 return _melde(false, "Welle %d nennt Art %d" % [n, art])
     return true
+
+
+## Die Welle hat einen Bogen: hinten dichter als vorn.
+##
+## Vorher waren die Auftritte gleichmaessig ueber das Fenster verteilt - eine
+## Welle fuehlte sich am Ende genauso an wie am Anfang. `Wellen.anlauf()`
+## schiebt sie nach hinten und verdichtet dabei.
+##
+## Geprueft wird dreierlei, und jedes haelt eine Eigenschaft fest, ohne die
+## der Bogen etwas kaputt macht:
+##
+##   1. **Die Kurve bleibt eine Kurve** - streng steigend, von 0 nach 1. Faellt
+##      sie irgendwo, waeren die Auftritte nicht mehr sortiert, und
+##      `_test_wellen_zeiten_sortiert` haette recht damit, das zu melden.
+##   2. **Sie steigt wirklich an**, sonst waere die Aenderung nur ein Kommentar.
+##   3. **Vorne steht die Welle nicht leer.** Ein Bogen, der das erste Drittel
+##      raeumt, ist kein Bogen, sondern eine Pause mit angehaengtem Ansturm -
+##      und der Spieler haelt die ersten Sekunden fuer einen Fehler.
+func _test_die_welle_hat_einen_bogen() -> bool:
+    if not _melde(absf(Wellen.anlauf(0.0)) < 0.0001
+            and absf(Wellen.anlauf(1.0) - 1.0) < 0.0001,
+            "der Anlauf muss von 0 nach 1 laufen"):
+        return false
+
+    var vorher := -1.0
+    for i in range(0, 101):
+        var w := Wellen.anlauf(float(i) / 100.0)
+        if not _melde(w > vorher,
+                "der Anlauf faellt bei %.2f" % (float(i) / 100.0)):
+            return false
+        vorher = w
+
+    # Er schiebt nach hinten: die Mitte der Reihe faellt hinter die Mitte der
+    # Zeit. Ohne das waere die Verteilung wieder gleichmaessig.
+    if not _melde(Wellen.anlauf(0.5) > 0.55,
+            "der Anlauf verdichtet nicht: Mitte liegt bei %.3f"
+            % Wellen.anlauf(0.5)):
+        return false
+
+    # **Und jetzt an echten Wellen - aber als Verteilung, nicht je Welle.**
+    #
+    # Hier stand zuerst "jede gepruefte Welle muss hinten schwerer sein als
+    # vorn", und Welle 22 meldete 8 zu 8. Das war kein Fehler im Bogen,
+    # sondern der falsche Anspruch: Gruppen sind verschieden gross, ein
+    # Schleierschwarm bringt bis zu fuenf Tiere auf einen Schlag, und wo der
+    # landet, entscheidet der Wurf. Gemessen ueber alle 240 Wellen liegt die
+    # Verteilung bei 23 / 35 / 42 Prozent - also genau auf der Kurve -, und
+    # nur sechs Wellen fallen daneben.
+    #
+    # Dass einzelne Wellen ausscheren, ist ausserdem gewollt. Ein Bogen, den
+    # jede Welle exakt gleich traegt, waere wieder dasselbe Foerderband, nur
+    # mit anderer Steigung.
+    var vorn := 0.0
+    var hinten := 0.0
+    var ohne := 0
+    var geprueft := 0
+    for n in range(1, Graben.ZYKLUS * 3 + 1):
+        var liste := Wellen.auftritte(n)
+        if liste.size() < 12:
+            continue
+        var breite := Wellen.fenster(n)
+        var drittel := [0, 0, 0]
+        for e in liste:
+            var t: float = float(e[&"zeit"]) / breite
+            drittel[clampi(int(t * 3.0), 0, 2)] += 1
+        var ganz := float(liste.size())
+        vorn += float(drittel[0]) / ganz
+        hinten += float(drittel[2]) / ganz
+        if drittel[2] <= drittel[0]:
+            ohne += 1
+        # Keine einzelne Welle darf den Bogen umdrehen. Ein Ansturm zu
+        # Beginn, der dann abflaut, ist kein Bogen mit Streuung, sondern ein
+        # Bogen rueckwaerts - und der liest sich als Fehler.
+        if not _melde(float(drittel[0]) <= float(drittel[2]) * 1.5 + 1.0,
+                "Welle %d laeuft rueckwaerts: %d vorn gegen %d hinten"
+                % [n, drittel[0], drittel[2]]):
+            return false
+        geprueft += 1
+
+    if not _melde(geprueft > 200, "zu wenige Wellen geprueft: %d" % geprueft):
+        return false
+    var g := float(geprueft)
+    if not _melde(hinten / g > vorn / g * 1.4,
+            "im Mittel kein Bogen: %.1f %% vorn, %.1f %% hinten"
+            % [vorn / g * 100.0, hinten / g * 100.0]):
+        return false
+    # Und vorn bleibt etwas stehen: eine leere erste Phase ist eine Pause mit
+    # angehaengtem Ansturm, kein Anlauf.
+    if not _melde(vorn / g > 0.15,
+            "die Welle faengt zu leer an: %.1f %% im ersten Drittel"
+            % (vorn / g * 100.0)):
+        return false
+    return _melde(ohne < geprueft / 20,
+        "%d von %d Wellen ohne Bogen - das ist keine Streuung mehr"
+        % [ohne, geprueft])
 
 
 ## Das Leitwesen tritt als letztes ein.

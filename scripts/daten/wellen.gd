@@ -354,6 +354,37 @@ static func fenster(nummer: int) -> float:
     return minf(FENSTER_MAX, FENSTER_GRUND + FENSTER_ZUWACHS * (nummer - 1))
 
 
+## Wo eine Gruppe in der Zeit landet, gemessen an ihrem Platz in der Reihe.
+##
+## **Vorher war das die Einheitsabbildung**, also gleiche Abstaende vom ersten
+## bis zum letzten Auftritt. Eine Welle fuehlte sich damit am Ende genauso an
+## wie am Anfang: ein Foerderband, kein Angriff. Wellen sind aber das, was
+## dieses Spiel dreissig Sekunden lang zeigt, und ein Foerderband hat keinen
+## Bogen.
+##
+## `lage` laeuft von 0 bis 1 (erste bis letzte Gruppe), heraus kommt der
+## Anteil des Eintrittsfensters. `pow` mit einem Exponenten **unter** eins
+## schiebt alles nach hinten und verdichtet dabei: die Dichte je Zeit ist
+## `lage^(1-ANSTIEG) / ANSTIEG`, waechst also ueber die Welle. Bei 0.75
+## kommen im letzten Drittel rund anderthalbmal so viele Gruppen an wie im
+## ersten - spuerbar, ohne dass die Welle vorne leer steht.
+##
+## **Am Budget aendert das nichts.** Es ist dieselbe Menge Tier in derselben
+## Zeit, nur anders verteilt; `staerke()` sieht diese Funktion nicht. Was sich
+## sehr wohl aendert, ist wieviel davon gleichzeitig im Kegel steht - und
+## genau das ist der Punkt. Ob es dabei spielbar bleibt, sagt nicht die
+## Rechnung, sondern der Wellenpruefer.
+##
+## Die Ordnung bleibt erhalten: `anlauf()` steigt streng monoton, und das
+## Wackeln von 0.18 bis 0.82 ist kleiner als ein ganzer Platz. Deshalb sind
+## die Auftritte weiter nach Zeit sortiert.
+const ANSTIEG := 0.75
+
+
+static func anlauf(lage: float) -> float:
+    return pow(clampf(lage, 0.0, 1.0), ANSTIEG)
+
+
 ## Ungefaehre Gesamtdauer der Welle in Sekunden. Fuer Anzeige und Balance.
 static func dauer(nummer: int) -> float:
     return fenster(nummer) + NACHLAUF
@@ -420,13 +451,15 @@ static func auftritte(nummer: int) -> Array[Dictionary]:
         gruppen.append(allein)
 
     var breite := fenster(nummer)
-    var schritt := breite / maxf(1.0, float(gruppen.size()))
     var liste: Array[Dictionary] = []
 
     for g in gruppen.size():
-        # Gleichmaessig verteilt, mit begrenztem Wackeln. Der Rhythmus bleibt
-        # dadurch lesbar, ohne mechanisch zu wirken.
-        var zeit := schritt * (float(g) + rng.randf_range(0.18, 0.82))
+        # Der Reihe nach, mit begrenztem Wackeln - der Rhythmus bleibt
+        # dadurch lesbar, ohne mechanisch zu wirken. Der Platz in der Reihe
+        # ist die Rohlage; wohin sie in der Zeit faellt, sagt `anlauf()`.
+        var lage := (float(g) + rng.randf_range(0.18, 0.82)) \
+            / maxf(1.0, float(gruppen.size()))
+        var zeit := breite * anlauf(lage)
         var mitte := rng.randf_range(-Graben.EINTRITT_SEITE, Graben.EINTRITT_SEITE)
         var gruppe: Array = gruppen[g]
 
