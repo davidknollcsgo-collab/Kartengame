@@ -16,6 +16,7 @@ const RAND := 18.0
 const KOPF := 96.0
 const FUSS := 78.0
 const BAND := 116.0
+const BAND_TAG := 68.0
 const LUECKE := 10.0
 
 const GRUND := Color(0.020, 0.052, 0.070)
@@ -360,8 +361,14 @@ func _zeichne() -> void:
             12, LEISE)
         oben += 26.0
     var verfuegbar := hoehe - oben - FUSS - 24.0
-    var passt := BAND
-    var gebraucht := float(anzahl) * (BAND + LUECKE)
+    # **Nicht jede Liste braucht dieselbe Bandhoehe.** 116 Pixel sind das
+    # Mass einer Kammerkarte: Sinnbild, Name, Satz, Wirkung, Stufenzeile -
+    # fuenf Zeilen. Ein Tagesziel hat drei kurze, und in derselben Hoehe
+    # gezeichnet stand darunter jedesmal ein Handbreit Nichts. Vier Ziele
+    # verbrauchten so zweihundert Pixel, die Kalender und Rangliste
+    # gebrauchen koennen.
+    var passt := BAND_TAG if _sicht == Sicht.TAG else BAND
+    var gebraucht := float(anzahl) * (passt + LUECKE)
     if gebraucht > verfuegbar:
         passt = verfuegbar / float(anzahl) - LUECKE
         gebraucht = verfuegbar
@@ -578,28 +585,36 @@ func _tagesziel(kasten: Rect2, index: int, stand: KolonieStand) -> void:
     _flaeche.draw_rect(Rect2(kasten.position, Vector2(3.0, kasten.size.y)),
         Color(farbe.r, farbe.g, farbe.b, 0.85))
 
+    # Drei Zeilen dicht uebereinander statt drei ueber ein halbes Blatt
+    # verteilt: Name, Balken, Zaehler. Der Lohn steht rechts daneben, weil er
+    # zum Ziel gehoert und nicht darunter.
     var links := kasten.position.x + 20.0
-    _text(Vector2(links, kasten.position.y + 32.0), Tagesziel.name_von(index), 16,
-        LEISE if geholt else SCHRIFT)
-
     var soll := Tagesziel.menge(index)
     var ist: int = stand.ziel_fortschritt[index]
-    var balken := Rect2(links, kasten.end.y - 30.0, kasten.size.x - 150.0, 5.0)
+    var zahl := "%d / %d" % [ist, soll]
+    var zahl_breit := _schrift.get_string_size(zahl,
+        HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 12.0
+    var rechts := kasten.end.x - 14.0
+
+    _text(Vector2(links, kasten.position.y + 26.0), Tagesziel.name_von(index), 16,
+        LEISE if geholt else SCHRIFT)
+
+    var balken := Rect2(links, kasten.end.y - 22.0,
+        kasten.size.x - 150.0 - zahl_breit, 5.0)
     _flaeche.draw_rect(balken, Color(0.0, 0.0, 0.0, 0.45))
     _flaeche.draw_rect(Rect2(balken.position,
         Vector2(balken.size.x * clampf(float(ist) / float(soll), 0.0, 1.0),
         balken.size.y)), farbe)
-    _text(Vector2(links, kasten.end.y - 8.0), "%d / %d" % [ist, soll], 12, LEISE)
+    _text(Vector2(balken.end.x + 12.0, kasten.end.y - 15.0), zahl, 12, LEISE)
 
-    var rechts := kasten.end.x - 14.0
     if geholt:
         _text(Vector2(rechts, kasten.get_center().y + 5.0), "collected", 14, LEISE,
             false, true)
     elif erfuellt:
-        _text(Vector2(rechts, kasten.get_center().y - 4.0), "collect", 13, NAEHR,
+        _text(Vector2(rechts, kasten.get_center().y - 3.0), "collect", 12, NAEHR,
             false, true)
-        _text(Vector2(rechts, kasten.get_center().y + 18.0),
-            "+%d" % Tagesziel.lohn(index, stand.hoechste_welle), 17, NAEHR,
+        _text(Vector2(rechts, kasten.get_center().y + 17.0),
+            "+%d" % Tagesziel.lohn(index, stand.hoechste_welle), 16, NAEHR,
             false, true)
     else:
         _text(Vector2(rechts, kasten.get_center().y + 5.0),
@@ -1426,9 +1441,19 @@ func _tagesfuss(breite: float, y: float, stand: KolonieStand) -> void:
             "best %s  ·  chain %d" % [Zahl.kurz(stand.bestpunkte),
                 stand.beste_kette], 13, NAEHR, false, true)
 
+    # **Eine Ueberschrift, damit der Reiter kein Sammelfach ist.** Was
+    # darunter steht - Lautstaerke, Lizenzen, Neuanfang - hat mit dem Tag
+    # nichts zu tun, und ohne Trennstrich las sich der Neuanfang wie der
+    # letzte Eintrag einer Tagesliste. Ein Knopf, der alles loescht, darf
+    # nicht aussehen, als gehoere er zu den Zielen darueber.
+    var trenn := y + 44.0
+    _flaeche.draw_line(Vector2(RAND, trenn), Vector2(breite - RAND, trenn),
+        Color(0.24, 0.44, 0.50, 0.30), 1.0)
+    _text(Vector2(RAND, trenn + 18.0), "SETTINGS", 13, LEISE)
+
     # Lautstaerke in Schritten statt als Schieber: einen Schieber trifft man
     # mit dem Daumen schlecht, zwei Knoepfe immer.
-    var zeile := y + 44.0
+    var zeile := y + 70.0
     _text(Vector2(RAND, zeile + 24.0), "Sound  %d%%" % int(round(Klang.laut * 100.0)),
         15, LEISE)
     _leiser = Rect2(breite - RAND - 96.0, zeile, 44.0, 34.0)
@@ -1441,13 +1466,13 @@ func _tagesfuss(breite: float, y: float, stand: KolonieStand) -> void:
 
     # Lizenzen sind Pflicht, nicht Kuer: Godot steht unter MIT, die Schriften
     # unter SIL OFL, und beide verlangen, dass der Text mit ausgeliefert wird.
-    var lz := zeile + 46.0
+    var lz := zeile + 42.0
     _text(Vector2(RAND, lz + 16.0),
         "Godot Engine (MIT) - fonts SIL OFL 1.1", 12, Color(0.40, 0.52, 0.58))
     _text(Vector2(RAND, lz + 34.0),
         "All graphics and sound generated by this game itself", 12, Color(0.40, 0.52, 0.58))
 
-    _loeschen = Rect2(RAND, lz + 46.0, breite - RAND * 2.0, 34.0)
+    _loeschen = Rect2(RAND, lz + 40.0, breite - RAND * 2.0, 34.0)
     var warnfarbe := Color(1.0, 0.52, 0.44) if _loeschen_sicher else Color(0.44, 0.36, 0.36)
     _flaeche.draw_rect(_loeschen, Color(0.10, 0.05, 0.05, 0.7))
     _flaeche.draw_rect(_loeschen, Color(warnfarbe.r, warnfarbe.g, warnfarbe.b, 0.4),
