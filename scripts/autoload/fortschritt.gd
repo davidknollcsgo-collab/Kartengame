@@ -26,6 +26,7 @@ func _ready() -> void:
     process_mode = Node.PROCESS_MODE_ALWAYS
     stand = Speicher.lies()
     tag_gewechselt = pruefe_tag()
+    uebernimm_einstellungen()
 
 
 func _process(delta: float) -> void:
@@ -118,5 +119,27 @@ func merke_welle(nummer: int) -> void:
 func von_vorn() -> void:
     stand = KolonieStand.new()
     stand.zuletzt_gesehen = Time.get_unix_time_from_system()
+    uebernimm_einstellungen()
     stand_geaendert.emit()
+    sichere()
+
+
+## Traegt Lautstaerke und Beben aus dem Stand in die beiden Autoloads, die
+## sie tatsaechlich benutzen.
+##
+## Der Stand ist die eine Quelle - `Klang.laut` und `Tastsinn.an` sind nur
+## das, womit gerade gearbeitet wird. Sie stehen dort und nicht hier, weil
+## `klang.gd` in jedem Bild darauf schaut und ein Umweg ueber den Stand
+## sechzigmal je Sekunde ein Woerterbuch abfragen wuerde.
+func uebernimm_einstellungen() -> void:
+    Klang.laut = stand.laut
+    Tastsinn.an = stand.beben
+
+
+## Der Weg zurueck: was der Spieler am Regler geaendert hat, gehoert in den
+## Stand und auf die Platte. Ohne diesen Weg ueberlebte keine Einstellung
+## den naechsten Start - genau das war der Fehler.
+func merke_einstellungen() -> void:
+    stand.laut = Klang.laut
+    stand.beben = Tastsinn.an
     sichere()

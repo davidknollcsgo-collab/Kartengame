@@ -580,6 +580,7 @@ func stosslicht() -> bool:
     _waechter.feuer()
     _funken.platzen(Graben.WAECHTER, Color(0.72, 0.98, 1.0), 46.0)
     Klang.spiele(Klang.Ton.WELLE, 0.7, 0.9)
+    Tastsinn.gib(Tastsinn.Art.STOSS)
     _einstieg_weiter(3)
     return true
 
@@ -808,6 +809,7 @@ func _raeume_auf() -> void:
                 _zeitlupe = ZEITLUPE_DAUER
                 _schuetteln = maxf(_schuetteln, 1.1)
                 _hud.blitze(Color(0.62, 0.98, 0.86), 0.7)
+                Tastsinn.gib(Tastsinn.Art.LEITWESEN)
         elif r.ort.y >= Graben.BRUT_Y - 0.5:
             r.lebendig = false
             _offen -= 1
@@ -823,6 +825,9 @@ func _raeume_auf() -> void:
             _hud.setze_kette(0, 0.0)
             _folge = 0.0
             Klang.spiele(Klang.Ton.BRUT_FAELLT, 1.0, 0.85)
+            # Der eine Augenblick, in dem das Spiel wehtun soll - und der
+            # einzige, den man auch dann mitbekommt, wenn der Ton aus ist.
+            Tastsinn.gib(Tastsinn.Art.TREFFER)
             # Der Waechter zuckt, und das Bild bekommt einen roten Rand. Wer
             # den Daumen auf der unteren Bildhaelfte hat, sieht von der Brut
             # nichts - dann ist der Rand die einzige Nachricht, die ankommt.
@@ -965,6 +970,7 @@ func _welle_geschafft() -> void:
         return
     if welle_in_sitzung >= Graben.WELLEN_JE_SITZUNG:
         lage = Lage.SITZUNG_ENDE
+        Tastsinn.gib(Tastsinn.Art.ENDE)
         _einstieg_weiter(8)
         _hud.zeige_sitzungsende(welle_nummer, verdient, erlegt, punkte,
             _bestmarke_setzen())
@@ -975,6 +981,7 @@ func _welle_geschafft() -> void:
 func _verloren() -> void:
     lage = Lage.VERLOREN
     _schuetteln = 1.6
+    Tastsinn.gib(Tastsinn.Art.ENDE)
     _hud.zeige_ende(false, welle_nummer, verdient, erlegt, punkte,
         _bestmarke_setzen())
 

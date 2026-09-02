@@ -73,6 +73,17 @@ var stroemung_offen := Tagesstroemung.JE_TAG
 ## waehrend gespielt wird - nicht als Textwand davor.
 var einstieg := 0
 
+## --- Was der Spieler eingestellt hat ---
+##
+## **Die Lautstaerke stand bisher nur in `Klang.laut` und nirgends sonst.**
+## Wer den Ton ausschaltete, hatte ihn beim naechsten Start wieder auf 70 %
+## - eine Stummschaltung, die einen Neustart nicht uebersteht, ist
+## unangenehmer als gar keine, weil man sie fuer kaputt haelt und nicht fuer
+## nicht vorhanden. Beide Einstellungen gehoeren deshalb in den Stand und
+## werden mitgesichert.
+var laut := 0.7
+var beben := true
+
 
 func _init() -> void:
     stufen.resize(Kammern.zahl())
@@ -492,6 +503,8 @@ func zu_wort() -> Dictionary:
         &"kalender": kalender,
         &"kalender_tag": kalender_tag,
         &"einstieg": einstieg,
+        &"laut": laut,
+        &"beben": beben,
     }
 
 
@@ -543,6 +556,8 @@ static func aus_wort(wort: Dictionary) -> KolonieStand:
     s.kalender = clampi(int(wort.get(&"kalender", 0)), 0, Zuchtkalender.TAGE)
     s.kalender_tag = maxi(0, int(wort.get(&"kalender_tag", 0)))
     s.einstieg = maxi(0, int(wort.get(&"einstieg", 0)))
+    s.laut = clampf(float(wort.get(&"laut", 0.7)), 0.0, 1.0)
+    s.beben = bool(wort.get(&"beben", true))
     var roh_f: Array = wort.get(&"ziel_fortschritt", [])
     for i in mini(roh_f.size(), s.ziel_fortschritt.size()):
         s.ziel_fortschritt[i] = clampi(int(roh_f[i]), 0, Tagesziel.menge(i))

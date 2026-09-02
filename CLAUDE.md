@@ -290,6 +290,25 @@ unter einer strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
    Blende braucht **Überhang**: Material von hinter dem Ende, sonst schließt
    sie nichts.
 
+21. **Eine Einstellung, die den Neustart nicht übersteht, ist schlimmer als
+   keine.** Die Lautstärke stand nur in `Klang.laut` und wurde nirgends
+   gesichert — wer den Ton ausschaltete, hatte ihn beim nächsten Start wieder
+   auf 70 %. Beide Regler liegen jetzt im `KolonieStand` (`laut`, `beben`);
+   `Fortschritt.uebernimm_einstellungen()` trägt sie beim Start in die
+   Autoloads, `merke_einstellungen()` den Weg zurück. Und der Rundlauf-Test
+   vergleicht seit demselben Commit **das ganze Wort** statt einer von Hand
+   gepflegten Feldliste: ein Feld, das man zu schreiben vergisst, fällt einer
+   Liste nicht auf, die man ebenso vergisst.
+
+22. **Das Beben ist sparsam und abschaltbar.** `Tastsinn` (Autoload) bebt nur
+   bei vier Ereignissen — Treffer an der Brut, gefallenes Leitwesen,
+   Stoßlicht, Ende der Sitzung — mit einer Sperre von 0,14 s, damit
+   gleichzeitig Fallendes nicht zu einem Brummen verschmilzt. Ein Beben je
+   Treffer wäre in Welle 55 Dauerbrummen und Akkufraß. Der Android-Export
+   braucht dafür `permissions/vibrate=true` in **beiden** Ladeständen; ohne
+   den Eintrag bleibt `Input.vibrate_handheld()` auf dem Gerät folgenlos,
+   und zwar stumm, ohne Fehler und ohne Hinweis.
+
 ## Fuer den Laden
 
 `STORE.md` ist die Abgabemappe: was der Bauauftrag liefert, was nur von Hand

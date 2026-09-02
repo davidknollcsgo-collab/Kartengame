@@ -1125,6 +1125,10 @@ func _test_stand_uebersteht_das_sichern() -> bool:
     stand.kalender = 3
     stand.kalender_tag = 20260828
     stand.einstieg = 4
+    stand.laut = 0.4
+    stand.beben = false
+    stand.bestpunkte = 91234
+    stand.beste_kette = 17
     stand.ziel_fortschritt[0] = 2
     stand.ziel_geholt[0] = 1
     stand.merke_art(Arten.Art.SCHILDKORALLE)
@@ -1146,6 +1150,10 @@ func _test_stand_uebersteht_das_sichern() -> bool:
         "Kalender": [stand.kalender, zurueck.kalender],
         "Kalendertag": [stand.kalender_tag, zurueck.kalender_tag],
         "Einstieg": [stand.einstieg, zurueck.einstieg],
+        "Lautstaerke": [stand.laut, zurueck.laut],
+        "Beben": [stand.beben, zurueck.beben],
+        "Bestpunkte": [stand.bestpunkte, zurueck.bestpunkte],
+        "Beste Kette": [stand.beste_kette, zurueck.beste_kette],
         "Zielfortschritt": [Array(stand.ziel_fortschritt), Array(zurueck.ziel_fortschritt)],
         "Zielgeholt": [Array(stand.ziel_geholt), Array(zurueck.ziel_geholt)],
         "Gesehene Arten": [Array(stand.gesehen), Array(zurueck.gesehen)],
@@ -1157,6 +1165,25 @@ func _test_stand_uebersteht_das_sichern() -> bool:
         if not _melde(werte[0] == werte[1],
                 "%s ueberlebt das Sichern nicht: %s statt %s"
                 % [was, str(werte[1]), str(werte[0])]):
+            return false
+
+    # **Und dasselbe noch einmal ohne Liste.** Die Paare oben stehen von Hand
+    # da, damit ein Fehler sagt, welches Feld gefallen ist. Genau deshalb
+    # sind sie unvollstaendig: `laut`, `beben`, `bestpunkte` und
+    # `beste_kette` kamen spaeter dazu und standen jahrelang nicht darin -
+    # ein Feld, das man zu schreiben vergisst, faellt einer Liste nicht auf,
+    # die man ebenso vergisst. Ein Wort, das durch `aus_wort()` und
+    # `zu_wort()` laeuft, muss dasselbe Wort sein; das prueft alle Felder,
+    # auch die von morgen.
+    var hin := stand.zu_wort()
+    var her := KolonieStand.aus_wort(hin).zu_wort()
+    for schluessel in hin:
+        if not _melde(her.has(schluessel),
+                "der Schluessel %s faellt beim Lesen weg" % schluessel):
+            return false
+        if not _melde(str(hin[schluessel]) == str(her[schluessel]),
+                "%s ueberlebt das Sichern nicht: %s statt %s"
+                % [schluessel, str(her[schluessel]), str(hin[schluessel])]):
             return false
 
     # Und ein veraenderter Stand darf keine unmoeglichen Werte einspeisen.
