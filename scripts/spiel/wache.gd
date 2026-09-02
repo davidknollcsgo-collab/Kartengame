@@ -56,10 +56,15 @@ const SCHUETTELN_WEITE := 3.4
 ## ein Viertel des Bildes leer.
 ##
 ## Die Kamera wird deshalb nicht auf den Ursprung gesetzt, sondern so, dass
-## dieser Abstand stimmt - egal wie hoch das Bild ist. Was auf einem langen
-## Telefon dazukommt, kommt dann **oben** dazu, und dort gehoert es auch hin:
-## mehr Graben, aus dem die Raeuber kommen.
-const UNTERKANTE := 154.0
+## dieser Abstand stimmt - egal wie hoch das Bild ist.
+##
+## **Der Zusatz faellt aber nach unten und nicht nach oben.** Hier stand
+## einmal das Gegenteil: "was dazukommt, kommt oben dazu, und dort gehoert es
+## auch hin - mehr Graben, aus dem die Raeuber kommen". Das war falsch. Oben
+## liegt bei y = -760 der Eintrittsrand, und der ist bei 1280 Einheiten
+## gerade eben ausserhalb des Bildes. Ein Schuss bei 720x1600 zeigte
+## vierzehn Raeuber nebeneinander auf einer Reihe - die Linie, auf der sie
+## erscheinen. Die Regel steht jetzt in `Graben.kamera_y()` und deckelt das.
 
 @onready var _hud: CanvasLayer = $Hud
 @onready var _koloniebild: CanvasLayer = $Koloniebild
@@ -444,12 +449,10 @@ func _zeitlupe_fuehren(delta: float) -> void:
     Engine.time_scale = lerpf(1.0, ZEITLUPE_TIEFE, pow(t, 0.6))
 
 
-## Setzt die Kamera so, dass die Brut immer `UNTERKANTE` ueber dem unteren
-## Bildrand steht. Beim Entwurfsbild von 1280 Einheiten Hoehe kommt dabei
-## genau der Ursprung heraus - so, wie es vorher fest eingetragen war.
+## Setzt die Kamera. Die Regel selbst steht in `Graben.kamera_y()` - sie ist
+## reine Rechnung und wird dort geprueft.
 func _richte_kamera() -> void:
-    var hoehe := get_viewport_rect().size.y
-    _kamera.position.y = Graben.BRUT_Y + UNTERKANTE - hoehe * 0.5
+    _kamera.position.y = Graben.kamera_y(get_viewport_rect().size.y)
 
 
 func _process(delta: float) -> void:

@@ -37,6 +37,7 @@ const TESTS: PackedStringArray = [
     "_test_jede_brutlinie_tut_etwas",
     "_test_lehrpfad_zeigt_auf_alles",
     "_test_nischen_liegen_auf_den_ranken",
+    "_test_kamera_zeigt_den_eintritt_nie",
     "_test_jede_art_hat_ein_sinnbild",
     "_test_sichtbares_bleibt_englisch",
     "_test_spiegler_brennt_nur_im_randlicht",
@@ -65,6 +66,7 @@ const TESTS: PackedStringArray = [
     "_test_wellen_sind_reproduzierbar",
     "_test_wellen_bleiben_im_feld",
     "_test_wellen_zeiten_sortiert",
+    "_test_leitwesen_tritt_zuletzt_ein",
     "_test_wellen_dauer_im_rahmen",
     "_test_wellen_treffen_ihr_budget",
     "_test_zaehigkeit_steigt",
@@ -659,6 +661,44 @@ func _test_wellen_bleiben_im_feld() -> bool:
             if art < 0 or art >= Arten.zahl():
                 return _melde(false, "Welle %d nennt Art %d" % [n, art])
     return true
+
+
+## Das Leitwesen tritt als letztes ein.
+##
+## Die Zeiten werden in Gruppenreihenfolge vergeben, und angehaengt wurde das
+## Leitwesen einmal als erstes - es bekam damit den fruehesten Schlitz. Eine
+## Welle, die mit ihrem groessten Tier anfaengt, hat keinen Bogen, sondern
+## ein Nachspiel: der Hoehepunkt eines ganzen Grabenabschnitts trat zuerst
+## ein, danach kam ein Rinnsal aus Kleinvieh.
+##
+## Geprueft ueber vier Umdrehungen, weil `LEITFOLGE` drei verschiedene
+## Leitwesen auf acht Abschnitte verteilt und `hat_leitwesen()` nur jede
+## zehnte Welle trifft.
+func _test_leitwesen_tritt_zuletzt_ein() -> bool:
+    var gesehen := 0
+    for nummer in range(Graben.WELLEN_JE_ABSCHNITT, Graben.ZYKLUS * 4 + 1,
+            Graben.WELLEN_JE_ABSCHNITT):
+        if not Wellen.hat_leitwesen(nummer):
+            continue
+        var liste := Wellen.auftritte(nummer)
+        if not _melde(not liste.is_empty(), "Welle %d ist leer" % nummer):
+            return false
+        var letzte: Dictionary = liste[liste.size() - 1]
+        if not _melde(Arten.ist_leitwesen(int(letzte[&"art"])),
+                "Welle %d: zuletzt kommt %d und nicht das Leitwesen"
+                % [nummer, int(letzte[&"art"])]):
+            return false
+        # Und nur einmal - sonst waere der Hoehepunkt zwei Hoehepunkte.
+        var zahl := 0
+        for e in liste:
+            if Arten.ist_leitwesen(int(e[&"art"])):
+                zahl += 1
+        if not _melde(zahl == 1,
+                "Welle %d traegt %d Leitwesen" % [nummer, zahl]):
+            return false
+        gesehen += 1
+    return _melde(gesehen >= 30,
+        "zu wenige Leitwellen geprueft: %d" % gesehen)
 
 
 func _test_wellen_zeiten_sortiert() -> bool:
@@ -2114,6 +2154,42 @@ func _abtastung(strom: AudioStreamWAV) -> PackedFloat32Array:
     for i in anzahl:
         w[i] = float(daten.decode_s16(i * 2)) / 32767.0
     return w
+
+
+## Die Kamera zeigt den Eintrittsrand auf keinem Geraet.
+##
+## Das Spiel ist auf 720x1280 entworfen; `aspect="expand"` zeigt auf hoeheren
+## Bildern mehr Welt, und `Graben.EINTRITT_Y` liegt nur 120 Einheiten
+## ausserhalb des Entwurfsbildes. Auf einem 20:9-Telefon - also auf den
+## meisten - lag er im Bild, und jeder Raeuber erschien sichtbar aus dem
+## Nichts auf einer Linie.
+##
+## Geprueft wird ueber die ganze Spanne, die auf einem Telefon vorkommt: von
+## 4:3 (ein Tablet im Hochformat) bis 21:9. Und zwei Dinge muessen gelten -
+## der Eintritt bleibt draussen, und auf dem Entwurfsbild aendert sich
+## nichts, sonst waere der Deckel ein neuer Bildausschnitt und keine
+## Absicherung.
+func _test_kamera_zeigt_den_eintritt_nie() -> bool:
+    if not _melde(absf(Graben.kamera_y(1280.0) - 0.0) < 0.001,
+            "auf dem Entwurfsbild muss die Kamera im Ursprung stehen, nicht bei %.1f"
+            % Graben.kamera_y(1280.0)):
+        return false
+
+    for hoehe in range(960, 1740, 20):
+        var h := float(hoehe)
+        var y := Graben.kamera_y(h)
+        var oben := y - h * 0.5
+        if not _melde(oben > Graben.EINTRITT_Y,
+                "bei %d Einheiten beginnt das Bild bei %.1f und zeigt den "
+                % [hoehe, oben] + "Eintritt bei %.1f" % Graben.EINTRITT_Y):
+            return false
+        # Und die Brut darf nie unter den unteren Rand rutschen - sonst waere
+        # der Deckel ein zweiter Fehler statt der Behebung des ersten.
+        var unten := y + h * 0.5
+        if not _melde(unten > Graben.BRUT_Y + Graben.UNTERKANTE * 0.5,
+                "bei %d Einheiten steht die Brut zu tief" % hoehe):
+            return false
+    return true
 
 
 ## Der Lehrpfad wird von der Abschnittstafel nicht verdeckt.

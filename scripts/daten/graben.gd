@@ -117,6 +117,44 @@ static func takt(delta: float) -> float:
 ## Raeuber treten weit oberhalb des Bildes ein und sinken in den Kegel hinein.
 ## Der Abstand ist Absicht: die ersten Sekunden jeder Bahn sieht man nur eine
 ## Bewegung im Dunkeln, nicht das Tier.
+## Wie hoch die Brut ueber dem unteren Bildrand steht.
+const UNTERKANTE := 154.0
+
+## Wieviel Welt oberhalb des Eintrittsrandes verborgen bleiben muss. Der
+## groesste Raeuberradius liegt bei 54; mit Rand darueber taucht auch kein
+## Koerperteil vor der Zeit auf.
+const KAMERA_RESERVE := 70.0
+
+
+## Wo die Kamera stehen muss, damit ein Bild von `hoehe` Welteinheiten richtig
+## sitzt.
+##
+## Zwei Bedingungen, und die zweite hat Vorrang:
+##
+##   1. Die Brut steht `UNTERKANTE` ueber dem unteren Rand. Beim Entwurfsbild
+##      von 1280 Einheiten kommt dabei genau der Ursprung heraus.
+##   2. **Der Eintrittsrand bleibt ausserhalb des Bildes.** Das Spiel ist auf
+##      720x1280 entworfen, `aspect="expand"` zeigt auf hoeheren Geraeten aber
+##      mehr Welt - und die meisten Telefone sind heute 20:9 und nicht 16:9.
+##      Bei 1280 Einheiten beginnt das Bild bei y = -640, bei 1600 schon bei
+##      -960. `EINTRITT_Y` liegt bei -760 und damit **genau dazwischen**: auf
+##      dem Entwurfsgeraet unsichtbar, auf einem heutigen Telefon eine Linie
+##      zweihundert Pixel unter der Oberkante, auf der jeder Raeuber sichtbar
+##      aus dem Nichts erscheint. Ein Schuss bei 720x1600 zeigte vierzehn
+##      Tiere nebeneinander auf einer Reihe, wo bei 720x1280 drei verstreut
+##      standen.
+##
+## Der Deckel schiebt die Kamera nach unten, statt den Eintritt nach oben zu
+## ziehen: `EINTRITT_Y` steht in `Schlund.bahn()` und bestimmt damit die
+## Anmarschzeit jedes Raeubers - wer daran dreht, aendert das Spiel und nicht
+## nur das Bild. So bleibt der Ausschnitt oberhalb der Brut auf jedem Geraet
+## derselbe, und die zusaetzliche Hoehe faellt nach unten in den Grabengrund,
+## wo ohnehin Kulisse steht.
+static func kamera_y(hoehe: float) -> float:
+    return maxf(BRUT_Y + UNTERKANTE - hoehe * 0.5,
+        EINTRITT_Y + KAMERA_RESERVE + hoehe * 0.5)
+
+
 const EINTRITT_Y := -760.0
 const EINTRITT_SEITE := 286.0
 

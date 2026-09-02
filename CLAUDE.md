@@ -309,6 +309,25 @@ unter einer strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
    den Eintrag bleibt `Input.vibrate_handheld()` auf dem Gerät folgenlos,
    und zwar stumm, ohne Fehler und ohne Hinweis.
 
+23. **Der Eintrittsrand darf auf keinem Gerät ins Bild.** Der Entwurf steht auf
+   720×1280, `aspect="expand"` zeigt auf höheren Geräten aber mehr Welt — und
+   die meisten Telefone sind heute 20:9. Bei 1280 Einheiten beginnt das Bild
+   bei y = −640, bei 1600 schon bei −960; `Graben.EINTRITT_Y` liegt bei −760
+   und damit **genau dazwischen**. Ein Schuss bei 720×1600 zeigte vierzehn
+   Räuber nebeneinander auf einer Reihe, wo bei 720×1280 drei verstreut
+   standen: die Linie, auf der sie erscheinen. `Graben.kamera_y()` deckelt das
+   und schiebt die Kamera dafür nach **unten** — an `EINTRITT_Y` zu drehen
+   hieße, die Anmarschzeit jedes Räubers zu ändern, also das Spiel und nicht
+   nur das Bild. `_test_kamera_zeigt_den_eintritt_nie` prüft die Spanne von
+   4:3 bis 21:9. **Jede neue Optik gehört bei 720×1600 nachgesehen, nicht nur
+   bei 720×1280.**
+
+24. **Das Leitwesen tritt zuletzt ein.** Die Auftrittszeiten werden in
+   Gruppenreihenfolge vergeben, und angehängt wurde das Leitwesen als erstes —
+   es bekam damit den frühesten Schlitz. Eine Welle, die mit ihrem größten Tier
+   anfängt, hat keinen Bogen, sondern ein Nachspiel.
+   `_test_leitwesen_tritt_zuletzt_ein` hält es fest.
+
 ## Fuer den Laden
 
 `STORE.md` ist die Abgabemappe: was der Bauauftrag liefert, was nur von Hand

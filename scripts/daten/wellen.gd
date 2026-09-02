@@ -376,18 +376,25 @@ static func auftritte(nummer: int) -> Array[Dictionary]:
     # und Spitzen, die niemand entworfen hat.
     var gruppen: Array[Array] = []
 
-    # Das Leitwesen zuerst, und aus demselben Budget. Es kommt also nicht
-    # obendrauf - die Welle wird nicht schwerer, sondern anders: ein Brocken
-    # statt eines Dutzends.
+    # Das Leitwesen zahlt aus demselben Budget. Es kommt also nicht obendrauf
+    # - die Welle wird nicht schwerer, sondern anders: ein Brocken statt
+    # eines Dutzends.
     # **Welches** Leitwesen, haengt am Abschnitt und nicht am Zufall - sonst
     # waere der Hoehepunkt eine Ueberraschung statt eines Ortes.
+    #
+    # **Es steht aber am Ende und nicht am Anfang.** Die Zeiten werden weiter
+    # unten in Gruppenreihenfolge vergeben; angehaengt wurde das Leitwesen
+    # bisher als erstes und bekam damit den fruehesten Schlitz. Der
+    # Hoehepunkt eines ganzen Grabenabschnitts trat also als Erster ein, und
+    # danach kam ein Rinnsal aus Kleinvieh. Eine Welle, die mit ihrem
+    # groessten Tier anfaengt, hat keinen Bogen - sie hat ein Nachspiel.
     var leit := Arten.leitwesen_fuer(Graben.abschnitt(nummer))
-    if hat_leitwesen(nummer) and leit >= 0:
+    var mit_leit := hat_leitwesen(nummer) and leit >= 0
+    var deckel := HOECHSTZAHL - 1 if mit_leit else HOECHSTZAHL
+    if mit_leit:
         budget -= aufwand_in(leit, nummer)
-        var allein: Array[int] = [leit]
-        gruppen.append(allein)
 
-    while budget > 0.0 and gruppen.size() < HOECHSTZAHL:
+    while budget > 0.0 and gruppen.size() < deckel:
         var index := moeglich[rng.randi_range(0, moeglich.size() - 1)]
         var anzahl := 1
         if index == Arten.Art.SCHLEIER:
@@ -407,6 +414,10 @@ static func auftritte(nummer: int) -> Array[Dictionary]:
         for _i in anzahl:
             gruppe.append(index)
         gruppen.append(gruppe)
+
+    if mit_leit:
+        var allein: Array[int] = [leit]
+        gruppen.append(allein)
 
     var breite := fenster(nummer)
     var schritt := breite / maxf(1.0, float(gruppen.size()))
