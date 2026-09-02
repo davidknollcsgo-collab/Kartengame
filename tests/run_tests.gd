@@ -2074,6 +2074,11 @@ const DEUTSCHE_WOERTER: PackedStringArray = [
 func _test_sichtbares_bleibt_englisch() -> bool:
     var dateien: PackedStringArray = [
         "res://scripts/ui/hud.gd", "res://scripts/ui/kolonie_schirm.gd",
+        # Der Rundumlauf faellt unter dieselbe Regel. Sein Entwurf kam
+        # auf Deutsch, und genau so hatte ich das Bedienbild auch
+        # geschrieben - "HUELLE", "WELLE", "PUNKTE". Der Waechter hat
+        # es nicht gemeldet, weil die Datei nicht in dieser Liste stand.
+        "res://scripts/ui/rund_hud.gd",
     ]
     var zeichenkette := RegEx.new()
     zeichenkette.compile('"[^"]*"')

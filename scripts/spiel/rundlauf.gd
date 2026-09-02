@@ -60,11 +60,27 @@ const BISS_SPERRE := 0.9
 ## Knoten steht in der Szene hinter allen anderen; was auf sein
 ## `draw` haengt, liegt vorn.
 @onready var _vorn: Node2D = $Vorn
+@onready var _hud: CanvasLayer = $Hud
 
 var welle_nummer := 1
 var huelle := 12
 var huelle_voll := 12
 var erlegt := 0
+
+## --- Was das HUD anzeigt ---
+##
+## Punkte und Kette wie im Schlund: die Kette zahlt einen Faktor auf Punkte
+## und **niemals** Naehrstoff (Zusage 16). Sie ist eine Bestmarke, keine
+## Waehrung - sonst haette wer gut faehrt eine andere Wirtschaft.
+var punkte := 0
+var kette := 0
+var kette_hoechste := 0
+var _kette_zeit := 0.0
+
+## Das Stosslicht, wie im Schlund: eine zweite Handlung, die sich auflaedt.
+var _stoss_kuehl := 0.0
+var _stoss_weit := -1.0
+var _stoss_nr := 0
 
 var _ort := Vector2.ZERO
 var _fahrt := Vector2.ZERO
@@ -94,6 +110,7 @@ var _neigung := 0.0
 func _ready() -> void:
     _lies_argumente()
     _vorn.draw.connect(_zeichne_vorn)
+    _hud.lauf = self
     _kamera.position = Vector2.ZERO
     _kegel.halbwinkel = Graben.HALBWINKEL
     _kegel.reichweite = Graben.REICHWEITE
@@ -136,7 +153,12 @@ func _process(delta: float) -> void:
     _kamera.offset = Vector2(randf_range(-1.0, 1.0),
         randf_range(-1.0, 1.0)) * _schuetteln * 7.0
 
+    _stoss_kuehl = maxf(0.0, _stoss_kuehl - delta)
+    _kette_zeit = maxf(0.0, _kette_zeit - delta)
+    if _kette_zeit <= 0.0 and kette > 0:
+        kette = 0
     _fuehre_boot(delta)
+    _fuehre_stoss(delta)
     _fuehre_begleiter(delta)
     _bewege(delta)
     _verbrenne(delta)
@@ -179,6 +201,65 @@ func _fuehre_boot(delta: float) -> void:
     _kegel.spitze = _ort
     _kegel.richtung = _blick
     _kegel.queue_redraw()
+
+
+## Wieviele Raeuber noch offen sind - das HUD zeigt es an.
+func offen() -> int:
+    return _offen
+
+
+## Ob gerade ein Leitwesen im Feld steht.
+func leitwesen_da() -> bool:
+    for t in _tiere:
+        if t.lebendig and t.alter >= 0.0 and Arten.ist_leitwesen(t.art):
+            return true
+    return false
+
+
+## Ob das Stosslicht bereit ist, und wie weit es geladen hat.
+func stoss_bereit() -> bool:
+    return _stoss_kuehl <= 0.0
+
+
+func stoss_ladung() -> float:
+    return clampf(1.0 - _stoss_kuehl / Graben.STOSS_ABKUEHLUNG, 0.0, 1.0)
+
+
+## Ein Ring, der vom Boot nach aussen laeuft und trifft, was er kreuzt -
+## auch ausserhalb des Kegels. Dieselbe Rechnung wie im Schlund, nur dass
+## die Spitze mitfaehrt.
+func stosslicht() -> bool:
+    if not stoss_bereit():
+        return false
+    _stoss_kuehl = Graben.STOSS_ABKUEHLUNG
+    _stoss_weit = 0.0
+    _stoss_nr += 1
+    _schuetteln = maxf(_schuetteln, 0.7)
+    Klang.spiele(Klang.Ton.WELLE, 0.7, 0.9)
+    Tastsinn.gib(Tastsinn.Art.STOSS)
+    return true
+
+
+func _fuehre_stoss(delta: float) -> void:
+    if _stoss_weit < 0.0:
+        return
+    var vorher := _stoss_weit
+    _stoss_weit += Graben.STOSS_TEMPO * delta
+    if _stoss_weit > Rundum.FELD_RADIUS * 2.2:
+        _stoss_weit = -1.0
+        return
+    for t in _tiere:
+        if not t.lebendig or t.alter < 0.0 or t.stoss_nr == _stoss_nr:
+            continue
+        var d := t.ort.distance_to(_ort)
+        if d >= vorher and d < _stoss_weit:
+            t.stoss_nr = _stoss_nr
+            t.leben -= Schlund.schaden_an(
+                Graben.LEISTUNG * Ausbau.leistung_faktor(welle_nummer),
+                1.0, Wellen.panzer_in(t.art, t.welle),
+                Wellen.mindest_licht_in(t.art, t.welle), 1.0) \
+                * Graben.STOSS_WERT
+            t.hitze = 1.0
 
 
 func _fuehre_begleiter(delta: float) -> void:
@@ -231,6 +312,10 @@ func _bewege(delta: float) -> void:
         # aus dem Boot eine Wand.
         if t.ort.distance_to(_ort) < BOOT_RADIUS + Wellen.radius_in(t.art, t.welle) * 0.5:
             huelle = maxi(0, huelle - Arten.wucht(t.art))
+            # Ein Treffer bricht die Kette. Das ist der Preis, der sie zur
+            # Spannung macht - sonst waere sie eine Zahl, die nur steigt.
+            kette = 0
+            _kette_zeit = 0.0
             _schuetteln = maxf(_schuetteln, 1.0)
             Klang.spiele(Klang.Ton.BRUT_FAELLT, 1.0, 0.8)
             Tastsinn.gib(Tastsinn.Art.TREFFER)
@@ -270,6 +355,13 @@ func _verbrenne(delta: float) -> void:
             t.lebendig = false
             _offen -= 1
             erlegt += 1
+            kette += 1
+            kette_hoechste = maxi(kette_hoechste, kette)
+            _kette_zeit = Graben.KETTE_FENSTER
+            punkte += int(round(float(Wellen.wert_in(t.art, t.welle))
+                * Graben.kette_faktor(kette)))
+            if Arten.ist_leitwesen(t.art):
+                Tastsinn.gib(Tastsinn.Art.LEITWESEN)
             _funken.platzen(t.ort, Arten.farbe(t.art), 20.0)
             Klang.spiele(Klang.Ton.TOD, 0.9, 0.45)
 
@@ -278,11 +370,17 @@ func _unhandled_input(ereignis: InputEvent) -> void:
     if _finger_fest:
         return
     if ereignis is InputEventScreenTouch:
+        if ereignis.pressed and _hud.stossknopf.has_point(ereignis.position):
+            stosslicht()
+            return
         _zieht = ereignis.pressed
         _finger = _welt(ereignis.position)
     elif ereignis is InputEventScreenDrag:
         _finger = _welt(ereignis.position)
     elif ereignis is InputEventMouseButton and ereignis.button_index == MOUSE_BUTTON_LEFT:
+        if ereignis.pressed and _hud.stossknopf.has_point(ereignis.position):
+            stosslicht()
+            return
         _zieht = ereignis.pressed
         _finger = _welt(ereignis.position)
     elif ereignis is InputEventMouseMotion:
