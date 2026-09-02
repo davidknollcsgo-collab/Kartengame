@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/spiel/rundlauf.gd" id="1_rundlauf"]
 [ext_resource type="Script" path="res://scripts/spiel/kegel.gd" id="2_kegel"]
@@ -7,6 +7,7 @@
 [ext_resource type="Shader" path="res://shaders/graben.gdshader" id="5_graben"]
 [ext_resource type="Script" path="res://scripts/spiel/grund_rundum.gd" id="6_grund"]
 [ext_resource type="Script" path="res://scripts/ui/rund_hud.gd" id="7_hud"]
+[ext_resource type="Script" path="res://scripts/ui/rund_menue.gd" id="8_menue"]
 
 [sub_resource type="Environment" id="Environment_glut"]
 background_mode = 3
@@ -58,3 +59,6 @@ script = ExtResource("4_funken")
 
 [node name="Hud" type="CanvasLayer" parent="."]
 script = ExtResource("7_hud")
+
+[node name="Menue" type="CanvasLayer" parent="."]
+script = ExtResource("8_menue")

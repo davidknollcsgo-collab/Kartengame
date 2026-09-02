@@ -71,7 +71,7 @@ func _process(delta: float) -> void:
 func _baue_rippel(rng: RandomNumberGenerator) -> void:
     var weite := Rundum.FELD_RADIUS + UEBERSTAND
     var richtung := rng.randf_range(0.0, PI)
-    for i in 22:
+    for i in 96:
         var versatz := lerpf(-weite, weite, float(i) / 21.0) \
             + rng.randf_range(-9.0, 9.0)
         var quer := Vector2.RIGHT.rotated(richtung)
@@ -106,30 +106,19 @@ func _baue_rippel(rng: RandomNumberGenerator) -> void:
 ## Koerper macht: eine Kuppe hat eine Schulter, und die sieht man von oben
 ## als zweite Kontur.
 func _baue_felsen(rng: RandomNumberGenerator) -> void:
-    for _i in 16:
+    for _i in 190:
         var lage := rng.randi() % TIEFE
         var ort := _wuerfel_ort(rng)
-        var gross := rng.randf_range(24.0, 78.0) \
+        var gross := rng.randf_range(26.0, 96.0) \
             * lerpf(0.55, 1.0, float(lage) / float(TIEFE - 1))
-        var a1 := rng.randf_range(0.07, 0.16)
-        var a2 := rng.randf_range(0.04, 0.11)
-        var a3 := rng.randf_range(0.02, 0.06)
-        var p1 := rng.randf_range(0.0, TAU)
-        var p2 := rng.randf_range(0.0, TAU)
-        var p3 := rng.randf_range(0.0, TAU)
-        var n1 := rng.randi_range(2, 3)
-        var n2 := rng.randi_range(5, 6)
-
-        var umriss := PackedVector2Array()
-        var schulter := PackedVector2Array()
-        var stufen := 48
-        for j in stufen:
-            var w := TAU * float(j) / float(stufen)
-            var f := 1.0 + a1 * sin(float(n1) * w + p1) \
-                + a2 * sin(float(n2) * w + p2) + a3 * sin(9.0 * w + p3)
-            umriss.append(ort + Vector2.RIGHT.rotated(w) * gross * f)
-            schulter.append(ort + Vector2.RIGHT.rotated(w + 0.14)
-                * gross * f * rng.randf_range(0.56, 0.62))
+        # **Die Form kommt aus `Riff`, nicht von hier.** Sie ist dieselbe,
+        # die das Boot abstoesst - ein Fels, der anders aussieht als er sich
+        # anfuehlt, ist unlernbar.
+        var fels := Riff.bauen(rng, ort, gross)
+        fels[&"lage"] = lage
+        # Nur die vorderste Lage haelt auf. Was hinten liegt, ist Kulisse -
+        # sonst wuerde man an etwas anstossen, das erkennbar weiter weg ist.
+        fels[&"fest"] = lage == TIEFE - 1
         var risse: Array[PackedVector2Array] = []
         for _k in rng.randi_range(1, 3):
             var w := rng.randf_range(0.0, TAU)
@@ -139,17 +128,43 @@ func _baue_felsen(rng: RandomNumberGenerator) -> void:
                 riss.append(ort + Vector2.RIGHT.rotated(
                     w + rng.randf_range(-0.20, 0.20)) * gross * t * 0.88)
             risse.append(riss)
-        _felsen.append({
-            &"lage": lage, &"umriss": umriss, &"schulter": schulter,
-            &"risse": risse,
-        })
+        fels[&"risse"] = risse
+        _felsen.append(fels)
+
+
+## Die Kante eines Felsens, abgetastet. Dieselbe `Riff.radius()`, die auch
+## die Kollision fragt.
+func _felskante(fels: Dictionary, faktor := 1.0) -> PackedVector2Array:
+    var punkte := PackedVector2Array()
+    var stufen := 48
+    for j in stufen:
+        var w := TAU * float(j) / float(stufen)
+        punkte.append(Vector2(fels[&"ort"])
+            + Vector2.RIGHT.rotated(w) * Riff.radius(fels, w) * faktor)
+    return punkte
+
+
+## Schiebt einen Koerper aus jedem festen Fels heraus, den er beruehrt.
+##
+## Oeffentlich, weil `rundlauf.gd` es je Bild fragt. Zwei Durchgaenge, damit
+## eine Ecke zwischen zwei Steinen nicht in den einen zurueckschiebt, was der
+## andere gerade herausgeschoben hat.
+func abgestossen(ort: Vector2, dick: float) -> Vector2:
+    var p := ort
+    for _durchgang in 2:
+        for fels in _felsen:
+            if not bool(fels.get(&"fest", false)):
+                continue
+            if Riff.beruehrt(fels, p, dick):
+                p = Riff.abgestossen(fels, p, dick)
+    return p
 
 
 ## Bewuchs: Faecher, Roehren und Schoepfe. Drei Formen reichen - was den
 ## Grund reich macht, ist nicht die Zahl der Arten, sondern dass sie in
 ## Gruppen stehen und verschieden gross sind.
 func _baue_bewuchs(rng: RandomNumberGenerator) -> void:
-    for _i in 46:
+    for _i in 420:
         var lage := rng.randi() % TIEFE
         var ort := _wuerfel_ort(rng)
         var arme := PackedFloat32Array()
@@ -171,9 +186,9 @@ func _baue_bewuchs(rng: RandomNumberGenerator) -> void:
 
 func _baue_staub(rng: RandomNumberGenerator) -> void:
     var weite := Rundum.FELD_RADIUS + UEBERSTAND
-    _staub.resize(150)
-    _staub_takt.resize(150)
-    for i in 150:
+    _staub.resize(900)
+    _staub_takt.resize(900)
+    for i in 900:
         _staub[i] = Vector2.RIGHT.rotated(rng.randf_range(0.0, TAU)) \
             * sqrt(rng.randf()) * weite
         _staub_takt[i] = rng.randf_range(0.15, 0.6)
@@ -188,7 +203,25 @@ func _wuerfel_ort(rng: RandomNumberGenerator) -> Vector2:
         * sqrt(rng.randf()) * weite
 
 
+## Was weiter weg ist als die Sicht, wird nicht gezeichnet.
+##
+## Bei einem Feld von 1500 Einheiten und einem Bild von 900 liegt das meiste
+## ausserhalb. Ohne diese Frage zeichnete jedes Bild zweihundert Felsen, von
+## denen zwanzig zu sehen sind.
+func _im_blick(ort: Vector2, rand: float) -> bool:
+    return ort.distance_squared_to(_blickmitte) \
+        < (Rundum.SICHT + rand) * (Rundum.SICHT + rand)
+
+
+var _blickmitte := Vector2.ZERO
+
+
 func _draw() -> void:
+    # Die Kamera sagt, wo hingesehen wird. Sie steht als Geschwister in der
+    # Szene; ihr Ort ist der Mittelpunkt des Bildes.
+    var kamera := get_parent().get_node_or_null("Kamera") as Camera2D
+    if kamera != null:
+        _blickmitte = kamera.position
     _zeichne_rippel()
     for lage in TIEFE:
         _zeichne_felsen(lage)
@@ -204,9 +237,9 @@ func _zeichne_rippel() -> void:
 func _zeichne_felsen(lage: int) -> void:
     var kraft: float = LAGEN_KRAFT[lage]
     for f in _felsen:
-        if int(f[&"lage"]) != lage:
+        if int(f[&"lage"]) != lage or not _im_blick(f[&"ort"], 140.0):
             continue
-        var umriss: PackedVector2Array = f[&"umriss"]
+        var umriss := _felskante(f)
         # Die Flaeche deckt nur ab, was dahinter liegt - dunkler als das
         # Wasser davor, wie das Sediment im Schlund. Die Form traegt die
         # Kante.
@@ -214,7 +247,7 @@ func _zeichne_felsen(lage: int) -> void:
         var zu := umriss + PackedVector2Array([umriss[0]])
         draw_polyline(zu, Color(0.32, 0.56, 0.60, 0.10 * kraft), 4.0, true)
         draw_polyline(zu, Color(0.32, 0.56, 0.60, 0.44 * kraft), 1.3, true)
-        var sch: PackedVector2Array = f[&"schulter"]
+        var sch := _felskante(f, 0.58)
         draw_polyline(sch + PackedVector2Array([sch[0]]),
             Color(0.32, 0.56, 0.60, 0.15 * kraft), 1.0, true)
         for riss in f[&"risse"]:
@@ -225,7 +258,7 @@ func _zeichne_felsen(lage: int) -> void:
 func _zeichne_bewuchs(lage: int) -> void:
     var kraft: float = LAGEN_KRAFT[lage]
     for b in _bewuchs:
-        if int(b[&"lage"]) != lage:
+        if int(b[&"lage"]) != lage or not _im_blick(b[&"ort"], 60.0):
             continue
         var p: Vector2 = b[&"ort"]
         var gr: float = b[&"gross"]
@@ -292,6 +325,8 @@ func _schopf(p: Vector2, r: float, farbe: Color, a: float, dreh: float,
 
 func _zeichne_staub() -> void:
     for i in _staub.size():
+        if not _im_blick(_staub[i], 30.0):
+            continue
         var p := _staub[i] + Vector2(
             sin(zeit * _staub_takt[i] + float(i)) * 6.0,
             cos(zeit * _staub_takt[i] * 0.7 + float(i)) * 6.0)

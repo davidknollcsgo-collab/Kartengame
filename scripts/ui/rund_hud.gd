@@ -47,7 +47,11 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
     _zeit += delta
-    _flaeche.queue_redraw()
+    # Im Menue nicht: dort steht das Logo, und eine Huellenanzeige daneben
+    # sagt nur, dass gerade niemand spielt.
+    visible = lauf != null and lauf.lage == lauf.Lage.SPIEL
+    if visible:
+        _flaeche.queue_redraw()
 
 
 # --- Bausteine ---------------------------------------------------------------

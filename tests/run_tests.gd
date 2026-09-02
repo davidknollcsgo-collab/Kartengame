@@ -68,6 +68,7 @@ const TESTS: PackedStringArray = [
     "_test_wellen_zeiten_sortiert",
     "_test_die_welle_hat_einen_bogen",
     "_test_rundum_haelt_das_feld",
+    "_test_felsen_sind_fest",
     "_test_rundum_verfolgt_ohne_zu_beschleunigen",
     "_test_rundum_begleiter_bleiben_hinten",
     "_test_leitwesen_tritt_zuletzt_ein",
@@ -667,13 +668,71 @@ func _test_wellen_bleiben_im_feld() -> bool:
     return true
 
 
+## Ein Fels ist fest: was hineingeriete, wird herausgeschoben.
+##
+## Und zwar auf **dieselbe** Kante, die gezeichnet wird. `Riff.radius()` ist
+## die einzige Beschreibung der Form; Bild und Kollision fragen sie beide.
+## Zwei Beschreibungen derselben Kante laufen auseinander - in diesem Projekt
+## schon dreimal passiert, zuletzt bei den Nischen an den Ranken.
+func _test_felsen_sind_fest() -> bool:
+    var rng := RandomNumberGenerator.new()
+    rng.seed = 0x2109
+    for versuch in 12:
+        var fels := Riff.bauen(rng, Vector2(rng.randf_range(-400.0, 400.0),
+            rng.randf_range(-400.0, 400.0)), rng.randf_range(24.0, 90.0))
+        var dick := 26.0
+
+        # Der hoechste Radius muss wirklich der hoechste sein - er ist die
+        # Vorauswahl, und eine Vorauswahl, die zu klein ist, laesst
+        # Beruehrungen durch.
+        var groesster := 0.0
+        for i in 720:
+            groesster = maxf(groesster, Riff.radius(fels,
+                TAU * float(i) / 720.0))
+        if not _melde(Riff.hoechster_radius(fels) >= groesster - 0.001,
+                "hoechster_radius() ist zu klein: %.2f gegen %.2f"
+                % [Riff.hoechster_radius(fels), groesster]):
+            return false
+
+        # Von aussen anfahren: wer draussen bleibt, wird nicht verschoben.
+        for i in 24:
+            var w := TAU * float(i) / 24.0
+            var weit: Vector2 = Vector2(fels[&"ort"]) \
+                + Vector2.RIGHT.rotated(w) * (groesster + dick + 40.0)
+            if not _melde(not Riff.beruehrt(fels, weit, dick),
+                    "Versuch %d: Beruehrung ausserhalb des Felsens" % versuch):
+                return false
+            if not _melde(Riff.abgestossen(fels, weit, dick) == weit,
+                    "Versuch %d: draussen wird verschoben" % versuch):
+                return false
+
+            # Und wer drinsteckt, steht danach genau auf der Kante - nicht
+            # daneben, nicht darin.
+            var drin: Vector2 = Vector2(fels[&"ort"]) \
+                + Vector2.RIGHT.rotated(w) * float(fels[&"gross"]) * 0.4
+            var raus := Riff.abgestossen(fels, drin, dick)
+            if not _melde(not Riff.beruehrt(fels, raus, dick - 0.01),
+                    "Versuch %d: nach dem Abstossen immer noch drin" % versuch):
+                return false
+            # Die Richtung bleibt: ein Stein schiebt nach aussen und dreht
+            # niemanden um.
+            var hin: Vector2 = raus - Vector2(fels[&"ort"])
+            if not _melde(hin.normalized().dot(Vector2.RIGHT.rotated(w))
+                    > 0.999, "Versuch %d: falsche Richtung" % versuch):
+                return false
+    return true
+
+
 ## Der Rundumlauf haelt sein Feld, und der Finger steuert stetig.
 func _test_rundum_haelt_das_feld() -> bool:
+    # Der Eintritt liegt **ausserhalb der Sicht**, nicht ausserhalb des
+    # Feldes: seit das Feld viel groesser ist als ein Bild, treten die
+    # Raeuber um das Boot herum ein und nicht am Feldrand.
     for i in 64:
         var w := TAU * float(i) / 64.0
         var e := Rundum.eintritt(w)
-        if not _melde(e.length() > Rundum.FELD_RADIUS,
-                "der Eintritt bei %.2f liegt im Feld" % w):
+        if not _melde(e.length() > Rundum.SICHT,
+                "der Eintritt bei %.2f liegt im Blickfeld" % w):
             return false
 
     for i in 40:
@@ -2079,6 +2138,7 @@ func _test_sichtbares_bleibt_englisch() -> bool:
         # geschrieben - "HUELLE", "WELLE", "PUNKTE". Der Waechter hat
         # es nicht gemeldet, weil die Datei nicht in dieser Liste stand.
         "res://scripts/ui/rund_hud.gd",
+        "res://scripts/ui/rund_menue.gd",
     ]
     var zeichenkette := RegEx.new()
     zeichenkette.compile('"[^"]*"')

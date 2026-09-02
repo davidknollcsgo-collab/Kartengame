@@ -28,19 +28,27 @@ extends RefCounted
 ## eine Ecke, die es auf dem einen Telefon gibt und auf dem anderen nicht,
 ## ist kein Spielfeld. Ein Kreis ist auf jedem Geraet derselbe.
 ##
-## **Der Radius kommt aus der Breite, nicht aus der Hoehe.** Der erste Anlauf
-## stand auf 470, und das Feld war damit breiter als das Bild: `Graben.FELD`
-## reicht von -360 bis 360, das Boot konnte also seitlich hinausfahren. Die
-## Breite liegt bei `aspect="expand"` auf jedem Geraet fest, die Hoehe nicht -
-## wer aus der Hoehe ableitet, gibt Spielern mit langem Telefon mehr Feld.
-## Was auf einem hohen Bild uebrig bleibt, ist Hintergrund und kein Spielraum.
-const FELD_RADIUS := 330.0
+## **Und sie ist viel groesser als das Bild.** Der erste Anlauf legte den
+## Radius auf die halbe Bildbreite: das Feld passte auf einen Schirm, die
+## Kamera stand still, und man fuhr in einer Schuessel herum. Ein Feld, das
+## man ganz sieht, ist kein Ort - man faehrt darin, aber nirgendwohin. Jetzt
+## traegt es das Vielfache eines Bildes, und die Kamera folgt.
+const FELD_RADIUS := 1500.0
 
-## Wo Raeuber eintreten: ausserhalb des Feldes, aber nicht so weit, dass der
-## Anmarsch zur Wartezeit wird. Dieselbe Ueberlegung wie bei
-## `Graben.EINTRITT_Y` - was aus dem Nichts erscheint, sieht nach einem
-## Fehler aus.
-const EINTRITT_RADIUS := 470.0
+## Wie weit man sieht - ungefaehr die halbe Diagonale des laengsten Telefons
+## (720 mal 1600 gibt 877). Alles, was hier drin ist, muss gezeichnet werden;
+## alles andere nicht.
+const SICHT := 900.0
+
+## Wo Raeuber eintreten: **um das Boot herum**, knapp ausserhalb der Sicht.
+##
+## Nicht mehr um die Feldmitte. Bei einem Feld von 1500 Einheiten haette ein
+## Raeuber am Rand bis zu einer halben Minute zu schwimmen, bevor ihn
+## ueberhaupt jemand sieht - die Welle waere dann kein Angriff, sondern eine
+## Anreise. Was aus dem Nichts erscheint, sieht nach einem Fehler aus; was
+## nie ankommt, ist keins.
+const EINTRITT_RADIUS := 980.0
+
 
 ## Wie weit der Daumen vom Boot weg sein muss, bevor es losfaehrt. Darunter
 ## wird nur gezielt.
@@ -56,7 +64,8 @@ const TOTZONE := 74.0
 const VOLLE_FAHRT := 190.0
 
 
-## Der Punkt auf dem Eintrittsring zu einem Winkel.
+## Der Versatz auf dem Eintrittsring zu einem Winkel. Das Boot kommt dazu -
+## die Raeuber treten um den Spieler herum ein und nicht um die Feldmitte.
 static func eintritt(winkel: float) -> Vector2:
     return Vector2.RIGHT.rotated(winkel) * EINTRITT_RADIUS
 

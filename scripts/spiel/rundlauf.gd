@@ -41,6 +41,15 @@ const BOOT_TRAEGHEIT := 6.0
 const BOOT_RADIUS := 32.0
 const DREH_TEMPO := 7.0
 
+## Wie traege die Kamera folgt und wie weit sie vorausschaut.
+## **Straff, nicht traege.** Beim ersten Versuch lag die Kamera so weit
+## zurueck, dass das Boot am Bildrand klebte: bei Tempo 260 und einer
+## Traegheit von 3.2 sind das achtzig Einheiten Rueckstand, und der Vorlauf
+## kam noch dazu. Auf einem Kreis, den der Vorfuehrdaumen faehrt, setzt sie
+## sich nie - der Rueckstand summiert sich in die Kurve hinein.
+const KAMERA_TRAEGHEIT := 6.5
+const KAMERA_VORAUS := 0.16
+
 const BEGLEITER_ABSTAND := 96.0
 const BEGLEITER_TRAEGHEIT := 3.4
 const BEGLEITER_REICHWEITE := 210.0
@@ -61,6 +70,19 @@ const BISS_SPERRE := 0.9
 ## `draw` haengt, liegt vorn.
 @onready var _vorn: Node2D = $Vorn
 @onready var _hud: CanvasLayer = $Hud
+@onready var _menue: CanvasLayer = $Menue
+@onready var _grund: Node2D = $Grund
+
+## --- Wo wir gerade sind ---
+##
+## Im Menue laeuft das Spiel weiter, nur steuert es niemand: ein Daumen, der
+## im Kreis geht, faehrt das Boot. **Das ist der Titelbildschirm aus dem
+## Entwurf** - Logo und Knoepfe vor einer laufenden Szene, nicht vor einem
+## Standbild. Ein Standbild sagt "hier waere ein Spiel", eine laufende Szene
+## sagt "so sieht es aus".
+enum Lage { MENUE, SPIEL }
+
+var lage := Lage.MENUE
 
 var welle_nummer := 1
 var huelle := 12
@@ -111,7 +133,8 @@ func _ready() -> void:
     _lies_argumente()
     _vorn.draw.connect(_zeichne_vorn)
     _hud.lauf = self
-    _kamera.position = Vector2.ZERO
+    _menue.lauf = self
+    _kamera.position = _ort
     _kegel.halbwinkel = Graben.HALBWINKEL
     _kegel.reichweite = Graben.REICHWEITE
     for i in 3:
@@ -139,8 +162,11 @@ func _bereite_welle_vor() -> void:
         # Der Eintrittswinkel kommt aus der Eintrittsstelle der flachen
         # Welle: dieselbe Zahl, nur rund gelegt statt in einer Zeile.
         var anteil := (float(eintrag[&"x"]) / Graben.EINTRITT_SEITE) * 0.5 + 0.5
-        t.ort = Rundum.eintritt(anteil * TAU + rng.randf_range(-0.12, 0.12))
-        t.richtung = (-t.ort).normalized()
+        # Der Winkel steht fest, der Ort noch nicht: gesetzt wird er erst,
+        # wenn das Tier an der Reihe ist - dann steht das Boot woanders.
+        t.start_x = anteil * TAU + rng.randf_range(-0.12, 0.12)
+        t.ort = _ort + Rundum.eintritt(t.start_x)
+        t.richtung = (_ort - t.ort).normalized()
         _tiere.append(t)
     _offen = _tiere.size()
     _schwarm.tiere = _tiere
@@ -150,6 +176,14 @@ func _process(delta: float) -> void:
     delta = Graben.takt(delta)
     _wellenzeit += delta
     _schuetteln = maxf(0.0, _schuetteln - delta * 4.0)
+    # **Die Kamera folgt und schaut voraus.** Nur folgen hiesse, das Boot
+    # klebt in der Mitte und man sieht in Fahrtrichtung genauso weit wie
+    # nach hinten - dabei ist vorn das, was zaehlt. Der Vorlauf haengt an
+    # der Fahrt, nicht am Blick: sonst schwenkt das Bild beim Zielen mit und
+    # macht seekrank.
+    var voraus := _fahrt * KAMERA_VORAUS
+    _kamera.position = _kamera.position.lerp(_ort + voraus,
+        clampf(KAMERA_TRAEGHEIT * delta, 0.0, 1.0))
     _kamera.offset = Vector2(randf_range(-1.0, 1.0),
         randf_range(-1.0, 1.0)) * _schuetteln * 7.0
 
@@ -157,6 +191,13 @@ func _process(delta: float) -> void:
     _kette_zeit = maxf(0.0, _kette_zeit - delta)
     if _kette_zeit <= 0.0 and kette > 0:
         kette = 0
+    if lage == Lage.MENUE:
+        # Der Vorfuehrdaumen. Er geht im Kreis und haelt dabei an - so sieht
+        # man Fahrt und Drehung, ohne dass jemand tippt.
+        var w := _wellenzeit * 0.42
+        _finger = Vector2.RIGHT.rotated(w) * (150.0 + 130.0 * sin(w * 0.7))
+        _zieht = true
+
     _fuehre_boot(delta)
     _fuehre_stoss(delta)
     _fuehre_begleiter(delta)
@@ -190,6 +231,17 @@ func _fuehre_boot(delta: float) -> void:
         wunsch = Rundum.fahrt(_ort, _finger, BOOT_TEMPO)
     _fahrt = _fahrt.lerp(wunsch, clampf(BOOT_TRAEGHEIT * delta, 0.0, 1.0))
     _ort = Rundum.gehalten(_ort + _fahrt * delta, BOOT_RADIUS)
+    # **Die Felsen sind fest.** Herausgeschoben statt angehalten: wer
+    # anhaelt, klebt am Stein und ist trivial zu treffen; wer
+    # herausgeschoben wird, gleitet daran entlang.
+    var vor_stein := _ort
+    _ort = _grund.abgestossen(_ort, BOOT_RADIUS)
+    if _ort != vor_stein:
+        # Die Fahrt entlang der Kante behalten, den Anteil in den Stein
+        # hinein wegnehmen. Ohne das drueckt man sich am Stein fest.
+        var raus := (_ort - vor_stein).normalized()
+        _fahrt -= raus * minf(0.0, _fahrt.dot(raus)) * 2.0
+        _fahrt = _fahrt.limit_length(BOOT_TEMPO)
 
     # Die Spur wird nur gesetzt, wenn sich wirklich etwas bewegt - sonst
     # sammelt ein stehendes Boot hundert Punkte an derselben Stelle.
@@ -201,6 +253,18 @@ func _fuehre_boot(delta: float) -> void:
     _kegel.spitze = _ort
     _kegel.richtung = _blick
     _kegel.queue_redraw()
+
+
+## Vom Menue aus: los.
+func starte() -> void:
+    lage = Lage.SPIEL
+    _zieht = false
+    huelle = huelle_voll
+    punkte = 0
+    kette = 0
+    erlegt = 0
+    welle_nummer = 1
+    _bereite_welle_vor()
 
 
 ## Wieviele Raeuber noch offen sind - das HUD zeigt es an.
@@ -293,9 +357,14 @@ func _bewege(delta: float) -> void:
     for t in _tiere:
         if not t.lebendig:
             continue
+        var vorher_alter := t.alter
         t.alter = _wellenzeit - t.eintritt
         if t.alter < 0.0:
             continue
+        if vorher_alter < 0.0:
+            # Erster Schritt: jetzt einsetzen, um das Boot herum.
+            t.ort = _ort + Rundum.eintritt(t.start_x)
+            t.richtung = (_ort - t.ort).normalized()
         var art := Arten.art(t.art)
         var vorher := t.ort
         t.ort = Rundum.schritt(t.ort, _ort,
@@ -311,7 +380,8 @@ func _bewege(delta: float) -> void:
         # kommt wieder. Ein Raeuber, der beim Treffer verschwindet, macht
         # aus dem Boot eine Wand.
         if t.ort.distance_to(_ort) < BOOT_RADIUS + Wellen.radius_in(t.art, t.welle) * 0.5:
-            huelle = maxi(0, huelle - Arten.wucht(t.art))
+            if lage == Lage.SPIEL:
+                huelle = maxi(0, huelle - Arten.wucht(t.art))
             # Ein Treffer bricht die Kette. Das ist der Preis, der sie zur
             # Spannung macht - sonst waere sie eine Zahl, die nur steigt.
             kette = 0
@@ -367,7 +437,7 @@ func _verbrenne(delta: float) -> void:
 
 
 func _unhandled_input(ereignis: InputEvent) -> void:
-    if _finger_fest:
+    if _finger_fest or lage == Lage.MENUE:
         return
     if ereignis is InputEventScreenTouch:
         if ereignis.pressed and _hud.stossknopf.has_point(ereignis.position):
@@ -850,8 +920,17 @@ func _nimm_auf() -> void:
         return
     _spiele_vor()
     # Wo das Boot steht, damit man den Ausschnitt nicht im Bild suchen muss.
-    print("BOOT %.1f %.1f  BLICK %.2f  FAHRT %.0f"
-        % [_ort.x, _ort.y, _blick.angle(), _fahrt.length()])
+    print("BOOT %.1f %.1f  KAMERA %.1f %.1f  strom=%s"
+        % [_ort.x, _ort.y, _kamera.position.x, _kamera.position.y,
+        str(_kamera.is_current())])
+    # **Zwei Bilder warten, nicht eins.** Die Kamera traegt ihren Ort nicht
+    # selbst ins Bild ein - das tut sie in ihrer eigenen Verarbeitung, und
+    # die laeuft im Vorlauf nicht mit, weil dort nur `_process()` dieses
+    # Knotens gerufen wird. Nach einem einzigen `frame_post_draw` zeichnete
+    # der Schuss deshalb noch mit der Verschiebung vom Anfang: das Boot stand
+    # am Bildrand, obwohl Kamera und Boot am selben Ort standen.
+    await get_tree().process_frame
+    await get_tree().process_frame
     await RenderingServer.frame_post_draw
     var bild := get_viewport().get_texture().get_image()
     bild.save_png(_schuss)
