@@ -114,6 +114,22 @@ var _wellenknopf := Rect2()
 var _abschnitt := -1
 var _abschnitt_leben := 0.0
 
+## Was angekuendigt werden will, solange der Lehrpfad noch laeuft.
+##
+## **Vorher stand hier ein `elif` und sonst nichts.** Tafel und Lehrschritt
+## teilen sich denselben Platz in der Bildmitte, und die Tafel gewann. In
+## Welle 1 heisst das: der Graben meldet "RIM GORGE - calm water", und der
+## Satz, der erklaert, wie man ueberhaupt zieht, faellt aus. Genau die
+## Wellen, in denen der Einstieg laeuft, sind die, in denen der erste
+## Abschnitt und die ersten Mutationen anstehen - der Lehrpfad wurde also
+## nicht gelegentlich verdeckt, sondern verlaesslich.
+##
+## Verschluckt wird trotzdem nichts: die Ankuendigung wartet hier und faellt,
+## sobald der Lehrpfad durch ist. Ein Abschnitt, dessen Regel man nie liest,
+## waere die andere Haelfte desselben Fehlers.
+var _stau_abschnitt := -1
+var _stau_mutation := -1
+
 ## Die Mutationen der laufenden Welle. `wache.gd` setzt sie; der Kopf zeigt
 ## sie als Band unter der Wellennummer. Eine Mutation, die man erst merkt,
 ## wenn die Brut faellt, ist keine Abwechslung, sondern eine Falle.
@@ -276,6 +292,16 @@ func _process(delta: float) -> void:
         _blitz -= delta
     if _lehre >= 0:
         _lehr_leben += delta
+    elif _stau_abschnitt >= 0 or _stau_mutation >= 0:
+        # Der Lehrpfad ist durch: nachholen, was er zurueckgehalten hat.
+        var a := _stau_abschnitt
+        var m := _stau_mutation
+        _stau_abschnitt = -1
+        _stau_mutation = -1
+        if m >= 0:
+            zeige_mutation(m)
+        else:
+            zeige_abschnitt(a)
     if _kette_stoss > 0.0:
         _kette_stoss = maxf(0.0, _kette_stoss - delta * 4.0)
     for i in range(_ausbeuten.size() - 1, -1, -1):
@@ -294,6 +320,10 @@ func melde(was: String) -> void:
 ## Kuendigt die Regel eines neuen Abschnitts an. Wer in Welle 31 ploetzlich im
 ## Dunkeln steht und nicht weiss warum, haelt es fuer einen Fehler.
 func zeige_abschnitt(abschnitt: int) -> void:
+    if _lehre >= 0:
+        _stau_abschnitt = abschnitt
+        _stau_mutation = -1
+        return
     _abschnitt = abschnitt
     _neue_mutation = -1
     _abschnitt_leben = 5.0
@@ -301,6 +331,10 @@ func zeige_abschnitt(abschnitt: int) -> void:
 
 ## Kuendigt eine Mutation an, die zum ersten Mal auftritt. Dieselbe Tafel.
 func zeige_mutation(m: int) -> void:
+    if _lehre >= 0:
+        _stau_mutation = m
+        _stau_abschnitt = -1
+        return
     _neue_mutation = m
     _abschnitt = -1
     _abschnitt_leben = 5.0
@@ -446,10 +480,12 @@ func _zeichne() -> void:
         _text(Vector2(breite * 0.5, 118.0), _meldung, 17,
             Color(0.62, 0.98, 0.86, f), true)
 
-    if _abschnitt_leben > 0.0:
-        _abschnittstafel(breite, hoehe)
-    elif _lehre >= 0 and not _ende and not Lehrpfad.in_der_kolonie(_lehre):
+    # Der Lehrpfad zuerst: solange er laeuft, staut `zeige_abschnitt()` die
+    # Tafel, die beiden koennen sich also nicht mehr ueberlagern.
+    if _lehre >= 0 and not _ende and not Lehrpfad.in_der_kolonie(_lehre):
         _lehrtafel(breite, hoehe)
+    elif _abschnitt_leben > 0.0:
+        _abschnittstafel(breite, hoehe)
 
     if _kette >= Graben.KETTE_AB and not _ende and not _bauphase:
         _kettenanzeige(breite)

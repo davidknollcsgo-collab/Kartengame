@@ -54,6 +54,7 @@ const TESTS: PackedStringArray = [
     "_test_stosslicht_steht_in_der_sollkurve",
     "_test_kette_zahlt_punkte_und_keinen_naehrstoff",
     "_test_bluete_bleibt_ausserhalb_der_wirtschaft",
+    "_test_lehrpfad_wird_von_der_tafel_nicht_verdeckt",
     "_test_mutationen_tabelle_vollstaendig",
     "_test_mutationen_erst_ab_der_zweiten_umdrehung",
     "_test_mutationen_sind_reproduzierbar",
@@ -1918,6 +1919,43 @@ func _test_kette_zahlt_punkte_und_keinen_naehrstoff() -> bool:
                 "wache.gd:%d bringt die Kette mit dem Naehrstoff zusammen"
                 % nummer):
             return false
+    return true
+
+
+## Der Lehrpfad wird von der Abschnittstafel nicht verdeckt.
+##
+## Beide stehen in der Bildmitte, und einer von beiden muss weichen. Wer
+## weicht, ist keine Geschmacksfrage: die Tafel sagt, warum sich das Spiel
+## anders anfuehlt, der Lehrschritt sagt, wie man es ueberhaupt spielt. Der
+## zweite Satz ist der dringendere - und zwar genau in den Wellen, in denen
+## beide anstehen, denn der erste Abschnitt faellt in Welle 1.
+##
+## Geprueft wird die Kopplung, nicht das Bild: `zeige_abschnitt()` und
+## `zeige_mutation()` muessen den laufenden Lehrpfad abfragen, bevor sie die
+## Tafel starten, und es muss einen Weg zurueck geben - sonst waere die
+## Ankuendigung nicht zurueckgestellt, sondern weg.
+func _test_lehrpfad_wird_von_der_tafel_nicht_verdeckt() -> bool:
+    var quelle := FileAccess.get_file_as_string("res://scripts/ui/hud.gd")
+    if not _melde(not quelle.is_empty(), "hud.gd nicht lesbar"):
+        return false
+
+    for name in ["zeige_abschnitt", "zeige_mutation"]:
+        var start := quelle.find("func %s(" % name)
+        if not _melde(start >= 0, "%s() fehlt" % name):
+            return false
+        var rumpf := quelle.substr(start, 320)
+        if not _melde(rumpf.contains("_lehre >= 0"),
+                "%s() startet die Tafel ohne nach dem Lehrpfad zu fragen"
+                % name):
+            return false
+        if not _melde(rumpf.contains("_stau_"),
+                "%s() verwirft die Ankuendigung, statt sie zu stauen" % name):
+            return false
+
+    if not _melde(quelle.contains("_stau_abschnitt = -1")
+            and quelle.contains("_stau_mutation = -1"),
+            "das Stauende wird nie geleert - die Tafel kaeme zweimal"):
+        return false
     return true
 
 
