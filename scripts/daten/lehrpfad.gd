@@ -41,20 +41,28 @@ enum Ziel {
 }
 
 ## Die Schritte in der Reihenfolge, in der sie fallen. Die Reihenfolge ist
-## nicht frei gewaehlt, sondern die des Spiels selbst: ziehen, treffen, die
-## Welle ueberstehen, bauen, ausbauen, wiederkommen.
+## nicht frei gewaehlt, sondern die des Spiels selbst: rufen, ziehen, treffen,
+## die Welle ueberstehen, bauen, ausbauen, wiederkommen.
+##
+## **Gerufen wird zuerst, nicht gezogen.** Hier stand "HOLD AND SWEEP" an
+## erster Stelle - und der erste Bildschirm, den ein neuer Spieler sieht, ist
+## die Bauphase. Dort gibt es keinen Kegel zu ziehen: Tippen setzt einen
+## Polypen, und die Zeile darueber sagt genau das. Der allererste Satz des
+## Spiels widersprach also der Zeile direkt ueber ihm und dem Bildschirm, auf
+## dem er stand. Ein Einstieg, dessen erster Schritt auf dem ersten Bild
+## nicht stimmt, kostet mehr Vertrauen als er aufbaut.
 const TAFEL: Array[Dictionary] = [
-    {
-        &"kennung": &"ZIEHEN",
-        &"titel": "HOLD AND SWEEP",
-        &"satz": "Press anywhere and drag. The light cone follows your finger.",
-        &"ziel": Ziel.KEGEL,
-    },
     {
         &"kennung": &"STARTEN",
         &"titel": "SEND FOR THEM",
         &"satz": "Nothing comes out of the dark until you call it. Five waves make one session.",
         &"ziel": Ziel.WELLENKNOPF,
+    },
+    {
+        &"kennung": &"ZIEHEN",
+        &"titel": "HOLD AND SWEEP",
+        &"satz": "Press anywhere and drag. The light cone follows your finger.",
+        &"ziel": Ziel.KEGEL,
     },
     {
         &"kennung": &"BRENNEN",

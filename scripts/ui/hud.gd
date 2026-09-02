@@ -635,11 +635,16 @@ func _lehrring(breite: float, hoehe: float, puls: float) -> void:
         # ein Kreis darauf zeigt auf ihre Mitte und laesst offen, wie weit
         # das Ding reicht, auf das er zeigt. Ein Ring ist die richtige Form
         # fuer einen Punkt und die falsche fuer eine Flaeche.
+        # Der Rahmen wird nur gezeichnet, wenn es den Knopf gerade gibt -
+        # ein Rahmen um ein leeres Rechteck ist ein Strich in der oberen
+        # linken Ecke, und der zeigt auf gar nichts.
         Lehrpfad.Ziel.KOLONIEKNOPF:
-            _lehrrahmen(_kolonieknopf, puls)
+            if _kolonieknopf.size.x > 0.0:
+                _lehrrahmen(_kolonieknopf, puls)
             return
         Lehrpfad.Ziel.WELLENKNOPF:
-            _lehrrahmen(_wellenknopf, puls)
+            if _wellenknopf.size.x > 0.0:
+                _lehrrahmen(_wellenknopf, puls)
             return
         Lehrpfad.Ziel.STOSSKNOPF:
             if _stossknopf.size.x <= 0.0:

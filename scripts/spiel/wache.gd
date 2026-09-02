@@ -348,7 +348,7 @@ func starte_welle() -> void:
     # Der Lehrpfad wartet an dieser Stelle darauf, dass die Welle wirklich
     # losgeht. Ohne den Schritt stand der Spieler vor einem Knopf, auf den
     # nichts zeigte, und mit einem Satz ueber Licht, das noch nichts trifft.
-    _einstieg_weiter(1)
+    _einstieg_weiter(0)
     _stroemung = Fortschritt.stand.nutze_stroemung()
     _hud.stroemung = _stroemung
     _offen = _tiere.size()
@@ -1112,12 +1112,12 @@ func _unhandled_input(ereignis: InputEvent) -> void:
         _beruehrung(ereignis.pressed, _welt(ereignis.position))
     elif ereignis is InputEventScreenDrag:
         _finger = _welt(ereignis.position)
-        _einstieg_weiter(0)
+        _einstieg_weiter(1)
     elif ereignis is InputEventMouseButton and ereignis.button_index == MOUSE_BUTTON_LEFT:
         _beruehrung(ereignis.pressed, _welt(ereignis.position))
     elif ereignis is InputEventMouseMotion and _zieht:
         _finger = _welt(ereignis.position)
-        _einstieg_weiter(0)
+        _einstieg_weiter(1)
 
 
 func _beruehrung(gedrueckt: bool, ort: Vector2) -> void:
