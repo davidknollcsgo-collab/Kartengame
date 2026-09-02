@@ -145,8 +145,19 @@ not one image file and not one audio file in the whole app.
 
 Das ist keine geschönte Antwort, sondern der Zustand des Programms: kein
 HTTP-Client, kein Web-Socket, keine Werbe- oder Auswertungsbibliothek, keine
-Geräte-Kennung, **keine einzige Android-Berechtigung**. Nachprüfbar mit
-`aapt dump badging nekton.apk` — die Berechtigungsliste ist leer.
+Geräte-Kennung.
+
+**Genau eine Android-Berechtigung**, und die ist `android.permission.VIBRATE`:
+das Spiel bebt bei einem Treffer an der Brut, einem gefallenen Leitwesen, dem
+Stoßlicht und dem Ende einer Sitzung. VIBRATE ist eine normale Berechtigung —
+sie fragt beim Benutzer nichts ab, liest nichts und erhebt nichts; sie darf nur
+den Vibrationsmotor anstoßen. An den Antworten oben ändert sie deshalb nichts.
+Abschaltbar ist sie im Spiel unter **Colony → Day → Settings → Rumble**.
+
+Nachprüfbar mit `aapt dump badging nekton.apk`: in der Berechtigungsliste steht
+diese eine Zeile und sonst nichts. Kommt je eine zweite hinzu, gehört sie in
+demselben Commit hierher — eine Abgabemappe, die eine Berechtigung verschweigt,
+ist schlimmer als gar keine.
 
 ### Inhaltseinstufung (Content rating)
 

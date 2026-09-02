@@ -328,6 +328,23 @@ unter einer strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
    anfängt, hat keinen Bogen, sondern ein Nachspiel.
    `_test_leitwesen_tritt_zuletzt_ein` hält es fest.
 
+25. **Der Kolonielauf hat keine Marge mehr.** Er meldet „höchstens 3 Stufen
+   (tragbar 3)" — er steht also genau auf seiner eigenen, aus der Sollkurve
+   abgeleiteten Schranke. Ein Versuch, die ersten fünf Wellen zu verkürzen
+   (`FENSTER_ANFANG`, damit der erste Erfolg in der ersten halben Minute
+   fällt), kippte ihn auf 4 und damit auf Rot — bei **identischen
+   Kammerstufen** und ganzen neun Nährstoff Unterschied am fünften Tag. Der
+   Wellenprüfer blieb dabei grün, und es fiel keine einzige Sitzung.
+
+   Zwei Lehren. Erstens: eine Änderung am Eintrittsfenster ist **nicht**
+   wirkungsfrei, obwohl `staerke()` proportional dazu ist — die Anordnung der
+   Auftritte ändert, welchen Bruchteil einer Welle der simulierte Daumen
+   räumt, und ein Prozent davon reicht hier. Zweitens: die Schranke wird
+   **nicht** gelockert, damit eine Änderung durchgeht. Sie ist abgeleitet
+   (ein Abschnitt geht als Block auf), und wer sie hochsetzt, damit sein
+   Commit grün wird, hat den Prüfer abgeschafft und nicht das Problem gelöst.
+   Wer die Wellen wirklich kürzen will, muss vorher die Marge schaffen.
+
 ## Fuer den Laden
 
 `STORE.md` ist die Abgabemappe: was der Bauauftrag liefert, was nur von Hand
