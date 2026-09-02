@@ -1,10 +1,11 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://scripts/spiel/rundlauf.gd" id="1_rundlauf"]
 [ext_resource type="Script" path="res://scripts/spiel/kegel.gd" id="2_kegel"]
 [ext_resource type="Script" path="res://scripts/spiel/schwarm.gd" id="3_schwarm"]
 [ext_resource type="Script" path="res://scripts/spiel/funken.gd" id="4_funken"]
 [ext_resource type="Shader" path="res://shaders/graben.gdshader" id="5_graben"]
+[ext_resource type="Script" path="res://scripts/spiel/grund_rundum.gd" id="6_grund"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_graben"]
 shader = ExtResource("5_graben")
@@ -25,6 +26,9 @@ grow_vertical = 2
 mouse_filter = 2
 
 [node name="Kamera" type="Camera2D" parent="."]
+
+[node name="Grund" type="Node2D" parent="."]
+script = ExtResource("6_grund")
 
 [node name="Kegel" type="Node2D" parent="."]
 script = ExtResource("2_kegel")
