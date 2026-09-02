@@ -159,6 +159,13 @@ diese eine Zeile und sonst nichts. Kommt je eine zweite hinzu, gehört sie in
 demselben Commit hierher — eine Abgabemappe, die eine Berechtigung verschweigt,
 ist schlimmer als gar keine.
 
+**Nicht erschrecken, wenn `strings` mehr findet.** Ein `strings` über das
+`AndroidManifest.xml` der APK zeigt zusätzlich `android.permission.DUMP`.
+Godots Exporter legt Berechtigungsnamen im Zeichenvorrat des Manifests an,
+ohne sie zu deklarieren; ein Zeichenvorrat wird nicht aufgeräumt. Gezählt
+werden `<uses-permission>`-**Tags**, und davon gibt es genau einen — im Manifest
+der gebauten APK nachgeparst, nicht angenommen. Genau das listet `aapt` auch.
+
 ### Inhaltseinstufung (Content rating)
 
 | Frage | Antwort |
