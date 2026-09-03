@@ -186,6 +186,7 @@ func _zeichne() -> void:
     _pause(breite)
     _warnung(breite, hoehe)
     _lehre(breite, hoehe)
+    _atem(breite, hoehe)
 
 
 ## Links oben: Huelle und Ladung des Stosslichts.
@@ -301,6 +302,30 @@ func _knoepfe(breite: float, hoehe: float) -> void:
         _flaeche.draw_arc(mitte, r, 0.0, TAU, 24,
             Color(HELL.r, HELL.g, HELL.b, (0.55 - 0.13 * float(i))
                 * (1.0 if bereit else 0.35)), 1.4, true)
+
+
+## Zwischen zwei Wellen: eine Zeile in der oberen Bildhaelfte, die aufblendet
+## und wieder verschwindet.
+##
+## **Nicht in der Mitte und nicht als Tafel.** Dort steht das Boot, und die
+## Pause ist kurz - eine Tafel, die man wegtippen muesste, waere laenger im
+## Bild als der Anlass.
+func _atem(breite: float, hoehe: float) -> void:
+    var rest: float = lauf.atem
+    if rest <= 0.0:
+        return
+    # Voll in der Mitte der Pause, an beiden Enden aus: eine Zeile, die
+    # hart einsetzt, liest sich wie ein Fehler.
+    var t: float = 1.0 - absf(rest / lauf.ATEM - 0.5) * 2.0
+    var a := clampf(t * 2.2, 0.0, 1.0)
+    var y := hoehe * 0.32
+    _text(Vector2(breite * 0.5, y),
+        "WAVE %d CLEARED" % (int(lauf.welle_nummer) - 1), 22,
+        Color(HELL.r, HELL.g, HELL.b, a), true)
+    _text(Vector2(breite * 0.5, y + 22.0),
+        "%d OF %d THIS DIVE" % [int(lauf.welle_in_sitzung),
+        Graben.WELLEN_JE_SITZUNG], 12,
+        Color(LEISE.r, LEISE.g, LEISE.b, a * 0.9), true)
 
 
 ## Der Einstieg: zwei Zeilen ueber der unteren Kante.

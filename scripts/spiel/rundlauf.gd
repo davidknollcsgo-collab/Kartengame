@@ -118,6 +118,18 @@ var _abgetreten := false
 var welle_nummer := 1
 ## Die wievielte Welle **dieser Sitzung**. Siehe `starte()`.
 var welle_in_sitzung := 0
+
+## Restsekunden Verschnaufpause zwischen zwei Wellen.
+##
+## **Ohne sie ging eine Welle in die naechste ueber, ohne dass etwas
+## passierte.** Fuenf Wellen am Stueck sind vier Minuten ununterbrochenes
+## Zielen; der Bogen jeder einzelnen (Zusage 26) verpufft, wenn direkt hinter
+## seinem Ende der naechste anfaengt. Die Pause ist kurz genug, dass sie
+## nicht als Warten empfunden wird, und lang genug, um die Zahl zu lesen und
+## den Kegel einmal herumzuziehen. Gefahren werden darf dabei - wer eine
+## Fundstelle im Auge hat, holt sie sich jetzt.
+const ATEM := 2.2
+var atem := 0.0
 ## Ob die letzte Fahrt gehalten wurde oder die Huelle brach - der Bericht
 ## sagt dasselbe Ereignis in zwei Farben.
 var gehalten := false
@@ -431,7 +443,11 @@ func _process(delta: float) -> void:
     _wecke_die_letzten()
     _verbrenne(delta)
 
-    if _offen <= 0 and huelle > 0:
+    if atem > 0.0:
+        atem -= delta
+        if atem <= 0.0:
+            _bereite_welle_vor()
+    elif _offen <= 0 and huelle > 0:
         _welle_geschafft()
     if huelle <= 0 and lage == Lage.SPIEL:
         _beende(false)
@@ -544,6 +560,7 @@ func starte() -> void:
     funde = 0
     verdient = 0
     welle_in_sitzung = 0
+    atem = 0.0
     gehalten = false
     # Die naechste Welle sagt der Koloniestand. `--welle` sticht das aus -
     # ein Werkzeug soll zeigen koennen, was es zeigen will.
@@ -671,7 +688,8 @@ func _welle_geschafft() -> void:
         _beende(true)
         return
     welle_nummer += 1
-    _bereite_welle_vor()
+    atem = ATEM
+    Klang.spiele(Klang.Ton.WELLE, 0.5, 1.25)
 
 
 ## Die Fahrt ist vorbei - gehalten oder gebrochen.
@@ -1517,10 +1535,18 @@ func _fahre_probe() -> void:
         _setze_sollstand()
         var dran := welle_nummer
         var t := 0.0
-        while welle_nummer == dran and huelle > 0 and t < PROBE_DECKEL:
+        while (welle_nummer == dran or atem > 0.0) and huelle > 0 \
+                and t < PROBE_DECKEL:
             _steuere_probe()
             _process(takt)
             t += takt
+        # **Erst melden, dann weiterfahren.** Andersherum stand in der Zeile
+        # der Stand der *naechsten* Fahrt: null Erlegte und eine frisch
+        # gefuellte Huelle, jede fuenfte Zeile - es sah aus, als koste die
+        # letzte Welle einer Fahrt sechs Huelle.
+        print(" %5d | %6d | %8.1f | %6d%s"
+            % [dran, huelle, t, erlegt,
+            "   (Fahrt zu Ende)" if lage == Lage.ENDE else ""])
         # Eine Fahrt ist fuenf Wellen lang; die Probe will wissen, wie tief
         # der Pilot ueber viele Fahrten kommt, also faengt sie die naechste
         # an, wo die vorige aufhoerte.
@@ -1529,8 +1555,6 @@ func _fahre_probe() -> void:
             starte()
             _finger_fest = true
             _zieht = true
-        print(" %5d | %6d | %8.1f | %6d"
-            % [dran, huelle, t, erlegt])
         if huelle <= 0:
             gefallen = dran
             break

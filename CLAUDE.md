@@ -524,6 +524,13 @@ zweihundert Zeilen `queue_redraw() on a null value`. Und `rund_menue.gd`
 setzt seine Sichtbarkeit je Bild selbst — ohne `lauf.kolonie_offen()` stünde
 das Titelbild eine Zehntelsekunde nach dem Öffnen wieder darüber.
 
+**Zwischen zwei Wellen wird durchgeatmet** (`ATEM`, 2,2 s). Ohne die Pause
+ging eine Welle in die nächste über, ohne dass etwas geschah: fünf Wellen am
+Stück sind vier Minuten ununterbrochenes Zielen, und der Bogen jeder
+einzelnen (Zusage 26) verpufft, wenn direkt hinter seinem Ende der nächste
+anfängt. Gefahren werden darf dabei — wer eine Fundstelle im Auge hat, holt
+sie sich jetzt.
+
 **Die Tagesströmung läuft auch hier.** `tools/kolonielauf.gd` rechnet die drei
 Bonuswellen des Tages ausdrücklich in die Sollkurve ein — „sonst misst das
 Werkzeug ein anderes Spiel". Wer nur fährt, verdiente ohne sie strukturell
