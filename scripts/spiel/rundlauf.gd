@@ -102,7 +102,7 @@ const LAUER_WEIT := 1400.0
 ## Entwurf** - Logo und Knoepfe vor einer laufenden Szene, nicht vor einem
 ## Standbild. Ein Standbild sagt "hier waere ein Spiel", eine laufende Szene
 ## sagt "so sieht es aus".
-enum Lage { MENUE, SPIEL }
+enum Lage { MENUE, SPIEL, ENDE }
 
 var lage := Lage.MENUE
 
@@ -120,6 +120,11 @@ var erlegt := 0
 ## und **niemals** Naehrstoff (Zusage 16). Sie ist eine Bestmarke, keine
 ## Waehrung - sonst haette wer gut faehrt eine andere Wirtschaft.
 var punkte := 0
+## Naehrstoff dieser Fahrt - dieselbe Waehrung wie im Schlund, und derselbe
+## Weg dorthin (`Fortschritt.aendere`).
+var verdient := 0
+## Der Bruchteil, der noch nicht ausgezahlt ist. Siehe `_lohne()`.
+var _lohn_rest := 0.0
 var kette := 0
 var kette_hoechste := 0
 var _kette_zeit := 0.0
@@ -163,6 +168,9 @@ var funde := 0
 ## zeigt sonst schwarze Felder statt des Riffs, das er zeigen soll.
 var _offene_karte := false
 
+## Nur fuer Werkzeuge (`--ende`): den Bericht mit Beispielwerten zeigen.
+var _zeige_ende := false
+
 
 func _ready() -> void:
     # Der Gegenweg zu `--rundum`: die Werkzeuge (Ladenbilder, Schuesse,
@@ -188,6 +196,16 @@ func _ready() -> void:
         _begleiter.append(Vector2.ZERO)
         _begleiter_ziel.append(-1)
     _bereite_welle_vor()
+    if _zeige_ende:
+        starte()
+        welle_nummer = 14
+        punkte = 128400
+        verdient = 9260
+        erlegt = 372
+        funde = 5
+        kette_hoechste = 26
+        huelle = 0
+        lage = Lage.ENDE
     if not _schuss.is_empty():
         _nimm_auf.call_deferred()
 
@@ -273,7 +291,7 @@ func _process(delta: float) -> void:
     _kette_zeit = maxf(0.0, _kette_zeit - delta)
     if _kette_zeit <= 0.0 and kette > 0:
         kette = 0
-    if lage == Lage.MENUE:
+    if lage != Lage.SPIEL:
         # Der Vorfuehrdaumen. Er geht im Kreis und haelt dabei an - so sieht
         # man Fahrt und Drehung, ohne dass jemand tippt.
         var w := _wellenzeit * 0.42
@@ -292,6 +310,8 @@ func _process(delta: float) -> void:
     if _offen <= 0 and huelle > 0:
         welle_nummer += 1
         _bereite_welle_vor()
+    if huelle <= 0 and lage == Lage.SPIEL:
+        _beende()
 
     _schwarm.queue_redraw()
     _vorn.queue_redraw()
@@ -369,6 +389,8 @@ func starte() -> void:
     kette = 0
     erlegt = 0
     funde = 0
+    verdient = 0
+    _lohn_rest = 0.0
     welle_nummer = 1
     # **Ein neuer Tauchgang faengt im Dunkeln an.** Die Karte laeuft sonst
     # aus dem Menue heraus voll - der Vorfuehrdaumen faehrt dort im Kreis -,
@@ -378,6 +400,19 @@ func starte() -> void:
     karte.decke_auf(_ort)
     _grund.setze_funde_zurueck()
     _bereite_welle_vor()
+
+
+## Die Fahrt ist vorbei: die Huelle ist durch.
+##
+## **Der Koloniefortschritt bleibt.** Verloren ist die Fahrt, nicht die
+## Arbeit - das ist dieselbe Zusage wie im Schlund, und der Naehrstoff ist
+## laengst ausgezahlt, weil er je erlegtem Tier faellt und nicht am Ende.
+func _beende() -> void:
+    lage = Lage.ENDE
+    _zieht = false
+    Klang.spiele(Klang.Ton.BRUT_FAELLT, 1.0, 0.55)
+    Tastsinn.gib(Tastsinn.Art.ENDE)
+    Fortschritt.sichere()
 
 
 ## Wieviele Raeuber noch offen sind - das HUD zeigt es an.
@@ -581,14 +616,44 @@ func _verbrenne(delta: float) -> void:
             _kette_zeit = Graben.KETTE_FENSTER
             punkte += int(round(float(Wellen.wert_in(t.art, t.welle))
                 * Graben.kette_faktor(kette)))
+            _lohne(t)
             if Arten.ist_leitwesen(t.art):
                 Tastsinn.gib(Tastsinn.Art.LEITWESEN)
             _funken.platzen(t.ort, Arten.farbe(t.art), 20.0)
             Klang.spiele(Klang.Ton.TOD, 0.9, 0.45)
 
 
+## Naehrstoff fuer ein erlegtes Tier - **geteilt durch `DICHTE`**.
+##
+## Im Schlund summiert sich `Wellen.wert_in()` ueber eine Welle genau zu
+## `Wellen.ertrag()`. Hier laufen `DICHTE` Wellen ineinander, also liegen
+## dreimal so viele Koerper im Feld; wer jeden voll bezahlte, zahlte fuer
+## eine Welle den dreifachen Ertrag. Einkommen und Kosten sind aneinander
+## gekoppelt (Zusage 10) - eine Schleife, die dasselbe Spiel dreimal so
+## schnell bezahlt, ist eine zweite Wirtschaft.
+##
+## Der Bruchteil wird mitgenommen und nicht weggerundet: bei kleinen Wellen
+## ist `wert_in` einstellig, und ein Drittel davon waere sonst je nach
+## Rundung null oder das Doppelte des Richtigen.
+func _lohne(t: Raeuber) -> void:
+    # **Nur im Spiel.** Hinter dem Titelbild und hinter dem Bericht laeuft
+    # die Szene weiter, und der Vorfuehrdaumen erlegt dabei Tiere. Ohne
+    # diese Zeile verdient ein Telefon, das auf dem Titelbild liegen bleibt,
+    # echten Naehrstoff - im Schuss des Berichts standen 9261 statt der 9260,
+    # die ich hineingeschrieben hatte.
+    if lage != Lage.SPIEL:
+        return
+    _lohn_rest += float(Wellen.wert_in(t.art, t.welle)) / float(DICHTE)
+    var lohn := int(floor(_lohn_rest))
+    if lohn <= 0:
+        return
+    _lohn_rest -= float(lohn)
+    verdient += lohn
+    Fortschritt.aendere(lohn)
+
+
 func _unhandled_input(ereignis: InputEvent) -> void:
-    if _finger_fest or lage == Lage.MENUE:
+    if _finger_fest or lage != Lage.SPIEL:
         return
     if ereignis is InputEventScreenTouch:
         if ereignis.pressed and _hud.stossknopf.has_point(ereignis.position):
@@ -1074,6 +1139,9 @@ func _lies_argumente() -> void:
             "--schuss":
                 if i + 1 < argumente.size():
                     _schuss = argumente[i + 1]
+            "--ende":
+                # Den Bericht ansehen, ohne erst zu sterben.
+                _zeige_ende = true
             "--offen":
                 # Kein Nebel - fuer Schuesse, die den Grund zeigen sollen.
                 _offene_karte = true

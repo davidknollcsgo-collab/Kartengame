@@ -111,6 +111,7 @@ xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 720x1280 \
 | `--heim` | zeigt die Rückkehrtafel mit Beispielwerten |
 | `--stoss <s>` | stößt das Stoßlicht s Sekunden vor dem Bild ab |
 | `--offen` | Rundumlauf ohne Nebel — für Schüsse, die den Grund zeigen sollen |
+| `--ende` | Rundumlauf: der Bericht nach der Fahrt, mit Beispielwerten |
 
 **`--stau` braucht man oefter, als es aussieht.** Im Vorlauf steht der
 Finger fest ueber dem Schlund, und der Kegel raeumt in spaeten Wellen alles
@@ -472,6 +473,26 @@ Spieler fährt die Karte ab, um „1 LEFT" zu suchen. Zweitens: diese Prüfung
 darf **nicht** nach `alter >= 0` fragen. Zu Wellenbeginn steht noch nichts im
 Feld, weil jeder Auftritt seine Zeit hat — damit erwachten alle Lauerer in der
 ersten Sekunde, und der Hinterhalt war eine Ankündigung.
+
+**Die Fahrt endet, und sie zahlt.** Bei Hülle null steht `Lage.ENDE`: ein
+Bericht mit Nährstoff, Punkten, Welle, Erlegten, Fundstellen und der besten
+Kette, und genau zwei Wegen — noch einmal, oder zurück. **Keine Werbung und
+kein Angebot an dieser Stelle**; der Plan sagt es in einem Satz: niemals nach
+einer Niederlage.
+
+Der Nährstoff fällt je erlegtem Tier, **geteilt durch `DICHTE`**. Im Schlund
+summiert sich `Wellen.wert_in()` über eine Welle genau zu `Wellen.ertrag()`;
+hier laufen drei Wellen ineinander, also liegen dreimal so viele Körper im
+Feld, und wer jeden voll bezahlte, zahlte für eine Welle den dreifachen
+Ertrag. Einkommen und Kosten sind aneinander gekoppelt (Zusage 10) — eine
+Schleife, die dasselbe Spiel dreimal so schnell bezahlt, ist eine zweite
+Wirtschaft. Der Bruchteil wird mitgenommen und nicht weggerundet.
+
+Und: **bezahlt wird nur in `Lage.SPIEL`.** Hinter dem Titelbild und hinter dem
+Bericht läuft die Szene weiter, und der Vorführdaumen erlegt dabei Tiere —
+ohne diese Abfrage verdient ein Telefon, das auf dem Titelbild liegen bleibt,
+echten Nährstoff. Aufgefallen ist es an einer 9261 im Schuss des Berichts, wo
+9260 hineingeschrieben war.
 
 **Was noch offen ist:** es gibt keine Wellenpausen und keinen Koloniezugang —
 wer den Rundumlauf spielt, kommt nicht an seine Kammern. Der Wellenprüfer

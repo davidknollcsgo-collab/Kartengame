@@ -1,6 +1,6 @@
 extends CanvasLayer
 
-## Der Titelbildschirm.
+## Der Titelbildschirm - und der Bericht nach der Fahrt.
 ##
 ## Nach dem Entwurf, den der Spieler vorgelegt hat: Logo links oben, darunter
 ## eine Spalte Sechseckknoepfe, und **dahinter laeuft das Spiel weiter**. Ein
@@ -52,7 +52,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
     _zeit += delta
-    visible = lauf != null and lauf.lage == lauf.Lage.MENUE
+    visible = lauf != null and lauf.lage != lauf.Lage.SPIEL
     if visible:
         _flaeche.queue_redraw()
 
@@ -70,7 +70,10 @@ func _input(ereignis: InputEvent) -> void:
         return
     for i in _felder.size():
         if _felder[i].has_point(ort):
-            _gewaehlt(i)
+            if lauf.lage == lauf.Lage.ENDE:
+                _gewaehlt_am_ende(i)
+            else:
+                _gewaehlt(i)
             return
 
 
@@ -89,6 +92,74 @@ func _gewaehlt(i: int) -> void:
             pass
 
 
+## Am Ende gibt es genau zwei Wege: noch einmal, oder zurueck.
+##
+## **Keine Werbung und kein Angebot an dieser Stelle.** Der Plan sagt es in
+## einem Satz: niemals nach einer Niederlage - das ist die Erfahrung, die
+## Ein-Stern-Bewertungen schreibt.
+func _gewaehlt_am_ende(i: int) -> void:
+    Klang.spiele(Klang.Ton.TIPP)
+    if i == 0:
+        lauf.starte()
+    else:
+        lauf.lage = lauf.Lage.MENUE
+
+
+## Der Bericht: was diese Fahrt eingebracht hat.
+##
+## Der Naehrstoff steht oben und die Punkte darunter, und das ist keine
+## Geschmacksfrage: der Naehrstoff **bleibt** - er liegt schon in der Kolonie,
+## weil er je erlegtem Tier faellt. Die Punkte sind eine Bestmarke und mit der
+## Fahrt vorbei. Was bleibt, gehoert nach oben.
+func _zeichne_ende(breite: float, hoehe: float) -> void:
+    _flaeche.draw_rect(Rect2(0.0, 0.0, breite, hoehe),
+        Color(0.010, 0.030, 0.042, 0.72))
+    var oben := hoehe * 0.20
+    _text(Vector2(breite * 0.5, oben), "HULL BREACHED", 30,
+        Color(1.0, 0.42, 0.34), true, 5.0)
+    _text(Vector2(breite * 0.5, oben + 26.0),
+        "THE COLONY KEEPS WHAT YOU BROUGHT BACK", 12, LEISE, true, 1.6)
+
+    var zeilen: Array[Array] = [
+        ["NUTRIENT", Zahl.kurz(int(lauf.verdient))],
+        ["SCORE", Zahl.kurz(int(lauf.punkte))],
+        ["WAVE", str(int(lauf.welle_nummer))],
+        ["KILLS", str(int(lauf.erlegt))],
+        ["SITES", str(int(lauf.funde))],
+        ["BEST CHAIN", "x%.1f" % Graben.kette_faktor(int(lauf.kette_hoechste))],
+    ]
+    var y := oben + 66.0
+    for i in zeilen.size():
+        var kasten := Rect2(RAND, y, breite - RAND * 2.0, 34.0)
+        if i == 0:
+            _flaeche.draw_colored_polygon(_hexweg(kasten, 10.0),
+                Color(0.035, 0.115, 0.135, 0.60))
+        _text(kasten.position + Vector2(18.0, 23.0), String(zeilen[i][0]),
+            13, LEISE, false, 2.4)
+        _text(Vector2(kasten.end.x - 18.0, kasten.position.y + 24.0),
+            String(zeilen[i][1]), 20,
+            HELL if i == 0 else SCHRIFT, false, 1.0, true)
+        y += 38.0
+
+    _felder.clear()
+    var texte: PackedStringArray = ["DIVE AGAIN", "SURFACE"]
+    y += 14.0
+    for i in texte.size():
+        var kasten := Rect2(RAND, y, breite - RAND * 2.0, 48.0)
+        _felder.append(kasten)
+        var weg := _hexweg(kasten)
+        _flaeche.draw_colored_polygon(weg,
+            Color(0.035, 0.115, 0.135, 0.80) if i == 0
+            else Color(0.020, 0.052, 0.066, 0.72))
+        var puls := 0.5 + 0.5 * sin(_zeit * 2.4)
+        _flaeche.draw_polyline(weg + PackedVector2Array([weg[0]]),
+            Color(HELL.r, HELL.g, HELL.b, (0.45 + 0.35 * puls) if i == 0
+            else 0.26), 1.4, true)
+        _text(Vector2(breite * 0.5, kasten.position.y + 31.0), texte[i], 18,
+            SCHRIFT if i == 0 else LEISE, true, 2.5)
+        y += 58.0
+
+
 func _hexweg(kasten: Rect2, schraege := 14.0) -> PackedVector2Array:
     var s := minf(schraege, kasten.size.y * 0.5)
     return PackedVector2Array([
@@ -103,12 +174,19 @@ func _hexweg(kasten: Rect2, schraege := 14.0) -> PackedVector2Array:
     ])
 
 
+## `rechts` setzt den Text linksbuendig **an** `wo` endend. Im Bericht stehen
+## Zahlen rechts am Rand; ohne das muesste jede Zeile ihre Breite selbst
+## ausmessen, und die Spalte waere nur ungefaehr eine.
 func _text(wo: Vector2, was: String, groesse: int, farbe: Color,
-        mittig := false, sperrung := 0.0) -> void:
+        mittig := false, sperrung := 0.0, rechts := false) -> void:
     if sperrung <= 0.0:
         var breite := _schrift.get_string_size(was, HORIZONTAL_ALIGNMENT_LEFT,
             -1, groesse).x
-        var p := wo - (Vector2(breite * 0.5, 0.0) if mittig else Vector2.ZERO)
+        var p := wo
+        if mittig:
+            p -= Vector2(breite * 0.5, 0.0)
+        elif rechts:
+            p -= Vector2(breite, 0.0)
         _flaeche.draw_string(_schrift, p, was, HORIZONTAL_ALIGNMENT_LEFT, -1,
             groesse, farbe)
         return
@@ -119,7 +197,11 @@ func _text(wo: Vector2, was: String, groesse: int, farbe: Color,
     for z in was:
         ganz += _schrift.get_string_size(z, HORIZONTAL_ALIGNMENT_LEFT, -1,
             groesse).x + sperrung
-    var x := wo.x - (ganz * 0.5 if mittig else 0.0)
+    var x := wo.x
+    if mittig:
+        x -= ganz * 0.5
+    elif rechts:
+        x -= ganz
     for z in was:
         _flaeche.draw_string(_schrift, Vector2(x, wo.y), z,
             HORIZONTAL_ALIGNMENT_LEFT, -1, groesse, farbe)
@@ -130,6 +212,9 @@ func _text(wo: Vector2, was: String, groesse: int, farbe: Color,
 func _zeichne() -> void:
     var breite := _flaeche.size.x
     var hoehe := _flaeche.size.y
+    if lauf.lage == lauf.Lage.ENDE:
+        _zeichne_ende(breite, hoehe)
+        return
 
     # Ein Schleier ueber der laufenden Szene. Ohne ihn steht die Schrift im
     # Gewimmel und ist nicht zu lesen; mit zu viel davon sieht man nicht
