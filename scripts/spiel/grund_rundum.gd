@@ -444,7 +444,10 @@ func _zeichne_nebel() -> void:
 ##
 ## Sie sind der Grund, ueberhaupt in eine Richtung zu fahren, in der gerade
 ## kein Raeuber steht. Ohne sie belohnt das Aufdecken nur sich selbst.
-const FUNDE := 34
+## **Wenige.** Bei vierunddreissig standen auf einem Bild sieben davon, und
+## ein Fund, von dem der naechste schon zu sehen ist, ist kein Fund, sondern
+## eine Reihe.
+const FUNDE := 20
 
 ## Wie nah man heran muss. Grosszuegig - ein Fund, den man knapp verfehlt,
 ## fuehlt sich nach einem Fehler des Spiels an und nicht nach einem eigenen.
@@ -470,7 +473,7 @@ func _baue_funde(rng: RandomNumberGenerator) -> void:
             * sqrt(rng.randf_range(0.06, 1.0)) * (Rundum.FELD_RADIUS - 120.0)
         var frei := true
         for f in _funde:
-            if Vector2(f[&"ort"]).distance_to(ort) < 260.0:
+            if Vector2(f[&"ort"]).distance_to(ort) < 430.0:
                 frei = false
                 break
         # Nicht in einem Felsen - sonst liegt er hinter einer Wand, durch die

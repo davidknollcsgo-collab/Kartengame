@@ -444,6 +444,20 @@ einem Aufruf mit Farbe an den Ecken. Die Deckung läuft damit über eine ganze
 Feldbreite aus, und das Raster verschwindet, obwohl es dasselbe geblieben
 ist.
 
+**Nicht jedes Tier will an das Boot.** `wild.gd` zieht Fischschwärme über den
+Grund, die vor dem Licht auseinanderstieben und sonst nichts tun: kein
+Schaden in beide Richtungen, kein Nährstoff, keine Punkte, in keiner
+`Wellen.auftritte()`. Dieselbe Begründung wie bei der Funkenblüte
+(Zusage 18) — was nichts kostet und nichts zahlt, verschiebt auch nichts.
+Sie hängen als eigener Knoten **hinter** dem Grund, damit sie über dem Nebel
+liegen: ein Glimmen weit draußen im Dunkeln ist der beste Grund, dorthin zu
+fahren.
+
+Ein Schwarm ist dabei genau das, was er von weitem ist: **viele, die in
+dieselbe Richtung sehen.** Der erste Anlauf gab jedem Fisch einen festen
+Platz im Weltraster und ließ ihn dorthin blicken, wo sein Platz lag — im
+Bild war das kein Schwarm, sondern ein Seeigel.
+
 **Was noch offen ist:** es gibt keine Wellenpausen und keinen Koloniezugang —
 wer den Rundumlauf spielt, kommt nicht an seine Kammern. Der Wellenprüfer
 kann diese Schleife **nicht** messen: ein simulierter Daumen ersetzt kein

@@ -75,6 +75,7 @@ const BISS_SPERRE := 0.9
 @onready var _hud: CanvasLayer = $Hud
 @onready var _menue: CanvasLayer = $Menue
 @onready var _grund: Node2D = $Grund
+@onready var _wild: Node2D = $Wild
 
 ## --- Wo wir gerade sind ---
 ##
@@ -249,6 +250,7 @@ func _process(delta: float) -> void:
         _zieht = true
 
     _fuehre_boot(delta)
+    _wild.boot = _ort
     _decke_auf()
     _fuehre_stoss(delta)
     _fuehre_begleiter(delta)

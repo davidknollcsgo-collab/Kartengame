@@ -156,3 +156,58 @@ static func naechstes_ziel(von: Vector2, orte: Array[Vector2],
             beste = d
             treffer = i
     return treffer
+
+
+# --- Die Schwaerme, die nicht angreifen ---------------------------------------
+#
+# **Nicht jedes Tier im Graben will an das Boot.** Vorher war jedes bewegte
+# Ding auf dem Bild ein Raeuber, der geradewegs auf einen zuhielt - eine Karte
+# voller Feinde und sonst nichts. Ein Schwarm Kleinfische, der vor dem Licht
+# auseinanderstiebt, kostet nichts und macht aus der Flaeche einen Ort.
+#
+# Sie stehen **ausserhalb des Wellenbudgets**, aus demselben Grund wie die
+# Funkenbluete (Zusage 18): sie tauchen in keiner `Wellen.auftritte()` auf,
+# zahlen keinen Naehrstoff und koennen niemanden verletzen. Was nichts kostet
+# und nichts zahlt, verschiebt auch nichts.
+
+## Ab wann ein Schwarm das Boot bemerkt.
+const SCHEU_RADIUS := 300.0
+
+## Wie schnell er dann davonzieht - schneller als er ruhig zieht, aber
+## langsamer als das Boot. Ein Schwarm, den man nie einholt, ist eine
+## Verhoehnung; einer, der stehen bleibt, ist ein Sack.
+const SCHEU_TEMPO := 210.0
+
+## Wie schnell er zieht, wenn ihn nichts stoert.
+const ZUG_TEMPO := 46.0
+
+
+## Wie erschrocken ein Schwarm ist: 0 ausserhalb von `SCHEU_RADIUS`, 1 direkt
+## am Boot. Quadratisch, damit die Flucht nicht auf der ganzen Strecke gleich
+## heftig ist, sondern erst kurz vorher losgeht.
+static func schreck(mitte: Vector2, boot: Vector2) -> float:
+    var d := mitte.distance_to(boot)
+    if d >= SCHEU_RADIUS:
+        return 0.0
+    var t := 1.0 - d / SCHEU_RADIUS
+    return t * t
+
+
+## Ein Schritt der Schwarmmitte.
+##
+## Ruhig zieht sie auf `ruhe_ziel` zu - eine Bahn, die der Aufrufer vorgibt.
+## Kommt das Boot naeher, mischt sich die Fluchtrichtung dazu, und mit ihr das
+## hoehere Tempo. Gehalten wird das Ergebnis im Feld: ein Schwarm, der aus der
+## Karte gescheucht wird, kommt nie wieder.
+static func schwarmschritt(mitte: Vector2, ruhe_ziel: Vector2,
+        boot: Vector2, delta: float) -> Vector2:
+    var s := schreck(mitte, boot)
+    var ruhig := (ruhe_ziel - mitte).normalized() * ZUG_TEMPO
+    var weg := Vector2.ZERO
+    if s > 0.0:
+        weg = (mitte - boot).normalized() * SCHEU_TEMPO
+        # Am Rand des Feldes hilft geradeaus fliehen nicht - dort geht es
+        # seitlich weiter, sonst drueckt sich der Schwarm in die Wand.
+        if mitte.length() > FELD_RADIUS * 0.86:
+            weg = weg.rotated(PI * 0.5 * signf(weg.cross(mitte)))
+    return gehalten(mitte + ruhig.lerp(weg, s) * delta, 40.0)

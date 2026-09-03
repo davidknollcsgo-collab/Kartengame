@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://scripts/spiel/rundlauf.gd" id="1_rundlauf"]
 [ext_resource type="Script" path="res://scripts/spiel/kegel.gd" id="2_kegel"]
@@ -6,6 +6,7 @@
 [ext_resource type="Script" path="res://scripts/spiel/funken.gd" id="4_funken"]
 [ext_resource type="Shader" path="res://shaders/graben.gdshader" id="5_graben"]
 [ext_resource type="Script" path="res://scripts/spiel/grund_rundum.gd" id="6_grund"]
+[ext_resource type="Script" path="res://scripts/spiel/wild.gd" id="9_wild"]
 [ext_resource type="Script" path="res://scripts/ui/rund_hud.gd" id="7_hud"]
 [ext_resource type="Script" path="res://scripts/ui/rund_menue.gd" id="8_menue"]
 
@@ -45,6 +46,9 @@ environment = SubResource("Environment_glut")
 
 [node name="Grund" type="Node2D" parent="."]
 script = ExtResource("6_grund")
+
+[node name="Wild" type="Node2D" parent="."]
+script = ExtResource("9_wild")
 
 [node name="Kegel" type="Node2D" parent="."]
 script = ExtResource("2_kegel")

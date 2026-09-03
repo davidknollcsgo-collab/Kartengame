@@ -71,6 +71,7 @@ const TESTS: PackedStringArray = [
     "_test_felsen_sind_fest",
     "_test_karte_deckt_auf_was_befahren_wurde",
     "_test_rundum_verfolgt_ohne_zu_beschleunigen",
+    "_test_schwaerme_fliehen_und_bleiben_im_feld",
     "_test_rundum_begleiter_bleiben_hinten",
     "_test_leitwesen_tritt_zuletzt_ein",
     "_test_wellen_dauer_im_rahmen",
@@ -863,6 +864,47 @@ func _test_rundum_haelt_das_feld() -> bool:
 ## es andersherum, koennte ein Tier sein eigenes Tempo ueberschreiten - und
 ## der Wellenpruefer rechnete mit einem langsameren Tier, als das Spiel
 ## zeigt.
+## Die Schwaerme, die nicht angreifen: sie muessen vor dem Boot weichen, ohne
+## dass man sie aus der Karte scheuchen kann. Ein Schwarm, der am Rand
+## verschwindet, kommt nie wieder - und dann ist die Karte nach zehn Minuten
+## leer, ohne dass jemand etwas getan haette.
+func _test_schwaerme_fliehen_und_bleiben_im_feld() -> bool:
+    # Weit weg merkt der Schwarm nichts.
+    if not _melde(Rundum.schreck(Vector2(900.0, 0.0), Vector2.ZERO) == 0.0,
+            "ein Schwarm ausserhalb der Scheu erschrickt"):
+        return false
+    # Und je naeher, desto mehr.
+    var vorher := -1.0
+    for i in 10:
+        var d := Rundum.SCHEU_RADIUS * (1.0 - float(i) / 10.0)
+        var s := Rundum.schreck(Vector2(d, 0.0), Vector2.ZERO)
+        if not _melde(s >= vorher,
+                "der Schreck faellt bei Abstand %.0f statt zu steigen" % d):
+            return false
+        vorher = s
+
+    # Ein Boot, das mitten in einem Schwarm steht, treibt ihn weg.
+    var mitte := Vector2(100.0, 0.0)
+    var boot := Vector2(60.0, 0.0)
+    var abstand := mitte.distance_to(boot)
+    for _i in 30:
+        mitte = Rundum.schwarmschritt(mitte, mitte, boot, 1.0 / 60.0)
+    if not _melde(mitte.distance_to(boot) > abstand,
+            "der Schwarm bleibt beim Boot stehen"):
+        return false
+
+    # Auch wenn man ihn vierhundert Schritte lang nach aussen drueckt,
+    # bleibt er im Feld.
+    var weit := Vector2(Rundum.FELD_RADIUS - 60.0, 0.0)
+    for _i in 400:
+        weit = Rundum.schwarmschritt(weit, weit, weit * 0.86, 1.0 / 60.0)
+        if not _melde(weit.length() <= Rundum.FELD_RADIUS + 0.001,
+                "ein Schwarm wurde aus dem Feld gescheucht (%.0f)"
+                % weit.length()):
+            return false
+    return true
+
+
 func _test_rundum_verfolgt_ohne_zu_beschleunigen() -> bool:
     var delta := 1.0 / 60.0
     for versuch in 6:
