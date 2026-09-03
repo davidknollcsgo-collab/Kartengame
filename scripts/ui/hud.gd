@@ -856,6 +856,17 @@ const KNOPF_HOCH := 58.0
 const KNOPF_LUECKE := 10.0
 
 
+## Ob gerade wenigstens eine Kammer bezahlbar und frei ist.
+func _kolonie_lohnt() -> bool:
+    var stand: KolonieStand = Fortschritt.stand
+    if stand.baut():
+        return false
+    for k in Kammern.Kammer.size():
+        if stand.kann_bauen(k):
+            return true
+    return false
+
+
 func _kolonieknopf_zeichnen(breite: float, hoehe: float, links_text: String,
         rechts_text: String) -> void:
     var y := hoehe - KNOPF_HOCH - 26.0 - _rand_unten
@@ -869,6 +880,16 @@ func _kolonieknopf_zeichnen(breite: float, hoehe: float, links_text: String,
     _flaeche.draw_rect(_kolonieknopf, Color(0.42, 0.86, 0.92, 0.30), false, 1.4)
     _text(_kolonieknopf.get_center() + Vector2(0.0, 6.0), links_text,
         17, Color(0.72, 0.94, 0.98), true)
+    # **Ein Punkt, wenn sich das Hingehen lohnt** - dieselbe Regel wie im
+    # Titelbild des Rundumlaufs. Ohne ihn tippt man den Knopf zwischen zwei
+    # Wellen auf Verdacht an, liest fuenf Preise und geht wieder zurueck.
+    if _kolonie_lohnt():
+        var puls := 0.5 + 0.5 * sin(_zeit * 2.8)
+        var p := Vector2(_kolonieknopf.end.x - 22.0,
+            _kolonieknopf.get_center().y)
+        _flaeche.draw_circle(p, 5.0 + 1.5 * puls,
+            Color(0.52, 0.94, 0.80, 0.20 + 0.20 * puls))
+        _flaeche.draw_circle(p, 3.0, Color(0.52, 0.94, 0.80))
 
     var puls := 0.5 + 0.5 * sin(_zeit * 1.8)
     _wellenknopf = Rect2(RAND + _rand_seite + links_weit + KNOPF_LUECKE, y,
