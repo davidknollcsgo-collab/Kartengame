@@ -954,15 +954,54 @@ func _verbrenne(delta: float) -> void:
         wirkungen.append(hell)
         kandidaten.append(i)
 
+    # **Erst die Wirkung, dann die Auswahl** - dieselbe Reihenfolge wie im
+    # Schlund. `brennende()` bekommt nicht die Helligkeit, sondern was das
+    # Tier davon tatsaechlich abbekommt; sonst belegt eine Glutqualle im
+    # Randlicht einen der wenigen Zielplaetze und nimmt keinen Schaden.
+    #
+    # Und die Brutlinien wirken hier genauso: Salzbrand frisst den Panzer,
+    # Zwielicht nimmt den Schwellen die Schaerfe. Beide einmal je Bild
+    # geholt, nicht je Tier - `Fortschritt.stand` ist ein Autoload-Zugriff,
+    # und hier stehen bis zu zweihundert Tiere.
+    var bruch := Fortschritt.stand.panzerbruch()
+    var nachlass := Fortschritt.stand.schwellen_nachlass()
+    var wirkung := PackedFloat32Array()
+    wirkung.resize(kandidaten.size())
+    for i in kandidaten.size():
+        var t := _tiere[kandidaten[i]]
+        var hoechst := Wellen.hoechst_licht_in(t.art, t.welle)
+        if hoechst > 0.0:
+            hoechst = minf(1.0, hoechst + nachlass)
+        wirkung[i] = Schlund.schaden_an(leistung(), wirkungen[i],
+            Wellen.panzer_in(t.art, t.welle) * (1.0 - bruch),
+            maxf(0.0, Wellen.mindest_licht_in(t.art, t.welle) - nachlass),
+            hoechst)
+
+    # Nachglut (Brutlinie): wer getroffen wurde, brennt kurz weiter.
+    var glut_dauer := Fortschritt.stand.nachglut_dauer()
+    if glut_dauer > 0.0:
+        var glut := leistung() * Fortschritt.stand.nachglut_anteil()
+        for t in _tiere:
+            if not t.lebendig or t.glut <= 0.0:
+                continue
+            t.glut = maxf(0.0, t.glut - delta)
+            t.leben -= maxf(0.0, glut
+                - Wellen.panzer_in(t.art, t.welle)) * delta
+            t.hitze = maxf(t.hitze, 0.35)
+
     # Derselbe Deckel wie im Schlund: der Kegel haelt nur so viele auf einmal.
-    var deckel := ziele()
-    for k in Schlund.brennende(wirkungen, deckel):
+    for k in Schlund.brennende(wirkung, ziele()):
         var t := _tiere[kandidaten[k]]
         _wecke(t)
-        t.leben -= Schlund.schaden_an(
-            leistung(), wirkungen[k], Wellen.panzer_in(t.art, t.welle),
-            Wellen.mindest_licht_in(t.art, t.welle), delta)
-        t.hitze = minf(1.0, t.hitze + delta * 3.0)
+        # **Mal `delta`.** Hier stand die Wirkung eines ganzen Bildes als
+        # Schaden eines Bildes - und `delta` stand an der Stelle, an der
+        # `hoechst_licht` erwartet wird. Beide Fehler zusammen gaben dem
+        # Kegel das Siebenundzwanzigfache seines Schadens (60 mal
+        # `SPIEGEL_REST`), und der Spiegler war nicht mehr besonders,
+        # sondern alle waren es.
+        t.leben -= wirkung[k] * delta
+        t.hitze = 1.0
+        t.glut = glut_dauer
 
     for t in _tiere:
         if t.lebendig and t.leben <= 0.0:
