@@ -72,3 +72,31 @@ jobs:
       # normaler Spieler die Sollkurve, und entsteht dabei eine Wartemauer?
       - name: Kolonie über 120 Tage
         run: godot --headless --path . --script tools/kolonielauf.gd
+
+      # **Der Testlauf allein beweist nicht, dass das Spiel läuft.** Er lädt
+      # `rundlauf.gd`, `hud.gd` und `kolonie_schirm.gd` nie - ein
+      # `--script`-Lauf kennt keine Autoloads. Ein Parse-Fehler in einer
+      # dieser Dateien bleibt dort grün, und das Spiel startet dann
+      # *scheinbar*: kein Fehler im Bild, keine Ausgabe, nur ein Prozess, der
+      # hängt. Der Startlauf findet es in Sekunden.
+      #
+      # Die Ausgabe muss dabei in eine Variable: `godot ... | grep ... | head`
+      # gibt immer Erfolg zurück, weil `head` gelingt.
+      - name: Startlauf
+        run: |
+          set -euo pipefail
+          AUSGABE="$(godot --headless --path . --quit-after 150 2>&1 || true)"
+          FEHLER="$(printf '%s\n' "$AUSGABE" | grep -E 'SCRIPT ERROR|ERROR:' || true)"
+          if [ -n "$FEHLER" ]; then
+            printf '%s\n' "$FEHLER"
+            exit 1
+          fi
+          echo "Das Spiel startet sauber."
+
+      # Die zweite Schleife hatte bis hierher keinen Wächter. Ein simulierter
+      # Daumen ersetzt kein Fahrkönnen - was er ersetzt, ist das Raten: er
+      # bricht ab, sobald eine Fahrt fällt oder eine Welle nicht leer wird,
+      # und meldet damit eine untere Schranke. Vierzig Wellen kosten knapp
+      # eine Minute.
+      - name: Vierzig Wellen im Rundumlauf fahren
+        run: godot --headless --path . -- --fahrprobe 40

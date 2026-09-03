@@ -662,7 +662,7 @@ wie Röhren aussehen und nicht wie Striche.
 ### Die Fahrprobe
 
 ```bash
-godot --headless --path . -- --fahrprobe 45      # ~4 min, Exitcode 1 bei Fall
+godot --headless --path . -- --fahrprobe 45      # ~50 s, Exitcode 1 bei Fall
 ```
 
 **Ein simulierter Daumen ersetzt kein Fahrkönnen** — das bleibt wahr. Was er
@@ -671,6 +671,9 @@ nächsten Tier halten und näher heranfahren, wenn es weit weg ist. Kein
 Ausweichen, kein Timing, kein Bogen um die Felsen — alles, was ein Spieler
 zusätzlich kann, geht als Reserve in das Ergebnis ein. Gemessen wird deshalb
 eine **untere Schranke**, und sie wird auch so gemeldet.
+
+Sie läuft **in CI mit**, vierzig Wellen für knapp eine Minute — die zweite
+Schleife hatte bis dahin keinen Wächter.
 
 Die Kolonie steht dabei je Welle auf `Ausbau.stufe_soll()` — dieselbe
 Vorgabe, gegen die der Wellenprüfer misst. Ohne das misst man nicht das
