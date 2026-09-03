@@ -169,6 +169,16 @@ var _stoss_nr := 0
 var _ort := Vector2.ZERO
 var _fahrt := Vector2.ZERO
 var _blick := Vector2.UP
+
+## Wohin der Kegel **wirklich** zeigt.
+##
+## **Die Abschnittsregeln galten hier gar nicht.** Die Stroemung, die den
+## Kegel verzieht, die Dunkelphasen, der gehaertete Kern - all das stand nur
+## in `wache.gd`. `Wellen.staerke()` rechnet sie aber ein (Zusage 6): die
+## Welle wird kleiner, weil der Spieler behindert ist. Ohne die Behinderung
+## war jede spaete Welle hier leichter als entworfen, und die Fahrprobe
+## meldete einen Piloten, der nie faellt.
+var _wirksam := Vector2.UP
 var _finger := Vector2(0.0, -200.0)
 var _zieht := false
 
@@ -559,8 +569,17 @@ func _fuehre_boot(delta: float) -> void:
         if _spur.size() > SPUR_LAENGE:
             _spur.remove_at(0)
 
+    # Die Stroemung dreht den Kegel weg - das ist der ganze Reiz von
+    # Abschnitt 2: man zielt nicht dorthin, wo man treffen will. Dieselbe
+    # Rechnung wie in `wache.gd::_fuehre_kegel()`.
+    var abtrieb := Regeln.stroemung(welle_nummer, _wellenzeit) \
+        * Fortschritt.stand.stroemung_faktor()
+    _wirksam = _blick.rotated(abtrieb)
     _kegel.spitze = _ort
-    _kegel.richtung = _blick
+    _kegel.richtung = _wirksam
+    _kegel.rand_kern = Regeln.rand_kern(welle_nummer)
+    _kegel.tiefe_kern = Regeln.tiefe_kern(welle_nummer)
+    _kegel.schein = Regeln.helligkeit(welle_nummer, _wellenzeit)
     _kegel.queue_redraw()
 
 
@@ -908,8 +927,11 @@ func _verbrenne(delta: float) -> void:
         var t := _tiere[i]
         if not t.lebendig or t.alter < 0.0:
             continue
-        var hell := Schlund.beleuchtung(_ort, _blick, _kegel.halbwinkel,
-            _kegel.reichweite, t.ort)
+        # **Dieselben Werte, die auch gezeichnet werden** (Zusage 2), samt
+        # Kernhaerte und Dunkelphase.
+        var hell: float = Schlund.beleuchtung(_ort, _wirksam,
+            _kegel.halbwinkel, _kegel.reichweite, t.ort,
+            _kegel.rand_kern, _kegel.tiefe_kern) * _kegel.schein
         t.licht = hell
         if hell <= 0.0:
             continue
