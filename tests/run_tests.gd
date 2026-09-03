@@ -72,6 +72,7 @@ const TESTS: PackedStringArray = [
     "_test_karte_deckt_auf_was_befahren_wurde",
     "_test_rundum_verfolgt_ohne_zu_beschleunigen",
     "_test_schwaerme_fliehen_und_bleiben_im_feld",
+    "_test_rundumlauf_brennt_mit_dem_gezeichneten_kegel",
     "_test_rundum_begleiter_bleiben_hinten",
     "_test_leitwesen_tritt_zuletzt_ein",
     "_test_wellen_dauer_im_rahmen",
@@ -903,6 +904,57 @@ func _test_schwaerme_fliehen_und_bleiben_im_feld() -> bool:
                 % weit.length()):
             return false
     return true
+
+
+## **Was hell gezeichnet wird, macht Schaden** - auch im Rundumlauf.
+##
+## Zusage 2 galt dort lange nur halb: `_verbrenne()` fragte
+## `Schlund.beleuchtung()` mit `_blick` statt mit dem wirksamen Kegel und
+## ohne Kernhaerte und Dunkelphase. Der Kegel wurde also mit der Stroemung
+## verzogen gezeichnet und ohne sie gerechnet - eine zweite Wahrheit ueber
+## dasselbe Licht, und die schlimmste Sorte: eine, die man nur merkt, wenn
+## man daneben trifft.
+##
+## Der Quelltext wird gelesen und nicht das Verhalten gemessen, weil ein
+## Verhaltenstest die ganze Szene braeuchte - und weil die Regel ohnehin eine
+## ueber den Quelltext ist: es darf nur **einen** Aufruf geben, und der muss
+## alles mitnehmen.
+func _test_rundumlauf_brennt_mit_dem_gezeichneten_kegel() -> bool:
+    var quelle := FileAccess.get_file_as_string(
+        "res://scripts/spiel/rundlauf.gd")
+    if not _melde(not quelle.is_empty(), "rundlauf.gd nicht lesbar"):
+        return false
+
+    # Die Anweisung mit dem Aufruf zusammensetzen: sie geht ueber mehrere
+    # Zeilen, und ein Zeilentest saehe nur ihren Anfang.
+    var zeilen := quelle.split("\n")
+    var gefunden := 0
+    for i in zeilen.size():
+        var zeile := String(zeilen[i])
+        # Kommentare zaehlen nicht: der Kopf der Datei nennt die Funktion
+        # namentlich, und ein Test, der ueber eine Erklaerung stolpert,
+        # zwingt dazu, Erklaerungen wegzulassen.
+        if zeile.strip_edges().begins_with("#"):
+            continue
+        if not zeile.contains("Schlund.beleuchtung("):
+            continue
+        gefunden += 1
+        var satz := ""
+        for j in range(i, mini(i + 5, zeilen.size())):
+            satz += String(zeilen[j]).strip_edges()
+            if satz.count("(") <= satz.count(")"):
+                break
+        for teil in ["_wirksam", "rand_kern", "tiefe_kern", "schein"]:
+            if not _melde(satz.contains(teil),
+                    "der Kegel des Rundumlaufs rechnet ohne %s: %s"
+                    % [teil, satz]):
+                return false
+        if not _melde(not satz.contains("_blick"),
+                "der Schaden fragt `_blick` statt den wirksamen Kegel"):
+            return false
+    return _melde(gefunden == 1,
+        "es darf genau einen `Schlund.beleuchtung()`-Aufruf im Rundumlauf "
+        + "geben, gefunden: %d" % gefunden)
 
 
 func _test_rundum_verfolgt_ohne_zu_beschleunigen() -> bool:
