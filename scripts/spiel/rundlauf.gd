@@ -201,8 +201,7 @@ func _ready() -> void:
     _koloniebild.geschlossen.connect(_kolonie_zu)
     _koloniebild.zurueck_beschriftung = "BACK TO THE TRENCH"
     _kamera.position = _ort
-    _kegel.halbwinkel = Graben.HALBWINKEL
-    _kegel.reichweite = Graben.REICHWEITE
+    _stelle_ausbau_ein()
     for i in 3:
         _begleiter.append(Vector2.ZERO)
         _begleiter_ziel.append(-1)
@@ -224,7 +223,37 @@ func _ready() -> void:
         _nimm_auf.call_deferred()
 
 
+## **Die Werte des Bootes kommen aus der Kolonie, nicht aus der Sollkurve.**
+##
+## Das stand hier zuerst falsch: der Kegel rechnete mit
+## `Ausbau.leistung_faktor(welle)`, also mit dem Stand, den ein Spieler auf
+## dieser Welle *haben sollte*. Damit war jede Kammer, die man vom verdienten
+## Naehrstoff hob, im Rundumlauf folgenlos - man verdiente, baute, und nichts
+## wurde staerker. Eine geschlossene Schleife, in der der zweite Halbkreis
+## nichts bewirkt, ist keine.
+##
+## Dieselben vier Funktionen wie in `wache.gd::_stelle_ausbau_ein()`, aus
+## demselben `KolonieStand`. `Ausbau` bleibt daneben die Vorgabe, an der sich
+## die Kolonie messen lassen muss - nicht ihr Ersatz.
+func _stelle_ausbau_ein() -> void:
+    var stand: KolonieStand = Fortschritt.stand
+    _kegel.halbwinkel = Graben.HALBWINKEL * stand.winkel_faktor()
+    _kegel.reichweite = Graben.REICHWEITE * stand.reichweite_faktor()
+    # Und die Huelle aus der Brutkammer - sie ist die Brut (siehe oben), also
+    # haengt sie an derselben Kammer.
+    huelle_voll = maxi(1, Fortschritt.stand.brut_leben())
+
+
+func leistung() -> float:
+    return Graben.LEISTUNG * Fortschritt.stand.leistung_faktor()
+
+
+func ziele() -> int:
+    return Fortschritt.stand.ziele()
+
+
 func _bereite_welle_vor() -> void:
+    _stelle_ausbau_ein()
     _tiere.clear()
     _wellenzeit = 0.0
     var rng := RandomNumberGenerator.new()
@@ -398,6 +427,9 @@ func _fuehre_boot(delta: float) -> void:
 func starte() -> void:
     lage = Lage.SPIEL
     _zieht = false
+    # Erst den Stand holen, dann die Huelle fuellen: sonst startet die erste
+    # Fahrt nach einem Ausbau der Brutkammer noch mit der alten Zahl.
+    _stelle_ausbau_ein()
     huelle = huelle_voll
     punkte = 0
     kette = 0
@@ -505,8 +537,7 @@ func _fuehre_stoss(delta: float) -> void:
             t.stoss_nr = _stoss_nr
             _wecke(t)
             t.leben -= Schlund.schaden_an(
-                Graben.LEISTUNG * Ausbau.leistung_faktor(welle_nummer),
-                1.0, Wellen.panzer_in(t.art, t.welle),
+                leistung(), 1.0, Wellen.panzer_in(t.art, t.welle),
                 Wellen.mindest_licht_in(t.art, t.welle), 1.0) \
                 * Graben.STOSS_WERT
             t.hitze = 1.0
@@ -533,7 +564,7 @@ func _fuehre_begleiter(delta: float) -> void:
             continue
         # Derselbe Schaden wie im Schlund: ein Polyp auf Sollstufe.
         var t := _tiere[index[n]]
-        var weg := Graben.POLYP_LEISTUNG * Ausbau.leistung_faktor(welle_nummer) \
+        var weg := Fortschritt.stand.polyp_leistung() \
             * delta
         t.leben -= weg
         t.hitze = minf(1.0, t.hitze + delta * 2.0)
@@ -633,13 +664,12 @@ func _verbrenne(delta: float) -> void:
         kandidaten.append(i)
 
     # Derselbe Deckel wie im Schlund: der Kegel haelt nur so viele auf einmal.
-    var ziele := Ausbau.ziele(welle_nummer)
-    for k in Schlund.brennende(wirkungen, ziele):
+    var deckel := ziele()
+    for k in Schlund.brennende(wirkungen, deckel):
         var t := _tiere[kandidaten[k]]
         _wecke(t)
         t.leben -= Schlund.schaden_an(
-            Graben.LEISTUNG * Ausbau.leistung_faktor(welle_nummer),
-            wirkungen[k], Wellen.panzer_in(t.art, t.welle),
+            leistung(), wirkungen[k], Wellen.panzer_in(t.art, t.welle),
             Wellen.mindest_licht_in(t.art, t.welle), delta)
         t.hitze = minf(1.0, t.hitze + delta * 3.0)
 

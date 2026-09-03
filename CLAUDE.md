@@ -505,6 +505,16 @@ Wahrheit über dieselben Kammern. Erreichbar über `COLONY` im Titelbild **und**
 im Bericht — nach der Fahrt liegt der Nährstoff frisch in der Kolonie, und
 das ist der Moment, in dem man ihn ausgeben will.
 
+**Und die Werte des Bootes kommen aus der Kolonie**, nicht aus der Sollkurve.
+Das stand zuerst falsch: der Kegel rechnete mit
+`Ausbau.leistung_faktor(welle)`, also mit dem Stand, den ein Spieler auf
+dieser Welle *haben sollte*. Damit war jede Kammer, die man vom verdienten
+Nährstoff hob, im Rundumlauf folgenlos — man verdiente, baute, und nichts
+wurde stärker. Eine geschlossene Schleife, in der der zweite Halbkreis nichts
+bewirkt, ist keine. Es sind dieselben vier Funktionen wie in
+`wache.gd::_stelle_ausbau_ein()`, aus demselben `KolonieStand`; die Hülle
+hängt an der Brutkammer, weil sie die Brut ist.
+
 Zwei Dinge, die dabei zu beachten waren. Die Ebene braucht ein Kind namens
 `Flaeche` in der Szene, sonst bricht sie in `_ready()` ab und schreibt
 zweihundert Zeilen `queue_redraw() on a null value`. Und `rund_menue.gd`
