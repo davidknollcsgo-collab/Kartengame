@@ -151,6 +151,8 @@ func _zeichne_pause(breite: float, hoehe: float) -> void:
             else 0.26), 1.4, true)
         _text(Vector2(breite * 0.5, kasten.position.y + 31.0), texte[i], 18,
             SCHRIFT if i == 0 else LEISE, true, 2.5)
+        if texte[i] == "COLONY" and _kolonie_lohnt():
+            _punkt(kasten, Color(0.52, 0.94, 0.80))
         y += 58.0
     _text(Vector2(breite * 0.5, hoehe - 56.0),
         "THE COLONY KEEPS WHAT YOU ALREADY BROUGHT BACK", 11, LEISE, true,
@@ -200,6 +202,11 @@ func _zeichne_ende(breite: float, hoehe: float) -> void:
 
     var zeilen: Array[Array] = [
         ["NUTRIENT", Zahl.kurz(int(lauf.verdient))],
+        # **Was in der Kolonie liegt, gehoert hierher.** Der Bericht ist die
+        # Stelle, an der man entscheidet, ob man baut oder noch einmal
+        # faehrt - und diese Entscheidung braucht den Kontostand und nicht
+        # nur die Beute dieser Fahrt.
+        ["IN THE COLONY", Zahl.kurz(int(Fortschritt.stand.naehrstoffe))],
         ["SCORE", Zahl.kurz(int(lauf.punkte))],
         ["WAVE", str(int(lauf.welle_nummer))],
         ["KILLS", str(int(lauf.erlegt))],
@@ -208,16 +215,22 @@ func _zeichne_ende(breite: float, hoehe: float) -> void:
     ]
     var y := oben + 66.0
     for i in zeilen.size():
-        var kasten := Rect2(RAND, y, breite - RAND * 2.0, 34.0)
+        var kasten := Rect2(RAND, y, breite - RAND * 2.0, 32.0)
         if i == 0:
             _flaeche.draw_colored_polygon(_hexweg(kasten, 10.0),
                 Color(0.035, 0.115, 0.135, 0.60))
         _text(kasten.position + Vector2(18.0, 23.0), String(zeilen[i][0]),
             13, LEISE, false, 2.4)
+        # Eine Bestmarke ist das Einzige, was eine Fahrt ueber die naechste
+        # hebt - sie darf sich melden.
+        if String(zeilen[i][0]) == "SCORE" and bool(lauf.bestmarke):
+            var puls := 0.5 + 0.5 * sin(_zeit * 3.4)
+            _text(kasten.position + Vector2(96.0, 23.0), "NEW BEST", 11,
+                Color(1.0, 0.84, 0.52, 0.55 + 0.45 * puls), false, 2.0)
         _text(Vector2(kasten.end.x - 18.0, kasten.position.y + 24.0),
             String(zeilen[i][1]), 20,
             HELL if i == 0 else SCHRIFT, false, 1.0, true)
-        y += 38.0
+        y += 35.0
 
     _felder.clear()
     var texte: PackedStringArray = ["DIVE AGAIN", "COLONY", "SURFACE"]
@@ -237,7 +250,46 @@ func _zeichne_ende(breite: float, hoehe: float) -> void:
             else 0.26), 1.4, true)
         _text(Vector2(breite * 0.5, kasten.position.y + 31.0), texte[i], 18,
             SCHRIFT if i == 0 else LEISE, true, 2.5)
+        if texte[i] == "COLONY" and _kolonie_lohnt():
+            _punkt(kasten, Color(0.52, 0.94, 0.80))
         y += 58.0
+
+
+## Ob gerade wenigstens eine Kammer bezahlbar und frei ist.
+##
+## **Der Knopf soll sagen, ob sich das Hingehen lohnt.** Sonst tippt man ihn
+## nach jeder Fahrt auf Verdacht an, liest fuenf Preise und faehrt wieder -
+## das ist der Umweg, den ein Punkt am Knopf erspart.
+func _kolonie_lohnt() -> bool:
+    var stand: KolonieStand = Fortschritt.stand
+    if stand.baut():
+        return false
+    for k in Kammern.Kammer.size():
+        if stand.kann_bauen(k):
+            return true
+    return false
+
+
+## Ob heute noch etwas abzuholen ist: ein erfuelltes Tagesziel oder der
+## Zuchtkalender. Derselbe Gedanke wie beim Ausbau - eine Belohnung, die
+## dort liegt und nicht sagt, dass sie dort liegt, holt niemand ab.
+func _tag_lohnt() -> bool:
+    var stand: KolonieStand = Fortschritt.stand
+    if stand.kalender_offen():
+        return true
+    for i in Tagesziel.zahl():
+        if stand.ziel_offen(i):
+            return true
+    return false
+
+
+## Ein Punkt am rechten Rand eines Knopfes.
+func _punkt(kasten: Rect2, farbe: Color) -> void:
+    var puls := 0.5 + 0.5 * sin(_zeit * 2.8)
+    var p := Vector2(kasten.end.x - 26.0, kasten.get_center().y)
+    _flaeche.draw_circle(p, 5.0 + 1.5 * puls,
+        Color(farbe.r, farbe.g, farbe.b, 0.20 + 0.20 * puls))
+    _flaeche.draw_circle(p, 3.0, farbe)
 
 
 func _hexweg(kasten: Rect2, schraege := 14.0) -> PackedVector2Array:
@@ -335,6 +387,10 @@ func _zeichne() -> void:
         _text(kasten.position + Vector2(44.0, 30.0),
             String(KNOEPFE[i][&"text"]), 18,
             SCHRIFT if erste else LEISE, false, 2.5)
+        var kennung: StringName = KNOEPFE[i][&"kennung"]
+        if (kennung == &"AUSBAU" and _kolonie_lohnt()) \
+                or (kennung == &"TAG" and _tag_lohnt()):
+            _punkt(kasten, Color(0.52, 0.94, 0.80))
         y += 56.0
 
     _schiffskarte(breite, hoehe, y)

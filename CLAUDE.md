@@ -507,6 +507,15 @@ ohne diese Abfrage verdient ein Telefon, das auf dem Titelbild liegen bleibt,
 echten Nährstoff. Aufgefallen ist es an einer 9261 im Schuss des Berichts, wo
 9260 hineingeschrieben war.
 
+**Was abzuholen ist, sagt es.** Ein Punkt am Knopf COLONY, wenn wenigstens
+eine Kammer bezahlbar und frei ist, und an DAILY, wenn ein Tagesziel oder der
+Zuchtkalender bereitliegt. Ohne ihn tippt man beide nach jeder Fahrt auf
+Verdacht an, liest fünf Preise und fährt wieder — und eine Belohnung, die
+nicht sagt, dass sie dort liegt, holt niemand ab. Im Bericht steht dazu, was
+insgesamt in der Kolonie liegt: der Bericht ist die Stelle, an der man
+zwischen Bauen und noch einer Fahrt entscheidet, und dafür braucht man den
+Kontostand und nicht nur die Beute dieser Fahrt.
+
 **Der Ausbau ist derselbe Bildschirm wie im Schlund**, nicht ein zweiter.
 `kolonie_schirm.gd` ist eine Ebene und keine Szene, hängt an `Fortschritt`
 und `Kammern` und kennt seinen Wirt nicht — er passt in `rundum.tscn`, ohne

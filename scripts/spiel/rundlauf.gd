@@ -143,6 +143,10 @@ var abschnitt_nummer := -1
 ## Ob die letzte Fahrt gehalten wurde oder die Huelle brach - der Bericht
 ## sagt dasselbe Ereignis in zwei Farben.
 var gehalten := false
+
+## Ob diese Fahrt die Bestmarke gebrochen hat. **Vor** dem Ueberschreiben
+## gemerkt - danach ist die Frage nicht mehr zu beantworten.
+var bestmarke := false
 var huelle := 12
 var huelle_voll := 12
 var erlegt := 0
@@ -332,6 +336,7 @@ func _ready() -> void:
         huelle = 0
         lage = Lage.ENDE
         gehalten = false
+        bestmarke = true
     if _zeige_pause:
         starte()
         welle_nummer = 9
@@ -629,6 +634,7 @@ func starte() -> void:
     welle_in_sitzung = 0
     atem = 0.0
     gehalten = false
+    bestmarke = false
     # Die naechste Welle sagt der Koloniestand. `--welle` sticht das aus -
     # ein Werkzeug soll zeigen koennen, was es zeigen will.
     welle_nummer = _erste_welle if _erste_welle > 0 \
@@ -778,6 +784,7 @@ func _beende(geschafft: bool) -> void:
     gehalten = geschafft
     _zieht = false
     var stand: KolonieStand = Fortschritt.stand
+    bestmarke = punkte > stand.bestpunkte
     stand.beste_kette = maxi(stand.beste_kette, kette_hoechste)
     stand.bestpunkte = maxi(stand.bestpunkte, punkte)
     Klang.spiele(Klang.Ton.WELLE if geschafft else Klang.Ton.BRUT_FAELLT,
