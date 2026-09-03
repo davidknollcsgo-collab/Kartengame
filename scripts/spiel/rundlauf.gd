@@ -130,6 +130,16 @@ var welle_in_sitzung := 0
 ## Fundstelle im Auge hat, holt sie sich jetzt.
 const ATEM := 2.2
 var atem := 0.0
+
+## Restsekunden, die der Name des Abschnitts noch steht.
+##
+## **Eine neue Regel gehoert angekuendigt.** Wer in Welle 31 ploetzlich im
+## Dunkeln steht und nicht weiss warum, haelt es fuer einen Fehler - das
+## steht seit dem Schlund in `wache.gd`, und seit die Regeln auch hier
+## gelten, gilt der Satz hier genauso.
+const ABSCHNITT_ZEIT := 4.5
+var abschnitt_zeit := 0.0
+var abschnitt_nummer := -1
 ## Ob die letzte Fahrt gehalten wurde oder die Huelle brach - der Bericht
 ## sagt dasselbe Ereignis in zwei Farben.
 var gehalten := false
@@ -368,7 +378,12 @@ func _bereite_welle_vor() -> void:
     # `wache.gd` gesetzt - der Rundumlauf lief also stumm, bis auf die
     # Ereignistoene. Es ist derselbe Graben und derselbe Abschnitt; ein
     # eigener Ton dafuer waere eine zweite Stimme fuer denselben Ort.
-    Klang.setze_abschnitt(Graben.abschnitt(welle_nummer))
+    var a := Graben.abschnitt(welle_nummer)
+    Klang.setze_abschnitt(a)
+    if lage == Lage.SPIEL and Regeln.neu_in(a) \
+            and welle_nummer == a * Graben.WELLEN_JE_ABSCHNITT + 1:
+        abschnitt_nummer = a
+        abschnitt_zeit = ABSCHNITT_ZEIT
     _tiere.clear()
     _wellenzeit = 0.0
     var rng := RandomNumberGenerator.new()
@@ -450,6 +465,7 @@ func _process(delta: float) -> void:
     _kamera.offset = Vector2(randf_range(-1.0, 1.0),
         randf_range(-1.0, 1.0)) * _schuetteln * 7.0
 
+    abschnitt_zeit = maxf(0.0, abschnitt_zeit - delta)
     _stoss_kuehl = maxf(0.0, _stoss_kuehl - delta)
     _kette_zeit = maxf(0.0, _kette_zeit - delta)
     if _kette_zeit <= 0.0 and kette > 0:

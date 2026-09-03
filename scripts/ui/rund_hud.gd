@@ -187,6 +187,7 @@ func _zeichne() -> void:
     _warnung(breite, hoehe)
     _lehre(breite, hoehe)
     _atem(breite, hoehe)
+    _abschnitt(breite, hoehe)
 
 
 ## Links oben: Huelle und Ladung des Stosslichts.
@@ -326,6 +327,26 @@ func _atem(breite: float, hoehe: float) -> void:
         "%d OF %d THIS DIVE" % [int(lauf.welle_in_sitzung),
         Graben.WELLEN_JE_SITZUNG], 12,
         Color(LEISE.r, LEISE.g, LEISE.b, a * 0.9), true)
+
+
+## Der Name eines neuen Abschnitts, wenn einer beginnt.
+##
+## Er steht dort, wo sonst die Wellenmeldung steht, und blendet genauso aus -
+## zwei Meldungen an zwei Orten waeren zwei Dinge, auf die man achten muss.
+## Sie koennen sich nicht ueberschneiden: der Abschnitt beginnt mit einer
+## Welle, die Wellenmeldung steht davor.
+func _abschnitt(breite: float, hoehe: float) -> void:
+    var rest: float = lauf.abschnitt_zeit
+    if rest <= 0.0 or lauf.abschnitt_nummer < 0:
+        return
+    var a: int = lauf.abschnitt_nummer
+    var t: float = 1.0 - absf(rest / lauf.ABSCHNITT_ZEIT - 0.5) * 2.0
+    var deckung := clampf(t * 3.0, 0.0, 1.0)
+    var y := hoehe * 0.30
+    _text(Vector2(breite * 0.5, y), Regeln.name_von(a).to_upper(), 22,
+        Color(WARM.r, WARM.g, WARM.b, deckung), true)
+    _text(Vector2(breite * 0.5, y + 24.0), Regeln.hinweis(a), 12,
+        Color(LEISE.r, LEISE.g, LEISE.b, deckung * 0.9), true)
 
 
 ## Der Einstieg: zwei Zeilen ueber der unteren Kante.

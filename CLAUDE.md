@@ -533,6 +533,13 @@ zweihundert Zeilen `queue_redraw() on a null value`. Und `rund_menue.gd`
 setzt seine Sichtbarkeit je Bild selbst — ohne `lauf.kolonie_offen()` stünde
 das Titelbild eine Zehntelsekunde nach dem Öffnen wieder darüber.
 
+**Die Abschnittsregeln gelten auch hier** — Strömung, Dunkelphasen,
+Kernhärte —, und sie werden angekündigt. Sie standen lange nur in `wache.gd`,
+während `Wellen.staerke()` sie einrechnete (Zusage 6): die Welle wurde
+kleiner, *weil* der Spieler behindert ist, nur war er es hier nicht. Der
+Ankündigung liegt derselbe Satz zugrunde wie im Schlund: wer in Welle 31
+plötzlich im Dunkeln steht und nicht weiß warum, hält es für einen Fehler.
+
 **Der Grundton läuft auch hier.** Er wurde ausschließlich aus `wache.gd`
 gesetzt — der Rundumlauf lief stumm, bis auf die Ereignistöne. Es ist
 derselbe Graben und derselbe Abschnitt, also derselbe Ton; ein eigener wäre
