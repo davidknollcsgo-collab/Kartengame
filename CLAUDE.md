@@ -533,6 +533,11 @@ zweihundert Zeilen `queue_redraw() on a null value`. Und `rund_menue.gd`
 setzt seine Sichtbarkeit je Bild selbst — ohne `lauf.kolonie_offen()` stünde
 das Titelbild eine Zehntelsekunde nach dem Öffnen wieder darüber.
 
+**Der Grundton läuft auch hier.** Er wurde ausschließlich aus `wache.gd`
+gesetzt — der Rundumlauf lief stumm, bis auf die Ereignistöne. Es ist
+derselbe Graben und derselbe Abschnitt, also derselbe Ton; ein eigener wäre
+eine zweite Stimme für denselben Ort.
+
 **Die Schiffskarte im Titelbild** zeigt vier Werte — Hülle, Strahl, Ziele,
 Begleiter — und jeder davon ist der Wert, mit dem das Spiel wirklich rechnet,
 aus derselben `KolonieStand`-Funktion, die auch `_stelle_ausbau_ein()` fragt.

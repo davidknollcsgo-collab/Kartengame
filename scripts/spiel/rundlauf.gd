@@ -354,6 +354,11 @@ func _bereite_welle_vor() -> void:
     # Nur in der Fahrt: der Vorfuehrdaumen hinter dem Titelbild darf den
     # Tagesvorrat nicht aufbrauchen.
     stroemung = lage == Lage.SPIEL and Fortschritt.stand.nutze_stroemung()
+    # **Der Grundton gehoert auch hierher.** Er wurde ausschliesslich aus
+    # `wache.gd` gesetzt - der Rundumlauf lief also stumm, bis auf die
+    # Ereignistoene. Es ist derselbe Graben und derselbe Abschnitt; ein
+    # eigener Ton dafuer waere eine zweite Stimme fuer denselben Ort.
+    Klang.setze_abschnitt(Graben.abschnitt(welle_nummer))
     _tiere.clear()
     _wellenzeit = 0.0
     var rng := RandomNumberGenerator.new()
