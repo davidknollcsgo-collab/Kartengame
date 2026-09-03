@@ -136,6 +136,15 @@ var punkte := 0
 var verdient := 0
 ## Der Bruchteil, der noch nicht ausgezahlt ist. Siehe `_lohne()`.
 var _lohn_rest := 0.0
+
+## Ob die laufende Welle eine Tagesstroemung ist.
+##
+## **Sie muss es hier genauso geben wie im Schlund.** `tools/kolonielauf.gd`
+## rechnet die drei Bonuswellen des Tages ausdruecklich in die Sollkurve ein
+## ("sonst misst das Werkzeug ein anderes Spiel"); wer nur faehrt, verdiente
+## ohne sie strukturell weniger, als die Kurve annimmt, und bliebe dauerhaft
+## hinter ihr zurueck.
+var stroemung := false
 var kette := 0
 var kette_hoechste := 0
 var _kette_zeit := 0.0
@@ -317,6 +326,9 @@ func ziele() -> int:
 
 func _bereite_welle_vor() -> void:
     _stelle_ausbau_ein()
+    # Nur in der Fahrt: der Vorfuehrdaumen hinter dem Titelbild darf den
+    # Tagesvorrat nicht aufbrauchen.
+    stroemung = lage == Lage.SPIEL and Fortschritt.stand.nutze_stroemung()
     _tiere.clear()
     _wellenzeit = 0.0
     var rng := RandomNumberGenerator.new()
@@ -909,7 +921,8 @@ func _lohne(t: Raeuber) -> void:
     # die ich hineingeschrieben hatte.
     if lage != Lage.SPIEL:
         return
-    _lohn_rest += float(Wellen.wert_in(t.art, t.welle)) / float(DICHTE)
+    _lohn_rest += Tagesstroemung.ausbeute(
+        Wellen.wert_in(t.art, t.welle), stroemung) / float(DICHTE)
     var lohn := int(floor(_lohn_rest))
     if lohn <= 0:
         return

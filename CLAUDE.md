@@ -524,6 +524,13 @@ zweihundert Zeilen `queue_redraw() on a null value`. Und `rund_menue.gd`
 setzt seine Sichtbarkeit je Bild selbst — ohne `lauf.kolonie_offen()` stünde
 das Titelbild eine Zehntelsekunde nach dem Öffnen wieder darüber.
 
+**Die Tagesströmung läuft auch hier.** `tools/kolonielauf.gd` rechnet die drei
+Bonuswellen des Tages ausdrücklich in die Sollkurve ein — „sonst misst das
+Werkzeug ein anderes Spiel". Wer nur fährt, verdiente ohne sie strukturell
+weniger, als die Kurve annimmt, und bliebe dauerhaft hinter ihr zurück.
+Verbraucht wird sie nur in `Lage.SPIEL`: der Vorführdaumen hinter dem
+Titelbild darf den Tagesvorrat nicht aufbrauchen.
+
 **Die Tagesziele zählen auch hier.** Sie wurden ausschließlich aus `wache.gd`
 gemeldet — wer nur fährt, konnte keines davon erfüllen, obwohl `DAILY` im
 Titelbild steht und einen Lohn verspricht. Ein Ziel, das man in der Schleife,

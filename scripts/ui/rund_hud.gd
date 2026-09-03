@@ -177,7 +177,10 @@ func _zeichne() -> void:
 
     _zustand(breite)
     _welle(breite)
-    _punkte(breite)
+    # Die Stroemungszeile schiebt die Punkte nach unten. Ohne das lagen sie
+    # zehn Punkte auseinander und in derselben Spalte - zwei Zeilen, die
+    # sich beruehren, liest man als eine.
+    _punkte(breite, 26.0 if lauf.stroemung else 0.0)
     _karte(hoehe)
     _knoepfe(breite, hoehe)
     _pause(breite)
@@ -216,11 +219,16 @@ func _welle(breite: float) -> void:
         "WAVE %d" % int(lauf.welle_nummer), 20, SCHRIFT, false, true)
     _text(Vector2(kasten.end.x - 14.0, kasten.position.y + 44.0),
         "%d LEFT" % int(lauf.offen()), 11, LEISE, false, true)
+    # Die Stroemung steht unter der Welle und nicht neben ihr: sie gehoert
+    # zu dieser Welle und nicht zum Bild.
+    if lauf.stroemung:
+        _text(Vector2(kasten.end.x - 14.0, kasten.position.y + 78.0),
+            "DAY CURRENT x2", 11, WARM, false, true)
 
 
 ## Darunter: Punkte und der Kettenfaktor.
-func _punkte(breite: float) -> void:
-    var y := RAND + _rand_oben + 74.0
+func _punkte(breite: float, versatz: float) -> void:
+    var y := RAND + _rand_oben + 74.0 + versatz
     var rechts := breite - RAND - _rand_seite - 4.0
     _text(Vector2(rechts, y + 14.0), "SCORE", 11, LEISE, false, true)
     _text(Vector2(rechts, y + 44.0),
