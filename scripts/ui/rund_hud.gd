@@ -83,8 +83,24 @@ func _tafel(kasten: Rect2, farbe := RAHMEN, deckung := 0.42,
 ## Ein segmentierter Balken. **Segmente, nicht ein glatter Streifen**: bei
 ## einem Streifen sieht man, dass etwas fehlt, aber nicht wieviel, und das
 ## ist genau die Zahl, die zaehlt.
+## Ab wievielen Teilen der Balken glatt wird.
+##
+## **Segmente zaehlen nur, solange man sie zaehlen kann.** Die Huelle kommt
+## aus der Brutkammer, und die geht bis Stufe 80 - das sind zweiundfuenfzig
+## Eier. In einer Leiste von 158 Punkten waere jedes davon einen Punkt breit
+## und der Zwischenraum zwei: eine gestrichelte Linie, aus der man nichts
+## abliest. Darueber also ein glatter Balken und eine Zahl daneben.
+const SEGMENTE_HOECHSTENS := 22
+
+
 func _balken(kasten: Rect2, ist: int, voll: int, farbe: Color) -> void:
     if voll <= 0:
+        return
+    if voll > SEGMENTE_HOECHSTENS:
+        _flaeche.draw_rect(kasten, Color(farbe.r, farbe.g, farbe.b, 0.14))
+        _flaeche.draw_rect(Rect2(kasten.position, Vector2(kasten.size.x
+            * clampf(float(ist) / float(voll), 0.0, 1.0), kasten.size.y)),
+            farbe)
         return
     var breit := kasten.size.x / float(voll)
     for i in voll:
@@ -131,6 +147,10 @@ func _zustand(_breite: float) -> void:
     var kasten := Rect2(RAND, RAND, 186.0, 62.0)
     _tafel(kasten)
     _text(kasten.position + Vector2(14.0, 22.0), "HULL", 11, LEISE)
+    if lauf.huelle_voll > SEGMENTE_HOECHSTENS:
+        _text(Vector2(kasten.end.x - 14.0, kasten.position.y + 22.0),
+            "%d / %d" % [int(lauf.huelle), int(lauf.huelle_voll)], 11,
+            LEISE, false, true)
     _balken(Rect2(kasten.position + Vector2(14.0, 28.0),
         Vector2(158.0, 7.0)), lauf.huelle, lauf.huelle_voll,
         HELL if lauf.huelle > 3 else WARNUNG)
