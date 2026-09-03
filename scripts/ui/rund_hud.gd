@@ -26,6 +26,18 @@ const RAHMEN := Color(0.30, 0.62, 0.66)
 
 var lauf: Node = null
 
+## Die Raender, die das Geraet selbst braucht - Kerbe oben, Gestenbalken
+## unten, gerundete Ecken an den Seiten.
+##
+## **Dieselbe Rechnung wie in `hud.gd`, aus demselben Grund.** Der Entwurf
+## steht auf 720x1280, und dort gibt es keine Aussparungen; der Fehler
+## existiert nur auf dem Geraet, fuer das gebaut wird. Der Stossknopf sass
+## bis hierher fuenfzehn Punkte ueber der unteren Kante - auf einem Telefon
+## mit Gestenbalken also darunter.
+var _rand_oben := 0.0
+var _rand_unten := 0.0
+var _rand_seite := 0.0
+
 var _flaeche: Control
 var _schrift: Font
 var _zeit := 0.0
@@ -132,9 +144,34 @@ func _text(wo: Vector2, was: String, groesse: int, farbe: Color,
 
 # --- Das Bild ----------------------------------------------------------------
 
+## Nur auf dem Telefon fragen: auf dem Schreibtisch liefert
+## `get_display_safe_area()` den ganzen Bildschirm und nicht das Fenster
+## (Zusage 17). Und gedeckelt, weil kein Geraet sich ein Achtel des Bildes
+## nimmt - was darueber liegt, ist eine Fehlmessung und keine Kerbe.
+func _miss_geraeterand() -> void:
+    if not OS.has_feature("mobile"):
+        return
+    var fenster := DisplayServer.window_get_size()
+    if fenster.x <= 0 or fenster.y <= 0 or _flaeche.size.x <= 0.0:
+        return
+    var sicher := DisplayServer.get_display_safe_area()
+    if sicher.size.x <= 0 or sicher.size.y <= 0:
+        return
+    var skala := _flaeche.size / Vector2(fenster)
+    var deckel := _flaeche.size * 0.12
+    _rand_oben = clampf(float(sicher.position.y) * skala.y, 0.0, deckel.y)
+    _rand_unten = clampf(
+        float(fenster.y - sicher.position.y - sicher.size.y) * skala.y,
+        0.0, deckel.y)
+    var links := float(sicher.position.x) * skala.x
+    var rechts := float(fenster.x - sicher.position.x - sicher.size.x) * skala.x
+    _rand_seite = clampf(maxf(links, rechts), 0.0, deckel.x)
+
+
 func _zeichne() -> void:
     if lauf == null:
         return
+    _miss_geraeterand()
     var breite := _flaeche.size.x
     var hoehe := _flaeche.size.y
 
@@ -150,7 +187,7 @@ func _zeichne() -> void:
 
 ## Links oben: Huelle und Ladung des Stosslichts.
 func _zustand(_breite: float) -> void:
-    var kasten := Rect2(RAND, RAND, 186.0, 62.0)
+    var kasten := Rect2(RAND + _rand_seite, RAND + _rand_oben, 186.0, 62.0)
     _tafel(kasten)
     _text(kasten.position + Vector2(14.0, 22.0), "HULL", 11, LEISE)
     if lauf.huelle_voll > SEGMENTE_HOECHSTENS:
@@ -172,7 +209,8 @@ func _zustand(_breite: float) -> void:
 
 ## Rechts oben: Welle, Auftrag, Zeit.
 func _welle(breite: float) -> void:
-    var kasten := Rect2(breite - RAND - 150.0, RAND, 150.0, 62.0)
+    var kasten := Rect2(breite - RAND - _rand_seite - 150.0,
+        RAND + _rand_oben, 150.0, 62.0)
     _tafel(kasten)
     _text(Vector2(kasten.end.x - 14.0, kasten.position.y + 26.0),
         "WAVE %d" % int(lauf.welle_nummer), 20, SCHRIFT, false, true)
@@ -182,17 +220,17 @@ func _welle(breite: float) -> void:
 
 ## Darunter: Punkte und der Kettenfaktor.
 func _punkte(breite: float) -> void:
-    var y := RAND + 74.0
-    _text(Vector2(breite - RAND - 4.0, y + 14.0), "SCORE", 11, LEISE,
-        false, true)
-    _text(Vector2(breite - RAND - 4.0, y + 44.0),
+    var y := RAND + _rand_oben + 74.0
+    var rechts := breite - RAND - _rand_seite - 4.0
+    _text(Vector2(rechts, y + 14.0), "SCORE", 11, LEISE, false, true)
+    _text(Vector2(rechts, y + 44.0),
         Zahl.kurz(int(lauf.punkte)), 28, SCHRIFT, false, true)
     var kette: int = lauf.kette
     if kette >= Graben.KETTE_AB:
         # Der Faktor pulst, solange die Kette laeuft - er ist das Einzige im
         # Bild, das man verlieren kann, ohne getroffen zu werden.
         var puls := 0.5 + 0.5 * sin(_zeit * 6.0)
-        _text(Vector2(breite - RAND - 4.0, y + 66.0),
+        _text(Vector2(rechts, y + 66.0),
             "x%.1f" % Graben.kette_faktor(kette), 17,
             Color(WARM.r, WARM.g, WARM.b, 0.7 + 0.3 * puls), false, true)
 
@@ -205,7 +243,8 @@ func _punkte(breite: float) -> void:
 ## lesen. Oben stuende sie zwischen Huelle und Welle und zoege den Blick von
 ## beiden ab.
 func _karte(hoehe: float) -> void:
-    var kasten := Rect2(RAND, hoehe - RAND - 46.0, 158.0, 46.0)
+    var kasten := Rect2(RAND + _rand_seite,
+        hoehe - RAND - _rand_unten - 46.0, 158.0, 46.0)
     _tafel(kasten)
     var anteil: float = lauf.karte.anteil() if lauf.karte != null else 0.0
     _text(kasten.position + Vector2(12.0, 18.0), "SCANNED", 10, LEISE)
@@ -225,7 +264,7 @@ func _karte(hoehe: float) -> void:
 ## Oben in der Mitte: die Pause. Klein, weit weg vom Daumen, und ohne Ton -
 ## ein Knopf, den man versehentlich trifft, waere schlimmer als keiner.
 func _pause(breite: float) -> void:
-    var kasten := Rect2(breite * 0.5 - 21.0, RAND, 42.0, 34.0)
+    var kasten := Rect2(breite * 0.5 - 21.0, RAND + _rand_oben, 42.0, 34.0)
     pausenknopf = kasten.grow(8.0)
     _tafel(kasten, RAHMEN, 0.30, 8.0)
     for i in 2:
@@ -237,7 +276,8 @@ func _pause(breite: float) -> void:
 ## Rechts unten: das Stosslicht. Ein runder Knopf mit einem Ladering, wie im
 ## Schlund - der Daumen liegt dort ohnehin.
 func _knoepfe(breite: float, hoehe: float) -> void:
-    var mitte := Vector2(breite - RAND - 44.0, hoehe - RAND - 44.0)
+    var mitte := Vector2(breite - RAND - _rand_seite - 44.0,
+        hoehe - RAND - _rand_unten - 44.0)
     stossknopf = Rect2(mitte - Vector2(44.0, 44.0), Vector2(88.0, 88.0))
     var bereit: bool = lauf.stoss_bereit()
     var ladung: float = lauf.stoss_ladung()
@@ -267,7 +307,7 @@ func _lehre(breite: float, hoehe: float) -> void:
         return
     var eintrag: Dictionary = lauf.LEHRE[schritt]
     var puls := 0.6 + 0.4 * sin(_zeit * 2.6)
-    var y := hoehe - RAND - 132.0
+    var y := hoehe - RAND - _rand_unten - 132.0
     _text(Vector2(breite * 0.5, y), String(eintrag[&"text"]), 21,
         Color(HELL.r, HELL.g, HELL.b, 0.55 + 0.45 * puls), true)
     _text(Vector2(breite * 0.5, y + 22.0), String(eintrag[&"leise"]), 12,
@@ -283,7 +323,8 @@ func _warnung(breite: float, _hoehe: float) -> void:
     # Unter den Kopfzeilen, nicht in der Bildmitte: dort steht das Boot,
     # und ein Warnband quer darueber verdeckt genau das, was man
     # ansehen muss.
-    var kasten := Rect2(breite * 0.5 - 130.0, RAND + 92.0, 260.0, 30.0)
+    var kasten := Rect2(breite * 0.5 - 130.0, RAND + _rand_oben + 92.0,
+        260.0, 30.0)
     _tafel(kasten, WARNUNG, 0.25 + 0.35 * puls, 10.0)
     _text(Vector2(breite * 0.5, kasten.position.y + 20.0),
         "WARDEN IN THE FIELD", 14,
