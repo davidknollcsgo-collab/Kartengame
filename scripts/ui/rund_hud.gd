@@ -123,6 +123,7 @@ func _zeichne() -> void:
     _karte(hoehe)
     _knoepfe(breite, hoehe)
     _warnung(breite, hoehe)
+    _lehre(breite, hoehe)
 
 
 ## Links oben: Huelle und Ladung des Stosslichts.
@@ -214,6 +215,25 @@ func _knoepfe(breite: float, hoehe: float) -> void:
         _flaeche.draw_arc(mitte, r, 0.0, TAU, 24,
             Color(HELL.r, HELL.g, HELL.b, (0.55 - 0.13 * float(i))
                 * (1.0 if bereit else 0.35)), 1.4, true)
+
+
+## Der Einstieg: zwei Zeilen ueber der unteren Kante.
+##
+## **Unten, nicht in der Mitte.** In der Mitte steht das Boot, und ein
+## Hinweis, der genau das verdeckt, worauf er zeigt, ist keiner. Und ohne
+## Tafel dahinter: er soll wie eine Beschriftung wirken und nicht wie ein
+## Fenster, das man wegtippen muss.
+func _lehre(breite: float, hoehe: float) -> void:
+    var schritt: int = lauf.lehr_schritt
+    if schritt >= lauf.LEHRE.size():
+        return
+    var eintrag: Dictionary = lauf.LEHRE[schritt]
+    var puls := 0.6 + 0.4 * sin(_zeit * 2.6)
+    var y := hoehe - RAND - 132.0
+    _text(Vector2(breite * 0.5, y), String(eintrag[&"text"]), 21,
+        Color(HELL.r, HELL.g, HELL.b, 0.55 + 0.45 * puls), true)
+    _text(Vector2(breite * 0.5, y + 22.0), String(eintrag[&"leise"]), 12,
+        LEISE, true)
 
 
 ## Ein Band, wenn ein Leitwesen im Feld steht. Es ist der Hoehepunkt eines

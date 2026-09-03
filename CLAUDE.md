@@ -521,6 +521,16 @@ zweihundert Zeilen `queue_redraw() on a null value`. Und `rund_menue.gd`
 setzt seine Sichtbarkeit je Bild selbst — ohne `lauf.kolonie_offen()` stünde
 das Titelbild eine Zehntelsekunde nach dem Öffnen wieder darüber.
 
+**Drei Sätze Einstieg, während gespielt wird.** Der Rundumlauf erklärte
+bisher nichts: man sah ein Boot und musste raten, dass man ziehen soll.
+`rundlauf.gd::LEHRE` ist kein Lehrpfad wie im Schlund — es gibt nur eine
+Handlung und einen Knopf. Jeder Schritt wartet auf **die Handlung**, nicht
+auf eine Uhr (fahren, zwei erlegen, das Stoßlicht auslösen), hält nichts an
+und verlangt nichts; wer ihn nicht liest, spielt trotzdem. Danach steht
+`KolonieStand.einstieg_fahrt` auf 1, und er kommt nie wieder — eine **eigene**
+Zahl neben `einstieg`, weil wer die Schlundwache kennt noch nicht weiß, dass
+man hier fährt.
+
 **Was noch offen ist:** es gibt keine Wellenpausen — wer im Rundumlauf baut,
 tut es zwischen den Fahrten und nicht in ihnen. Der Wellenprüfer
 kann diese Schleife **nicht** messen: ein simulierter Daumen ersetzt kein

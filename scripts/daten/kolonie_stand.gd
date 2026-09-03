@@ -73,6 +73,12 @@ var stroemung_offen := Tagesstroemung.JE_TAG
 ## waehrend gespielt wird - nicht als Textwand davor.
 var einstieg := 0
 
+## Wie weit der Einstieg des **Rundumlaufs** gediehen ist. Eigene Zahl, weil
+## es eine eigene Steuerung ist: wer die Schlundwache kennt, weiss noch
+## nicht, dass man hier faehrt. Und wer nur faehrt, soll nicht den Einstieg
+## des Schlunds nachgereicht bekommen.
+var einstieg_fahrt := 0
+
 ## --- Was der Spieler eingestellt hat ---
 ##
 ## **Die Lautstaerke stand bisher nur in `Klang.laut` und nirgends sonst.**
@@ -514,6 +520,7 @@ func zu_wort() -> Dictionary:
         &"kalender": kalender,
         &"kalender_tag": kalender_tag,
         &"einstieg": einstieg,
+        &"einstieg_fahrt": einstieg_fahrt,
         &"laut": laut,
         &"beben": beben,
     }
@@ -567,6 +574,7 @@ static func aus_wort(wort: Dictionary) -> KolonieStand:
     s.kalender = clampi(int(wort.get(&"kalender", 0)), 0, Zuchtkalender.TAGE)
     s.kalender_tag = maxi(0, int(wort.get(&"kalender_tag", 0)))
     s.einstieg = maxi(0, int(wort.get(&"einstieg", 0)))
+    s.einstieg_fahrt = maxi(0, int(wort.get(&"einstieg_fahrt", 0)))
     s.laut = clampf(float(wort.get(&"laut", 0.7)), 0.0, 1.0)
     s.beben = bool(wort.get(&"beben", true))
     var roh_f: Array = wort.get(&"ziel_fortschritt", [])

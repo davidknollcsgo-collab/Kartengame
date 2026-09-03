@@ -170,6 +170,24 @@ var karte: Karte = null
 ## Fundstellen, die in dieser Sitzung geholt wurden - fuer die Anzeige.
 var funde := 0
 
+## --- Der Einstieg ---
+##
+## **Drei Saetze, waehrend gespielt wird, und dann nie wieder.** Der
+## Rundumlauf erklaerte bisher nichts: man sah ein Boot und musste raten,
+## dass man ziehen soll. Ein Lehrpfad wie im Schlund waere hier zu viel - es
+## gibt nur eine Handlung und einen Knopf.
+##
+## Jeder Schritt wartet auf **die Handlung**, nicht auf eine Uhr: wer schon
+## faehrt, bekommt "DRAG TO STEER" nicht vorgehalten.
+const LEHRE: Array[Dictionary] = [
+    {&"text": "DRAG TO STEER", &"leise": "THE LIGHT FOLLOWS YOUR THUMB"},
+    {&"text": "THE LIGHT BURNS", &"leise": "HOLD IT ON WHAT COMES AT YOU"},
+    {&"text": "TAP THE RING", &"leise": "A BURST HITS EVERYTHING AROUND YOU"},
+]
+
+var lehr_schritt := 0
+var _lehr_zeit := 0.0
+
 ## Ohne Nebel starten. Nur fuer Werkzeuge (`--offen`): ein Schuss vom Grund
 ## zeigt sonst schwarze Felder statt des Riffs, das er zeigen soll.
 var _offene_karte := false
@@ -217,8 +235,7 @@ func _ready() -> void:
         huelle = 0
         lage = Lage.ENDE
     if _kolonie_reiter >= 0:
-        oeffne_kolonie()
-        _koloniebild.zeige_reiter(_kolonie_reiter)
+        oeffne_kolonie(_kolonie_reiter)
     if not _schuss.is_empty():
         _nimm_auf.call_deferred()
 
@@ -342,6 +359,7 @@ func _process(delta: float) -> void:
         _zieht = true
 
     _fuehre_boot(delta)
+    _fuehre_lehre(delta)
     _wild.boot = _ort
     _decke_auf()
     _fuehre_stoss(delta)
@@ -359,6 +377,33 @@ func _process(delta: float) -> void:
     _schwarm.queue_redraw()
     _vorn.queue_redraw()
     queue_redraw()
+
+
+## Der Einstieg: ein Schritt weiter, sobald er getan ist.
+##
+## `lehr_schritt` zaehlt ueber `LEHRE` hinaus - dann ist er vorbei, und der
+## Stand merkt es sich. Was hier **nicht** steht, ist eine Sperre: der Text
+## haelt nichts an und verlangt nichts. Wer ihn nicht liest, spielt trotzdem.
+func _fuehre_lehre(delta: float) -> void:
+    if lage != Lage.SPIEL or lehr_schritt >= LEHRE.size():
+        return
+    _lehr_zeit += delta
+    var getan := false
+    match lehr_schritt:
+        0:
+            getan = _fahrt.length() > BOOT_TEMPO * 0.35
+        1:
+            getan = erlegt >= 2
+        _:
+            getan = _stoss_weit >= 0.0 or _stoss_kuehl > 0.0
+    if not getan:
+        return
+    lehr_schritt += 1
+    _lehr_zeit = 0.0
+    Klang.spiele(Klang.Ton.TIPP, 0.7, 1.2)
+    if lehr_schritt >= LEHRE.size():
+        Fortschritt.stand.einstieg_fahrt = 1
+        Fortschritt.sichere()
 
 
 ## Was befahren wurde, ist bekannt - und was dabei gefunden wird, wird geholt.
@@ -437,6 +482,9 @@ func starte() -> void:
     funde = 0
     verdient = 0
     _lohn_rest = 0.0
+    # Wer ihn einmal hatte, bekommt ihn nie wieder.
+    lehr_schritt = LEHRE.size() if Fortschritt.stand.einstieg_fahrt > 0 else 0
+    _lehr_zeit = 0.0
     welle_nummer = 1
     # **Ein neuer Tauchgang faengt im Dunkeln an.** Die Karte laeuft sonst
     # aus dem Menue heraus voll - der Vorfuehrdaumen faehrt dort im Kreis -,
@@ -453,11 +501,12 @@ func starte() -> void:
 ## **Nur ausserhalb der Fahrt.** Mitten in einer Welle den Bildschirm zu
 ## oeffnen hiesse, die Welle laeuft hinter einer Tafel weiter - und wer
 ## zurueckkommt, hat verloren, ohne etwas gesehen zu haben.
-func oeffne_kolonie() -> void:
+func oeffne_kolonie(reiter := 0) -> void:
     if lage == Lage.SPIEL:
         return
     _menue.visible = false
     _koloniebild.oeffne()
+    _koloniebild.zeige_reiter(reiter)
 
 
 func _kolonie_zu() -> void:

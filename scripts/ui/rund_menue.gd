@@ -23,9 +23,9 @@ const RAHMEN := Color(0.30, 0.62, 0.66)
 ## ueberall hier.
 const KNOEPFE: Array[Dictionary] = [
     {&"kennung": &"SPIELEN", &"text": "PLAY"},
-    {&"kennung": &"SCHIFFE", &"text": "LINES"},
     {&"kennung": &"AUSBAU", &"text": "COLONY"},
-    {&"kennung": &"AUFTRAEGE", &"text": "MISSIONS"},
+    {&"kennung": &"LINIEN", &"text": "LINES"},
+    {&"kennung": &"TAG", &"text": "DAILY"},
     # Die alte Schleife bleibt erreichbar. Sie ist fertig, geprueft und
     # verkaufbar - sie hinter einem Kommandozeilenschalter zu begraben, waere
     # das Wegwerfen von Monaten.
@@ -86,12 +86,15 @@ func _gewaehlt(i: int) -> void:
         &"SCHLUND":
             get_tree().change_scene_to_file("res://scenes/schlund.tscn")
         &"AUSBAU":
-            lauf.oeffne_kolonie()
+            lauf.oeffne_kolonie(0)
+        &"LINIEN":
+            # Die Brutlinien sind ein Reiter desselben Bildschirms und kein
+            # eigener. Ein zweiter Weg zu denselben Daten waere eine zweite
+            # Stelle, an der sie falsch stehen koennen.
+            lauf.oeffne_kolonie(1)
+        &"TAG":
+            lauf.oeffne_kolonie(4)
         _:
-            # Die drei anderen fuehren in den Koloniebildschirm, sobald er
-            # hier haengt. Bis dahin sagt der Knopf ehrlich nichts - ein
-            # Knopf, der so tut als taete er etwas, ist schlimmer als einer,
-            # der wartet.
             pass
 
 
