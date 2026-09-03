@@ -79,6 +79,19 @@ var einstieg := 0
 ## des Schlunds nachgereicht bekommen.
 var einstieg_fahrt := 0
 
+## Wieviele Bilder je Sekunde hoechstens gezeigt werden. **0 heisst: so
+## viele, wie der Schirm hergibt** - auf einem 120-Hz-Telefon also 120.
+##
+## Die Einstellung aendert am Spiel nichts, und das ist keine
+## Selbstverstaendlichkeit: bis vor kurzem rechnete der Rundumlauf Schaden je
+## *Bild* statt je Sekunde, und doppelte Bildrate haette doppelten Schaden
+## bedeutet. Ein Anzeigeschalter, der den Schwierigkeitsgrad verstellt, ist
+## eine Falle.
+##
+## Erlaubt sind 0, 60 und 120 - ein freies Feld waere ein Regler fuer ein
+## Problem, das niemand hat.
+var bildrate := 0
+
 ## --- Was der Spieler eingestellt hat ---
 ##
 ## **Die Lautstaerke stand bisher nur in `Klang.laut` und nirgends sonst.**
@@ -521,6 +534,7 @@ func zu_wort() -> Dictionary:
         &"kalender_tag": kalender_tag,
         &"einstieg": einstieg,
         &"einstieg_fahrt": einstieg_fahrt,
+        &"bildrate": bildrate,
         &"laut": laut,
         &"beben": beben,
     }
@@ -575,6 +589,8 @@ static func aus_wort(wort: Dictionary) -> KolonieStand:
     s.kalender_tag = maxi(0, int(wort.get(&"kalender_tag", 0)))
     s.einstieg = maxi(0, int(wort.get(&"einstieg", 0)))
     s.einstieg_fahrt = maxi(0, int(wort.get(&"einstieg_fahrt", 0)))
+    var b := int(wort.get(&"bildrate", 0))
+    s.bildrate = b if b in [0, 60, 120] else 0
     s.laut = clampf(float(wort.get(&"laut", 0.7)), 0.0, 1.0)
     s.beben = bool(wort.get(&"beben", true))
     var roh_f: Array = wort.get(&"ziel_fortschritt", [])

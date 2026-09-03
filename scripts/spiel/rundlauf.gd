@@ -824,9 +824,15 @@ func _fuehre_stoss(delta: float) -> void:
         if d >= vorher and d < _stoss_weit:
             t.stoss_nr = _stoss_nr
             _wecke(t)
-            t.leben -= Schlund.schaden_an(
-                leistung(), 1.0, Wellen.panzer_in(t.art, t.welle),
-                Wellen.mindest_licht_in(t.art, t.welle), 1.0) \
+            # Dieselben Werte wie im Schlund, samt Brutlinie. Kein `* delta`:
+            # der Ring trifft jedes Tier genau einmal, dafuer sorgt
+            # `stoss_nr`.
+            t.leben -= Schlund.schaden_an(leistung(), 1.0,
+                Wellen.panzer_in(t.art, t.welle)
+                    * (1.0 - Fortschritt.stand.panzerbruch()),
+                maxf(0.0, Wellen.mindest_licht_in(t.art, t.welle)
+                    - Fortschritt.stand.schwellen_nachlass()),
+                Wellen.hoechst_licht_in(t.art, t.welle)) \
                 * Graben.STOSS_WERT
             t.hitze = 1.0
 
@@ -852,9 +858,11 @@ func _fuehre_begleiter(delta: float) -> void:
             continue
         # Derselbe Schaden wie im Schlund: ein Polyp auf Sollstufe.
         var t := _tiere[index[n]]
-        var weg := Fortschritt.stand.polyp_leistung() \
-            * delta
-        t.leben -= weg
+        # **Der Panzer gilt auch hier** - genau das macht ihn aus: ein
+        # Begleiter kratzt an einer Schildkoralle kaum noch. Im Schlund
+        # stand es so, hier fehlte es.
+        t.leben -= maxf(0.0, Fortschritt.stand.polyp_leistung()
+            - Wellen.panzer_in(t.art, t.welle)) * delta
         t.hitze = minf(1.0, t.hitze + delta * 2.0)
 
 

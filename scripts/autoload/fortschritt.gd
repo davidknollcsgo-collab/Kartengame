@@ -134,6 +134,11 @@ func von_vorn() -> void:
 func uebernimm_einstellungen() -> void:
     Klang.laut = stand.laut
     Tastsinn.an = stand.beben
+    # **Die Bildrate wird hier gesetzt und nirgends sonst.** `Engine.max_fps`
+    # ist global; wer sie in einer Szene setzt, hat sie in der naechsten
+    # vergessen. Null heisst: so viele Bilder, wie der Schirm hergibt - der
+    # Deckel liegt dann bei vsync, und auf einem 120-Hz-Telefon sind das 120.
+    Engine.max_fps = stand.bildrate
 
 
 ## Der Weg zurueck: was der Spieler am Regler geaendert hat, gehoert in den
@@ -142,4 +147,5 @@ func uebernimm_einstellungen() -> void:
 func merke_einstellungen() -> void:
     stand.laut = Klang.laut
     stand.beben = Tastsinn.an
+    Engine.max_fps = stand.bildrate
     sichere()

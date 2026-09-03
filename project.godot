@@ -41,6 +41,30 @@ window/handheld/orientation=1
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 
+; **Hohe Bildwiederholrate ist erlaubt und nicht gedeckelt.**
+;
+; Godots Voreinstellung waere vsync an und kein eigener Deckel - genau das
+; steht hier jetzt ausdruecklich, damit es niemand versehentlich aendert.
+; Auf einem 120-Hz-Telefon zeigt das Spiel damit 120 Bilder je Sekunde, auf
+; einem 60-Hz-Telefon sechzig.
+;
+; **Das ist nur deshalb ungefaehrlich, weil alles mit `delta` rechnet.** Bis
+; kurz vor dieser Zeile tat es das nicht ueberall: im Rundumlauf wurde die
+; Wirkung einer ganzen Sekunde als Schaden eines *Bildes* abgezogen. Bei
+; doppelter Bildrate waere der Kegel doppelt so stark gewesen - eine
+; Einstellung im Anzeigemenue haette den Schwierigkeitsgrad verstellt.
+;
+; Der Spieler kann trotzdem deckeln: `KolonieStand.bildrate` (0 = frei, 60,
+; 120), im Koloniebildschirm unter DAY. Ein 120-Hz-Bild kostet Akku, und wer
+; das nicht will, soll es abstellen koennen, ohne das Spiel zu aendern.
+window/vsync/vsync_mode=1
+
+; Swappy: Androids Taktgeber fuer gleichmaessige Bilder. Er ist es auch, der
+; die hohe Rate ueberhaupt anfordert - ohne ihn bleiben viele Geraete bei
+; sechzig, obwohl der Schirm mehr kann.
+window/frame_pacing/android/enable_frame_pacing=true
+window/frame_pacing/android/swappy_mode=2
+
 [rendering]
 
 ; **Hier stand einmal `anti_aliasing/quality/msaa_2d=2`, und das war
