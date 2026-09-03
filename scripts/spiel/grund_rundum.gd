@@ -505,6 +505,18 @@ func setze_funde_zurueck() -> void:
         f[&"geholt"] = false
 
 
+## Die Fundstellen, die auf der Uebersichtskarte stehen duerfen: nur die,
+## deren Feld schon aufgedeckt ist. Eine Karte, die zeigt, wo man noch nicht
+## war, waere der Nebel umsonst.
+func gesehene_funde(karte_: Karte) -> Array:
+    var sicht: Array[Dictionary] = []
+    for f in _funde:
+        if karte_ != null and not karte_.ist_bekannt(f[&"ort"]):
+            continue
+        sicht.append(f)
+    return sicht
+
+
 func funde_gesamt() -> int:
     return _funde.size()
 

@@ -772,6 +772,41 @@ func _beende(geschafft: bool) -> void:
     Fortschritt.sichere()
 
 
+# --- Was die Uebersichtskarte braucht ------------------------------------
+#
+# Vier kleine Auskuenfte statt eines Zugriffs auf die Innereien: das HUD
+# zeichnet, es rechnet nicht.
+
+func boot_ort() -> Vector2:
+    return _ort
+
+
+func boot_blick() -> Vector2:
+    return _blick
+
+
+## Die Fundstellen, die der Spieler schon gesehen hat.
+func gesehene_funde() -> Array:
+    return _grund.gesehene_funde(karte)
+
+
+## Wo Raeuber stehen, die nahe genug sind, um auf die Karte zu gehoeren.
+##
+## **Nicht alle.** Eine Karte, auf der jedes Tier der Welle als Punkt steht,
+## nimmt dem Dunkel seinen Sinn - man faehrt dann nach der Karte und nicht
+## nach dem, was man sieht. Was in Reichweite ist, darf sie zeigen; was weit
+## draussen lauert, findet man selbst.
+func nahe_tiere(reichweite: float) -> PackedVector2Array:
+    var orte := PackedVector2Array()
+    var r2 := reichweite * reichweite
+    for t in _tiere:
+        if not t.lebendig or t.alter < 0.0 or t.lauert:
+            continue
+        if t.ort.distance_squared_to(_ort) <= r2:
+            orte.append(t.ort)
+    return orte
+
+
 ## Wieviele Raeuber noch offen sind - das HUD zeigt es an.
 func offen() -> int:
     return _offen
@@ -1110,7 +1145,41 @@ func _draw() -> void:
 
 
 ## Vor allem: Spur, Begleiter, Boot.
+## Ab welchem Abstand zum Feldrand die Kante sichtbar wird.
+const RAND_NAH := 300.0
+
+
+## Die Kante des Feldes, wenn man ihr nahe kommt.
+##
+## **Vorher hoerte das Feld einfach auf.** Der Rand war ein blasser Kreis
+## unter dem Nebel; wer in eine unerkundete Ecke fuhr, blieb an nichts
+## haengen und wusste nicht warum. Eine Grenze, die man erst merkt, wenn man
+## an ihr klebt, ist keine Grenze, sondern ein Fehler im Spiel.
+##
+## Sie wird deshalb **ueber** allem gezeichnet und nur dort, wo man ist: ein
+## Bogen um den naechsten Punkt der Kante, der mit dem Abstand aufblendet.
+## Den ganzen Kreis zu zeigen waere die Karte verschenkt - man saehe die
+## Form des Feldes, bevor man es befahren hat.
+func _zeichne_kante() -> void:
+    var d := Rundum.FELD_RADIUS - _ort.length()
+    if d > RAND_NAH:
+        return
+    var naehe := clampf(1.0 - d / RAND_NAH, 0.0, 1.0)
+    var w := _ort.angle() if _ort.length_squared() > 1.0 else 0.0
+    var spanne := 0.55
+    var punkte := PackedVector2Array()
+    for i in 33:
+        var t := lerpf(w - spanne, w + spanne, float(i) / 32.0)
+        punkte.append(Vector2.RIGHT.rotated(t) * Rundum.FELD_RADIUS)
+    var puls := 0.75 + 0.25 * sin(_wellenzeit * 3.0)
+    _vorn.draw_polyline(punkte,
+        Color(0.42, 0.72, 0.80, 0.10 * naehe), 14.0, true)
+    _vorn.draw_polyline(punkte,
+        Color(0.62, 0.90, 0.96, 0.55 * naehe * puls), 2.0, true)
+
+
 func _zeichne_vorn() -> void:
+    _zeichne_kante()
     _zeichne_spur()
     _zeichne_begleiter()
     _zeichne_boot()

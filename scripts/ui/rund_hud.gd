@@ -245,30 +245,102 @@ func _punkte(breite: float, versatz: float) -> void:
             Color(WARM.r, WARM.g, WARM.b, 0.7 + 0.3 * puls), false, true)
 
 
-## Links unten: wieviel vom Graben aufgedeckt ist, und wieviele Fundstellen
-## geholt sind.
+## Links unten: die Uebersichtskarte.
 ##
-## **Unten und klein.** Es ist die einzige Zahl im Bild, die nicht dringend
-## ist - sie sagt, wo man noch nicht war, und das darf man in einer Pause
-## lesen. Oben stuende sie zwischen Huelle und Welle und zoege den Blick von
-## beiden ab.
+## **Vorher stand hier ein Balken mit einer Prozentzahl, und das war keine
+## Karte.** Man sah einen Ausschnitt von 900 Einheiten in einem Feld von
+## 1500 und wusste nie, wo man ist: nicht, in welcher Richtung noch Dunkel
+## liegt, nicht, wo der Rand ist, nicht, wohin man zurueckmuss. Eine Zahl,
+## die sagt "fuenfzehn Prozent", beantwortet keine einzige dieser Fragen.
+##
+## Was sie zeigt und was nicht:
+##
+##   * **Das aufgedeckte Feld** als helle Flaeche, der Rest bleibt leer. Das
+##     ist dieselbe `Karte`, aus der auch der Nebel kommt - zwei
+##     Beschreibungen desselben Wissens waeren zwei, die auseinanderlaufen.
+##   * **Das Boot mit Blickrichtung.** Ohne die Richtung ist ein Punkt auf
+##     einer runden Karte nur die halbe Auskunft.
+##   * **Fundstellen, die man schon gesehen hat.** Wer eine liegen laesst,
+##     findet sie wieder - das ist der Unterschied zwischen einer Karte und
+##     einer Anzeige.
+##   * **Raeuber in Reichweite**, und nur die. Eine Karte, auf der jedes
+##     Tier der Welle steht, nimmt dem Dunkel seinen Sinn: man faehrt dann
+##     nach der Karte statt nach dem, was man sieht.
+const KARTE_GROSS := 128.0
+
+## Wie weit ein Raeuber sein darf, um auf die Karte zu kommen. Etwas mehr als
+## die Sicht - gerade so viel, dass man merkt, was gleich ins Bild kommt.
+const KARTE_TIERE := 1150.0
+
+
 func _karte(hoehe: float) -> void:
-    var kasten := Rect2(RAND + _rand_seite,
-        hoehe - RAND - _rand_unten - 46.0, 158.0, 46.0)
-    _tafel(kasten)
-    var anteil: float = lauf.karte.anteil() if lauf.karte != null else 0.0
-    _text(kasten.position + Vector2(12.0, 18.0), "SCANNED", 10, LEISE)
-    _text(Vector2(kasten.end.x - 12.0, kasten.position.y + 18.0),
-        "%d%%" % int(round(anteil * 100.0)), 13, SCHRIFT, false, true)
-    # Ein Balken darunter: eine Zahl allein sagt nicht, ob sie sich bewegt.
-    var leiste := Rect2(kasten.position + Vector2(12.0, 24.0),
-        Vector2(kasten.size.x - 24.0, 4.0))
-    _flaeche.draw_rect(leiste, Color(HELL.r, HELL.g, HELL.b, 0.12))
-    _flaeche.draw_rect(Rect2(leiste.position,
-        Vector2(leiste.size.x * anteil, leiste.size.y)),
-        Color(HELL.r, HELL.g, HELL.b, 0.55))
-    _text(kasten.position + Vector2(12.0, 40.0),
-        "SITES %d" % int(lauf.funde), 10, WARM)
+    var karte: Karte = lauf.karte
+    var r := KARTE_GROSS * 0.5
+    var mitte := Vector2(RAND + _rand_seite + r,
+        hoehe - RAND - _rand_unten - r - 28.0)
+    var welt := Rundum.FELD_RADIUS
+    var faktor := r / welt
+
+    # Der Rand des Feldes: die Karte ist rund, weil das Feld rund ist.
+    _flaeche.draw_circle(mitte, r, Color(0.010, 0.030, 0.042, 0.62))
+
+    if karte != null:
+        _karte_aufgedeckt(karte, mitte, faktor)
+
+    _flaeche.draw_arc(mitte, r, 0.0, TAU, 48,
+        Color(RAHMEN.r, RAHMEN.g, RAHMEN.b, 0.40), 1.2, true)
+
+    for f in lauf.gesehene_funde():
+        var p: Vector2 = Vector2(f[&"ort"]) * faktor + mitte
+        if bool(f[&"geholt"]):
+            _flaeche.draw_arc(p, 2.6, 0.0, TAU, 8,
+                Color(WARM.r, WARM.g, WARM.b, 0.30), 1.0, true)
+        else:
+            _flaeche.draw_circle(p, 2.6, WARM)
+
+    for ort in lauf.nahe_tiere(KARTE_TIERE):
+        _flaeche.draw_circle(Vector2(ort) * faktor + mitte, 1.6,
+            Color(WARNUNG.r, WARNUNG.g, WARNUNG.b, 0.85))
+
+    # Das Boot zuletzt, damit nichts darauf liegt.
+    var b: Vector2 = Vector2(lauf.boot_ort()) * faktor + mitte
+    var blick: Vector2 = Vector2(lauf.boot_blick()).normalized()
+    var quer := blick.orthogonal()
+    _flaeche.draw_colored_polygon(PackedVector2Array([
+        b + blick * 5.5, b - blick * 3.0 + quer * 3.4,
+        b - blick * 3.0 - quer * 3.4]), HELL)
+
+    var anteil: float = karte.anteil() if karte != null else 0.0
+    _text(Vector2(mitte.x, mitte.y + r + 14.0),
+        "%d%% SCANNED  ·  %d SITES" % [int(round(anteil * 100.0)),
+        int(lauf.funde)], 10, LEISE, true)
+
+
+## Das aufgedeckte Feld, zeilenweise zusammengefasst.
+##
+## **Nicht Feld fuer Feld.** Das Raster hat gut zwoelfhundert Felder, und
+## zwoelfhundert Rechtecke je Bild fuer eine Anzeige von 128 Punkten Breite
+## waeren teurer als der ganze Meeresgrund. Zusammenhaengende Felder einer
+## Zeile werden deshalb zu einem Rechteck - der aufgedeckte Teil ist ein
+## Fleck, also bleiben ein paar Dutzend uebrig.
+func _karte_aufgedeckt(karte: Karte, mitte: Vector2, faktor: float) -> void:
+    var farbe := Color(HELL.r, HELL.g, HELL.b, 0.16)
+    var kante := Karte.ZELLE * faktor
+    for zy in karte.seite:
+        var lauf_von := -1
+        for zx in range(karte.seite + 1):
+            var offen := zx < karte.seite \
+                and karte.zelle_bekannt(Vector2i(zx, zy))
+            if offen and lauf_von < 0:
+                lauf_von = zx
+            elif not offen and lauf_von >= 0:
+                var a := karte.mitte_von(Vector2i(lauf_von, zy))
+                var breit := float(zx - lauf_von) * kante
+                _flaeche.draw_rect(Rect2(
+                    Vector2(a.x, a.y) * faktor + mitte
+                        - Vector2.ONE * (kante * 0.5),
+                    Vector2(breit, kante)), farbe)
+                lauf_von = -1
 
 
 ## Oben in der Mitte: die Pause. Klein, weit weg vom Daumen, und ohne Ton -
@@ -283,7 +355,7 @@ func _pause(breite: float) -> void:
             Color(LEISE.r, LEISE.g, LEISE.b, 0.85))
 
 
-## Rechts unten: das Stosslicht. Ein runder Knopf mit einem Ladering, wie im
+## Rechts unten: das Stosslicht.## Rechts unten: das Stosslicht. Ein runder Knopf mit einem Ladering, wie im
 ## Schlund - der Daumen liegt dort ohnehin.
 func _knoepfe(breite: float, hoehe: float) -> void:
     var mitte := Vector2(breite - RAND - _rand_seite - 44.0,
@@ -361,7 +433,10 @@ func _lehre(breite: float, hoehe: float) -> void:
         return
     var eintrag: Dictionary = lauf.LEHRE[schritt]
     var puls := 0.6 + 0.4 * sin(_zeit * 2.6)
-    var y := hoehe - RAND - _rand_unten - 132.0
+    # Ueber der Uebersichtskarte, nicht neben ihr: die Karte ist rund und
+    # links, der Hinweis mittig - auf einem schmalen Schirm beruehren sie
+    # sich sonst.
+    var y := hoehe - RAND - _rand_unten - 186.0
     _text(Vector2(breite * 0.5, y), String(eintrag[&"text"]), 21,
         Color(HELL.r, HELL.g, HELL.b, 0.55 + 0.45 * puls), true)
     _text(Vector2(breite * 0.5, y + 22.0), String(eintrag[&"leise"]), 12,

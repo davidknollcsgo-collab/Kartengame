@@ -573,6 +573,23 @@ Titelbild steht und einen Lohn verspricht. Ein Ziel, das man in der Schleife,
 die man spielt, nicht erreichen kann, ist kein Ziel, sondern ein Vorwurf.
 Nachgemessen an sechs Wellen: Wellen 3/3, Räuber 60/60, Kette 12/12.
 
+**Eine Übersichtskarte statt einer Prozentzahl.** Unten links stand ein
+Balken mit „15 %", und das war keine Karte: man sieht einen Ausschnitt von
+900 Einheiten in einem Feld von 1500 und wusste nie, in welcher Richtung noch
+Dunkel liegt, wo der Rand ist, wohin man zurückmuss. Jetzt eine runde Karte
+mit aufgedecktem Feld, Boot samt Blickrichtung, gesehenen Fundstellen und
+**nur den Räubern in Reichweite** — eine Karte, auf der jedes Tier der Welle
+steht, nimmt dem Dunkel seinen Sinn. Das aufgedeckte Feld wird zeilenweise zu
+Läufen zusammengefasst: zwölfhundert Rechtecke je Bild für eine Anzeige von
+128 Punkten wären teurer als der ganze Meeresgrund.
+
+**Und die Kante des Feldes zeigt sich, wenn man ihr nahe kommt.** Vorher hörte
+das Feld einfach auf — der Rand war ein blasser Kreis unter dem Nebel, und wer
+in eine unerkundete Ecke fuhr, blieb an nichts hängen und wusste nicht warum.
+`_zeichne_kante()` legt einen Bogen um den nächsten Punkt der Kante, über
+allem und mit dem Abstand aufblendend. Den ganzen Kreis zu zeigen wäre die
+Karte verschenkt: man sähe die Form des Feldes, bevor man es befahren hat.
+
 **Die Fahrt lässt sich anhalten.** Ohne Pause steckte man in ihr fest: auf
 einem Telefon gibt es kein Fenster zum Schließen, `quit_on_go_back` steht auf
 `false`, und der einzige Ausgang war die gebrochene Hülle. Jetzt gibt es
