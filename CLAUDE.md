@@ -112,6 +112,7 @@ xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 720x1280 \
 | `--stoss <s>` | stößt das Stoßlicht s Sekunden vor dem Bild ab |
 | `--offen` | Rundumlauf ohne Nebel — für Schüsse, die den Grund zeigen sollen |
 | `--ende` | Rundumlauf: der Bericht nach der Fahrt, mit Beispielwerten |
+| `--pause` | Rundumlauf: die Pausentafel, mit Beispielwerten |
 | `--kolonie <n>` | im Rundumlauf: schlägt den Ausbau auf Reiter n auf |
 
 **`--stau` braucht man oefter, als es aussieht.** Im Vorlauf steht der
@@ -520,6 +521,16 @@ Zwei Dinge, die dabei zu beachten waren. Die Ebene braucht ein Kind namens
 zweihundert Zeilen `queue_redraw() on a null value`. Und `rund_menue.gd`
 setzt seine Sichtbarkeit je Bild selbst — ohne `lauf.kolonie_offen()` stünde
 das Titelbild eine Zehntelsekunde nach dem Öffnen wieder darüber.
+
+**Die Fahrt lässt sich anhalten.** Ohne Pause steckte man in ihr fest: auf
+einem Telefon gibt es kein Fenster zum Schließen, `quit_on_go_back` steht auf
+`false`, und der einzige Ausgang war die gebrochene Hülle. Jetzt gibt es
+`Lage.PAUSE` — ein Knopf oben in der Mitte, die Android-Zurück-Taste und der
+Wechsel in den Hintergrund führen dorthin, dieselbe Regelung wie in
+`wache.gd::_notification()`. Drei Wege heraus: weiter, bauen, abbrechen. Beim
+Zurückkommen wird der Finger losgelassen — wer aus der Pause kommt, hat den
+Daumen nicht mehr da, wo er ihn hatte, und ein Boot, das sofort weiterfährt,
+fährt in die falsche Richtung.
 
 **Drei Sätze Einstieg, während gespielt wird.** Der Rundumlauf erklärte
 bisher nichts: man sah ein Boot und musste raten, dass man ziehen soll.

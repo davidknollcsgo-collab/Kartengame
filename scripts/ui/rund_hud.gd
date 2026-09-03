@@ -34,6 +34,11 @@ var _zeit := 0.0
 ## Beruehrung nie auseinanderlaufen koennen - dieselbe Regel wie im Schlund.
 var stossknopf := Rect2()
 
+## Die Pausenflaeche oben in der Mitte. **Ein sichtbarer Knopf und nicht nur
+## die Zurueck-Taste**: die gibt es im Browser nicht, auf dem Schreibtisch
+## nicht, und auf einem Telefon mit Gestensteuerung findet sie nicht jeder.
+var pausenknopf := Rect2()
+
 
 func _ready() -> void:
     layer = 10
@@ -138,6 +143,7 @@ func _zeichne() -> void:
     _punkte(breite)
     _karte(hoehe)
     _knoepfe(breite, hoehe)
+    _pause(breite)
     _warnung(breite, hoehe)
     _lehre(breite, hoehe)
 
@@ -214,6 +220,18 @@ func _karte(hoehe: float) -> void:
         Color(HELL.r, HELL.g, HELL.b, 0.55))
     _text(kasten.position + Vector2(12.0, 40.0),
         "SITES %d" % int(lauf.funde), 10, WARM)
+
+
+## Oben in der Mitte: die Pause. Klein, weit weg vom Daumen, und ohne Ton -
+## ein Knopf, den man versehentlich trifft, waere schlimmer als keiner.
+func _pause(breite: float) -> void:
+    var kasten := Rect2(breite * 0.5 - 21.0, RAND, 42.0, 34.0)
+    pausenknopf = kasten.grow(8.0)
+    _tafel(kasten, RAHMEN, 0.30, 8.0)
+    for i in 2:
+        var x := kasten.position.x + 15.0 + float(i) * 8.0
+        _flaeche.draw_rect(Rect2(x, kasten.position.y + 10.0, 3.0, 14.0),
+            Color(LEISE.r, LEISE.g, LEISE.b, 0.85))
 
 
 ## Rechts unten: das Stosslicht. Ein runder Knopf mit einem Ladering, wie im

@@ -71,10 +71,13 @@ func _input(ereignis: InputEvent) -> void:
         return
     for i in _felder.size():
         if _felder[i].has_point(ort):
-            if lauf.lage == lauf.Lage.ENDE:
-                _gewaehlt_am_ende(i)
-            else:
-                _gewaehlt(i)
+            match lauf.lage:
+                lauf.Lage.ENDE:
+                    _gewaehlt_am_ende(i)
+                lauf.Lage.PAUSE:
+                    _gewaehlt_in_pause(i)
+                _:
+                    _gewaehlt(i)
             return
 
 
@@ -96,6 +99,56 @@ func _gewaehlt(i: int) -> void:
             lauf.oeffne_kolonie(4)
         _:
             pass
+
+
+## In der Pause gibt es drei Wege: weiter, bauen, abbrechen.
+func _gewaehlt_in_pause(i: int) -> void:
+    Klang.spiele(Klang.Ton.TIPP)
+    match i:
+        0:
+            lauf.weiter()
+        1:
+            lauf.oeffne_kolonie(0)
+        _:
+            lauf.brich_ab()
+
+
+## Die Pausentafel.
+##
+## **Sie zeigt den Stand der laufenden Fahrt, nicht nur Knoepfe.** Wer
+## pausiert, tut das meistens, weil er etwas wissen will - wie weit er ist,
+## wieviel er verdient hat -, und ein Schirm, der darauf keine Antwort gibt,
+## schickt ihn zurueck ins Spiel, um sie sich zusammenzusuchen.
+func _zeichne_pause(breite: float, hoehe: float) -> void:
+    _flaeche.draw_rect(Rect2(0.0, 0.0, breite, hoehe),
+        Color(0.010, 0.030, 0.042, 0.70))
+    var oben := hoehe * 0.24
+    _text(Vector2(breite * 0.5, oben), "PAUSED", 30, HELL, true, 6.0)
+    _text(Vector2(breite * 0.5, oben + 26.0),
+        "WAVE %d  ·  %s NUTRIENT  ·  %d KILLS"
+        % [int(lauf.welle_nummer), Zahl.kurz(int(lauf.verdient)),
+        int(lauf.erlegt)], 12, LEISE, true, 1.6)
+
+    _felder.clear()
+    var texte: PackedStringArray = ["RESUME", "COLONY", "END DIVE"]
+    var y := oben + 64.0
+    for i in texte.size():
+        var kasten := Rect2(RAND, y, breite - RAND * 2.0, 48.0)
+        _felder.append(kasten)
+        var weg := _hexweg(kasten)
+        _flaeche.draw_colored_polygon(weg,
+            Color(0.035, 0.115, 0.135, 0.80) if i == 0
+            else Color(0.020, 0.052, 0.066, 0.72))
+        var puls := 0.5 + 0.5 * sin(_zeit * 2.4)
+        _flaeche.draw_polyline(weg + PackedVector2Array([weg[0]]),
+            Color(HELL.r, HELL.g, HELL.b, (0.45 + 0.35 * puls) if i == 0
+            else 0.26), 1.4, true)
+        _text(Vector2(breite * 0.5, kasten.position.y + 31.0), texte[i], 18,
+            SCHRIFT if i == 0 else LEISE, true, 2.5)
+        y += 58.0
+    _text(Vector2(breite * 0.5, hoehe - 56.0),
+        "THE COLONY KEEPS WHAT YOU ALREADY BROUGHT BACK", 11, LEISE, true,
+        1.4)
 
 
 ## Am Ende gibt es genau zwei Wege: noch einmal, oder zurueck.
@@ -235,6 +288,9 @@ func _zeichne() -> void:
     var hoehe := _flaeche.size.y
     if lauf.lage == lauf.Lage.ENDE:
         _zeichne_ende(breite, hoehe)
+        return
+    if lauf.lage == lauf.Lage.PAUSE:
+        _zeichne_pause(breite, hoehe)
         return
 
     # Ein Schleier ueber der laufenden Szene. Ohne ihn steht die Schrift im

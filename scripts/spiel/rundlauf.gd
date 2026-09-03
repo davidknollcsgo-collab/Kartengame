@@ -108,7 +108,7 @@ const LAUER_WEIT := 1400.0
 ## Entwurf** - Logo und Knoepfe vor einer laufenden Szene, nicht vor einem
 ## Standbild. Ein Standbild sagt "hier waere ein Spiel", eine laufende Szene
 ## sagt "so sieht es aus".
-enum Lage { MENUE, SPIEL, ENDE }
+enum Lage { MENUE, SPIEL, PAUSE, ENDE }
 
 var lage := Lage.MENUE
 
@@ -200,6 +200,9 @@ var _offene_karte := false
 ## Nur fuer Werkzeuge (`--ende`): den Bericht mit Beispielwerten zeigen.
 var _zeige_ende := false
 
+## Nur fuer Werkzeuge (`--pause`).
+var _zeige_pause := false
+
 ## Nur fuer Werkzeuge (`--kolonie <n>`): den Ausbau gleich aufschlagen.
 var _kolonie_reiter := -1
 
@@ -258,6 +261,12 @@ func _ready() -> void:
         huelle = 0
         lage = Lage.ENDE
         gehalten = false
+    if _zeige_pause:
+        starte()
+        welle_nummer = 9
+        verdient = 1840
+        erlegt = 214
+        lage = Lage.PAUSE
     if _kolonie_reiter >= 0:
         oeffne_kolonie(_kolonie_reiter)
     if _fahrprobe > 0:
@@ -359,6 +368,11 @@ func _bereite_welle_vor() -> void:
 
 func _process(delta: float) -> void:
     if _abgetreten:
+        return
+    # **Pause heisst Pause.** Kein Takt, kein Schritt, kein Schaden - und
+    # der Zaehler der Welle steht ebenfalls, sonst treten waehrend der Pause
+    # Tiere ein, die man nicht kommen sah.
+    if lage == Lage.PAUSE:
         return
     delta = Graben.takt(delta)
     _wellenzeit += delta
@@ -526,6 +540,59 @@ func starte() -> void:
     karte.decke_auf(_ort)
     _grund.setze_funde_zurueck()
     _bereite_welle_vor()
+
+
+## --- Pause ---
+##
+## **Ohne sie steckt man in der Fahrt fest.** Auf einem Telefon gibt es keine
+## Kommandozeile und kein Fenster zum Schliessen: wer eine Fahrt begonnen
+## hat, kam bis hierher nur wieder heraus, indem er die Huelle verlor.
+## `quit_on_go_back` steht in `project.godot` auf false - die Zurueck-Taste
+## tat also gar nichts.
+func pausiere() -> void:
+    if lage != Lage.SPIEL:
+        return
+    lage = Lage.PAUSE
+    _zieht = false
+    Klang.spiele(Klang.Ton.TIPP)
+
+
+func weiter() -> void:
+    if lage != Lage.PAUSE:
+        return
+    lage = Lage.SPIEL
+    # **Der Finger wird losgelassen.** Wer aus der Pause zurueckkommt, hat
+    # den Daumen nicht mehr dort, wo er ihn hatte; ein Boot, das sofort
+    # weiterfaehrt, faehrt in die falsche Richtung.
+    _zieht = false
+    Klang.spiele(Klang.Ton.TIPP, 1.0, 1.2)
+
+
+## Aus der Pause heraus abbrechen. Der Naehrstoff ist laengst ausgezahlt -
+## er faellt je erlegtem Tier -, also ist das kein Verlust, sondern ein
+## vorzeitiger Bericht.
+func brich_ab() -> void:
+    if lage != Lage.PAUSE:
+        return
+    lage = Lage.SPIEL
+    _beende(false)
+
+
+## Android meldet Hintergrund und Zurueck-Taste hierher - dieselbe Regelung
+## wie in `wache.gd`.
+func _notification(was: int) -> void:
+    if _abgetreten:
+        return
+    match was:
+        NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_WM_WINDOW_FOCUS_OUT:
+            pausiere()
+        NOTIFICATION_WM_GO_BACK_REQUEST:
+            if _koloniebild != null and _koloniebild.sichtbar():
+                _koloniebild.schliesse()
+            elif lage == Lage.SPIEL:
+                pausiere()
+            elif lage == Lage.PAUSE:
+                weiter()
 
 
 ## Der Ausbau, vom Titelbild und vom Bericht aus.
@@ -836,6 +903,9 @@ func _unhandled_input(ereignis: InputEvent) -> void:
     if _finger_fest or lage != Lage.SPIEL:
         return
     if ereignis is InputEventScreenTouch:
+        if ereignis.pressed and _hud.pausenknopf.has_point(ereignis.position):
+            pausiere()
+            return
         if ereignis.pressed and _hud.stossknopf.has_point(ereignis.position):
             stosslicht()
             return
@@ -844,6 +914,9 @@ func _unhandled_input(ereignis: InputEvent) -> void:
     elif ereignis is InputEventScreenDrag:
         _finger = _welt(ereignis.position)
     elif ereignis is InputEventMouseButton and ereignis.button_index == MOUSE_BUTTON_LEFT:
+        if ereignis.pressed and _hud.pausenknopf.has_point(ereignis.position):
+            pausiere()
+            return
         if ereignis.pressed and _hud.stossknopf.has_point(ereignis.position):
             stosslicht()
             return
@@ -1335,6 +1408,9 @@ func _lies_argumente() -> void:
                 # Alles ab `LEHRE.size()` schaltet ihn ab.
                 if i + 1 < argumente.size():
                     _lehre_ab = maxi(0, int(argumente[i + 1]))
+            "--pause":
+                # Die Pausentafel ansehen, ohne sie zu treffen.
+                _zeige_pause = true
             "--ende":
                 # Den Bericht ansehen, ohne erst zu sterben.
                 _zeige_ende = true
