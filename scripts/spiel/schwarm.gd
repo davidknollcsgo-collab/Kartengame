@@ -68,12 +68,26 @@ var bluete: Bluete = null
 ## soll. Ohne ihn aendert sich dort nichts: `led` ist aus.
 var led := false
 
+## Wie deutlich das Tier gerade gezeichnet wird, 0 bis 1.
+##
+## **Ein Lauerer ist da, bevor man ihn sieht.** Er liegt still am Grund und
+## glimmt nur; erst wenn er erwacht, steht er voll im Bild. Das ueber die
+## drei Zeichenhelfer zu machen ist der einzige Weg, der nicht durch alle
+## zwoelf Tierzeichnungen greift - dort steckt in jeder Zeile eine eigene
+## Deckung, und zwoelf Stellen zu aendern heisst, elf davon zu vergessen.
+var deckung := 1.0
+
+## Wie deutlich ein Lauerer ist, solange er schlaeft. Nicht null: ein Tier,
+## das man gar nicht sieht, ist kein Hinterhalt, sondern ein Betrug.
+const LAUER_DECKUNG := 0.42
+
 
 ## Eine Fuellung. Bei Leuchtroehren faellt sie fast ganz weg - was bleibt, ist
 ## gerade genug, damit ein Tier vor einem Felsen nicht durchsichtig wirkt.
 func _fuellung(punkte: PackedVector2Array, farbe: Color) -> void:
     if punkte.size() < 3:
         return
+    farbe = _gedeckt(farbe)
     if led:
         draw_colored_polygon(punkte, Color(farbe.r * 0.22, farbe.g * 0.22,
             farbe.b * 0.22, farbe.a * 0.45))
@@ -87,6 +101,7 @@ func _fuellung(punkte: PackedVector2Array, farbe: Color) -> void:
 func _zug(punkte: PackedVector2Array, farbe: Color, dicke: float) -> void:
     if punkte.size() < 2:
         return
+    farbe = _gedeckt(farbe)
     if led:
         draw_polyline(punkte, Color(farbe.r, farbe.g, farbe.b,
             farbe.a * 0.22), dicke * 3.4, true)
@@ -99,6 +114,7 @@ func _zug(punkte: PackedVector2Array, farbe: Color, dicke: float) -> void:
 
 ## Dasselbe fuer eine einzelne Strecke.
 func _strich(a: Vector2, b: Vector2, farbe: Color, dicke: float) -> void:
+    farbe = _gedeckt(farbe)
     if led:
         draw_line(a, b, Color(farbe.r, farbe.g, farbe.b, farbe.a * 0.22),
             dicke * 3.4, true)
@@ -107,6 +123,14 @@ func _strich(a: Vector2, b: Vector2, farbe: Color, dicke: float) -> void:
             minf(1.0, farbe.a * 1.7)), maxf(1.0, dicke * 0.9), true)
         return
     draw_line(a, b, farbe, dicke, true)
+
+
+## Nur die Deckung, nicht die Farbe: ein Lauerer soll blasser sein, nicht
+## grauer - sonst verliert er die Farbe, an der man seine Art erkennt.
+func _gedeckt(farbe: Color) -> Color:
+    if deckung >= 1.0:
+        return farbe
+    return Color(farbe.r, farbe.g, farbe.b, farbe.a * deckung)
 
 
 func _draw() -> void:
@@ -130,7 +154,9 @@ func _draw() -> void:
     for t in tiere:
         if not t.lebendig:
             continue
+        deckung = LAUER_DECKUNG if t.lauert else 1.0
         _zeichne(t, stufe)
+    deckung = 1.0
 
 
 ## Die Funkenbluete: ein Kern in einer offenen Huelle, aus der Faeden treiben.

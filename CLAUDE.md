@@ -458,6 +458,21 @@ dieselbe Richtung sehen.** Der erste Anlauf gab jedem Fisch einen festen
 Platz im Weltraster und ließ ihn dorthin blicken, wo sein Platz lag — im
 Bild war das kein Schwarm, sondern ein Seeigel.
 
+**Nicht jeder Räuber kommt von außen.** Jeder vierte (`LAUER_ANTEIL`) liegt
+schon in der Karte und wartet — still und blass (`Schwarm.deckung`), bis das
+Boot auf `WECK_RADIUS` herankommt oder ein Treffer ihn weckt. Das ist der
+Grund, warum das Aufdecken der Karte etwas kostet: eine unbekannte Ecke ist
+nicht nur dunkel, es kann auch etwas darin liegen. **Kein Leitwesen lauert** —
+ein Höhepunkt, den man verpasst, weil man zufällig woanders fährt, ist keiner.
+
+Zwei Fallen dabei, beide schon hineingetreten. Erstens: wenn sonst nichts
+mehr steht, erwachen die Übrigen von selbst — sonst hängt die Welle an einem
+Lauerer, der vierzehnhundert Einheiten entfernt im Dunkeln liegt, und der
+Spieler fährt die Karte ab, um „1 LEFT" zu suchen. Zweitens: diese Prüfung
+darf **nicht** nach `alter >= 0` fragen. Zu Wellenbeginn steht noch nichts im
+Feld, weil jeder Auftritt seine Zeit hat — damit erwachten alle Lauerer in der
+ersten Sekunde, und der Hinterhalt war eine Ankündigung.
+
 **Was noch offen ist:** es gibt keine Wellenpausen und keinen Koloniezugang —
 wer den Rundumlauf spielt, kommt nicht an seine Kammern. Der Wellenprüfer
 kann diese Schleife **nicht** messen: ein simulierter Daumen ersetzt kein

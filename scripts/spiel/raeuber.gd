@@ -54,6 +54,12 @@ var glut: float = 0.0
 ## langsamer sinkt als der Ring waechst, den Stoss zweimal.
 var stoss_nr: int = -1
 
+## Ob das Tier noch lauert: es liegt still, bis das Boot nah genug kommt.
+##
+## Nur im Rundumlauf gesetzt. Im Schlund kommt jedes Tier von oben und hat
+## keinen Ort, an dem es warten koennte - dort bleibt das Feld aus.
+var lauert: bool = false
+
 ## Frueherere Orte auf der eigenen Bahn - fuer den Leib der Grabnatter.
 var rueckweg: Array[Vector2] = []
 

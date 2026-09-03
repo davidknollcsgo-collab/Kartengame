@@ -61,6 +61,24 @@ const BEGLEITER_TAKT := 0.9
 ## Wie lange ein Raeuber braucht, bis er nach einem Treffer wieder beisst.
 const BISS_SPERRE := 0.9
 
+## **Nicht jeder Raeuber kommt von aussen auf einen zu.** Jeder vierte liegt
+## schon in der Karte und wartet - am Grund, still, blass. Wer geradeaus
+## faehrt, trifft irgendwann einen; wer den Kegel voraushaelt, sieht ihn
+## vorher.
+##
+## Das ist der Grund, warum das Aufdecken der Karte etwas kostet: eine
+## unbekannte Ecke ist nicht nur dunkel, es kann auch etwas darin liegen.
+const LAUER_ANTEIL := 0.25
+
+## Ab welchem Abstand ein Lauerer erwacht. Kleiner als die Sicht: man soll
+## ihn sehen koennen, bevor er kommt.
+const WECK_RADIUS := 420.0
+
+## Wie weit vom Boot ein Lauerer gelegt wird. Nicht naeher als der
+## Weckradius - sonst waere er schon wach, bevor die Welle laeuft.
+const LAUER_NAH := 560.0
+const LAUER_WEIT := 1400.0
+
 @onready var _schwarm: Node2D = $Schwarm
 @onready var _kegel: Node2D = $Kegel
 @onready var _funken: Node2D = $Funken
@@ -216,6 +234,19 @@ func _bereite_welle_vor() -> void:
         t.start_x = anteil * TAU + rng.randf_range(-0.12, 0.12)
         t.ort = _ort + Rundum.eintritt(t.start_x)
         t.richtung = (_ort - t.ort).normalized()
+        # Jeder Vierte lauert - aber **kein Leitwesen**. Ein Hoehepunkt, den
+        # man verpassen kann, weil man zufaellig woanders faehrt, ist keiner;
+        # und einer, in den man hineinfaehrt, ohne ihn kommen zu sehen, ist
+        # kein Kampf, sondern ein Unfall.
+        if not Arten.ist_leitwesen(t.art) and rng.randf() < LAUER_ANTEIL:
+            t.lauert = true
+            # Sofort da, nicht erst zur Eintrittszeit: er liegt ja schon in
+            # der Karte, bevor die Welle beginnt.
+            t.eintritt = 0.0
+            t.ort = Rundum.gehalten(_ort + Vector2.RIGHT.rotated(
+                rng.randf_range(0.0, TAU))
+                * rng.randf_range(LAUER_NAH, LAUER_WEIT), 60.0)
+            t.richtung = Vector2.RIGHT.rotated(rng.randf_range(0.0, TAU))
         _tiere.append(t)
     _offen = _tiere.size()
     _schwarm.tiere = _tiere
@@ -255,6 +286,7 @@ func _process(delta: float) -> void:
     _fuehre_stoss(delta)
     _fuehre_begleiter(delta)
     _bewege(delta)
+    _wecke_die_letzten()
     _verbrenne(delta)
 
     if _offen <= 0 and huelle > 0:
@@ -399,6 +431,7 @@ func _fuehre_stoss(delta: float) -> void:
         var d := t.ort.distance_to(_ort)
         if d >= vorher and d < _stoss_weit:
             t.stoss_nr = _stoss_nr
+            _wecke(t)
             t.leben -= Schlund.schaden_an(
                 Graben.LEISTUNG * Ausbau.leistung_faktor(welle_nummer),
                 1.0, Wellen.panzer_in(t.art, t.welle),
@@ -442,6 +475,13 @@ func _bewege(delta: float) -> void:
         t.alter = _wellenzeit - t.eintritt
         if t.alter < 0.0:
             continue
+        if t.lauert:
+            # Er liegt still. Erst der Abstand weckt ihn - und dann bleibt er
+            # wach, auch wenn man wieder wegfaehrt.
+            if t.ort.distance_to(_ort) > WECK_RADIUS:
+                continue
+            _wecke(t)
+            continue
         if vorher_alter < 0.0:
             # Erster Schritt: jetzt einsetzen, um das Boot herum.
             t.ort = _ort + Rundum.eintritt(t.start_x)
@@ -476,6 +516,35 @@ func _bewege(delta: float) -> void:
             t.eintritt = _wellenzeit + BISS_SPERRE
 
 
+## Einen Lauerer wecken. Eine Stelle, weil es drei Anlaesse gibt: Naehe, ein
+## Treffer, und das Ende der uebrigen Welle.
+func _wecke(t: Raeuber) -> void:
+    if not t.lauert:
+        return
+    t.lauert = false
+    _funken.platzen(t.ort, Arten.farbe(t.art), 12.0)
+    Klang.spiele(Klang.Ton.WELLE, 0.5, 1.35)
+
+
+## **Wenn sonst nichts mehr steht, kommen die Uebrigen.**
+##
+## Ohne das haengt die Welle an einem Lauerer, der vierzehnhundert Einheiten
+## entfernt im Dunkeln liegt: die Anzeige sagt "1 LEFT", und der Spieler
+## faehrt die Karte ab, um ihn zu suchen. Ein Hinterhalt soll ueberraschen
+## und nicht die Sitzung aufhalten.
+func _wecke_die_letzten() -> void:
+    for t in _tiere:
+        # **Ohne `alter` gefragt.** Der erste Anlauf zaehlte nur, was schon
+        # im Feld steht - und zu Wellenbeginn steht noch nichts da, weil
+        # jeder Auftritt seine Zeit hat. Damit erwachten alle Lauerer in der
+        # ersten Sekunde, und der Hinterhalt war eine Ankuendigung.
+        if t.lebendig and not t.lauert:
+            return
+    for t in _tiere:
+        if t.lebendig:
+            _wecke(t)
+
+
 func _verbrenne(delta: float) -> void:
     var wirkungen := PackedFloat32Array()
     var kandidaten: Array[int] = []
@@ -495,6 +564,7 @@ func _verbrenne(delta: float) -> void:
     var ziele := Ausbau.ziele(welle_nummer)
     for k in Schlund.brennende(wirkungen, ziele):
         var t := _tiere[kandidaten[k]]
+        _wecke(t)
         t.leben -= Schlund.schaden_an(
             Graben.LEISTUNG * Ausbau.leistung_faktor(welle_nummer),
             wirkungen[k], Wellen.panzer_in(t.art, t.welle),
