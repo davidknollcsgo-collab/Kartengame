@@ -128,8 +128,14 @@ func _zeichne_ende(breite: float, hoehe: float) -> void:
     _flaeche.draw_rect(Rect2(0.0, 0.0, breite, hoehe),
         Color(0.010, 0.030, 0.042, 0.72))
     var oben := hoehe * 0.20
-    _text(Vector2(breite * 0.5, oben), "HULL BREACHED", 30,
-        Color(1.0, 0.42, 0.34), true, 5.0)
+    # **Dasselbe Blatt in zwei Farben.** Gehalten und gebrochen zeigen
+    # dieselben Zahlen - was sich unterscheidet, ist eine Zeile und ein
+    # Farbton. Zwei getrennte Bildschirme dafuer waeren zwei Stellen, an
+    # denen dieselbe Zahl falsch stehen kann.
+    var geschafft: bool = lauf.gehalten
+    var ton := Color(0.42, 0.94, 0.80) if geschafft else Color(1.0, 0.42, 0.34)
+    _text(Vector2(breite * 0.5, oben),
+        "DIVE COMPLETE" if geschafft else "HULL BREACHED", 30, ton, true, 5.0)
     _text(Vector2(breite * 0.5, oben + 26.0),
         "THE COLONY KEEPS WHAT YOU BROUGHT BACK", 12, LEISE, true, 1.6)
 
@@ -156,6 +162,8 @@ func _zeichne_ende(breite: float, hoehe: float) -> void:
 
     _felder.clear()
     var texte: PackedStringArray = ["DIVE AGAIN", "COLONY", "SURFACE"]
+    if lauf.gehalten:
+        texte[0] = "DIVE DEEPER"
     y += 14.0
     for i in texte.size():
         var kasten := Rect2(RAND, y, breite - RAND * 2.0, 48.0)

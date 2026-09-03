@@ -531,6 +531,36 @@ und verlangt nichts; wer ihn nicht liest, spielt trotzdem. Danach steht
 Zahl neben `einstieg`, weil wer die Schlundwache kennt noch nicht weiß, dass
 man hier fährt.
 
+**Eine Fahrt ist `Graben.WELLEN_JE_SITZUNG` Wellen lang** — genau wie eine
+Sitzung im Schlund (Zusage 9), und danach steht der Bericht: „DIVE COMPLETE"
+statt „HULL BREACHED", dasselbe Blatt in einer anderen Farbe. Das ist nicht
+nur Rhythmus. Die ganze Wirtschaft rechnet mit `Graben.WELLEN_JE_TAG` Wellen
+am Tag; die Fahrprobe zeigte einen Piloten, der **einundzwanzig** Wellen in
+einem Zug spielt, also anderthalb Tage Einkommen in einer Sitzung — und dann
+gleich wieder anfängt.
+
+Und die nächste Welle kommt aus dem **Koloniestand** (Zusage 13), nicht aus
+einer eigenen Zählung. Vorher fing jede Fahrt bei eins an: dieselben fünf
+Wellen für immer, und der Ertrag von Welle eins dazu. `--welle` sticht das
+aus, weil ein Werkzeug zeigen können soll, was es zeigen will.
+
+### Die Fahrprobe
+
+```bash
+godot --headless --path . -- --fahrprobe 45      # ~4 min, Exitcode 1 bei Fall
+```
+
+**Ein simulierter Daumen ersetzt kein Fahrkönnen** — das bleibt wahr. Was er
+ersetzt, ist das Raten. Der Pilot kann genau eine Sache: das Licht auf dem
+nächsten Tier halten und näher heranfahren, wenn es weit weg ist. Kein
+Ausweichen, kein Timing, kein Bogen um die Felsen — alles, was ein Spieler
+zusätzlich kann, geht als Reserve in das Ergebnis ein. Gemessen wird deshalb
+eine **untere Schranke**, und sie wird auch so gemeldet.
+
+Die Kolonie steht dabei je Welle auf `Ausbau.stufe_soll()` — dieselbe
+Vorgabe, gegen die der Wellenprüfer misst. Ohne das misst man nicht das
+Spiel, sondern den Spielstand, der zufällig auf der Platte liegt.
+
 **Was noch offen ist:** es gibt keine Wellenpausen — wer im Rundumlauf baut,
 tut es zwischen den Fahrten und nicht in ihnen. Der Wellenprüfer
 kann diese Schleife **nicht** messen: ein simulierter Daumen ersetzt kein

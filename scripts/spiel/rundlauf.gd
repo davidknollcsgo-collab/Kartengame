@@ -116,6 +116,11 @@ var lage := Lage.MENUE
 var _abgetreten := false
 
 var welle_nummer := 1
+## Die wievielte Welle **dieser Sitzung**. Siehe `starte()`.
+var welle_in_sitzung := 0
+## Ob die letzte Fahrt gehalten wurde oder die Huelle brach - der Bericht
+## sagt dasselbe Ereignis in zwei Farben.
+var gehalten := false
 var huelle := 12
 var huelle_voll := 12
 var erlegt := 0
@@ -198,9 +203,14 @@ var _zeige_ende := false
 ## Nur fuer Werkzeuge (`--kolonie <n>`): den Ausbau gleich aufschlagen.
 var _kolonie_reiter := -1
 
-## Mit welcher Welle eine Fahrt beginnt. Immer 1, ausser `--welle` sagt etwas
-## anderes.
-var _erste_welle := 1
+## Mit welcher Welle eine Fahrt beginnt. **Null heisst: den Koloniestand
+## fragen** - das ist der Normalfall. Gesetzt wird sie nur von `--welle` und
+## von der Fahrprobe, die bei eins anfangen will, egal was auf der Platte
+## liegt.
+var _erste_welle := 0
+
+## Bis zu welcher Welle die Fahrprobe laeuft. 0 heisst: keine.
+var _fahrprobe := 0
 
 
 func _ready() -> void:
@@ -238,8 +248,12 @@ func _ready() -> void:
         kette_hoechste = 26
         huelle = 0
         lage = Lage.ENDE
+        gehalten = false
     if _kolonie_reiter >= 0:
         oeffne_kolonie(_kolonie_reiter)
+    if _fahrprobe > 0:
+        _fahre_probe.call_deferred()
+        return
     if not _schuss.is_empty():
         _nimm_auf.call_deferred()
 
@@ -373,10 +387,9 @@ func _process(delta: float) -> void:
     _verbrenne(delta)
 
     if _offen <= 0 and huelle > 0:
-        welle_nummer += 1
-        _bereite_welle_vor()
+        _welle_geschafft()
     if huelle <= 0 and lage == Lage.SPIEL:
-        _beende()
+        _beende(false)
 
     _schwarm.queue_redraw()
     _vorn.queue_redraw()
@@ -485,7 +498,12 @@ func starte() -> void:
     erlegt = 0
     funde = 0
     verdient = 0
-    welle_nummer = _erste_welle
+    welle_in_sitzung = 0
+    gehalten = false
+    # Die naechste Welle sagt der Koloniestand. `--welle` sticht das aus -
+    # ein Werkzeug soll zeigen koennen, was es zeigen will.
+    welle_nummer = _erste_welle if _erste_welle > 0 \
+        else Fortschritt.stand.naechste_welle()
     _lohn_rest = 0.0
     # Wer ihn einmal hatte, bekommt ihn nie wieder.
     lehr_schritt = LEHRE.size() if Fortschritt.stand.einstieg_fahrt > 0 else 0
@@ -524,15 +542,47 @@ func kolonie_offen() -> bool:
     return _koloniebild.sichtbar()
 
 
-## Die Fahrt ist vorbei: die Huelle ist durch.
+## Eine Welle ist leer.
+##
+## **Eine Fahrt ist `Graben.WELLEN_JE_SITZUNG` Wellen lang**, genau wie eine
+## Sitzung im Schlund (Zusage 9). Das ist nicht nur Rhythmus: die ganze
+## Wirtschaft rechnet mit `Graben.WELLEN_JE_TAG` Wellen am Tag, und eine
+## Schleife, in der man in einem Zug einundzwanzig davon spielt - so weit kam
+## der Pilot der Fahrprobe -, zahlt anderthalb Tage Einkommen in einer
+## Sitzung und faengt gleich wieder an.
+##
+## Und die naechste Welle kommt aus dem **Koloniestand**, nicht aus einer
+## eigenen Zaehlung (Zusage 13): `naechste_welle()` weiss, wie tief der
+## Tiefenschacht den Graben aufgemacht hat. Vorher fing jede Fahrt bei eins
+## an - dieselben fuenf Wellen fuer immer, und der Ertrag von Welle eins
+## dazu.
+func _welle_geschafft() -> void:
+    var stand: KolonieStand = Fortschritt.stand
+    stand.hoechste_welle = maxi(stand.hoechste_welle, welle_nummer + 1)
+    welle_in_sitzung += 1
+    if lage == Lage.SPIEL \
+            and welle_in_sitzung >= Graben.WELLEN_JE_SITZUNG:
+        welle_nummer += 1
+        _beende(true)
+        return
+    welle_nummer += 1
+    _bereite_welle_vor()
+
+
+## Die Fahrt ist vorbei - gehalten oder gebrochen.
 ##
 ## **Der Koloniefortschritt bleibt.** Verloren ist die Fahrt, nicht die
 ## Arbeit - das ist dieselbe Zusage wie im Schlund, und der Naehrstoff ist
 ## laengst ausgezahlt, weil er je erlegtem Tier faellt und nicht am Ende.
-func _beende() -> void:
+func _beende(geschafft: bool) -> void:
     lage = Lage.ENDE
+    gehalten = geschafft
     _zieht = false
-    Klang.spiele(Klang.Ton.BRUT_FAELLT, 1.0, 0.55)
+    var stand: KolonieStand = Fortschritt.stand
+    stand.beste_kette = maxi(stand.beste_kette, kette_hoechste)
+    stand.bestpunkte = maxi(stand.bestpunkte, punkte)
+    Klang.spiele(Klang.Ton.WELLE if geschafft else Klang.Ton.BRUT_FAELLT,
+        1.0, 1.1 if geschafft else 0.55)
     Tastsinn.gib(Tastsinn.Art.ENDE)
     Fortschritt.sichere()
 
@@ -1271,6 +1321,9 @@ func _lies_argumente() -> void:
                 # Den Ausbau ansehen, ohne ihn zu suchen.
                 if i + 1 < argumente.size():
                     _kolonie_reiter = maxi(0, int(argumente[i + 1]))
+            "--fahrprobe":
+                if i + 1 < argumente.size():
+                    _fahrprobe = maxi(1, int(argumente[i + 1]))
             "--offen":
                 # Kein Nebel - fuer Schuesse, die den Grund zeigen sollen.
                 _offene_karte = true
@@ -1293,6 +1346,104 @@ func _spiele_vor() -> void:
         var w := float(i) * takt * 0.55
         _finger = Vector2.RIGHT.rotated(w) * 240.0
         _process(takt)
+
+
+# --- Die Fahrprobe -----------------------------------------------------------
+#
+# **Ein simulierter Daumen ersetzt kein Fahrkoennen** - das steht in CLAUDE.md
+# und bleibt wahr. Was er ersetzt, ist das Raten: wenn ein stumpfer Autopilot
+# bis Welle 40 kommt, kommt ein Mensch mindestens so weit, und wenn er in
+# Welle 6 stirbt, stimmt etwas nicht. Gemessen wird eine **untere Schranke**,
+# und sie wird auch so gemeldet.
+#
+# Der Pilot kann genau eine Sache: das Licht auf dem naechsten Tier halten
+# und naeher heranfahren, wenn es weit weg ist. Kein Ausweichen, kein
+# Stosslicht-Timing, kein Bogen um die Felsen - alles, was ein Spieler
+# zusaetzlich kann, geht als Reserve in die Schranke ein.
+
+## Wie lange eine Welle laufen darf, bevor die Probe sie als haengend abbricht.
+const PROBE_DECKEL := 180.0
+
+
+func _fahre_probe() -> void:
+    # Die Probe faengt immer bei eins an - sie misst das Spiel und nicht den
+    # Spielstand, der zufaellig auf der Platte liegt.
+    _erste_welle = 1
+    print("Fahrprobe - bis Welle %d, Kolonie auf der Sollkurve" % _fahrprobe)
+    print("")
+    print(" Welle | Huelle | Sekunden | Erlegt")
+    print(" ------+--------+----------+-------")
+    starte()
+    _finger_fest = true
+    _zieht = true
+    var takt := 1.0 / 60.0
+    var gefallen := 0
+    while welle_nummer <= _fahrprobe:
+        # Die Kolonie steht auf dem Stand, den die Sollkurve fuer diese Welle
+        # vorsieht - dieselbe Vorgabe, gegen die der Wellenpruefer misst.
+        _setze_sollstand()
+        var dran := welle_nummer
+        var t := 0.0
+        while welle_nummer == dran and huelle > 0 and t < PROBE_DECKEL:
+            _steuere_probe()
+            _process(takt)
+            t += takt
+        # Eine Fahrt ist fuenf Wellen lang; die Probe will wissen, wie tief
+        # der Pilot ueber viele Fahrten kommt, also faengt sie die naechste
+        # an, wo die vorige aufhoerte.
+        if lage == Lage.ENDE and huelle > 0:
+            _erste_welle = welle_nummer
+            starte()
+            _finger_fest = true
+            _zieht = true
+        print(" %5d | %6d | %8.1f | %6d"
+            % [dran, huelle, t, erlegt])
+        if huelle <= 0:
+            gefallen = dran
+            break
+        if t >= PROBE_DECKEL:
+            printerr("Welle %d wurde in %.0f Sekunden nicht leer"
+                % [dran, PROBE_DECKEL])
+            get_tree().quit(1)
+            return
+    print("")
+    if gefallen > 0:
+        printerr("Der Pilot faellt in Welle %d." % gefallen)
+        get_tree().quit(1)
+        return
+    print("Untere Schranke: der Pilot traegt %d Wellen." % _fahrprobe)
+    get_tree().quit()
+
+
+## Die Kolonie auf die Sollstufe dieser Welle stellen.
+func _setze_sollstand() -> void:
+    var stufe := Ausbau.stufe_soll(welle_nummer)
+    for k in Kammern.Kammer.size():
+        Fortschritt.stand.stufen[k] = stufe
+    _stelle_ausbau_ein()
+
+
+## Der Pilot: Licht auf das naechste Tier, und heran, wenn es weit weg ist.
+func _steuere_probe() -> void:
+    var naechstes: Raeuber = null
+    var beste := INF
+    for t in _tiere:
+        if not t.lebendig or t.alter < 0.0:
+            continue
+        var d := t.ort.distance_squared_to(_ort)
+        if d < beste:
+            beste = d
+            naechstes = t
+    if naechstes == null:
+        return
+    var richtung := (naechstes.ort - _ort).normalized()
+    # Innerhalb der Totzone zielt der Finger nur; darueber faehrt das Boot
+    # mit. Nah heisst also stehen und brennen, weit heisst hinfahren.
+    var weit := sqrt(beste) > 260.0
+    _finger = _ort + richtung * (Rundum.TOTZONE
+        + (150.0 if weit else -20.0))
+    if stoss_bereit() and _offen > 12:
+        stosslicht()
 
 
 func _nimm_auf() -> void:
