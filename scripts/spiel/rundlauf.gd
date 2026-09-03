@@ -134,6 +134,16 @@ var _spur: Array[Vector2] = []
 ## genau das macht eine Bewegung lesbar, bevor sie stattgefunden hat.
 var _neigung := 0.0
 
+## Was vom Graben schon aufgedeckt ist. Oeffentlich, weil das HUD es anzeigt.
+var karte: Karte = null
+
+## Fundstellen, die in dieser Sitzung geholt wurden - fuer die Anzeige.
+var funde := 0
+
+## Ohne Nebel starten. Nur fuer Werkzeuge (`--offen`): ein Schuss vom Grund
+## zeigt sonst schwarze Felder statt des Riffs, das er zeigen soll.
+var _offene_karte := false
+
 
 func _ready() -> void:
     # Der Gegenweg zu `--rundum`: die Werkzeuge (Ladenbilder, Schuesse,
@@ -145,6 +155,9 @@ func _ready() -> void:
         return
 
     _lies_argumente()
+    karte = Karte.new(Rundum.FELD_RADIUS)
+    _grund.karte = null if _offene_karte else karte
+    karte.decke_auf(_ort)
     _vorn.draw.connect(_zeichne_vorn)
     _schwarm.led = true
     _hud.lauf = self
@@ -236,6 +249,7 @@ func _process(delta: float) -> void:
         _zieht = true
 
     _fuehre_boot(delta)
+    _decke_auf()
     _fuehre_stoss(delta)
     _fuehre_begleiter(delta)
     _bewege(delta)
@@ -248,6 +262,26 @@ func _process(delta: float) -> void:
     _schwarm.queue_redraw()
     _vorn.queue_redraw()
     queue_redraw()
+
+
+## Was befahren wurde, ist bekannt - und was dabei gefunden wird, wird geholt.
+##
+## **Beides an einer Stelle**, weil ein Fund nur zu sehen ist, wo schon
+## aufgedeckt wurde: erst der Kegel, dann der Griff.
+func _decke_auf() -> void:
+    karte.decke_auf(_ort)
+    if lage != Lage.SPIEL:
+        return
+    var fund: Dictionary = _grund.hole_fund(_ort)
+    if fund.is_empty():
+        return
+    funde += 1
+    # Punkte, kein Naehrstoff - siehe `grund_rundum.gd::FUND_PUNKTE`.
+    punkte += int(fund[&"punkte"])
+    _funken.platzen(Vector2(fund[&"ort"]), Color(1.0, 0.84, 0.52), 34.0)
+    _schuetteln = maxf(_schuetteln, 0.35)
+    Klang.spiele(Klang.Ton.KAMMER, 0.8, 0.5)
+    Tastsinn.gib(Tastsinn.Art.STOSS)
 
 
 ## Ein Finger, zwei Aufgaben: Blickrichtung immer, Fahrt ab der Totzone.
@@ -300,7 +334,15 @@ func starte() -> void:
     punkte = 0
     kette = 0
     erlegt = 0
+    funde = 0
     welle_nummer = 1
+    # **Ein neuer Tauchgang faengt im Dunkeln an.** Die Karte laeuft sonst
+    # aus dem Menue heraus voll - der Vorfuehrdaumen faehrt dort im Kreis -,
+    # und das erste Bild des Spiels waere ein aufgedeckter Graben.
+    karte = Karte.new(Rundum.FELD_RADIUS)
+    _grund.karte = null if _offene_karte else karte
+    karte.decke_auf(_ort)
+    _grund.setze_funde_zurueck()
     _bereite_welle_vor()
 
 
@@ -960,6 +1002,9 @@ func _lies_argumente() -> void:
             "--schuss":
                 if i + 1 < argumente.size():
                     _schuss = argumente[i + 1]
+            "--offen":
+                # Kein Nebel - fuer Schuesse, die den Grund zeigen sollen.
+                _offene_karte = true
             "--spiel":
                 # Nicht im Menue aufnehmen, sondern im Spiel.
                 _sofort = true

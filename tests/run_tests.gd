@@ -69,6 +69,7 @@ const TESTS: PackedStringArray = [
     "_test_die_welle_hat_einen_bogen",
     "_test_rundum_haelt_das_feld",
     "_test_felsen_sind_fest",
+    "_test_karte_deckt_auf_was_befahren_wurde",
     "_test_rundum_verfolgt_ohne_zu_beschleunigen",
     "_test_rundum_begleiter_bleiben_hinten",
     "_test_leitwesen_tritt_zuletzt_ein",
@@ -666,6 +667,93 @@ func _test_wellen_bleiben_im_feld() -> bool:
             if art < 0 or art >= Arten.zahl():
                 return _melde(false, "Welle %d nennt Art %d" % [n, art])
     return true
+
+
+## Die Karte deckt auf, was befahren wurde - und sonst nichts.
+func _test_karte_deckt_auf_was_befahren_wurde() -> bool:
+    var k := Karte.new(Rundum.FELD_RADIUS)
+
+    if not _melde(k.anteil() < 0.001,
+            "eine frische Karte darf nichts kennen, sie kennt %.3f"
+            % k.anteil()):
+        return false
+
+    # Feld und Mitte muessen zueinander passen: die Mitte eines Feldes liegt
+    # in demselben Feld. Sonst deckt `decke_auf()` etwas anderes auf, als es
+    # misst.
+    for i in range(0, k.bekannt.size(), 17):
+        if not _melde(k.feld(k.mitte(i)) == i,
+                "Feld %d und seine Mitte passen nicht zusammen" % i):
+            return false
+
+    # Rasterkoordinaten und Index sind dieselbe Abbildung, von beiden Seiten.
+    # Der Nebel fragt ueber `raster()`/`zelle_bekannt()`, das Spiel ueber
+    # `feld()` - laufen die auseinander, liegt der Nebel neben der Karte.
+    for i in range(0, k.bekannt.size(), 23):
+        var zelle := k.raster(k.mitte(i))
+        if not _melde(k.index(zelle) == i,
+                "Raster und Index passen bei Feld %d nicht zusammen" % i):
+            return false
+
+    var wo := Vector2(120.0, -60.0)
+    var neu := k.decke_auf(wo)
+    if not _melde(neu > 0, "das Aufdecken deckt nichts auf"):
+        return false
+    if not _melde(k.ist_bekannt(wo), "der eigene Ort bleibt unbekannt"):
+        return false
+    # Zweimal an derselben Stelle deckt nichts Neues auf - daran haengt, ob
+    # es sich lohnt, etwas dafuer zu geben.
+    if not _melde(k.decke_auf(wo) == 0,
+            "dieselbe Stelle deckt zweimal auf"):
+        return false
+
+    if not _melde(k.zelle_bekannt(k.raster(wo)),
+            "dasselbe Feld gilt ueber die Rasterkoordinaten als unbekannt"):
+        return false
+
+    # Der mitgezaehlte Anteil muss sagen, was ein Nachzaehlen sagen wuerde -
+    # sonst steht in der Anzeige eine Zahl, die niemand geprueft hat.
+    var offen := 0
+    var moeglich := 0
+    for i in k.bekannt.size():
+        if k.mitte(i).length() > Rundum.FELD_RADIUS:
+            continue
+        moeglich += 1
+        if k.bekannt[i] != 0:
+            offen += 1
+    if not _melde(absf(k.anteil() - float(offen) / float(moeglich)) < 0.0001,
+            "der gezaehlte Anteil %.4f passt nicht zum nachgezaehlten %.4f"
+            % [k.anteil(), float(offen) / float(moeglich)]):
+        return false
+
+    # Was ausserhalb liegt, bleibt dunkel. Mit Abstand gemessen, weil ein
+    # Feld schon zaehlt, wenn seine Mitte im Umkreis liegt.
+    for i in 16:
+        var w := TAU * float(i) / 16.0
+        var weit := wo + Vector2.RIGHT.rotated(w) \
+            * (Karte.AUFDECK_RADIUS + Karte.ZELLE * 1.5)
+        if weit.length() > Rundum.FELD_RADIUS:
+            continue
+        if not _melde(not k.ist_bekannt(weit),
+                "eine Stelle ausserhalb des Umkreises ist bekannt"):
+            return false
+
+    # Und wer alles abfaehrt, kennt alles. Das ist die Zusage hinter der
+    # Anzeige: eine Prozentzahl, die nie hundert erreicht, ist eine Falle.
+    var voll := Karte.new(Rundum.FELD_RADIUS)
+    var schritt := Karte.ZELLE * 0.5
+    var r := Rundum.FELD_RADIUS
+    var y := -r
+    while y <= r:
+        var x := -r
+        while x <= r:
+            if Vector2(x, y).length() <= r:
+                voll.decke_auf(Vector2(x, y), Karte.ZELLE)
+            x += schritt
+        y += schritt
+    return _melde(voll.anteil() > 0.995,
+        "wer alles abfaehrt, muss alles kennen - bekannt sind %.3f"
+        % voll.anteil())
 
 
 ## Ein Fels ist fest: was hineingeriete, wird herausgeschoben.

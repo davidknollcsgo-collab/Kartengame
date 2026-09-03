@@ -41,11 +41,16 @@ const FARBEN: PackedColorArray = [
 
 var zeit := 0.0
 
+## Die Karte des Spielers. Wird von `rundlauf.gd` gesetzt; ist sie leer, ist
+## alles sichtbar - so bleiben Werkzeugschuesse ohne Nebel brauchbar.
+var karte: Karte = null
+
 var _rippel: Array[PackedVector2Array] = []
 var _felsen: Array[Dictionary] = []
 var _bewuchs: Array[Dictionary] = []
 var _staub: PackedVector2Array = []
 var _staub_takt: PackedFloat32Array = []
+var _funde: Array[Dictionary] = []
 
 
 func _ready() -> void:
@@ -55,6 +60,7 @@ func _ready() -> void:
     _baue_felsen(rng)
     _baue_bewuchs(rng)
     _baue_staub(rng)
+    _baue_funde(rng)
 
 
 func _process(delta: float) -> void:
@@ -203,6 +209,11 @@ func _wuerfel_ort(rng: RandomNumberGenerator) -> Vector2:
         * sqrt(rng.randf()) * weite
 
 
+## Ob ein Ort schon aufgedeckt ist. Ohne Karte ist alles offen.
+func _bekannt(ort: Vector2) -> bool:
+    return karte == null or karte.ist_bekannt(ort)
+
+
 ## Was weiter weg ist als die Sicht, wird nicht gezeichnet.
 ##
 ## Bei einem Feld von 1500 Einheiten und einem Bild von 900 liegt das meiste
@@ -227,6 +238,13 @@ func _draw() -> void:
         _zeichne_felsen(lage)
         _zeichne_bewuchs(lage)
     _zeichne_staub()
+    _zeichne_funde()
+    # **Zuletzt.** Der Nebel deckt ab, was darunter liegt, statt dass jedes
+    # Stueck Grund selbst nachsieht, ob es sich zeigen darf. Ein Fels liegt
+    # ueber vier Felder verteilt; wer ihn feldweise ausblendet, sieht ihn
+    # springen. Ueber das Boot und die Raeuber legt er sich nicht - die
+    # zeichnen Geschwister, die nach diesem Knoten an der Reihe sind.
+    _zeichne_nebel()
 
 
 func _zeichne_rippel() -> void:
@@ -259,6 +277,10 @@ func _zeichne_bewuchs(lage: int) -> void:
     var kraft: float = LAGEN_KRAFT[lage]
     for b in _bewuchs:
         if int(b[&"lage"]) != lage or not _im_blick(b[&"ort"], 60.0):
+            continue
+        # Unter dem Nebel waere er ohnehin nicht zu sehen - das spart in der
+        # ersten Minute den groessten Teil der Zeichenaufrufe.
+        if not _bekannt(b[&"ort"]):
             continue
         var p: Vector2 = b[&"ort"]
         var gr: float = b[&"gross"]
@@ -325,9 +347,218 @@ func _schopf(p: Vector2, r: float, farbe: Color, a: float, dreh: float,
 
 func _zeichne_staub() -> void:
     for i in _staub.size():
-        if not _im_blick(_staub[i], 30.0):
+        if not _im_blick(_staub[i], 30.0) or not _bekannt(_staub[i]):
             continue
         var p := _staub[i] + Vector2(
             sin(zeit * _staub_takt[i] + float(i)) * 6.0,
             cos(zeit * _staub_takt[i] * 0.7 + float(i)) * 6.0)
         draw_circle(p, 0.9, Color(0.62, 0.86, 0.92, 0.13))
+
+
+# --- Der Nebel ---------------------------------------------------------------
+
+## Wie dicht der Nebel ueber einem unbekannten Feld liegt.
+##
+## **Nicht ganz undurchsichtig.** Bei voller Deckung ist die Grenze zwischen
+## bekannt und unbekannt eine harte Linie, und dahinter ist nichts - man
+## faehrt gegen eine Wand aus Schwarz. Bei 0.93 schimmern grosse Felsen als
+## Ahnung durch: man sieht, dass dort etwas steht, aber nicht was, und genau
+## das ist der Grund hinzufahren.
+const NEBEL_DECKUNG := 0.93
+
+const NEBEL_FARBE := Color(0.004, 0.014, 0.020)
+
+
+## Der Nebel als ein Dreiecksnetz mit Farbe an den Ecken.
+##
+## **Der erste Anlauf zeichnete je unbekanntes Feld ein Rechteck.** Das war
+## billig und sah aus wie ein Tabellenblatt: die Kante zwischen bekannt und
+## unbekannt lief in rechten Winkeln durchs Bild, und man las das Raster
+## statt die Karte. Eine zweite Helligkeitsstufe fuer Randfelder half nicht -
+## sie machte aus einer Treppe zwei.
+##
+## Hier bekommt stattdessen jede **Ecke** des Rasters ihre Deckung aus den
+## vier Feldern, die sie beruehrt, und die Flaeche dazwischen wird
+## interpoliert. Damit laeuft die Deckung ueber eine ganze Feldbreite aus,
+## und die Rasterkante verschwindet, obwohl das Raster dasselbe geblieben
+## ist.
+##
+## Alles in **einem** Aufruf. `canvas_item_add_triangle_array` nimmt ein
+## ganzes Netz; vierhundert einzelne `draw_rect` waeren vierhundert
+## Zeichenaufrufe je Bild, und der Grund hat schon genug davon.
+func _zeichne_nebel() -> void:
+    if karte == null:
+        return
+    var weit := Rundum.SICHT + Karte.ZELLE * 2.0
+    var von := karte.raster(_blickmitte - Vector2.ONE * weit)
+    var bis := karte.raster(_blickmitte + Vector2.ONE * weit)
+    var nx := bis.x - von.x + 1
+    var ny := bis.y - von.y + 1
+    if nx < 1 or ny < 1:
+        return
+
+    # Die Deckung an jeder Ecke: der Anteil der vier angrenzenden Felder,
+    # die noch unbekannt sind.
+    var ecken := PackedVector2Array()
+    var farben := PackedColorArray()
+    var deckungen := PackedFloat32Array()
+    ecken.resize((nx + 1) * (ny + 1))
+    farben.resize(ecken.size())
+    deckungen.resize(ecken.size())
+    for j in ny + 1:
+        for i in nx + 1:
+            var zelle := Vector2i(von.x + i, von.y + j)
+            var unbekannt := 0
+            for dy in 2:
+                for dx in 2:
+                    if not karte.zelle_bekannt(zelle - Vector2i(dx, dy)):
+                        unbekannt += 1
+            var d := NEBEL_DECKUNG * float(unbekannt) * 0.25
+            var k := j * (nx + 1) + i
+            ecken[k] = karte.mitte_von(zelle) - Vector2.ONE * (Karte.ZELLE * 0.5)
+            deckungen[k] = d
+            farben[k] = Color(NEBEL_FARBE.r, NEBEL_FARBE.g, NEBEL_FARBE.b, d)
+
+    var netz := PackedInt32Array()
+    for j in ny:
+        for i in nx:
+            var a := j * (nx + 1) + i
+            var b := a + 1
+            var c := a + nx + 1
+            var d := c + 1
+            # Ein Feld, an dessen vier Ecken nichts liegt, wird auch nicht
+            # gezeichnet - das ist der ganze bekannte Teil der Karte.
+            if deckungen[a] <= 0.0 and deckungen[b] <= 0.0 \
+                    and deckungen[c] <= 0.0 and deckungen[d] <= 0.0:
+                continue
+            netz.append_array([a, b, d, a, d, c])
+    if netz.is_empty():
+        return
+    RenderingServer.canvas_item_add_triangle_array(
+        get_canvas_item(), netz, ecken, farben)
+
+
+# --- Fundstellen -------------------------------------------------------------
+
+## Wieviele Fundstellen im Feld liegen.
+##
+## Sie sind der Grund, ueberhaupt in eine Richtung zu fahren, in der gerade
+## kein Raeuber steht. Ohne sie belohnt das Aufdecken nur sich selbst.
+const FUNDE := 34
+
+## Wie nah man heran muss. Grosszuegig - ein Fund, den man knapp verfehlt,
+## fuehlt sich nach einem Fehler des Spiels an und nicht nach einem eigenen.
+const FUND_REICHWEITE := 52.0
+
+## Was ein Fund einbringt.
+##
+## **Punkte, kein Naehrstoff** - aus demselben Grund wie bei der Kette
+## (Zusage 16): Einkommen und Kosten der Kolonie sind aneinander gekoppelt,
+## und eine zweite Quelle daneben verschoebe die ganze Wirtschaft. Ein Fund
+## ist eine Bestmarke, keine Waehrung.
+const FUND_PUNKTE := 250
+
+
+func _baue_funde(rng: RandomNumberGenerator) -> void:
+    var versuche := 0
+    while _funde.size() < FUNDE and versuche < FUNDE * 60:
+        versuche += 1
+        # Nicht bis an den Rand und nicht in die Mitte: die Mitte sieht man
+        # in den ersten Sekunden ohnehin, und am Rand steht man mit dem
+        # Ruecken zur Wand.
+        var ort := Vector2.RIGHT.rotated(rng.randf_range(0.0, TAU)) \
+            * sqrt(rng.randf_range(0.06, 1.0)) * (Rundum.FELD_RADIUS - 120.0)
+        var frei := true
+        for f in _funde:
+            if Vector2(f[&"ort"]).distance_to(ort) < 260.0:
+                frei = false
+                break
+        # Nicht in einem Felsen - sonst liegt er hinter einer Wand, durch die
+        # man nicht kommt.
+        for fels in _felsen:
+            if bool(fels.get(&"fest", false)) \
+                    and Riff.beruehrt(fels, ort, 70.0):
+                frei = false
+                break
+        if not frei:
+            continue
+        _funde.append({
+            &"ort": ort,
+            &"dreh": rng.randf_range(0.0, TAU),
+            &"geholt": false,
+        })
+
+
+## Alle Fundstellen wieder auflegen - ein neuer Tauchgang.
+func setze_funde_zurueck() -> void:
+    for f in _funde:
+        f[&"geholt"] = false
+
+
+func funde_gesamt() -> int:
+    return _funde.size()
+
+
+func funde_geholt() -> int:
+    var n := 0
+    for f in _funde:
+        if bool(f[&"geholt"]):
+            n += 1
+    return n
+
+
+## Der naechste Fund in Reichweite - oder ein leerer Ort, wenn keiner da ist.
+##
+## Nimmt ihn gleich mit: wer ihn nur meldet, muss ihn getrennt streichen, und
+## dann gibt es zwei Stellen, die wissen, was schon geholt ist.
+func hole_fund(ort: Vector2) -> Dictionary:
+    for f in _funde:
+        if bool(f[&"geholt"]):
+            continue
+        if Vector2(f[&"ort"]).distance_to(ort) > FUND_REICHWEITE:
+            continue
+        f[&"geholt"] = true
+        # Der Wert steht am Fund und nicht beim Aufrufer: sonst muesste
+        # `rundlauf.gd` eine Konstante aus dieser Datei kennen, und die
+        # Frage, was ein Fund wert ist, haette zwei Antworten.
+        var mit := f.duplicate()
+        mit[&"punkte"] = FUND_PUNKTE
+        return mit
+    return {}
+
+
+## Ein Fund: ein Sechseck aus Licht ueber einem Keim.
+##
+## Der geholte bleibt als leere Kontur stehen. Das ist die Landkarte, die man
+## sich erfaehrt - eine Stelle, an der man schon war, sieht anders aus als
+## eine, an der man noch nicht war.
+func _zeichne_funde() -> void:
+    for f in _funde:
+        var p: Vector2 = f[&"ort"]
+        if not _im_blick(p, 60.0) or not _bekannt(p):
+            continue
+        var geholt := bool(f[&"geholt"])
+        var dreh: float = f[&"dreh"]
+        var puls := 0.5 + 0.5 * sin(zeit * 2.4 + dreh)
+        var farbe := Color(0.42, 0.56, 0.60) if geholt \
+            else Color(1.0, 0.84, 0.52)
+        var a := 0.22 if geholt else (0.55 + 0.35 * puls)
+        var r := 26.0 if geholt else 24.0 + 4.0 * puls
+        var sechseck := PackedVector2Array()
+        for i in 7:
+            sechseck.append(p + Vector2.RIGHT.rotated(
+                dreh + TAU * float(i) / 6.0) * r)
+        draw_polyline(sechseck, Color(farbe.r, farbe.g, farbe.b, a), 1.6, true)
+        if geholt:
+            continue
+        # Drei Speichen nach innen und ein Kern - er ist das, was man
+        # anfaehrt, und muss im Dunkeln aus der Ferne zu sehen sein.
+        for i in 3:
+            var w := dreh + TAU * float(i) / 3.0
+            draw_line(p + Vector2.RIGHT.rotated(w) * r * 0.42,
+                p + Vector2.RIGHT.rotated(w) * r * 0.86,
+                Color(farbe.r, farbe.g, farbe.b, a * 0.7), 1.2, true)
+        draw_circle(p, 4.0 + 1.6 * puls,
+            Color(farbe.r, farbe.g, farbe.b, 0.30 + 0.30 * puls))
+        draw_arc(p, r * 1.9, 0.0, TAU, 30,
+            Color(farbe.r, farbe.g, farbe.b, 0.06 + 0.06 * puls), 1.0, true)

@@ -110,6 +110,7 @@ xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 720x1280 \
 | `--lehre <n>` | setzt den Lehrpfad auf Schritt n (0–7) |
 | `--heim` | zeigt die Rückkehrtafel mit Beispielwerten |
 | `--stoss <s>` | stößt das Stoßlicht s Sekunden vor dem Bild ab |
+| `--offen` | Rundumlauf ohne Nebel — für Schüsse, die den Grund zeigen sollen |
 
 **`--stau` braucht man oefter, als es aussieht.** Im Vorlauf steht der
 Finger fest ueber dem Schlund, und der Kegel raeumt in spaeten Wellen alles
@@ -425,12 +426,29 @@ sein, weil das Ziel sich bewegt — deterministisch bleibt er trotzdem),
 sagt weiter, was ein Durchkommen kostet, und die Brutkammer hebt weiter die
 Zahl der Fehler, die man übersteht. Die Meta-Ebene gilt unverändert.
 
-**Was noch offen ist:** das Feld ist ein Kreis mit Radius aus der *Breite*
-(330), weil die Breite bei `aspect="expand"` festliegt und die Höhe nicht —
-auf einem 20:9-Telefon bleibt oben und unten Hintergrund übrig. Kamera folgt
-noch nicht, es gibt keine Wellenpausen, keinen Koloniezugang, kein Stoßlicht
-und keinen Prüfer. Der Wellenprüfer kann diese Schleife **nicht** messen: ein
-simulierter Daumen ersetzt kein Fahrkönnen.
+**Der Graben liegt im Dunkeln, bis jemand hinfährt.** `Karte` (rein
+gerechnet, `scripts/kern/karte.gd`) ist ein Raster aus `ZELLE` großen
+Feldern, ein Byte je Feld; die Fahrt deckt im Umkreis von `AUFDECK_RADIUS`
+auf, und der ist **kleiner als die Sicht** — sonst wäre alles, was man sehen
+kann, schon bekannt, und das Aufdecken hätte keinen Ort. Dazu liegen
+`FUNDE` Fundstellen im Feld, die man nur sieht, wo man schon war. Sie zahlen
+**Punkte und keinen Nährstoff**, aus demselben Grund wie die Kette
+(Zusage 16).
+
+Der Nebel wird **nicht feldweise als Rechteck** gezeichnet. Das war der erste
+Anlauf, und es sah aus wie ein Tabellenblatt: die Grenze zwischen bekannt und
+unbekannt lief in rechten Winkeln durchs Bild. Stattdessen bekommt jede
+**Ecke** des Rasters ihre Deckung aus den vier Feldern, die sie berührt, und
+`RenderingServer.canvas_item_add_triangle_array` zeichnet das ganze Netz in
+einem Aufruf mit Farbe an den Ecken. Die Deckung läuft damit über eine ganze
+Feldbreite aus, und das Raster verschwindet, obwohl es dasselbe geblieben
+ist.
+
+**Was noch offen ist:** es gibt keine Wellenpausen und keinen Koloniezugang —
+wer den Rundumlauf spielt, kommt nicht an seine Kammern. Der Wellenprüfer
+kann diese Schleife **nicht** messen: ein simulierter Daumen ersetzt kein
+Fahrkönnen. Die Wellenstärke ist deshalb hier von Hand gesetzt
+(`rundlauf.gd::DICHTE`) und von Hand nachgesehen; an ihr hängt keine Zusage.
 
 ## Fuer den Laden
 

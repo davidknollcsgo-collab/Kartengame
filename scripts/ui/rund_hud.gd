@@ -120,6 +120,7 @@ func _zeichne() -> void:
     _zustand(breite)
     _welle(breite)
     _punkte(breite)
+    _karte(hoehe)
     _knoepfe(breite, hoehe)
     _warnung(breite, hoehe)
 
@@ -167,6 +168,31 @@ func _punkte(breite: float) -> void:
         _text(Vector2(breite - RAND - 4.0, y + 66.0),
             "x%.1f" % Graben.kette_faktor(kette), 17,
             Color(WARM.r, WARM.g, WARM.b, 0.7 + 0.3 * puls), false, true)
+
+
+## Links unten: wieviel vom Graben aufgedeckt ist, und wieviele Fundstellen
+## geholt sind.
+##
+## **Unten und klein.** Es ist die einzige Zahl im Bild, die nicht dringend
+## ist - sie sagt, wo man noch nicht war, und das darf man in einer Pause
+## lesen. Oben stuende sie zwischen Huelle und Welle und zoege den Blick von
+## beiden ab.
+func _karte(hoehe: float) -> void:
+    var kasten := Rect2(RAND, hoehe - RAND - 46.0, 158.0, 46.0)
+    _tafel(kasten)
+    var anteil: float = lauf.karte.anteil() if lauf.karte != null else 0.0
+    _text(kasten.position + Vector2(12.0, 18.0), "SCANNED", 10, LEISE)
+    _text(Vector2(kasten.end.x - 12.0, kasten.position.y + 18.0),
+        "%d%%" % int(round(anteil * 100.0)), 13, SCHRIFT, false, true)
+    # Ein Balken darunter: eine Zahl allein sagt nicht, ob sie sich bewegt.
+    var leiste := Rect2(kasten.position + Vector2(12.0, 24.0),
+        Vector2(kasten.size.x - 24.0, 4.0))
+    _flaeche.draw_rect(leiste, Color(HELL.r, HELL.g, HELL.b, 0.12))
+    _flaeche.draw_rect(Rect2(leiste.position,
+        Vector2(leiste.size.x * anteil, leiste.size.y)),
+        Color(HELL.r, HELL.g, HELL.b, 0.55))
+    _text(kasten.position + Vector2(12.0, 40.0),
+        "SITES %d" % int(lauf.funde), 10, WARM)
 
 
 ## Rechts unten: das Stosslicht. Ein runder Knopf mit einem Ladering, wie im

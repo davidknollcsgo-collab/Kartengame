@@ -50,6 +50,8 @@ Laufzeit aus `_draw()`-Aufrufen und eigenen GDShadern:
 | Alle neun Räuberarten | `scripts/spiel/schwarm.gd` |
 | Lichtkegel und Staub im Strahl | `scripts/spiel/kegel.gd` |
 | Funken und Trefferstrahlen | `scripts/spiel/funken.gd` |
+| Meeresgrund, Felsen, Bewuchs, Nebel und Fundstellen des Rundumlaufs | `scripts/spiel/grund_rundum.gd` |
+| Boot, Begleiter und Spur des Rundumlaufs | `scripts/spiel/rundlauf.gd` |
 
 Das ist Absicht und nicht nur eine Frage der Dateigröße: prozedural erzeugte
 Optik hat genau eine Quelle — dieses Repository. Diese Dateien sind selbst
