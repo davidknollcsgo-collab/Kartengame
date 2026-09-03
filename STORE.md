@@ -72,29 +72,43 @@ die verlangt Google.
 **Titel** (max. 30 Zeichen)
 
 ```
-Nekton: Maw Watch
+Nekton: Deep Guard
 ```
 
 **Kurzbeschreibung** (max. 80 Zeichen)
 
 ```
-One finger, one cone of light, and everything that rises from the trench.
+One finger, one cone of light, and a trench that comes at you from all sides.
 ```
 
 **Vollständige Beschreibung** (max. 4000 Zeichen)
 
 ```
-Deep in a lightless trench, a colony holds its brood behind a single guardian.
-Its light organ is the only weapon it has — and your thumb is what aims it.
+Deep in a lightless trench, a colony survives on one thing: light. You steer
+it — first out in the dark water, later at the mouth of the colony itself.
 
-Hold your finger anywhere on the screen and sweep the cone across the maw.
-What stands in the light burns. What slips past reaches the eggs.
+Hold your finger anywhere on the screen. The light turns to face it, and the
+boat drives toward it. What stands in the light burns. What reaches you takes
+a piece of the hull.
+
+THE DIVE
+A dark map, a small boat, and predators closing from every direction. The
+trench is unlit until you drive through it: what you have seen stays on your
+map, and what you have not could be anything. Sites are buried out there that
+only show themselves once you have been close. So are ambushers — a quarter of
+every wave is already lying in the dark, waiting for you to come near.
+
+Three guard polyps trail behind you and burn what they can reach. Five waves
+to a dive, three or four minutes, and then the report: what you brought back
+stays with the colony even when the hull does not.
 
 THE WATCH
-Forty to seventy seconds a wave, five waves a session. No timing windows, no
-buttons, no aiming reticle. Just a beam of light and the decision of where it
-should be — which is a harder question than it sounds once nine species come
-down at once, each of them wrong to treat the same way.
+The other half of the game, and the one it started as. The guardian sits still
+at the mouth of the colony and sweeps a cone of light across everything that
+sinks toward the brood. Forty to seventy seconds a wave, five waves a session.
+No timing windows, no buttons, no aiming reticle — just a beam of light and
+the decision of where it should be, which is a harder question than it sounds
+once nine ordinary species and three wardens come down at once, each of them wrong to treat the same way.
 
 Fangjaw sinks straight and dies fast. Shellback is slow enough to ignore and
 tough enough that ignoring it costs you. Emberjelly only burns in the core of
@@ -103,8 +117,8 @@ hold perfectly still. Lunge Eel sinks in bursts, so the tracking that works on
 everything else misses it.
 
 THE COLONY
-Between waves the game turns into something slower. Five chambers, dug down a
-shaft into the rock: a brighter light organ, tougher guard polyps, more brood
+Between dives the game turns into something slower — and it is the same colony
+either way you play. Five chambers, dug down a shaft into the rock: a brighter light organ, tougher guard polyps, more brood
 to lose, nutrients while you are away, and a shaft that opens the trench
 deeper. Build times run from minutes to hours — enough to give the day a
 rhythm, never enough to make you wait for permission to play.

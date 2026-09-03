@@ -4,7 +4,7 @@ config_version=5
 [application]
 
 config/name="Nekton"
-config/description="Maw Watch: a cone of light on your fingertip against everything that rises from the trench."
+config/description="Deep Guard: a cone of light on your fingertip, a dark trench, and everything in it coming at you."
 config/version="1.0.0"
 ; **Der Titelbildschirm ist der Eingang.** Vorher startete die App direkt in
 ; der Schlundwache; auf einem Telefon gibt es keine Kommandozeile, also war

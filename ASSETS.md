@@ -47,7 +47,7 @@ Laufzeit aus `_draw()`-Aufrufen und eigenen GDShadern:
 | Wasser, Meeresschnee, Tiefenverlauf | `shaders/graben.gdshader` |
 | Ranken mit Knospen, Wehrpolypen, Riff am Grund, Kalkwulst, Brut | `scripts/spiel/kolonie.gd` |
 | Schlickschwaden und nahe Flocken im Vordergrund | `scripts/spiel/vordergrund.gd` |
-| Alle neun Räuberarten | `scripts/spiel/schwarm.gd` |
+| Alle zwölf Räuberarten | `scripts/spiel/schwarm.gd` |
 | Lichtkegel und Staub im Strahl | `scripts/spiel/kegel.gd` |
 | Funken und Trefferstrahlen | `scripts/spiel/funken.gd` |
 | Meeresgrund, Felsen, Bewuchs, Nebel und Fundstellen des Rundumlaufs | `scripts/spiel/grund_rundum.gd` |

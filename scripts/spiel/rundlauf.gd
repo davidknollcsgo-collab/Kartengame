@@ -212,6 +212,12 @@ var _erste_welle := 0
 ## Bis zu welcher Welle die Fahrprobe laeuft. 0 heisst: keine.
 var _fahrprobe := 0
 
+## Womit der Einstieg beginnt. -1 heisst: aus dem Stand nehmen.
+var _lehre_ab := -1
+
+## Alle Kammern auf diese Stufe. -1 heisst: den Stand lassen, wie er ist.
+var _stufen_ab := -1
+
 
 func _ready() -> void:
     # Der Gegenweg zu `--rundum`: die Werkzeuge (Ladenbilder, Schuesse,
@@ -223,6 +229,9 @@ func _ready() -> void:
         return
 
     _lies_argumente()
+    if _stufen_ab >= 0:
+        for k in Kammern.Kammer.size():
+            Fortschritt.stand.stufen[k] = _stufen_ab
     karte = Karte.new(Rundum.FELD_RADIUS)
     _grund.karte = null if _offene_karte else karte
     karte.decke_auf(_ort)
@@ -506,7 +515,8 @@ func starte() -> void:
         else Fortschritt.stand.naechste_welle()
     _lohn_rest = 0.0
     # Wer ihn einmal hatte, bekommt ihn nie wieder.
-    lehr_schritt = LEHRE.size() if Fortschritt.stand.einstieg_fahrt > 0 else 0
+    lehr_schritt = _lehre_ab if _lehre_ab >= 0 \
+        else (LEHRE.size() if Fortschritt.stand.einstieg_fahrt > 0 else 0)
     _lehr_zeit = 0.0
     # **Ein neuer Tauchgang faengt im Dunkeln an.** Die Karte laeuft sonst
     # aus dem Menue heraus voll - der Vorfuehrdaumen faehrt dort im Kreis -,
@@ -1314,6 +1324,17 @@ func _lies_argumente() -> void:
             "--schuss":
                 if i + 1 < argumente.size():
                     _schuss = argumente[i + 1]
+            "--stufen":
+                # Wie im Schlund: alle Kammern auf diese Stufe. Ladenbilder
+                # laufen auf einem leeren Stand, und ein Boot mit Stufe null
+                # in Welle 24 zeigt nur, wie schnell die Huelle bricht.
+                if i + 1 < argumente.size():
+                    _stufen_ab = maxi(0, int(argumente[i + 1]))
+            "--lehre":
+                # Wie im Schlund: den Einstieg auf einen Schritt setzen.
+                # Alles ab `LEHRE.size()` schaltet ihn ab.
+                if i + 1 < argumente.size():
+                    _lehre_ab = maxi(0, int(argumente[i + 1]))
             "--ende":
                 # Den Bericht ansehen, ohne erst zu sterben.
                 _zeige_ende = true
