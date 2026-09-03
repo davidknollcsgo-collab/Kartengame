@@ -1720,6 +1720,15 @@ func _spiele_vor() -> void:
 ## Wie lange eine Welle laufen darf, bevor die Probe sie als haengend abbricht.
 const PROBE_DECKEL := 180.0
 
+## Das Eintrittsfenster einer Rundumwelle: **abgeleitet, nicht geschaetzt.**
+##
+## Die `DICHTE` Wellen laufen ineinander und nicht hintereinander. Der
+## letzte Auftritt kommt damit aus der letzten der drei Wellen - deren
+## Fenster ist das laengste - und wird um hoechstens `(DICHTE - 1) * 1.6`
+## Sekunden verschoben (der Wurf in `_bereite_welle_vor()`).
+static func probe_fenster(nummer: int) -> float:
+    return Wellen.fenster(nummer + DICHTE - 1) + float(DICHTE - 1) * 1.6
+
 
 func _fahre_probe() -> void:
     # Die Probe faengt immer bei eins an - sie misst das Spiel und nicht den
@@ -1727,8 +1736,8 @@ func _fahre_probe() -> void:
     _erste_welle = 1
     print("Fahrprobe - bis Welle %d, Kolonie auf der Sollkurve" % _fahrprobe)
     print("")
-    print(" Welle | Huelle | Sekunden | Erlegt")
-    print(" ------+--------+----------+-------")
+    print(" Welle | Huelle | Sekunden | Fenster | Rueckstand | Erlegt")
+    print(" ------+--------+----------+---------+------------+-------")
     starte()
     _finger_fest = true
     _zieht = true
@@ -1749,8 +1758,14 @@ func _fahre_probe() -> void:
         # der Stand der *naechsten* Fahrt: null Erlegte und eine frisch
         # gefuellte Huelle, jede fuenfte Zeile - es sah aus, als koste die
         # letzte Welle einer Fahrt sechs Huelle.
-        print(" %5d | %6d | %8.1f | %6d%s"
-            % [dran, huelle, t, erlegt,
+        # **Sekunden allein sagen nichts.** Eine Welle hat ein entworfenes
+        # Eintrittsfenster (`Wellen.fenster`); was darueber hinausgeht, ist
+        # Nachraeumen - der Spieler kommt nicht mehr mit. Erst der
+        # Rueckstand macht aus einer Zahl eine Aussage, und die Zusage im
+        # Plan lautet vierzig bis siebzig Sekunden je Welle.
+        var fenster := probe_fenster(dran)
+        print(" %5d | %6d | %8.1f | %7.1f | %+9.1f | %6d%s"
+            % [dran, huelle, t, fenster, t - fenster, erlegt,
             "   (Fahrt zu Ende)" if lage == Lage.ENDE else ""])
         # Eine Fahrt ist fuenf Wellen lang; die Probe will wissen, wie tief
         # der Pilot ueber viele Fahrten kommt, also faengt sie die naechste

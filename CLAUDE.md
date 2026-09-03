@@ -672,6 +672,13 @@ Ausweichen, kein Timing, kein Bogen um die Felsen — alles, was ein Spieler
 zusätzlich kann, geht als Reserve in das Ergebnis ein. Gemessen wird deshalb
 eine **untere Schranke**, und sie wird auch so gemeldet.
 
+**Sie meldet den Rückstand, nicht nur die Sekunden.** Eine Zahl wie „68 s"
+sagt nichts; eine Welle hat ein entworfenes Eintrittsfenster
+(`Wellen.fenster`, hier auf die Dichte umgerechnet), und was darüber
+hinausgeht, ist Nachräumen. Gemessen liegt der Rückstand bei ein bis elf
+Sekunden — die Wellen selbst bleiben mit 41 bis 79 s in der Spanne, die der
+Plan nennt.
+
 Sie läuft **in CI mit**, vierzig Wellen für knapp eine Minute — die zweite
 Schleife hatte bis dahin keinen Wächter.
 
