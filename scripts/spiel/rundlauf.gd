@@ -197,6 +197,16 @@ var _wellenzeit := 0.0
 var _offen := 0
 var _schuetteln := 0.0
 
+## Woher der letzte Treffer kam, und wie frisch er ist.
+##
+## **In einem Rundumspiel ist die Richtung die halbe Auskunft.** Im Schlund
+## kommt alles von oben, also sagt ein Ruckeln genug; hier kommt es aus
+## dreihundertsechzig Grad, und wer getroffen wird, ohne zu wissen woher,
+## dreht sich einmal im Kreis und wird noch einmal getroffen.
+var treffer_richtung := Vector2.ZERO
+var treffer_zeit := 0.0
+const TREFFER_ZEIGT := 0.9
+
 ## Begleiter: Ort und was sie gerade anleuchten.
 var _begleiter: Array[Vector2] = []
 var _begleiter_ziel: Array[int] = []
@@ -466,6 +476,10 @@ func _process(delta: float) -> void:
         randf_range(-1.0, 1.0)) * _schuetteln * 7.0
 
     abschnitt_zeit = maxf(0.0, abschnitt_zeit - delta)
+    treffer_zeit = maxf(0.0, treffer_zeit - delta)
+    if "--zeigetreffer" in OS.get_cmdline_user_args():
+        treffer_richtung = Vector2(0.8, -0.6).normalized()
+        treffer_zeit = TREFFER_ZEIGT
     _stoss_kuehl = maxf(0.0, _stoss_kuehl - delta)
     _kette_zeit = maxf(0.0, _kette_zeit - delta)
     if _kette_zeit <= 0.0 and kette > 0:
@@ -942,6 +956,8 @@ func _bewege(delta: float) -> void:
             kette = 0
             _kette_zeit = 0.0
             _schuetteln = maxf(_schuetteln, 1.0)
+            treffer_richtung = (t.ort - _ort).normalized()
+            treffer_zeit = TREFFER_ZEIGT
             Klang.spiele(Klang.Ton.BRUT_FAELLT, 1.0, 0.8)
             Tastsinn.gib(Tastsinn.Art.TREFFER)
             _funken.platzen(t.ort, Color(1.0, 0.42, 0.34), 22.0)

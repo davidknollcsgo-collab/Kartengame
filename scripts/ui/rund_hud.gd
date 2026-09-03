@@ -188,6 +188,7 @@ func _zeichne() -> void:
     _lehre(breite, hoehe)
     _atem(breite, hoehe)
     _abschnitt(breite, hoehe)
+    _treffer(breite, hoehe)
 
 
 ## Links oben: Huelle und Ladung des Stosslichts.
@@ -341,6 +342,75 @@ func _karte_aufgedeckt(karte: Karte, mitte: Vector2, faktor: float) -> void:
                         - Vector2.ONE * (kante * 0.5),
                     Vector2(breit, kante)), farbe)
                 lauf_von = -1
+
+
+## Woher der letzte Treffer kam: ein Saum am Bildrand auf dieser Seite.
+##
+## **Kein Vollbildschleier.** Ein gleichmaessiger roter Blitz sagt nur
+## "getroffen" - das weiss man schon, es hat gewackelt und gebrummt. Was man
+## nicht weiss, ist die Richtung, und die steht in einem Rundumspiel
+## zwischen Weiterfahren und noch einem Treffer.
+##
+## Gezeichnet als Keil vom Rand nach innen, in der Bildrichtung des
+## Angreifers - **die Kamera schaut nach Norden**, das Boot dreht sich, also
+## ist die Weltrichtung hier zugleich die Bildrichtung.
+func _treffer(breite: float, hoehe: float) -> void:
+    var rest: float = lauf.treffer_zeit
+    if rest <= 0.0:
+        return
+    var r: Vector2 = Vector2(lauf.treffer_richtung)
+    if r.length_squared() < 0.001:
+        return
+    var f := clampf(rest / lauf.TREFFER_ZEIGT, 0.0, 1.0)
+    var mitte := Vector2(breite, hoehe) * 0.5
+
+    # **Ein Saum, der von der Kante hereinblutet, kein Keil zur Mitte.** Der
+    # erste Anlauf zeichnete ein Dreieck von der Bildkante zum Mittelpunkt:
+    # im Bild war das ein Speer quer ueber den halben Schirm, der genau das
+    # verdeckte, was man nach einem Treffer ansehen muss.
+    #
+    # Jetzt ein Kreisausschnitt, dessen innerer Rand durchsichtig ist und
+    # dessen aeusserer weit **ausserhalb** des Bildes liegt. Was uebrig
+    # bleibt, ist ein Glimmen an der Kante in der Richtung des Angreifers -
+    # und weil die Kamera nach Norden schaut, ist die Weltrichtung hier
+    # zugleich die Bildrichtung.
+    # **Der Saum haengt an der Bildkante, nicht an einem festen Radius.**
+    # Ein Kreisring auf einem 9:20-Schirm ist an den langen Seiten weit
+    # drinnen und an den kurzen weit draussen; im Bild war das ein rotes
+    # Tortenstueck ueber einem Viertel des Schirms. Deshalb wird je Winkel
+    # ausgerechnet, wo die Kante liegt, und der Saum davor gelegt.
+    #
+    # Zwei Lagen statt eines Verlaufs: breit und blass, schmal und hell -
+    # dieselbe Machart wie bei den Leuchtroehren. Der Grund ist hier
+    # allerdings ein technischer: **`draw_polygon()` mit Farbe je Ecke
+    # zeichnet auf dieser Ebene nichts**, und ein Dreiecksnetz ueber
+    # `canvas_item_add_triangle_array` ebenso wenig. Dieselbe Flaeche mit
+    # *einer* Farbe erscheint sofort - nachgemessen mit einem
+    # vollflaechigen Gruen.
+    var halb := Vector2(breite, hoehe) * 0.5
+    var stufen := 12
+    # Vier Lagen statt zweier: jede naeher am Rand, schmaler und heller. Bei
+    # zweien blieb eine harte gerade Kante mitten im Bild stehen - vier
+    # ergeben eine Treppe, die bei diesen Deckungen als Verlauf durchgeht.
+    var lagen := 4
+    for lage in lagen:
+        var t_lage := float(lage) / float(lagen - 1)
+        var sp := lerpf(0.95, 0.40, t_lage)
+        var tief := lerpf(0.34, 0.09, t_lage)
+        var a := lerpf(0.07, 0.30, t_lage) * f * f
+        var aussen := PackedVector2Array()
+        var innen := PackedVector2Array()
+        for i in stufen + 1:
+            var w := lerpf(r.angle() - sp, r.angle() + sp,
+                float(i) / float(stufen))
+            var d := Vector2.RIGHT.rotated(w)
+            var t := minf(halb.x / maxf(0.001, absf(d.x)),
+                halb.y / maxf(0.001, absf(d.y)))
+            aussen.append(mitte + d * t * 1.6)
+            innen.append(mitte + d * t * (1.0 - tief))
+        innen.reverse()
+        _flaeche.draw_colored_polygon(aussen + innen,
+            Color(WARNUNG.r, WARNUNG.g, WARNUNG.b, a))
 
 
 ## Oben in der Mitte: die Pause. Klein, weit weg vom Daumen, und ohne Ton -

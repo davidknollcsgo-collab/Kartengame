@@ -573,6 +573,19 @@ Titelbild steht und einen Lohn verspricht. Ein Ziel, das man in der Schleife,
 die man spielt, nicht erreichen kann, ist kein Ziel, sondern ein Vorwurf.
 Nachgemessen an sechs Wellen: Wellen 3/3, Räuber 60/60, Kette 12/12.
 
+**Ein Treffer sagt, woher er kam.** Im Schlund kommt alles von oben, also
+genügt ein Ruckeln; hier kommt es aus dreihundertsechzig Grad, und wer
+getroffen wird, ohne zu wissen woher, dreht sich einmal im Kreis und wird
+noch einmal getroffen. Der Saum hängt dabei an der **Bildkante** und nicht an
+einem festen Radius — ein Kreisring ist auf einem 9:20-Schirm an den langen
+Seiten weit drinnen und an den kurzen weit draußen, und im Bild war das ein
+rotes Tortenstück über einem Viertel des Schirms.
+
+Zwei technische Funde dabei, beide gemessen und nicht vermutet:
+`draw_polygon()` **mit Farbe je Ecke zeichnet auf einer HUD-Ebene nichts**,
+und `canvas_item_add_triangle_array` dort ebenso wenig — dieselbe Fläche mit
+*einer* Farbe erscheint sofort. Der Verlauf kommt deshalb aus vier Lagen.
+
 **Eine Übersichtskarte statt einer Prozentzahl.** Unten links stand ein
 Balken mit „15 %", und das war keine Karte: man sieht einen Ausschnitt von
 900 Einheiten in einem Feld von 1500 und wusste nie, in welcher Richtung noch
