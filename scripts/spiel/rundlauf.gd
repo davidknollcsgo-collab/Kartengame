@@ -247,6 +247,12 @@ func _ready() -> void:
     _menue.lauf = self
     _menue.nur_marke = _nur_marke
     _koloniebild.geschlossen.connect(_kolonie_zu)
+    # **Die Tagesziele zaehlen auch hier.** Sie wurden ausschliesslich aus
+    # `wache.gd` gemeldet - wer nur faehrt, konnte keines davon erfuellen,
+    # obwohl DAILY im Titelbild steht und einen Lohn verspricht. Ein Ziel,
+    # das man in der Schleife, die man spielt, nicht erreichen kann, ist
+    # kein Ziel, sondern ein Vorwurf.
+    Fortschritt.bau_fertig.connect(_bau_fertig)
     _koloniebild.zurueck_beschriftung = "BACK TO THE TRENCH"
     _kamera.position = _ort
     _stelle_ausbau_ein()
@@ -612,6 +618,11 @@ func oeffne_kolonie(reiter := 0) -> void:
     _koloniebild.zeige_reiter(reiter)
 
 
+func _bau_fertig(_kammer: int) -> void:
+    Fortschritt.melde_ziel(Tagesziel.Ziel.AUSBAU)
+    _stelle_ausbau_ein()
+
+
 func _kolonie_zu() -> void:
     _menue.visible = true
 
@@ -640,6 +651,7 @@ func kolonie_offen() -> bool:
 func _welle_geschafft() -> void:
     var stand: KolonieStand = Fortschritt.stand
     stand.hoechste_welle = maxi(stand.hoechste_welle, welle_nummer + 1)
+    Fortschritt.melde_ziel(Tagesziel.Ziel.WELLEN)
     welle_in_sitzung += 1
     if lage == Lage.SPIEL \
             and welle_in_sitzung >= Graben.WELLEN_JE_SITZUNG:
@@ -864,6 +876,9 @@ func _verbrenne(delta: float) -> void:
             erlegt += 1
             kette += 1
             kette_hoechste = maxi(kette_hoechste, kette)
+            if lage == Lage.SPIEL:
+                Fortschritt.melde_ziel(Tagesziel.Ziel.RAEUBER)
+                Fortschritt.setze_ziel(Tagesziel.Ziel.KETTE, kette)
             _kette_zeit = Graben.KETTE_FENSTER
             punkte += int(round(float(Wellen.wert_in(t.art, t.welle))
                 * Graben.kette_faktor(kette)))

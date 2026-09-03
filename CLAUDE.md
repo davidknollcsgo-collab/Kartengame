@@ -524,6 +524,12 @@ zweihundert Zeilen `queue_redraw() on a null value`. Und `rund_menue.gd`
 setzt seine Sichtbarkeit je Bild selbst — ohne `lauf.kolonie_offen()` stünde
 das Titelbild eine Zehntelsekunde nach dem Öffnen wieder darüber.
 
+**Die Tagesziele zählen auch hier.** Sie wurden ausschließlich aus `wache.gd`
+gemeldet — wer nur fährt, konnte keines davon erfüllen, obwohl `DAILY` im
+Titelbild steht und einen Lohn verspricht. Ein Ziel, das man in der Schleife,
+die man spielt, nicht erreichen kann, ist kein Ziel, sondern ein Vorwurf.
+Nachgemessen an sechs Wellen: Wellen 3/3, Räuber 60/60, Kette 12/12.
+
 **Die Fahrt lässt sich anhalten.** Ohne Pause steckte man in ihr fest: auf
 einem Telefon gibt es kein Fenster zum Schließen, `quit_on_go_back` steht auf
 `false`, und der einzige Ausgang war die gebrochene Hülle. Jetzt gibt es
