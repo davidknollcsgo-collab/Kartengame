@@ -1158,6 +1158,14 @@ func _beruehrung(gedrueckt: bool, ort: Vector2) -> void:
 
     match lage:
         Lage.PAUSE:
+            # Der Ausgang zuerst: sonst faengt "tippe irgendwohin" ihn ab.
+            if _hud.verlassenknopf.has_point(_bildschirm(ort)):
+                Klang.spiele(Klang.Ton.TIPP)
+                Fortschritt.sichere()
+                _abgetreten = true
+                get_tree().change_scene_to_file.call_deferred(
+                    "res://scenes/rundum.tscn")
+                return
             weiter()
         Lage.BAUEN:
             if _hud.kolonieknopf_bei(_bildschirm(ort)):

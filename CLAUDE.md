@@ -386,6 +386,13 @@ Menü führt in beide Schleifen: `PLAY` in den Rundumlauf, `TRENCH WATCH` in die
 Schlundwache. Auf einem Telefon gibt es keine Kommandozeile — hinter einem
 Schalter war der Rundumlauf dort überhaupt nicht erreichbar.
 
+**Und wieder heraus.** Die Schlundwache war eine Einbahnstraße: wer sie vom
+Titelbild aus betrat, kam auf einem Telefon nicht mehr zurück — es gibt kein
+Fenster zum Schließen, die Zurück-Taste führt in die Pause, und die Pause
+kannte genau einen Ausgang („tap anywhere to go on"). Auf dem Pausenschleier
+steht deshalb jetzt **LEAVE THE WATCH**, und er wird vor dem „irgendwohin"
+abgefragt — sonst fängt das Weitertippen ihn ab.
+
 Für die Werkzeuge gibt es den Gegenweg: **`--schlund`** springt direkt in die
 alte Szene, so wie `--rundum` vorher andersherum. `tools/ladenbilder.sh` und
 alle Schuss-Aufrufe brauchen ihn.

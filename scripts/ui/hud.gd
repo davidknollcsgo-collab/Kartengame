@@ -99,6 +99,11 @@ var _meldung_leben := 0.0
 ## wo der Knopf liegt.
 var _kolonieknopf := Rect2()
 
+## Der Ausgang auf dem Pausenschleier. Oeffentlich, weil `wache.gd` ihn
+## abfragt - dieselbe Regel wie beim Stossknopf: gezeichnet und getroffen
+## wird derselbe Kasten.
+var verlassenknopf := Rect2()
+
 ## Der Knopf, der die Welle startet.
 ##
 ## **Vorher startete jeder Tipp neben einer Nische die Welle.** Das war
@@ -523,6 +528,19 @@ func _pausenschleier(breite: float, hoehe: float) -> void:
         Color(0.86, 0.98, 1.0, 0.92), true)
     _text(Vector2(mitte.x, mitte.y + 96.0), "Tap anywhere to go on", 14,
         Color(0.58, 0.80, 0.88, 0.70 + 0.20 * atem), true)
+
+    # **Und ein Ausgang.** Die Schlundwache war eine Einbahnstrasse: wer sie
+    # vom Titelbild aus betrat, kam auf einem Telefon nicht mehr zurueck -
+    # es gibt kein Fenster zum Schliessen, und die Zurueck-Taste fuehrt
+    # hierher. Ein Spiel, das seine zweite Haelfte nur einmal betreten
+    # laesst, hat keine zweite Haelfte.
+    verlassenknopf = Rect2(breite * 0.5 - 116.0,
+        hoehe - 118.0 - _rand_unten, 232.0, 46.0)
+    _flaeche.draw_rect(verlassenknopf, Color(0.05, 0.14, 0.18, 0.88))
+    _flaeche.draw_rect(verlassenknopf, Color(0.42, 0.86, 0.92, 0.26),
+        false, 1.4)
+    _text(verlassenknopf.get_center() + Vector2(0.0, 6.0),
+        "LEAVE THE WATCH", 15, Color(0.72, 0.94, 0.98), true)
 
 
 ## Kein flaechiger Farbschleier, sondern ein Rand, der nach innen ausblutet.
