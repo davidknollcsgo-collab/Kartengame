@@ -16,8 +16,12 @@ extends Node2D
 ## einer Perspektivrechnung - genau wie bei den Sedimentruecken im Schlund.
 ## Was hinten liegt, ist blasser, kleiner und feiner gestrichelt.
 ##
-## Alles kommt aus einer Saat. Zweimal starten heisst zweimal derselbe Grund:
-## eine Karte, die sich bei jedem Start neu wuerfelt, ist keine Karte.
+## Alles kommt aus einer Saat, und die haengt an der **Welle**: eine Strecke
+## Graben je Fahrt, aber dieselbe Welle immer derselbe Grund. Wer eine
+## Fundstelle liegen laesst und noch einmal so tief taucht, findet sie
+## wieder - eine Karte, die sich bei jedem Start neu wuerfelt, ist keine.
+## Innerhalb einer Fahrt bleibt der Grund stehen; gebaut wird nur in
+## `rundlauf.gd::starte()`.
 
 const SAAT := 0x4e454b52
 
@@ -54,8 +58,28 @@ var _funde: Array[Dictionary] = []
 
 
 func _ready() -> void:
+    baue(0)
+
+
+## Baut den Grund neu - **eine Strecke Graben je Fahrt.**
+##
+## Vorher gab es genau einen Grund, gebaut beim Start und danach nie wieder.
+## Wer zum vierten Mal tauchte, deckte zum vierten Mal dieselbe Karte auf,
+## und der Nebel verlor genau das, wofuer er da ist. Eine Fahrt fuehrt aber
+## tiefer als die davor, also ist sie an einem anderen Ort.
+##
+## **Die Saat bleibt trotzdem eine Saat.** Sie haengt an der Welle, nicht an
+## der Uhr: dieselbe Welle gibt denselben Grund, mit denselben Felsen und
+## denselben Fundstellen. Wer eine Fundstelle liegen laesst und noch einmal
+## dorthin taucht, findet sie wieder - eine Karte, die sich bei jedem Start
+## neu wuerfelt, waere keine.
+func baue(welle: int) -> void:
+    _rippel.clear()
+    _felsen.clear()
+    _bewuchs.clear()
+    _funde.clear()
     var rng := RandomNumberGenerator.new()
-    rng.seed = SAAT
+    rng.seed = SAAT + welle
     _baue_rippel(rng)
     _baue_felsen(rng)
     _baue_bewuchs(rng)
@@ -497,12 +521,6 @@ func _baue_funde(rng: RandomNumberGenerator) -> void:
             &"dreh": rng.randf_range(0.0, TAU),
             &"geholt": false,
         })
-
-
-## Alle Fundstellen wieder auflegen - ein neuer Tauchgang.
-func setze_funde_zurueck() -> void:
-    for f in _funde:
-        f[&"geholt"] = false
 
 
 ## Die Fundstellen, die auf der Uebersichtskarte stehen duerfen: nur die,

@@ -650,7 +650,10 @@ func starte() -> void:
     karte = Karte.new(Rundum.FELD_RADIUS)
     _grund.karte = null if _offene_karte else karte
     karte.decke_auf(_ort)
-    _grund.setze_funde_zurueck()
+    # **Eine Strecke Graben je Fahrt.** Die Saat haengt an der Welle: wer
+    # noch einmal so tief taucht, findet denselben Grund und dieselben
+    # Fundstellen wieder.
+    _grund.baue(welle_nummer)
     _bereite_welle_vor()
 
 

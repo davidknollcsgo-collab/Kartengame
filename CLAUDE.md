@@ -440,6 +440,14 @@ sein, weil das Ziel sich bewegt — deterministisch bleibt er trotzdem),
 sagt weiter, was ein Durchkommen kostet, und die Brutkammer hebt weiter die
 Zahl der Fehler, die man übersteht. Die Meta-Ebene gilt unverändert.
 
+**Jede Fahrt ist eine andere Strecke Graben.** Der Grund wird in
+`rundlauf.gd::starte()` neu gebaut, mit einer Saat aus der Wellennummer.
+Vorher gab es genau einen Grund, gebaut beim Start und danach nie wieder —
+wer zum vierten Mal tauchte, deckte zum vierten Mal dieselbe Karte auf, und
+der Nebel verlor genau das, wofür er da ist. Die Saat bleibt trotzdem eine
+Saat: dieselbe Welle gibt denselben Grund mit denselben Fundstellen, und
+innerhalb einer Fahrt steht er still.
+
 **Der Graben liegt im Dunkeln, bis jemand hinfährt.** `Karte` (rein
 gerechnet, `scripts/kern/karte.gd`) ist ein Raster aus `ZELLE` großen
 Feldern, ein Byte je Feld; die Fahrt deckt im Umkreis von `AUFDECK_RADIUS`
