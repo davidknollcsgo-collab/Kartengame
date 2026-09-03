@@ -135,6 +135,13 @@ func _baue_felsen(rng: RandomNumberGenerator) -> void:
                     w + rng.randf_range(-0.20, 0.20)) * gross * t * 0.88)
             risse.append(riss)
         fels[&"risse"] = risse
+        # **Einmal abtasten, nicht je Bild.** Die Kante aendert sich nie -
+        # sie kam trotzdem in jedem Bild aus 48 Winkeln mit je drei Sinus
+        # frisch heraus, und zwar zweimal je Fels (Umriss und Schulter). Bei
+        # vierzig sichtbaren Felsen sind das elftausend Sinus je Bild fuer
+        # eine Form, die seit dem Start feststeht.
+        fels[&"umriss"] = _felskante(fels)
+        fels[&"schulter"] = _felskante(fels, 0.58)
         _felsen.append(fels)
 
 
@@ -257,7 +264,7 @@ func _zeichne_felsen(lage: int) -> void:
     for f in _felsen:
         if int(f[&"lage"]) != lage or not _im_blick(f[&"ort"], 140.0):
             continue
-        var umriss := _felskante(f)
+        var umriss: PackedVector2Array = f[&"umriss"]
         # Die Flaeche deckt nur ab, was dahinter liegt - dunkler als das
         # Wasser davor, wie das Sediment im Schlund. Die Form traegt die
         # Kante.
@@ -265,7 +272,7 @@ func _zeichne_felsen(lage: int) -> void:
         var zu := umriss + PackedVector2Array([umriss[0]])
         draw_polyline(zu, Color(0.32, 0.56, 0.60, 0.10 * kraft), 4.0, true)
         draw_polyline(zu, Color(0.32, 0.56, 0.60, 0.44 * kraft), 1.3, true)
-        var sch := _felskante(f, 0.58)
+        var sch: PackedVector2Array = f[&"schulter"]
         draw_polyline(sch + PackedVector2Array([sch[0]]),
             Color(0.32, 0.56, 0.60, 0.15 * kraft), 1.0, true)
         for riss in f[&"risse"]:

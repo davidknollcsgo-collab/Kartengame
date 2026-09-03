@@ -227,6 +227,12 @@ var _zeige_pause := false
 ## Nur fuer Werkzeuge (`--marke`).
 var _nur_marke := false
 
+## Sekunden Bildratenmessung. 0 heisst: nicht messen.
+var _messen := 0.0
+
+## Ohne Gluehen zeichnen - nur fuer die Messung.
+var _flach := false
+
 ## Nur fuer Werkzeuge (`--kolonie <n>`): den Ausbau gleich aufschlagen.
 var _kolonie_reiter := -1
 
@@ -262,6 +268,10 @@ func _ready() -> void:
     karte = Karte.new(Rundum.FELD_RADIUS)
     _grund.karte = null if _offene_karte else karte
     karte.decke_auf(_ort)
+    if _flach:
+        var leuchten := get_node_or_null("Leuchten") as WorldEnvironment
+        if leuchten != null:
+            leuchten.environment.glow_enabled = false
     _vorn.draw.connect(_zeichne_vorn)
     _schwarm.led = true
     _hud.lauf = self
@@ -302,6 +312,9 @@ func _ready() -> void:
         oeffne_kolonie(_kolonie_reiter)
     if _fahrprobe > 0:
         _fahre_probe.call_deferred()
+        return
+    if _messen > 0.0:
+        _miss_bildrate.call_deferred()
         return
     if not _schuss.is_empty():
         _nimm_auf.call_deferred()
@@ -1458,6 +1471,14 @@ func _lies_argumente() -> void:
                 # Alles ab `LEHRE.size()` schaltet ihn ab.
                 if i + 1 < argumente.size():
                     _lehre_ab = maxi(0, int(argumente[i + 1]))
+            "--flach":
+                # Ohne Gluehen. **Nur zum Messen**: so laesst sich der
+                # Anteil der Nachbearbeitung an einem Bild beziffern, statt
+                # ihn zu schaetzen. Er liegt bei einem Fuenftel.
+                _flach = true
+            "--messen":
+                if i + 1 < argumente.size():
+                    _messen = maxf(0.5, float(argumente[i + 1]))
             "--marke":
                 # Nur der Schriftzug ueber der laufenden Szene - fuer das
                 # Feature-Bild des Ladens.
@@ -1601,6 +1622,52 @@ func _steuere_probe() -> void:
         + (150.0 if weit else -20.0))
     if stoss_bereit() and _offen > 12:
         stosslicht()
+
+
+## Wieviele Bilder je Sekunde diese Szene traegt.
+##
+## **Der Rundumlauf zeichnet deutlich mehr als der Schlund**: einen Grund aus
+## hundertneunzig Felsen und vierhundertzwanzig Bewuechsen, den Nebel, die
+## Schwaerme, dazu bis zu hundert Raeuber in Leuchtroehren - und jede Roehre
+## sind zwei Zuege statt einem. Gemessen wurde davon nie etwas.
+##
+## **Was hier herauskommt, ist keine Aussage ueber ein Telefon.** Dieser
+## Behaelter hat keine Grafikkarte und rastert in Software; die Zahl taugt
+## als *Vergleich* zwischen zwei Staenden dieses Repositoriums und fuer
+## nichts sonst. Genau so steht es auch bei der Messung im Schlund.
+func _miss_bildrate() -> void:
+    starte()
+    _finger_fest = true
+    _zieht = true
+    var takt := 1.0 / 60.0
+    # Erst die Welle anlaufen lassen, damit auch wirklich etwas im Bild
+    # steht - eine Messung auf einem leeren Feld misst den Grund allein.
+    for i in int(12.0 / takt):
+        _finger = Vector2.RIGHT.rotated(float(i) * takt * 0.5) * 240.0
+        _process(takt)
+
+    var lebende := 0
+    for t in _tiere:
+        if t.lebendig and t.alter >= 0.0 and not t.lauert:
+            lebende += 1
+
+    var bilder := 0
+    var schlimmstes := 0.0
+    var beginn := Time.get_ticks_usec()
+    var letztes := beginn
+    while float(Time.get_ticks_usec() - beginn) / 1e6 < _messen:
+        await RenderingServer.frame_post_draw
+        var jetzt := Time.get_ticks_usec()
+        var schritt := float(jetzt - letztes) / 1e6
+        letztes = jetzt
+        bilder += 1
+        if bilder > 5:
+            schlimmstes = maxf(schlimmstes, schritt)
+    var verstrichen := float(Time.get_ticks_usec() - beginn) / 1e6
+    print("Welle %d: %d Raeuber im Bild, %d aufgedeckt, %.1f Bilder/s, schlimmstes Bild %.1f ms"
+        % [welle_nummer, lebende, int(round(karte.anteil() * 100.0)),
+        float(bilder) / verstrichen, schlimmstes * 1000.0])
+    get_tree().quit()
 
 
 func _nimm_auf() -> void:

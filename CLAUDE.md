@@ -114,6 +114,8 @@ xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 720x1280 \
 | `--ende` | Rundumlauf: der Bericht nach der Fahrt, mit Beispielwerten |
 | `--pause` | Rundumlauf: die Pausentafel, mit Beispielwerten |
 | `--marke` | nur Schriftzug über der Szene — für das Feature-Bild |
+| `--messen <s>` | Bildrate im Rundumlauf, s Sekunden lang |
+| `--flach` | ohne Glühen — nur zum Messen, was die Nachbearbeitung kostet |
 | `--stufen <n>` | im Rundumlauf: alle Kammern auf Stufe n |
 | `--kolonie <n>` | im Rundumlauf: schlägt den Ausbau auf Reiter n auf |
 
@@ -584,6 +586,29 @@ Und die nächste Welle kommt aus dem **Koloniestand** (Zusage 13), nicht aus
 einer eigenen Zählung. Vorher fing jede Fahrt bei eins an: dieselben fünf
 Wellen für immer, und der Ertrag von Welle eins dazu. `--welle` sticht das
 aus, weil ein Werkzeug zeigen können soll, was es zeigen will.
+
+### Die Bildrate
+
+```bash
+xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 720x1600 \
+  -- --messen 6 --welle 24 --stufen 14 --lehre 9
+```
+
+**Die Zahl ist kein Urteil über ein Telefon.** Dieser Behälter hat keine
+Grafikkarte und rastert in Software; sie taugt als *Vergleich* zwischen zwei
+Ständen dieses Repositoriums und für nichts sonst. So gemessen (720×1600,
+Welle 24):
+
+| Stand | Bilder/s |
+|---|---|
+| Schlundwache | 8,1 |
+| Rundumlauf | 5,2 |
+| Rundumlauf ohne Glühen (`--flach`) | 6,8 |
+
+Daraus zwei Zahlen, die vorher geschätzt waren: der Rundumlauf kostet rund
+das Anderthalbfache der Schlundwache, und **das Glühen ist ein Fünftel des
+Bildes** — es bleibt trotzdem, denn es ist der Grund, warum die Leuchtröhren
+wie Röhren aussehen und nicht wie Striche.
 
 ### Die Fahrprobe
 
