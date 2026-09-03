@@ -337,6 +337,8 @@ func _zeichne() -> void:
             SCHRIFT if erste else LEISE, false, 2.5)
         y += 56.0
 
+    _schiffskarte(breite, hoehe, y)
+
     # Der Satz aus dem Entwurf, unten. Er sagt in drei Woertern, was die
     # Sitzung ist - und er ist das Einzige hier, was Werbung sein darf.
     _text(Vector2(breite * 0.5, hoehe - 74.0),
@@ -359,6 +361,60 @@ func _zeichne_marke(breite: float, hoehe: float) -> void:
         int(gross * 0.38), HELL, true, gross * 0.155)
     _text(Vector2(x, y + gross * 1.30), "DARK. FAST. ONE MORE DIVE.",
         int(gross * 0.26), LEISE, true, gross * 0.05)
+
+
+## Die Schiffskarte: was die Kolonie am Boot bewirkt.
+##
+## **Aus dem Entwurf, den der Spieler vorgelegt hat** - dort stand eine
+## Karte mit vier Balken neben dem Schiff. Hier stehen dieselben vier, aber
+## sie sind keine eigene Zahlenreihe: jede Zeile ist ein Wert, mit dem das
+## Spiel wirklich rechnet, aus derselben `KolonieStand`-Funktion, die auch
+## `rundlauf.gd::_stelle_ausbau_ein()` fragt. Eine Anzeige mit eigenen
+## Zahlen waere eine zweite Wahrheit ueber die Kolonie.
+##
+## Der Balken misst die Kammerstufe an `Kammern.HOECHSTSTUFE` - er sagt, wie
+## weit die Kammer noch kann. Die Zahl daneben sagt, was sie jetzt tut.
+func _schiffskarte(breite: float, hoehe: float, oben: float) -> void:
+    var stand: KolonieStand = Fortschritt.stand
+    var zeilen: Array[Array] = [
+        ["HULL", "%d" % stand.brut_leben(),
+            stand.stufe(Kammern.Kammer.BRUTKAMMER)],
+        ["BEAM", "%d dmg/s" % int(round(Graben.LEISTUNG
+            * stand.leistung_faktor())),
+            stand.stufe(Kammern.Kammer.LEUCHTORGAN)],
+        ["TARGETS", "%d" % stand.ziele(),
+            stand.stufe(Kammern.Kammer.LEUCHTORGAN)],
+        ["ESCORT", "%d dmg/s" % int(round(stand.polyp_leistung())),
+            stand.stufe(Kammern.Kammer.ZUCHTKAMMER)],
+    ]
+    var hoch := 24.0
+    var kasten := Rect2(RAND, oben + 10.0, 232.0,
+        hoch * zeilen.size() + 30.0)
+    # Wenn unten kein Platz mehr ist, bleibt sie weg. Ein Kasten, der in die
+    # Zeile unter ihm laeuft, ist schlimmer als keiner.
+    if kasten.end.y > hoehe - 96.0:
+        return
+    var weg := _hexweg(kasten, 10.0)
+    _flaeche.draw_colored_polygon(weg, Color(0.014, 0.040, 0.052, 0.72))
+    _flaeche.draw_polyline(weg + PackedVector2Array([weg[0]]),
+        Color(RAHMEN.r, RAHMEN.g, RAHMEN.b, 0.30), 1.2, true)
+    _text(kasten.position + Vector2(16.0, 20.0), "THE BOAT", 11, LEISE,
+        false, 2.6)
+    var y := kasten.position.y + 38.0
+    for z in zeilen:
+        _text(Vector2(kasten.position.x + 16.0, y + 8.0), String(z[0]), 11,
+            LEISE, false, 1.6)
+        _text(Vector2(kasten.end.x - 16.0, y + 8.0), String(z[1]), 12,
+            SCHRIFT, false, 0.0, true)
+        var leiste := Rect2(kasten.position.x + 16.0, y + 13.0,
+            kasten.size.x - 32.0, 3.0)
+        _flaeche.draw_rect(leiste, Color(HELL.r, HELL.g, HELL.b, 0.10))
+        var anteil := clampf(float(z[2]) / float(Kammern.HOECHSTSTUFE),
+            0.0, 1.0)
+        _flaeche.draw_rect(Rect2(leiste.position,
+            Vector2(leiste.size.x * anteil, leiste.size.y)),
+            Color(HELL.r, HELL.g, HELL.b, 0.55))
+        y += hoch
 
 
 ## Das Abspielzeichen im ersten Knopf.

@@ -524,6 +524,14 @@ zweihundert Zeilen `queue_redraw() on a null value`. Und `rund_menue.gd`
 setzt seine Sichtbarkeit je Bild selbst — ohne `lauf.kolonie_offen()` stünde
 das Titelbild eine Zehntelsekunde nach dem Öffnen wieder darüber.
 
+**Die Schiffskarte im Titelbild** zeigt vier Werte — Hülle, Strahl, Ziele,
+Begleiter — und jeder davon ist der Wert, mit dem das Spiel wirklich rechnet,
+aus derselben `KolonieStand`-Funktion, die auch `_stelle_ausbau_ein()` fragt.
+Eine Anzeige mit eigenen Zahlen wäre eine zweite Wahrheit über die Kolonie.
+Der Balken misst die Kammerstufe an `Kammern.HOECHSTSTUFE` — er sagt, wie
+weit die Kammer noch kann; die Zahl daneben sagt, was sie jetzt tut. Bleibt
+unten kein Platz, fällt die Karte weg statt in die Zeile darunter zu laufen.
+
 **Zwischen zwei Wellen wird durchgeatmet** (`ATEM`, 2,2 s). Ohne die Pause
 ging eine Welle in die nächste über, ohne dass etwas geschah: fünf Wellen am
 Stück sind vier Minuten ununterbrochenes Zielen, und der Bogen jeder
