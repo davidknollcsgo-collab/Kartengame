@@ -198,6 +198,10 @@ var _zeige_ende := false
 ## Nur fuer Werkzeuge (`--kolonie <n>`): den Ausbau gleich aufschlagen.
 var _kolonie_reiter := -1
 
+## Mit welcher Welle eine Fahrt beginnt. Immer 1, ausser `--welle` sagt etwas
+## anderes.
+var _erste_welle := 1
+
 
 func _ready() -> void:
     # Der Gegenweg zu `--rundum`: die Werkzeuge (Ladenbilder, Schuesse,
@@ -481,11 +485,11 @@ func starte() -> void:
     erlegt = 0
     funde = 0
     verdient = 0
+    welle_nummer = _erste_welle
     _lohn_rest = 0.0
     # Wer ihn einmal hatte, bekommt ihn nie wieder.
     lehr_schritt = LEHRE.size() if Fortschritt.stand.einstieg_fahrt > 0 else 0
     _lehr_zeit = 0.0
-    welle_nummer = 1
     # **Ein neuer Tauchgang faengt im Dunkeln an.** Die Karte laeuft sonst
     # aus dem Menue heraus voll - der Vorfuehrdaumen faehrt dort im Kreis -,
     # und das erste Bild des Spiels waere ein aufgedeckter Graben.
@@ -1249,6 +1253,11 @@ func _lies_argumente() -> void:
             "--welle":
                 if i + 1 < argumente.size():
                     welle_nummer = maxi(1, int(argumente[i + 1]))
+                    # **Auch fuer `starte()`.** Sonst setzt der Start die
+                    # Welle wieder auf eins zurueck, und ein Schuss mit
+                    # `--spiel --welle 30` zeigt Welle 1 - der Schalter sah
+                    # aus, als wirke er nicht.
+                    _erste_welle = welle_nummer
             "--zeit":
                 if i + 1 < argumente.size():
                     _vorlauf = maxf(0.0, float(argumente[i + 1]))
