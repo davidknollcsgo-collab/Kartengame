@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/spiel/rundlauf.gd" id="1_rundlauf"]
 [ext_resource type="Script" path="res://scripts/spiel/kegel.gd" id="2_kegel"]
@@ -9,6 +9,7 @@
 [ext_resource type="Script" path="res://scripts/spiel/wild.gd" id="9_wild"]
 [ext_resource type="Script" path="res://scripts/ui/rund_hud.gd" id="7_hud"]
 [ext_resource type="Script" path="res://scripts/ui/rund_menue.gd" id="8_menue"]
+[ext_resource type="Script" path="res://scripts/ui/kolonie_schirm.gd" id="10_kolonie"]
 
 [sub_resource type="Environment" id="Environment_glut"]
 background_mode = 3
@@ -66,3 +67,14 @@ script = ExtResource("7_hud")
 
 [node name="Menue" type="CanvasLayer" parent="."]
 script = ExtResource("8_menue")
+
+[node name="Koloniebild" type="CanvasLayer" parent="."]
+layer = 30
+script = ExtResource("10_kolonie")
+
+[node name="Flaeche" type="Control" parent="Koloniebild"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2

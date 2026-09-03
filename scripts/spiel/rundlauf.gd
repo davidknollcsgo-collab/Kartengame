@@ -94,6 +94,12 @@ const LAUER_WEIT := 1400.0
 @onready var _menue: CanvasLayer = $Menue
 @onready var _grund: Node2D = $Grund
 @onready var _wild: Node2D = $Wild
+## **Derselbe Koloniebildschirm wie im Schlund**, nicht ein zweiter. Er ist
+## eine Ebene und keine Szene, haengt an `Fortschritt` und `Kammern` und
+## kennt seinen Wirt nicht - er passt hier hinein, ohne dass eine Zeile in
+## ihm geaendert werden musste. Ein eigener Ausbaubildschirm fuer diese
+## Schleife waere eine zweite Wahrheit ueber dieselben Kammern.
+@onready var _koloniebild: CanvasLayer = $Koloniebild
 
 ## --- Wo wir gerade sind ---
 ##
@@ -171,6 +177,9 @@ var _offene_karte := false
 ## Nur fuer Werkzeuge (`--ende`): den Bericht mit Beispielwerten zeigen.
 var _zeige_ende := false
 
+## Nur fuer Werkzeuge (`--kolonie <n>`): den Ausbau gleich aufschlagen.
+var _kolonie_reiter := -1
+
 
 func _ready() -> void:
     # Der Gegenweg zu `--rundum`: die Werkzeuge (Ladenbilder, Schuesse,
@@ -189,6 +198,8 @@ func _ready() -> void:
     _schwarm.led = true
     _hud.lauf = self
     _menue.lauf = self
+    _koloniebild.geschlossen.connect(_kolonie_zu)
+    _koloniebild.zurueck_beschriftung = "BACK TO THE TRENCH"
     _kamera.position = _ort
     _kegel.halbwinkel = Graben.HALBWINKEL
     _kegel.reichweite = Graben.REICHWEITE
@@ -206,6 +217,9 @@ func _ready() -> void:
         kette_hoechste = 26
         huelle = 0
         lage = Lage.ENDE
+    if _kolonie_reiter >= 0:
+        oeffne_kolonie()
+        _koloniebild.zeige_reiter(_kolonie_reiter)
     if not _schuss.is_empty():
         _nimm_auf.call_deferred()
 
@@ -400,6 +414,29 @@ func starte() -> void:
     karte.decke_auf(_ort)
     _grund.setze_funde_zurueck()
     _bereite_welle_vor()
+
+
+## Der Ausbau, vom Titelbild und vom Bericht aus.
+##
+## **Nur ausserhalb der Fahrt.** Mitten in einer Welle den Bildschirm zu
+## oeffnen hiesse, die Welle laeuft hinter einer Tafel weiter - und wer
+## zurueckkommt, hat verloren, ohne etwas gesehen zu haben.
+func oeffne_kolonie() -> void:
+    if lage == Lage.SPIEL:
+        return
+    _menue.visible = false
+    _koloniebild.oeffne()
+
+
+func _kolonie_zu() -> void:
+    _menue.visible = true
+
+
+## Ob der Koloniebildschirm gerade oben liegt. `rund_menue.gd` fragt das je
+## Bild - es setzt seine Sichtbarkeit selbst, und ohne diese Frage stuende
+## das Titelbild eine Zehntelsekunde nach dem Oeffnen wieder darueber.
+func kolonie_offen() -> bool:
+    return _koloniebild.sichtbar()
 
 
 ## Die Fahrt ist vorbei: die Huelle ist durch.
@@ -1142,6 +1179,10 @@ func _lies_argumente() -> void:
             "--ende":
                 # Den Bericht ansehen, ohne erst zu sterben.
                 _zeige_ende = true
+            "--kolonie":
+                # Den Ausbau ansehen, ohne ihn zu suchen.
+                if i + 1 < argumente.size():
+                    _kolonie_reiter = maxi(0, int(argumente[i + 1]))
             "--offen":
                 # Kein Nebel - fuer Schuesse, die den Grund zeigen sollen.
                 _offene_karte = true

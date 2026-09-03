@@ -12,6 +12,13 @@ extends CanvasLayer
 
 signal geschlossen
 
+## Was auf dem Schliessknopf steht.
+##
+## **Er sagt, wohin er zurueckfuehrt, und das ist nicht mehr immer derselbe
+## Ort.** Diese Ebene haengt jetzt in beiden Schleifen; "BACK TO THE MAW" in
+## einem Boot mitten im Graben ist schlicht falsch. Der Wirt setzt es.
+var zurueck_beschriftung := "BACK TO THE MAW"
+
 const RAND := 18.0
 const KOPF := 96.0
 const FUSS := 78.0
@@ -1902,7 +1909,7 @@ func _fusszeile(breite: float, hoehe: float) -> void:
     _flaeche.draw_rect(_schliessen, Color(0.08, 0.20, 0.24, 0.9))
     _flaeche.draw_rect(_schliessen, Color(0.42, 0.86, 0.92, 0.30 + 0.25 * puls),
         false, 1.6)
-    _text(_schliessen.get_center() + Vector2(0.0, 6.0), "BACK TO THE MAW",
+    _text(_schliessen.get_center() + Vector2(0.0, 6.0), zurueck_beschriftung,
         17, Color(0.82, 0.96, 1.0), true)
 
 

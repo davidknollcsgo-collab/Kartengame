@@ -24,7 +24,7 @@ const RAHMEN := Color(0.30, 0.62, 0.66)
 const KNOEPFE: Array[Dictionary] = [
     {&"kennung": &"SPIELEN", &"text": "PLAY"},
     {&"kennung": &"SCHIFFE", &"text": "LINES"},
-    {&"kennung": &"AUSBAU", &"text": "UPGRADES"},
+    {&"kennung": &"AUSBAU", &"text": "COLONY"},
     {&"kennung": &"AUFTRAEGE", &"text": "MISSIONS"},
     # Die alte Schleife bleibt erreichbar. Sie ist fertig, geprueft und
     # verkaufbar - sie hinter einem Kommandozeilenschalter zu begraben, waere
@@ -52,7 +52,8 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
     _zeit += delta
-    visible = lauf != null and lauf.lage != lauf.Lage.SPIEL
+    visible = lauf != null and lauf.lage != lauf.Lage.SPIEL \
+        and not lauf.kolonie_offen()
     if visible:
         _flaeche.queue_redraw()
 
@@ -84,6 +85,8 @@ func _gewaehlt(i: int) -> void:
             lauf.starte()
         &"SCHLUND":
             get_tree().change_scene_to_file("res://scenes/schlund.tscn")
+        &"AUSBAU":
+            lauf.oeffne_kolonie()
         _:
             # Die drei anderen fuehren in den Koloniebildschirm, sobald er
             # hier haengt. Bis dahin sagt der Knopf ehrlich nichts - ein
@@ -99,10 +102,17 @@ func _gewaehlt(i: int) -> void:
 ## Ein-Stern-Bewertungen schreibt.
 func _gewaehlt_am_ende(i: int) -> void:
     Klang.spiele(Klang.Ton.TIPP)
-    if i == 0:
-        lauf.starte()
-    else:
-        lauf.lage = lauf.Lage.MENUE
+    match i:
+        0:
+            lauf.starte()
+        1:
+            # **Der Ausbau gehoert hierher.** Nach der Fahrt liegt der
+            # Naehrstoff frisch in der Kolonie, und das ist der Moment, in
+            # dem man ihn ausgeben will. Ein Weg dorthin, der ueber das
+            # Titelbild fuehrt, ist ein Weg, den die Haelfte nicht findet.
+            lauf.oeffne_kolonie()
+        _:
+            lauf.lage = lauf.Lage.MENUE
 
 
 ## Der Bericht: was diese Fahrt eingebracht hat.
@@ -142,7 +152,7 @@ func _zeichne_ende(breite: float, hoehe: float) -> void:
         y += 38.0
 
     _felder.clear()
-    var texte: PackedStringArray = ["DIVE AGAIN", "SURFACE"]
+    var texte: PackedStringArray = ["DIVE AGAIN", "COLONY", "SURFACE"]
     y += 14.0
     for i in texte.size():
         var kasten := Rect2(RAND, y, breite - RAND * 2.0, 48.0)

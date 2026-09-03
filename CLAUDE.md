@@ -112,6 +112,7 @@ xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 720x1280 \
 | `--stoss <s>` | stößt das Stoßlicht s Sekunden vor dem Bild ab |
 | `--offen` | Rundumlauf ohne Nebel — für Schüsse, die den Grund zeigen sollen |
 | `--ende` | Rundumlauf: der Bericht nach der Fahrt, mit Beispielwerten |
+| `--kolonie <n>` | im Rundumlauf: schlägt den Ausbau auf Reiter n auf |
 
 **`--stau` braucht man oefter, als es aussieht.** Im Vorlauf steht der
 Finger fest ueber dem Schlund, und der Kegel raeumt in spaeten Wellen alles
@@ -494,8 +495,24 @@ ohne diese Abfrage verdient ein Telefon, das auf dem Titelbild liegen bleibt,
 echten Nährstoff. Aufgefallen ist es an einer 9261 im Schuss des Berichts, wo
 9260 hineingeschrieben war.
 
-**Was noch offen ist:** es gibt keine Wellenpausen und keinen Koloniezugang —
-wer den Rundumlauf spielt, kommt nicht an seine Kammern. Der Wellenprüfer
+**Der Ausbau ist derselbe Bildschirm wie im Schlund**, nicht ein zweiter.
+`kolonie_schirm.gd` ist eine Ebene und keine Szene, hängt an `Fortschritt`
+und `Kammern` und kennt seinen Wirt nicht — er passt in `rundum.tscn`, ohne
+dass eine Zeile in ihm geändert werden musste (nur `zurueck_beschriftung`
+kam dazu: „BACK TO THE MAW" in einem Boot mitten im Graben ist schlicht
+falsch). Ein eigener Ausbaubildschirm für diese Schleife wäre eine zweite
+Wahrheit über dieselben Kammern. Erreichbar über `COLONY` im Titelbild **und**
+im Bericht — nach der Fahrt liegt der Nährstoff frisch in der Kolonie, und
+das ist der Moment, in dem man ihn ausgeben will.
+
+Zwei Dinge, die dabei zu beachten waren. Die Ebene braucht ein Kind namens
+`Flaeche` in der Szene, sonst bricht sie in `_ready()` ab und schreibt
+zweihundert Zeilen `queue_redraw() on a null value`. Und `rund_menue.gd`
+setzt seine Sichtbarkeit je Bild selbst — ohne `lauf.kolonie_offen()` stünde
+das Titelbild eine Zehntelsekunde nach dem Öffnen wieder darüber.
+
+**Was noch offen ist:** es gibt keine Wellenpausen — wer im Rundumlauf baut,
+tut es zwischen den Fahrten und nicht in ihnen. Der Wellenprüfer
 kann diese Schleife **nicht** messen: ein simulierter Daumen ersetzt kein
 Fahrkönnen. Die Wellenstärke ist deshalb hier von Hand gesetzt
 (`rundlauf.gd::DICHTE`) und von Hand nachgesehen; an ihr hängt keine Zusage.
