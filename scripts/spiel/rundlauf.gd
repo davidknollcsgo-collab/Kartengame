@@ -639,12 +639,21 @@ func _notification(was: int) -> void:
         NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_WM_WINDOW_FOCUS_OUT:
             pausiere()
         NOTIFICATION_WM_GO_BACK_REQUEST:
+            # **Immer eine Ebene zurueck, und auf der letzten hinaus.** Das
+            # ist, was die Taste auf Android ueberall tut; eine App, aus der
+            # sie nicht herausfuehrt, laesst der Spieler ueber die
+            # Uebersicht stehen und kommt nicht wieder.
             if _koloniebild != null and _koloniebild.sichtbar():
                 _koloniebild.schliesse()
             elif lage == Lage.SPIEL:
                 pausiere()
             elif lage == Lage.PAUSE:
                 weiter()
+            elif lage == Lage.ENDE:
+                lage = Lage.MENUE
+            else:
+                Fortschritt.sichere()
+                get_tree().quit()
 
 
 ## Der Ausbau, vom Titelbild und vom Bericht aus.
