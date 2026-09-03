@@ -113,6 +113,8 @@ xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 720x1280 \
 | `--offen` | Rundumlauf ohne Nebel — für Schüsse, die den Grund zeigen sollen |
 | `--ende` | Rundumlauf: der Bericht nach der Fahrt, mit Beispielwerten |
 | `--pause` | Rundumlauf: die Pausentafel, mit Beispielwerten |
+| `--marke` | nur Schriftzug über der Szene — für das Feature-Bild |
+| `--stufen <n>` | im Rundumlauf: alle Kammern auf Stufe n |
 | `--kolonie <n>` | im Rundumlauf: schlägt den Ausbau auf Reiter n auf |
 
 **`--stau` braucht man oefter, als es aussieht.** Im Vorlauf steht der
@@ -587,6 +589,7 @@ Inhaltseinstufung.
 ```bash
 godot --headless --path . --script tools/symbol.gd   # Symbolsatz neu rechnen
 tools/ladenbilder.sh build/laden                     # Screenshots, 1080x1920
+tools/ladengrafik.sh build/laden                     # Feature-Bild, 1024x500
 python3 tools/seite.py docs                          # privacy.html aus PRIVACY.md
 ```
 

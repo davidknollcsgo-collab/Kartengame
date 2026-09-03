@@ -34,6 +34,12 @@ const KNOEPFE: Array[Dictionary] = [
 
 var lauf: Node = null
 
+## Nur die Marke zeichnen: Schriftzug und Zeile, keine Knoepfe, kein
+## Schleier. **Fuer das Feature-Bild des Ladens**, das nach Googles Vorgabe
+## 1024x500 misst und keine Bedienung zeigen soll - es steht ueber dem
+## Eintrag und nicht im Spiel. `tools/ladengrafik.sh` setzt es.
+var nur_marke := false
+
 var _flaeche: Control
 var _schrift: Font
 var _zeit := 0.0
@@ -295,9 +301,13 @@ func _zeichne() -> void:
 
     # Ein Schleier ueber der laufenden Szene. Ohne ihn steht die Schrift im
     # Gewimmel und ist nicht zu lesen; mit zu viel davon sieht man nicht
-    # mehr, dass dahinter etwas laeuft.
+    # mehr, dass dahinter etwas laeuft. Fuer das Feature-Bild duenner: dort
+    # ist die Szene die halbe Aussage.
     _flaeche.draw_rect(Rect2(0.0, 0.0, breite, hoehe),
-        Color(0.010, 0.030, 0.042, 0.52))
+        Color(0.010, 0.030, 0.042, 0.22 if nur_marke else 0.52))
+    if nur_marke:
+        _zeichne_marke(breite, hoehe)
+        return
 
     var oben := hoehe * 0.16
     _text(Vector2(RAND + 6.0, oben), "NEKTON", 46, SCHRIFT, false, 9.0)
@@ -333,6 +343,22 @@ func _zeichne() -> void:
         "DARK. FAST. ONE MORE DIVE.", 17, HELL, true, 2.0)
     _text(Vector2(breite * 0.5, hoehe - 50.0),
         "SURVIVE. BUILD. GO DEEPER.", 13, LEISE, true, 2.0)
+
+
+## Nur der Schriftzug, mittig, mit der Zeile darunter.
+##
+## Im Querformat des Feature-Bildes steht er in der linken Haelfte: rechts
+## bleibt der Graben zu sehen, und der ist die eigentliche Werbung.
+func _zeichne_marke(breite: float, hoehe: float) -> void:
+    var quer := breite > hoehe
+    var x := breite * (0.30 if quer else 0.5)
+    var y := hoehe * 0.46
+    var gross := int(hoehe * (0.155 if quer else 0.075))
+    _text(Vector2(x, y), "NEKTON", gross, SCHRIFT, true, gross * 0.20)
+    _text(Vector2(x, y + gross * 0.68), "DEEP GUARD",
+        int(gross * 0.38), HELL, true, gross * 0.155)
+    _text(Vector2(x, y + gross * 1.30), "DARK. FAST. ONE MORE DIVE.",
+        int(gross * 0.26), LEISE, true, gross * 0.05)
 
 
 ## Das Abspielzeichen im ersten Knopf.

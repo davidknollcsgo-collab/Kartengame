@@ -147,6 +147,21 @@ not one image file and not one audio file in the whole app.
 
 ---
 
+### Grafiken
+
+Beides entsteht aus dem laufenden Spiel, nicht in einem Grafikprogramm — aus
+demselben Grund wie alles andere hier: `ASSETS.md` führt keine Bilddatei
+außer dem App-Symbol, und ein zugekauftes Ladenbild wäre der erste Eintrag.
+
+```bash
+tools/ladenbilder.sh build/laden    # acht Screenshots, 1080x1920
+tools/ladengrafik.sh build/laden    # das Feature-Bild, 1024x500
+```
+
+Jeder Lauf legt sich einen eigenen, leeren Spielstand an. Ohne das lief die
+Aufnahme auf dem Stand, der zufällig im Behälter lag — und über der
+Schlundwache stand die Rückkehrtafel „WHILE YOU WERE AWAY" statt des Spiels.
+
 ## 4. Formulare — die Antworten
 
 ### Datensicherheit (Data safety)
@@ -198,10 +213,6 @@ Enthält keine Werbung.
 
 ## 5. Was noch fehlt, ehrlich benannt
 
-* **Store-Grafiken.** Google verlangt ein Feature-Bild (1024×500) und
-  mindestens zwei Screenshots im Hochformat. Die Screenshots erzeugt
-  `tools/ladenbilder.sh`; das Feature-Bild ist Handarbeit oder ein
-  Zuschnitt daraus.
 * **Der geschlossene Test.** Google verlangt ihn vor der ersten
   Veröffentlichung. Dafür braucht es echte Testgeräte und echte Tester —
   und genau dort zeigen sich die Fehler, die kein Simulator findet.

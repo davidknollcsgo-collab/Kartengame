@@ -203,6 +203,9 @@ var _zeige_ende := false
 ## Nur fuer Werkzeuge (`--pause`).
 var _zeige_pause := false
 
+## Nur fuer Werkzeuge (`--marke`).
+var _nur_marke := false
+
 ## Nur fuer Werkzeuge (`--kolonie <n>`): den Ausbau gleich aufschlagen.
 var _kolonie_reiter := -1
 
@@ -242,6 +245,7 @@ func _ready() -> void:
     _schwarm.led = true
     _hud.lauf = self
     _menue.lauf = self
+    _menue.nur_marke = _nur_marke
     _koloniebild.geschlossen.connect(_kolonie_zu)
     _koloniebild.zurueck_beschriftung = "BACK TO THE TRENCH"
     _kamera.position = _ort
@@ -1408,6 +1412,10 @@ func _lies_argumente() -> void:
                 # Alles ab `LEHRE.size()` schaltet ihn ab.
                 if i + 1 < argumente.size():
                     _lehre_ab = maxi(0, int(argumente[i + 1]))
+            "--marke":
+                # Nur der Schriftzug ueber der laufenden Szene - fuer das
+                # Feature-Bild des Ladens.
+                _nur_marke = true
             "--pause":
                 # Die Pausentafel ansehen, ohne sie zu treffen.
                 _zeige_pause = true
