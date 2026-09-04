@@ -904,6 +904,10 @@ func _fuehre_stoss(delta: float) -> void:
                 Wellen.hoechst_licht_in(t.art, t.welle)) \
                 * Graben.STOSS_WERT
             t.hitze = 1.0
+            # Der Ring soll sichtbar etwas tun, wo er trifft - sonst laeuft
+            # er ueber das Feld und nichts zeigt an, wen er erwischt hat.
+            _funken.platzen(t.ort, Arten.farbe(t.art),
+                Wellen.radius_in(t.art, t.welle) * 0.5)
 
 
 func _fuehre_begleiter(delta: float) -> void:
@@ -1098,7 +1102,15 @@ func _verbrenne(delta: float) -> void:
             _lohne(t)
             if Arten.ist_leitwesen(t.art):
                 Tastsinn.gib(Tastsinn.Art.LEITWESEN)
-            _funken.platzen(t.ort, Arten.farbe(t.art), 20.0)
+            # **Derselbe Tod wie im Schlund.** Hier stand `platzen()` mit
+            # einem festen Radius von zwanzig - also Funken, und Funken
+            # sagen "getroffen", nicht "gestorben". `zerfall()` gibt es seit
+            # langem: Splitter mit Form und Drehung, eine kurze Blende und
+            # ein Ring, der aufgeht. Und der Radius kommt vom Tier, nicht
+            # aus der Luft: ein Leitwesen zerfaellt sichtbar groesser als
+            # ein Schleier.
+            _funken.zerfall(t.ort, Arten.farbe(t.art),
+                Wellen.radius_in(t.art, t.welle), t.richtung)
             Klang.spiele(Klang.Ton.TOD, 0.9, 0.45)
 
 
