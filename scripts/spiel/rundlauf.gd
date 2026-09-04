@@ -1471,6 +1471,7 @@ func _zeichne_boot() -> void:
     _zeichne_flossen(k, quer, r, eng)
     _zeichne_rumpf(umriss, k, r)
     _zeichne_spanten(k, quer, r, eng)
+    _zeichne_wirbel(k, quer, r)
     _zeichne_turm(k, quer, r)
     _zeichne_kanzel(k, quer, r)
     _zeichne_scheinwerfer(k, quer, r)
@@ -1561,6 +1562,30 @@ func _zeichne_spanten(k: Vector2, quer: Vector2, r: float,
 ## Punkt, mit Kontrollpunkten, die gegeneinander liefen - bei schmalem Heck
 ## kreuzten sie sich, und Godot meldete "triangulation failed" und zeichnete
 ## gar nichts. Vier Ecken, aussen herum in einer Richtung, koennen das nicht.
+## Kavitation an den Flossen: kurze Wirbelfaeden, wenn hart gelegt wird.
+##
+## **Sie zeigen die Kurve, bevor der Rumpf sie zeigt.** Die Neigung staucht
+## die Silhouette schon, aber erst ein paar Faeden, die an der Aussenflosse
+## abreissen, machen aus einem Wenden ein Manoever. Sie haengen an
+## `_neigung`, also an der tatsaechlichen Drehrate - wer geradeaus faehrt,
+## bekommt keine.
+func _zeichne_wirbel(k: Vector2, quer: Vector2, r: float) -> void:
+    var kraft := absf(_neigung) * clampf(_fahrt.length() / BOOT_TEMPO,
+        0.0, 1.0)
+    if kraft < 0.12:
+        return
+    var seite := signf(_neigung)
+    var wurzel := _ort - k * r * 0.66 + quer * seite * r * 0.52
+    for i in 4:
+        var t := float(i) / 3.0
+        var laenge := r * (0.5 + 0.9 * t) * kraft
+        var w := sin(_wellenzeit * 9.0 + float(i) * 1.7) * 0.30
+        var von := wurzel - k * r * 0.10 * float(i)
+        _vorn.draw_line(von, von - k.rotated(w) * laenge,
+            Color(0.78, 0.94, 1.0, 0.30 * kraft * (1.0 - t * 0.6)),
+            1.4, true)
+
+
 func _zeichne_flossen(k: Vector2, quer: Vector2, r: float,
         eng: Vector2) -> void:
     if _profil.is_empty():
@@ -1653,6 +1678,19 @@ func _zeichne_turm(k: Vector2, quer: Vector2, r: float) -> void:
         var wurzel := mitte + quer * seite * breit * 0.9
         _vorn.draw_line(wurzel, wurzel + quer * seite * r * 0.40
             - k * r * 0.06, Color(HAUT.r, HAUT.g, HAUT.b, 0.38), 2.2, true)
+
+    # **Das Positionslicht.** Ein Boot im Dunkeln blinkt - nicht fuer sich,
+    # sondern damit andere es sehen. Hier sieht es niemand ausser dem
+    # Spieler, und genau darum geht es: es ist das einzige an Bord, das ein
+    # eigenes Zeitmass hat und weiterlaeuft, waehrend man steht.
+    var takt := fmod(_wellenzeit, 2.4)
+    var blink := clampf(1.0 - takt * 5.0, 0.0, 1.0)
+    if blink > 0.01:
+        var lampe := mitte + k * lang * 0.72
+        _vorn.draw_circle(lampe, r * 0.16,
+            Color(1.0, 0.86, 0.62, 0.10 * blink))
+        _vorn.draw_circle(lampe, r * 0.055,
+            Color(1.0, 0.94, 0.80, 0.85 * blink))
 
 
 ## Die Druckkanzel. Der einzige warme Punkt am ganzen Boot - alles andere ist
