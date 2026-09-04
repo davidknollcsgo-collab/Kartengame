@@ -390,7 +390,12 @@ unter einer strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
    Faktor zeigte Wasser nach rechts, während der Strahl geradeaus steht, und
    das ist genau der Fehler, gegen den die Schlieren eingebaut wurden.
    `_test_stroemung_wird_nur_einmal_gerechnet` liest dazu den Quelltext:
-   `kolonie.gd` darf `Regeln` nicht kennen.
+   `kolonie.gd` und `grund_rundum.gd` dürfen `Regeln` nicht kennen.
+
+   **Im Rundumlauf zeigt sie sich anders.** Von oben gesehen gibt es keinen
+   Horizont, an dem Schlieren stehen könnten; eine Strömung erkennt man
+   daran, dass alles Lose in eine Richtung wandert. Also treibt dort der
+   Meeresschnee mit — derselbe Abtrieb, andere Darstellung.
 
    **Und sie war vorher unsichtbar.** Abschnitt 2 heißt STROM, die Regel
    verzieht den Kegel — zu sehen war davon nichts. Der Strahl driftete, und

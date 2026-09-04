@@ -634,6 +634,10 @@ func _fuehre_boot(delta: float) -> void:
     var abtrieb := Regeln.stroemung(welle_nummer, _wellenzeit) \
         * Fortschritt.stand.stroemung_faktor()
     _wirksam = _blick.rotated(abtrieb)
+    # Und dieselbe Zahl treibt den Schwebstoff. Nicht dort noch einmal
+    # gerechnet, aus demselben Grund wie in der Schlundwache: der Faktor der
+    # Kolonie haengt mit dran.
+    _grund.abtrieb = abtrieb
     _kegel.spitze = _ort
     _kegel.richtung = _wirksam
     _kegel.rand_kern = Regeln.rand_kern(welle_nummer)

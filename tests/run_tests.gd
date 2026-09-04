@@ -2499,6 +2499,28 @@ func _test_stroemung_wird_nur_einmal_gerechnet() -> bool:
     if not _melde(wache.contains("_kolonie.abtrieb = abtrieb"),
             "wache.gd muss den Abtrieb an die Kolonie weiterreichen"):
         return false
+
+    # Im Rundumlauf dasselbe: dort treibt der Schwebstoff mit, und der
+    # Grund holt sich die Zahl ebenfalls nicht selbst.
+    var grund := FileAccess.get_file_as_string(
+        "res://scripts/spiel/grund_rundum.gd")
+    if not _melde(not grund.is_empty(), "grund_rundum.gd nicht lesbar"):
+        return false
+    nummer = 0
+    for zeile in grund.split("\n"):
+        nummer += 1
+        var rein := zeile.strip_edges()
+        if rein.begins_with("#"):
+            continue
+        if not _melde(not rein.contains("Regeln."),
+                "grund_rundum.gd:%d rechnet die Stroemung ein zweites Mal"
+                % nummer):
+            return false
+    var lauf := FileAccess.get_file_as_string(
+        "res://scripts/spiel/rundlauf.gd")
+    if not _melde(lauf.contains("_grund.abtrieb = abtrieb"),
+            "rundlauf.gd muss den Abtrieb an den Grund weiterreichen"):
+        return false
     return true
 
 

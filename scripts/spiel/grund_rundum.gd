@@ -64,6 +64,11 @@ var karte: Karte = null
 ## Gerechnet wird mit **derselben** `Schlund.beleuchtung()` wie Schaden und
 ## Kegelbild (Zusage 2) - ein Riff, das anders hell wird als der Kegel ist,
 ## waere eine dritte Wahrheit ueber dasselbe Licht.
+## Der Abtrieb, den die Stroemung dem Kegel gerade gibt, in Bogenmass.
+## Wird von `rundlauf.gd` gesetzt - dieselbe Zahl, die den Kegel dreht, aus
+## demselben Grund wie in der Schlundwache (Zusage 27).
+var abtrieb := 0.0
+
 var licht_spitze := Vector2.ZERO
 var licht_richtung := Vector2.ZERO
 var licht_halbwinkel := 0.0
@@ -714,12 +719,22 @@ func _zeichne_schatten() -> void:
             draw_polyline(zug, saum, 2.0, true)
 
 
+## Wie weit der Schwebstoff je Bogenmass Abtrieb zur Seite wandert.
+const STAUB_HUB := 340.0
+
+
 func _zeichne_staub() -> void:
     for i in _staub.size():
         if not _im_blick(_staub[i], 30.0) or not _bekannt(_staub[i]):
             continue
+        # **Der Schwebstoff treibt mit.** Von oben gesehen zeigt sich eine
+        # Stroemung nicht an Schlieren am Horizont, sondern daran, dass
+        # alles Lose in eine Richtung wandert - und das ist hier der
+        # Meeresschnee. Der Ausschlag kommt aus demselben Abtrieb, der den
+        # Kegel dreht.
         var p := _staub[i] + Vector2(
-            sin(zeit * _staub_takt[i] + float(i)) * 6.0,
+            sin(zeit * _staub_takt[i] + float(i)) * 6.0
+                + abtrieb * STAUB_HUB,
             cos(zeit * _staub_takt[i] * 0.7 + float(i)) * 6.0)
         # **Schwebstoff im Strahl.** Ausserhalb kaum zu sehen, im Kegel ein
         # Flirren - das ist es, was einen Lichtkegel im Wasser ueberhaupt
