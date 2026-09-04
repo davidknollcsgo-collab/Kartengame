@@ -70,9 +70,15 @@ fahrt  2-titel   --zeit 6 --stufen 14 $FERTIG
 # 3. Der Bericht nach einer Fahrt.
 fahrt  3-bericht --ende --zeit 3 $FERTIG
 # 4. Die andere Schleife - der Kegel gegen eine volle Welle.
-schuss 4-wache   --welle 22 --zeit 12 $FERTIG
+#
+# **Auch hier `--stufen 14`.** Ohne den Schalter steht in der Kopfzeile eine
+# Brut von 12 und ein Konto von 40 - der leere Spielstand des Behaelters -
+# neben einer Welle 22. In diesem Zustand ist nie ein Spieler: wer bis
+# Welle 22 kommt, hat eine gewachsene Kolonie. Ein Ladenbild soll das Spiel
+# zeigen, das man bekommt, und dazu gehoert ein Stand, den es gibt.
+schuss 4-wache   --welle 22 --zeit 12 --stufen 14 $FERTIG
 # 5. Die Tiere, ohne dass der Kegel sie wegraeumt.
-schuss 5-arten   --welle 40 --zeit 22 --stau $FERTIG
+schuss 5-arten   --welle 40 --zeit 22 --stau --stufen 14 $FERTIG
 # 6. Das Aufbauspiel: der Schnitt durch die Kolonie.
 schuss 6-kolonie --kolonie 0 --stufen 14 $FERTIG
 # 7. Was eine Brutlinie aendert.
