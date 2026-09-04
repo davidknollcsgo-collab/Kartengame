@@ -309,6 +309,12 @@ func _ready() -> void:
         var leuchten := get_node_or_null("Leuchten") as WorldEnvironment
         if leuchten != null:
             leuchten.environment.glow_enabled = false
+    # **Das Wasser weiss, dass hier von oben geschaut wird.** Ohne den
+    # Schalter stehen Saeulen aus einer Kolonie im Bild, die es hier nicht
+    # gibt, und der Schnee faellt nach unten, obwohl es kein Unten gibt.
+    var wasser := get_node_or_null("Wasser/Flaeche") as ColorRect
+    if wasser != null and wasser.material != null:
+        wasser.material.set_shader_parameter("rundum", 1.0)
     _vorn.draw.connect(_zeichne_vorn)
     _schwarm.led = true
     _hud.lauf = self

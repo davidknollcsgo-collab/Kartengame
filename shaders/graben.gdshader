@@ -26,6 +26,20 @@ uniform float saeulen : hint_range(0.0, 2.0) = 1.0;
 // und der Grabensturm soll bedrueckend sein.
 uniform float enge : hint_range(0.0, 1.0) = 0.0;
 
+// **Blick von oben statt von der Seite.**
+//
+// Das Wasser hier ist fuer den senkrechten Schnitt der Schlundwache gebaut:
+// die Dunkelheit oben, der Schein der Kolonie unten, Saeulen, die daraus
+// nach oben stehen, und Schnee, der faellt. Im Rundumlauf schaut man von
+// oben auf den Grund - dort gibt es kein Unten, aus dem Licht kaeme, und
+// Flocken fallen nicht nach Sueden.
+//
+// Bei 1.0 wird deshalb umgestellt: der Verlauf laeuft von der Bildmitte nach
+// aussen statt von unten nach oben, die Saeulen entfallen, und der Schnee
+// treibt schraeg statt zu fallen. Alles andere bleibt, damit es dasselbe
+// Wasser ist und nicht ein zweites.
+uniform float rundum : hint_range(0.0, 1.0) = 0.0;
+
 float hash(vec2 p) {
     p = fract(p * vec2(233.34, 851.73));
     p += dot(p, p + 23.45);
@@ -58,7 +72,10 @@ float fbm(vec2 p) {
 // weiter entfernte Flocken sind kleiner, dichter und langsamer.
 float schnee(vec2 uv, float groesse, float tempo, float t) {
     vec2 gitter = uv * groesse;
-    gitter.y += t * tempo;
+    // Von der Seite faellt der Schnee, von oben treibt er schraeg: aus der
+    // Draufsicht gibt es kein Unten, in das etwas fallen koennte.
+    gitter.y += t * tempo * (1.0 - 0.45 * rundum);
+    gitter.x += t * tempo * 0.72 * rundum;
     vec2 zelle = floor(gitter);
     vec2 rest = fract(gitter);
 
@@ -86,10 +103,17 @@ void fragment() {
     vec2 uv = UV;
     float t = TIME * zeit_tempo;
 
-    // 1. Tiefenverlauf. Oben schwarz, unten der Rest des Koloniescheins.
-    float tiefe = smoothstep(0.0, 0.86, uv.y);
+    // 1. Tiefenverlauf.
+    //
+    // Von der Seite: oben schwarz, unten der Rest des Koloniescheins. Von
+    // oben: hell um den Fleck, in dem gefahren wird, und nach aussen ins
+    // Schwarze - dasselbe Gefaelle, nur um die Mitte statt um den Fuss.
+    vec2 mitte_uv = (uv - vec2(0.5)) * vec2(1.0, 0.62);
+    float radial = 1.0 - smoothstep(0.02, 0.60, length(mitte_uv));
+    float tiefe = mix(smoothstep(0.0, 0.86, uv.y), radial, rundum);
     vec3 farbe = mix(tief, grund, tiefe);
-    farbe += schein * pow(smoothstep(0.62, 1.0, uv.y), 2.2) * 0.9;
+    farbe += schein * mix(pow(smoothstep(0.62, 1.0, uv.y), 2.2),
+                          pow(radial, 2.2) * 0.40, rundum) * 0.9;
 
     // 2. Saeulen aus dem Schein der Kolonie.
     //
@@ -99,7 +123,7 @@ void fragment() {
     float saeule = fbm(vec2(uv.x * 5.5 + sin(t * 0.11) * 0.4, uv.y * 0.5 - t * 0.03));
     saeule = pow(max(saeule - 0.42, 0.0) * 2.6, 1.7);
     farbe += schein * saeule * pow(smoothstep(1.06, 0.18, uv.y), 1.4)
-             * 0.55 * saeulen;
+             * 0.55 * saeulen * (1.0 - rundum);
 
     // 3. Traege Schlieren, verzerrt.
     float schliere = schlieren(vec2(uv.x * 2.4, uv.y * 1.6 - t * 0.09), t);
