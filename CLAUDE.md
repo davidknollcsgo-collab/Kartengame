@@ -467,6 +467,27 @@ einem Aufruf mit Farbe an den Ecken. Die Deckung läuft damit über eine ganze
 Feldbreite aus, und das Raster verschwindet, obwohl es dasselbe geblieben
 ist.
 
+**Detail dort, wo man ist.** `KLEINZEUG` streut sechsundzwanzighundert
+Kleinigkeiten über das Feld — Kies, Schalen, Seesterne, Röhrchen —, gezeichnet
+aber nur in einem Umkreis von `KLEIN_SICHT` um die Bildmitte und zum Rand hin
+ausgeblendet. Über das ganze Feld gezeichnet wären sie aus der Ferne ein
+Grieseln und aus der Nähe immer noch zu dünn; so bekommt der Grund Textur
+genau da, wo man hinsieht, und Fahren wird belohnt.
+
+**Jedes Tier zieht eine Schleppe, und sie misst sich selbst.** Die Punkte
+des Rückwegs werden nach **Strecke** aufgeschrieben, nicht nach Zeit — ein
+schneller Schleier hat damit von allein einen langen Faden und ein träger
+Panzerkrebs einen Stummel, ohne dass irgendwo eine Tempogrenze steht. Nur im
+Rundumlauf: im Schlund sinkt alles dieselbe Bahn nach unten, und zwölf
+Schleppen nebeneinander wären dort ein Vorhang.
+
+Der Rückweg musste dafür überhaupt erst mitgeschrieben werden. Im Schlund ist
+`Schlund.bahn()` eine reine Funktion der Zeit und lässt sich zurückrechnen;
+hier läuft `Rundum.schritt()` iterativ auf ein bewegliches Ziel zu. Das hatte
+niemand getan — und deshalb hatte **die Grabnatter im Rundumlauf keinen
+Leib**: `_grabnatter()` fällt bei leerem Rückweg auf ein einziges Glied
+zurück, also auf einen Klumpen statt einer Schlange.
+
 **Der Grund antwortet auf das Licht.** Bewuchs im Kegel blüht bis zum
 Vierfachen seiner Ruhedeckung auf, Schlote glimmen heller. Vorher war das
 Riff Kulisse — es stand da, egal ob man es anleuchtete, und damit war das

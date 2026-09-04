@@ -1036,6 +1036,7 @@ func _bewege(delta: float) -> void:
         if weg.length_squared() > 0.0001:
             t.richtung = weg.normalized()
         t.hitze = maxf(0.0, t.hitze - delta * 1.6)
+        _merke_rueckweg(t)
 
         # Angekommen: die Huelle nimmt Schaden, das Tier prallt ab und
         # kommt wieder. Ein Raeuber, der beim Treffer verschwindet, macht
@@ -1180,6 +1181,34 @@ func _verbrenne(delta: float) -> void:
             _funken.zerfall(t.ort, Arten.farbe(t.art),
                 Wellen.radius_in(t.art, t.welle), t.richtung)
             Klang.spiele(Klang.Ton.TOD, 0.9, 0.45)
+
+
+## Wieviele Punkte ein Tier von seinem Weg behaelt, und ab welcher Strecke
+## ein neuer gesetzt wird.
+const RUECKWEG_LAENGE := 12
+const RUECKWEG_ABSTAND := 9.0
+
+
+## Den zurueckgelegten Weg eines Tieres mitschreiben.
+##
+## **Im Schlund kann man ihn ausrechnen, hier nicht.** Dort ist
+## `Schlund.bahn()` eine reine Funktion der Zeit, und `wache.gd` rechnet den
+## Leib der Grabnatter jederzeit zurueck. Hier laeuft `Rundum.schritt()`
+## iterativ auf ein bewegliches Ziel zu - was gestern war, weiss nur, wer es
+## aufgeschrieben hat.
+##
+## Das hatte niemand getan, und deshalb hatte **die Grabnatter im Rundumlauf
+## keinen Leib**: `_grabnatter()` faellt bei leerem Rueckweg auf ein einziges
+## Glied zurueck, also auf einen Klumpen statt einer Schlange. Ausserdem
+## haengt daran jetzt die Schleppe jedes Tieres.
+func _merke_rueckweg(t: Raeuber) -> void:
+    if not t.rueckweg.is_empty() \
+            and t.rueckweg[t.rueckweg.size() - 1].distance_squared_to(t.ort) \
+            < RUECKWEG_ABSTAND * RUECKWEG_ABSTAND:
+        return
+    t.rueckweg.append(t.ort)
+    if t.rueckweg.size() > RUECKWEG_LAENGE:
+        t.rueckweg.remove_at(0)
 
 
 ## Naehrstoff fuer ein erlegtes Tier - **geteilt durch `DICHTE`**.

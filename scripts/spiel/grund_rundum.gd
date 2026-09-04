@@ -79,6 +79,7 @@ var _staub: PackedVector2Array = []
 var _staub_takt: PackedFloat32Array = []
 var _funde: Array[Dictionary] = []
 var _schlote: Array[Dictionary] = []
+var _kleinzeug: Array[Dictionary] = []
 
 
 func _ready() -> void:
@@ -103,6 +104,7 @@ func baue(welle: int) -> void:
     _bewuchs.clear()
     _funde.clear()
     _schlote.clear()
+    _kleinzeug.clear()
     var rng := RandomNumberGenerator.new()
     rng.seed = SAAT + welle
     _baue_rippel(rng)
@@ -110,6 +112,7 @@ func baue(welle: int) -> void:
     _baue_bewuchs(rng)
     _baue_staub(rng)
     _baue_schlote(rng)
+    _baue_kleinzeug(rng)
     _baue_funde(rng)
 
 
@@ -343,11 +346,78 @@ func _zeichne_schlote() -> void:
                 Color(farbe.r, farbe.g, farbe.b, a))
 
 
+## Kleinzeug: Kies, Schalen, Seesterne, Roehrchen.
+##
+## **Detail dort, wo man ist.** Zwoelfhundert Kleinigkeiten ueber das ganze
+## Feld waeren aus der Ferne ein Grieseln und aus der Naehe immer noch zu
+## duenn. Sie werden deshalb nur in einem engen Umkreis um die Bildmitte
+## gezeichnet - dort stehen dann dreissig bis fuenfzig davon, und der Grund
+## bekommt genau da Textur, wo man hinsieht.
+##
+## Das kostet nichts und belohnt Bewegung: wer faehrt, findet staendig neuen
+## Kleinkram, wer steht, sieht immer denselben.
+const KLEINZEUG := 2600
+const KLEIN_SICHT := 560.0
+
+func _baue_kleinzeug(rng: RandomNumberGenerator) -> void:
+    for _i in KLEINZEUG:
+        _kleinzeug.append({
+            &"ort": _wuerfel_ort(rng),
+            &"art": rng.randi() % 4,
+            &"gross": rng.randf_range(2.6, 7.5),
+            &"dreh": rng.randf_range(0.0, TAU),
+            &"ton": rng.randf_range(0.5, 1.0),
+        })
+
+
+func _zeichne_kleinzeug() -> void:
+    var grund_farbe := Color(0.40, 0.66, 0.70)
+    for k in _kleinzeug:
+        var p: Vector2 = k[&"ort"]
+        if p.distance_squared_to(_blickmitte) > KLEIN_SICHT * KLEIN_SICHT:
+            continue
+        if not _bekannt(p):
+            continue
+        var gr: float = k[&"gross"]
+        var w: float = k[&"dreh"]
+        # Im Licht deutlich, sonst nur eine Ahnung - dieselbe Antwort auf den
+        # Kegel wie beim Bewuchs.
+        # Nach aussen ausblenden, sonst steht am Rand des Umkreises eine
+        # sichtbare Kante aus Kleinkram.
+        var weg := p.distance_to(_blickmitte) / KLEIN_SICHT
+        var saum := clampf((1.0 - weg) * 2.2, 0.0, 1.0)
+        var a := (0.13 + 0.34 * _angeleuchtet(p)) * float(k[&"ton"]) * saum
+        var farbe := Color(grund_farbe.r, grund_farbe.g, grund_farbe.b, a)
+        match int(k[&"art"]):
+            0:
+                # Kies: ein kurzer Bogen, wie ein Stein von oben.
+                draw_arc(p, gr, w, w + 4.4, 7, farbe, 1.0, true)
+            1:
+                # Schale: drei Rippen aus einem Punkt.
+                for j in 3:
+                    var s := w + lerpf(-0.5, 0.5, float(j) / 2.0)
+                    draw_line(p, p + Vector2.RIGHT.rotated(s) * gr * 1.4,
+                        farbe, 1.0, true)
+            2:
+                # Seestern: fuenf kurze Arme.
+                for j in 5:
+                    var s2 := w + TAU * float(j) / 5.0
+                    draw_line(p + Vector2.RIGHT.rotated(s2) * gr * 0.3,
+                        p + Vector2.RIGHT.rotated(s2) * gr,
+                        farbe, 1.0, true)
+            _:
+                # Roehrchen: ein Strich mit einem Punkt obendrauf.
+                var kopf := p + Vector2.RIGHT.rotated(w) * gr
+                draw_line(p, kopf, farbe, 1.0, true)
+                draw_circle(kopf, 1.0,
+                    Color(farbe.r, farbe.g, farbe.b, a * 1.6))
+
+
 func _baue_staub(rng: RandomNumberGenerator) -> void:
     var weite := Rundum.FELD_RADIUS + UEBERSTAND
-    _staub.resize(900)
-    _staub_takt.resize(900)
-    for i in 900:
+    _staub.resize(1600)
+    _staub_takt.resize(1600)
+    for i in 1600:
         _staub[i] = Vector2.RIGHT.rotated(rng.randf_range(0.0, TAU)) \
             * sqrt(rng.randf()) * weite
         _staub_takt[i] = rng.randf_range(0.15, 0.6)
@@ -399,6 +469,7 @@ func _draw() -> void:
     for lage in TIEFE:
         _zeichne_felsen(lage)
         _zeichne_bewuchs(lage)
+    _zeichne_kleinzeug()
     _zeichne_schlote()
     _zeichne_staub()
     _zeichne_funde()
@@ -412,7 +483,7 @@ func _draw() -> void:
 
 func _zeichne_rippel() -> void:
     for zug in _rippel:
-        draw_polyline(zug, Color(0.22, 0.44, 0.50, 0.09), 1.0, true)
+        draw_polyline(zug, Color(0.22, 0.44, 0.50, 0.13), 1.0, true)
 
 
 func _zeichne_felsen(lage: int) -> void:
@@ -523,7 +594,20 @@ func _zeichne_staub() -> void:
         var p := _staub[i] + Vector2(
             sin(zeit * _staub_takt[i] + float(i)) * 6.0,
             cos(zeit * _staub_takt[i] * 0.7 + float(i)) * 6.0)
-        draw_circle(p, 0.9, Color(0.62, 0.86, 0.92, 0.13))
+        # **Schwebstoff im Strahl.** Ausserhalb kaum zu sehen, im Kegel ein
+        # Flirren - das ist es, was einen Lichtkegel im Wasser ueberhaupt
+        # sichtbar macht, und der Kegel selbst zeichnet nur seine Form.
+        var hell := _angeleuchtet(p)
+        var farbe := Color(0.62, 0.86, 0.92, 0.10 + 0.45 * hell)
+        # Jede dritte Flocke ist ein kurzer Strich statt eines Punktes -
+        # Meeresschnee ist Flocke und Faden, und aus zwei Formen wird ein
+        # Gewimmel statt eines Rasters.
+        if i % 3 == 0:
+            var zug := Vector2.RIGHT.rotated(float(i) * 2.3
+                + zeit * _staub_takt[i] * 0.3) * (2.4 + 2.6 * hell)
+            draw_line(p - zug, p + zug, farbe, 1.0, true)
+        else:
+            draw_circle(p, 0.9 + 0.8 * hell, farbe)
 
 
 # --- Der Nebel ---------------------------------------------------------------

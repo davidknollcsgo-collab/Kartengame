@@ -125,6 +125,34 @@ func _strich(a: Vector2, b: Vector2, farbe: Color, dicke: float) -> void:
     draw_line(a, b, farbe, dicke, true)
 
 
+## Die Schleppe eines Tieres: sein Weg, verblassend.
+##
+## **Sie misst sich selbst.** Die Punkte werden nach Strecke aufgeschrieben,
+## nicht nach Zeit - ein schnelles Tier hat damit von allein eine lange
+## Schleppe und ein traeges eine kurze, ohne dass irgendwo eine Tempogrenze
+## steht. Der Schleier zieht einen Faden hinter sich her, der Panzerkrebs
+## einen Stummel, und beides stimmt.
+##
+## Nur im Rundumlauf: im Schlund sinkt alles dieselbe Bahn nach unten, und
+## zwoelf Schleppen nebeneinander waeren dort ein Vorhang.
+func _schleppe(t: Raeuber) -> void:
+    var weg := t.rueckweg
+    if weg.size() < 2:
+        return
+    var farbe: Color = Arten.farbe(t.art)
+    for i in range(1, weg.size()):
+        var f := float(i) / float(weg.size())
+        # Zwei Zuege wie ueberall hier: ein breiter blasser Hof und ein
+        # schmaler hellerer darauf. Ein einzelner Strich verschwindet gegen
+        # das Gluehen der Tiere.
+        draw_line(weg[i - 1], weg[i],
+            Color(farbe.r, farbe.g, farbe.b, 0.10 * f * f),
+            2.0 + 7.0 * f * f, true)
+        draw_line(weg[i - 1], weg[i],
+            Color(farbe.r, farbe.g, farbe.b, 0.30 * f * f),
+            1.0 + 2.0 * f * f, true)
+
+
 ## Nur die Deckung, nicht die Farbe: ein Lauerer soll blasser sein, nicht
 ## grauer - sonst verliert er die Farbe, an der man seine Art erkennt.
 func _gedeckt(farbe: Color) -> Color:
@@ -155,6 +183,8 @@ func _draw() -> void:
         if not t.lebendig:
             continue
         deckung = LAUER_DECKUNG if t.lauert else 1.0
+        if led and not t.lauert:
+            _schleppe(t)
         _zeichne(t, stufe)
     deckung = 1.0
 
