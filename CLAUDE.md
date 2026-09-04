@@ -408,6 +408,27 @@ unter einer strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
    beide Enden: im Bild sah das aus, als hätte jemand mit dem Lineal ins
    Wasser gekratzt.
 
+28. **Kein Tier sieht aus wie das andere — aber jedes wird getroffen, wie es
+   aussieht.** Innerhalb einer Art war jedes Stück derselbe Stempel: gleiche
+   Farbe, gleiche Zahl Zacken, gleicher Takt. Zehn Schleier nebeneinander
+   ergaben ein Muster statt eines Schwarms. `schwarm.gd::_eigenart()` würfelt
+   deshalb aus `t.phase` — dem einzigen Feld, das der Wellenbau je Tier setzt
+   und das schon vorher reine Zierde war — eine feste Zahl je Individuum.
+
+   **Gewürfelt wird nur, was nichts kostet.** Der Radius bleibt exakt
+   `Wellen.radius_in()`: das ist der Kreis, den auch der Kegel trifft, und ein
+   Tier, das größer gezeichnet ist als es getroffen wird, wäre dieselbe zweite
+   Wahrheit wie ein Kegel, der anders aussieht als er wirkt. Verschoben werden
+   Färbung (ein Achtel Helligkeit, ein Hauch Farbdrehung — mehr wäre eine
+   dreizehnte Art) und Zierat innerhalb des Umrisses: Zahl der Kammzacken,
+   Zahl und Länge der Fäden.
+
+   Und der handgezeichnete Hof ist seither **halbiert**. Die gestapelten
+   Kreise waren der Ersatz für ein Glühen, das es nicht gab; jetzt gibt es
+   eins, und beides zusammen machte aus einem Zahnkiefer im Strahl einen
+   weißen Klecks mit einer Flosse daran. Ganz weg darf er nicht: er trägt die
+   **Farbe** der Art nach außen, und die Nachbearbeitung kennt nur Helligkeit.
+
 ## Der Rundumlauf
 
 **Die App startet jetzt im Titelbildschirm** (`scenes/rundum.tscn`), und das

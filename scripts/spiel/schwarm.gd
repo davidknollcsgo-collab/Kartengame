@@ -259,9 +259,50 @@ func _zeichne_bluete(b: Bluete) -> void:
     draw_circle(p, r * 0.14, Color(1.0, 1.0, 0.92, 0.95))
 
 
+## Ein Wert zwischen 0 und 1, der zu diesem einen Tier gehoert und sich nie
+## aendert. Er kommt aus `t.phase` - dem einzigen Feld, das der Wellenbau je
+## Tier wuerfelt und das schon jetzt reine Zierde ist. Der Faktor macht aus
+## einer Phase, die im Schlaengeln nur wenige Umlaeufe braucht, eine Zahl,
+## die auch bei benachbarten Phasen weit auseinanderliegt.
+func _eigenart(t: Raeuber, faktor := 3.7) -> float:
+    return fmod(absf(t.phase) * faktor, 1.0)
+
+
+## Wieviel die Faerbung eines einzelnen Tieres von seiner Art abweichen darf.
+##
+## **Klein, und mit Absicht klein.** Die Farbe sagt, welche Art da schwimmt,
+## und das muss sie in einer halben Sekunde sagen koennen. Ein Achtel
+## Helligkeit und ein Hauch Farbdrehung reichen, damit ein Schwarm nicht mehr
+## aussieht wie derselbe Stempel zwoelfmal - mehr waere eine dreizehnte Art.
+const EIGEN_HELL := 0.16
+const EIGEN_DREH := 0.030
+
+
+## Die Faerbung dieses einen Tieres.
+func _eigenfarbe(t: Raeuber, farbe: Color) -> Color:
+    var e := _eigenart(t) - 0.5
+    var f := Color.from_hsv(
+        fmod(farbe.h + e * EIGEN_DREH + 1.0, 1.0),
+        clampf(farbe.s - e * 0.10, 0.0, 1.0),
+        clampf(farbe.v + e * EIGEN_HELL, 0.10, 1.0))
+    f.a = farbe.a
+    return f
+
+
 func _zeichne(t: Raeuber, stufe := 0) -> void:
     var p := t.ort
-    var farbe: Color = Arten.farbe(t.art)
+    # **Kein Tier sieht aus wie das andere.**
+    #
+    # Zwoelf Arten, und innerhalb einer Art war jedes Stueck derselbe
+    # Stempel: gleiche Farbe, gleiche Zahl Zacken, gleicher Takt. Aus zehn
+    # Schleiern nebeneinander wurde damit ein Muster statt eines Schwarms.
+    #
+    # **Gewuerfelt wird nur, was nichts kostet.** Der Radius bleibt exakt
+    # `Wellen.radius_in()` - das ist der Kreis, den auch der Kegel trifft,
+    # und ein Tier, das groesser gezeichnet ist als es getroffen wird, waere
+    # dieselbe zweite Wahrheit wie ein Kegel, der anders aussieht als er
+    # wirkt. Verschoben werden Faerbung und Zierat innerhalb des Umrisses.
+    var farbe: Color = _eigenfarbe(t, Arten.farbe(t.art))
     var r: float = Wellen.radius_in(t.art, t.welle)
 
     # Wer im Licht steht, glueht auf. Das ist die einzige Rueckmeldung, die
@@ -301,11 +342,18 @@ func _zeichne(t: Raeuber, stufe := 0) -> void:
     # beide voll aufdrehen, wird aus dem Tier ein weisser Klecks. Genau das
     # war im ersten Bild zu sehen: eine beleuchtete Glutqualle war von einer
     # beleuchteten Schildkoralle nicht mehr zu unterscheiden.
+    #
+    # **Halbiert, seit die Szene eine Nachbearbeitung hat.** Die gestapelten
+    # Kreise waren der Ersatz fuer ein Gluehen, das es nicht gab; jetzt gibt
+    # es eins, und beides zusammen war zuviel - ein Zahnkiefer im Strahl war
+    # ein weisser Klecks mit einer Flosse daran. Der Hof bleibt trotzdem: er
+    # traegt die **Farbe** der Art nach aussen, und die Nachbearbeitung
+    # kennt nur Helligkeit.
     if stufe == 0:
-        _gluehen(p, r * 2.2 * puls, farbe, 0.13 + 0.24 * hitze)
+        _gluehen(p, r * 2.2 * puls, farbe, 0.07 + 0.13 * hitze)
     elif stufe == 1:
         draw_circle(p, r * 1.6 * puls, Color(farbe.r, farbe.g, farbe.b,
-            0.08 + 0.13 * hitze))
+            0.045 + 0.07 * hitze))
 
     # **Leuchtpunkte.** Eine Reihe kleiner Lichter laengs des Koerpers, die
     # als Welle von vorn nach hinten durchlaeuft.
@@ -507,9 +555,11 @@ func _zahnkiefer(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -
     ])
     _koerper(leib, farbe, hitze)
 
-    # Rueckenflosse als Kamm.
-    for i in 4:
-        var s := lerpf(0.35, -0.75, float(i) / 3.0)
+    # Rueckenflosse als Kamm. Drei bis fuenf Zacken - der Zaehler kommt aus
+    # der Eigenart des Tieres, nicht aus einer festen Zahl.
+    var zacken := 3 + int(_eigenart(t, 5.3) * 3.0)
+    for i in zacken:
+        var s := lerpf(0.35, -0.75, float(i) / float(zacken - 1))
         var wurzel := p + k * r * s + quer * r * 0.55
         draw_line(wurzel, wurzel + quer * r * 0.34 - k * r * 0.12,
             Color(farbe.r, farbe.g, farbe.b, 0.45), 1.2)
@@ -555,11 +605,16 @@ func _schleier(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> 
         0.42 + 0.42 * hitze))
     _zug(schirm, farbe.lightened(0.45), 1.2)
 
-    for i in 4:
-        var s := (float(i) - 1.5) * 0.42
+    # Drei bis fuenf Faeden, und jeder Schleier haengt sie ein Stueck weiter
+    # oder kuerzer nach hinten. Ein Schwarm aus Wolken, in dem jede Wolke
+    # dieselben vier Faeden in derselben Laenge zieht, ist ein Kamm.
+    var faeden := 3 + int(_eigenart(t, 4.9) * 3.0)
+    var laenge := lerpf(1.45, 2.05, _eigenart(t, 7.1))
+    for i in faeden:
+        var s := (float(i) - float(faeden - 1) * 0.5) * 0.42
         var wurzel := p - k * r * 0.2 + quer * r * s
-        var wehen := sin(t.alter * 6.0 + float(i)) * r * 0.3
-        draw_line(wurzel, wurzel - k * r * 1.7 + quer * wehen,
+        var wehen := sin(t.alter * 6.0 + float(i) + t.phase) * r * 0.3
+        draw_line(wurzel, wurzel - k * r * laenge + quer * wehen,
             Color(farbe.r, farbe.g, farbe.b, 0.35), 1.1)
 
 
