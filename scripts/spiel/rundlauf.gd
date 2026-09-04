@@ -654,6 +654,7 @@ func starte() -> void:
     # noch einmal so tief taucht, findet denselben Grund und dieselben
     # Fundstellen wieder.
     _grund.baue(welle_nummer)
+    _wild.baue(welle_nummer)
     _bereite_welle_vor()
 
 
@@ -1746,13 +1747,14 @@ func _fahre_probe() -> void:
     _erste_welle = 1
     print("Fahrprobe - bis Welle %d, Kolonie auf der Sollkurve" % _fahrprobe)
     print("")
-    print(" Welle | Huelle | Sekunden | Fenster | Rueckstand | Erlegt")
-    print(" ------+--------+----------+---------+------------+-------")
+    print(" Welle | Huelle | Sekunden | Fenster | Rueckstand | Erlegt | Naehrstoff (Soll)")
+    print(" ------+--------+----------+---------+------------+--------+------------------")
     starte()
     _finger_fest = true
     _zieht = true
     var takt := 1.0 / 60.0
     var gefallen := 0
+    var soll_lohn := 0.0
     while welle_nummer <= _fahrprobe:
         # Die Kolonie steht auf dem Stand, den die Sollkurve fuer diese Welle
         # vorsieht - dieselbe Vorgabe, gegen die der Wellenpruefer misst.
@@ -1774,9 +1776,18 @@ func _fahre_probe() -> void:
         # Rueckstand macht aus einer Zahl eine Aussage, und die Zusage im
         # Plan lautet vierzig bis siebzig Sekunden je Welle.
         var fenster := probe_fenster(dran)
-        print(" %5d | %6d | %8.1f | %7.1f | %+9.1f | %6d%s"
+        # **Was eine Fahrt einbringt, gehoert in dieselbe Zeile.** Die
+        # Wirtschaft ist an die Kosten gekoppelt (Zusage 10); ob der
+        # Rundumlauf das einhaelt, sieht man nur, wenn das Soll danebensteht.
+        # Soll ist die Summe der `ertrag()` der gespielten Wellen - eine
+        # Fahrt ist eine Sitzung, und eine Sitzung zahlt ihre Wellen.
+        soll_lohn += Wellen.ertrag(dran)
+        print(" %5d | %6d | %8.1f | %7.1f | %+9.1f | %6d | %6d (%6d)%s"
             % [dran, huelle, t, fenster, t - fenster, erlegt,
+            verdient, int(round(soll_lohn)),
             "   (Fahrt zu Ende)" if lage == Lage.ENDE else ""])
+        if lage == Lage.ENDE:
+            soll_lohn = 0.0
         # Eine Fahrt ist fuenf Wellen lang; die Probe will wissen, wie tief
         # der Pilot ueber viele Fahrten kommt, also faengt sie die naechste
         # an, wo die vorige aufhoerte.

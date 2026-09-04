@@ -47,8 +47,18 @@ var _schwaerme: Array[Dictionary] = []
 
 
 func _ready() -> void:
+    baue(0)
+
+
+## Die Schwaerme neu setzen - **zur selben Saat wie der Grund.**
+##
+## Ohne das stuenden nach dem Umbau des Grundes dieselben vierzehn Schwaerme
+## an denselben Stellen in einem anderen Riff: die Steine wandern, die Fische
+## bleiben. Eine Strecke Graben ist beides zusammen oder keins von beidem.
+func baue(welle: int) -> void:
+    _schwaerme.clear()
     var rng := RandomNumberGenerator.new()
-    rng.seed = SAAT
+    rng.seed = SAAT + welle
     for i in SCHWAERME:
         var mitte := Vector2.RIGHT.rotated(rng.randf_range(0.0, TAU)) \
             * sqrt(rng.randf()) * (Rundum.FELD_RADIUS - 160.0)
