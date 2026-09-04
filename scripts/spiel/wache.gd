@@ -655,6 +655,10 @@ func _fuehre_kegel(delta: float) -> void:
     _richtung = Schlund.gedreht(_richtung, soll, stand.drehtempo(), delta)
 
     var abtrieb := Regeln.stroemung(welle_nummer, _wellenzeit) * stand.stroemung_faktor()
+    # Dieselbe Zahl macht das Wasser sichtbar. Sie wird weitergereicht und
+    # nicht dort noch einmal gerechnet - sonst haette der Graben zwei
+    # Stroemungen, eine gezeichnete und eine wirkende.
+    _kolonie.abtrieb = abtrieb
     _wirksam = _richtung.rotated(abtrieb)
     _kegel.richtung = _wirksam
     _kegel.rand_kern = Regeln.rand_kern(welle_nummer)

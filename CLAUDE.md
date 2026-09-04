@@ -380,6 +380,29 @@ unter einer strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
    daneben, und das ist gewollt: ein Bogen, den jede Welle exakt gleich
    trägt, wäre wieder dasselbe Förderband mit anderer Steigung.
 
+27. **Es gibt genau eine Strömung.** Der Abtrieb wird in `wache.gd` einmal
+   gerechnet — `Regeln.stroemung()` mal `stand.stroemung_faktor()` — und an
+   `kolonie.gd` **weitergereicht**, damit die Schlieren im Wasser genau das
+   zeigen, was den Kegel verzieht. Die naheliegende Bequemlichkeit wäre, sie
+   dort noch einmal zu holen: dieselben zwei Sinus, sieht gleich aus, spart
+   eine Zuweisung. Nur hängt der Kegel zusätzlich am Koloniestand — wer die
+   Kammer hebt, bekommt weniger Abtrieb. Eine zweite Rechnung ohne diesen
+   Faktor zeigte Wasser nach rechts, während der Strahl geradeaus steht, und
+   das ist genau der Fehler, gegen den die Schlieren eingebaut wurden.
+   `_test_stroemung_wird_nur_einmal_gerechnet` liest dazu den Quelltext:
+   `kolonie.gd` darf `Regeln` nicht kennen.
+
+   **Und sie war vorher unsichtbar.** Abschnitt 2 heißt STROM, die Regel
+   verzieht den Kegel — zu sehen war davon nichts. Der Strahl driftete, und
+   der Spieler suchte den Fehler bei sich. Eine Regel, die man nur an ihrer
+   Wirkung merkt, ist keine Regel, sondern ein Wackeln. Die Schlieren stehen
+   auch im ruhigen Wasser, dann fast still und blasser: eine Wassersäule ganz
+   ohne Bewegung ist ein Farbverlauf, und davon hatte das Bild in der Mitte
+   reichlich. Sie laufen an beiden Enden auf Deckung null aus — der erste
+   Anlauf hatte gleiche Deckung über die ganze Länge, und dann sieht man
+   beide Enden: im Bild sah das aus, als hätte jemand mit dem Lineal ins
+   Wasser gekratzt.
+
 ## Der Rundumlauf
 
 **Die App startet jetzt im Titelbildschirm** (`scenes/rundum.tscn`), und das

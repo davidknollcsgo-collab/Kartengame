@@ -54,6 +54,15 @@ const SEITEN: PackedFloat32Array = [-1.0, 1.0]
 ## **sie sind ausdruecklich keine Spielfiguren**, und darum stehen sie hier
 ## und nicht in `schwarm.gd`. Wenn sie irgendwann anfangen, dem Kegel
 ## auszuweichen, sind sie es geworden, und dann gehoeren sie in den Rechenkern.
+## Der Abtrieb, den die Stroemung dem Kegel gerade gibt, in Bogenmass.
+##
+## **Er wird von `wache.gd` gesetzt und hier nicht nachgerechnet.** Es ist
+## exakt die Zahl, mit der der Kegel gedreht wird - `Regeln.stroemung()` mal
+## dem Faktor der Kolonie -, also zeigt das Wasser genau das, was den Strahl
+## verzieht. Eine zweite Rechnung mit denselben Sinus waere eine zweite
+## Wahrheit ueber dieselbe Stroemung, und sie liefe irgendwann auseinander.
+var abtrieb := 0.0
+
 var _treiber: Array[Dictionary] = []
 
 ## Das Riff am Grund, rings um den Kalkwulst. Warme und violette Toene gegen
@@ -73,6 +82,7 @@ func _ready() -> void:
     _baue_treiber(rng)
     _baue_geroell(rng)
     _baue_korallen(rng)
+    _baue_strom(rng)
 
 
 func _process(delta: float) -> void:
@@ -92,6 +102,95 @@ const TREIBER_FARBEN: PackedColorArray = [
     Color(0.40, 0.84, 0.74),
     Color(0.92, 0.58, 0.44),
 ]
+
+
+## --- Die Stroemung ---
+##
+## **Sie war unsichtbar.** Abschnitt 2 heisst STROM, und die Regel verzieht
+## den Kegel: man zielt nicht dorthin, wo man treffen will. Zu sehen war
+## davon nichts - der Strahl driftete, und der Spieler suchte den Fehler bei
+## sich. Eine Regel, die man nur an ihrer Wirkung merkt, ist keine Regel,
+## sondern ein Wackeln.
+##
+## Also Schlieren im Wasser: lange, sehr schwach gedeckte Zuege, die
+## seitlich mit **derselben Zahl** wandern, die auch den Kegel dreht. Wenn
+## das Wasser nach rechts zieht, geht der Strahl nach rechts - das ist in
+## einem Blick zu lernen und braucht keinen Satz.
+##
+## Sie stehen auch im ruhigen Wasser, dann fast still und noch blasser: eine
+## Wassersaeule ganz ohne Bewegung ist ein Farbverlauf, und davon hatte das
+## Bild in der Mitte reichlich.
+const SCHLIEREN := 15
+
+## Wie weit eine Schliere seitlich ausschlaegt, je Bogenmass Abtrieb.
+const SCHLIERE_HUB := 620.0
+
+const SCHLIERE_FARBE := Color(0.40, 0.76, 0.86)
+
+
+func _baue_strom(rng: RandomNumberGenerator) -> void:
+    _schlieren.clear()
+    for _i in SCHLIEREN:
+        # Die Naehe traegt wieder alles: was weiter vorn liegt, schlaegt
+        # weiter aus, zieht schneller und ist deutlicher. Ein gleichmaessiges
+        # Feld waere ein Kamm und keine Stroemung.
+        var nah := rng.randf()
+        _schlieren.append({
+            &"y": rng.randf_range(Graben.FELD.position.y - 40.0,
+                Graben.FELD.end.y - 240.0),
+            &"x": rng.randf_range(0.0, 1.0),
+            &"laenge": rng.randf_range(190.0, 460.0) * lerpf(0.6, 1.0, nah),
+            &"neigung": rng.randf_range(-0.16, 0.16),
+            &"bauch": rng.randf_range(-26.0, 26.0),
+            &"nah": nah,
+            &"phase": rng.randf_range(0.0, TAU),
+            &"zug": rng.randf_range(7.0, 22.0) * lerpf(0.5, 1.0, nah),
+            &"dick": lerpf(1.2, 3.4, nah),
+        })
+
+
+## Wieviele Punkte eine Schliere hat. Neun statt fuenf, weil sie sonst
+## Knicke bekommt - und ein Knick im Wasser sieht aus wie ein Draht.
+const SCHLIERE_PUNKTE := 9
+
+## Die Breite, ueber die eine Schliere immer wieder umlaeuft.
+const SCHLIERE_LAUF := 1240.0
+
+
+func _zeichne_strom() -> void:
+    for sch in _schlieren:
+        var nah := float(sch[&"nah"])
+        # Zwei Bewegungen. Der Eigengang zieht die Schliere dauernd durchs
+        # Bild und laeuft am Rand um - stehendes Wasser sieht aus wie ein
+        # Farbverlauf. Der Ausschlag kommt aus dem Abtrieb, also aus
+        # derselben Zahl, die den Kegel dreht.
+        var lauf := fmod(float(sch[&"x"]) * SCHLIERE_LAUF
+            + zeit * float(sch[&"zug"]), SCHLIERE_LAUF)
+        var x := Graben.FELD.position.x - 260.0 + lauf
+        x += abtrieb * SCHLIERE_HUB * lerpf(0.45, 1.0, nah)
+        var y := float(sch[&"y"])
+        var laenge := float(sch[&"laenge"])
+        var neigung := float(sch[&"neigung"])
+        var bauch := float(sch[&"bauch"])
+        var zug := PackedVector2Array()
+        var farben := PackedColorArray()
+        # Die Deckung laeuft an beiden Enden auf null aus. Eine Schliere mit
+        # gleicher Deckung ueber die ganze Laenge faengt irgendwo an und
+        # hoert irgendwo auf, und beide Stellen sieht man - im ersten Anlauf
+        # sah das Wasser aus, als haette jemand mit dem Lineal hineingekratzt.
+        var grund := lerpf(0.038, 0.100, nah) \
+            * (1.0 + minf(2.0, absf(abtrieb) * 8.0))
+        for j in SCHLIERE_PUNKTE:
+            var t := float(j) / float(SCHLIERE_PUNKTE - 1)
+            var d := laenge * (t - 0.5)
+            zug.append(Vector2(x + d, y + neigung * d
+                + bauch * sin(t * PI + float(sch[&"phase"]) * 0.2)))
+            farben.append(Color(SCHLIERE_FARBE.r, SCHLIERE_FARBE.g,
+                SCHLIERE_FARBE.b, grund * sin(t * PI)))
+        draw_polyline_colors(zug, farben, float(sch[&"dick"]), true)
+
+
+var _schlieren: Array[Dictionary] = []
 
 
 func _baue_treiber(rng: RandomNumberGenerator) -> void:
@@ -655,6 +754,7 @@ func _draw() -> void:
     # Rauschen, in dem der Spieler die Raeuber suchen musste. Ein Bild wird
     # nicht reicher, indem man mehr hineinlegt - es wird reicher, wenn das,
     # was drin ist, groesser ist und Platz hat.
+    _zeichne_strom()
     _zeichne_treiber()
     # Der Grund vor die Treiber: was hinter einem Sedimentruecken schwebt,
     # ist verdeckt. Und hinter die Korallen, weil sie darauf wachsen.

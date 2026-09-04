@@ -342,6 +342,15 @@ func _text(wo: Vector2, was: String, groesse: int, farbe: Color,
 
 
 func _zeichne() -> void:
+    # **Das erste Bild kommt vor dem Wirt.** Die Ebene steht sichtbar in der
+    # Szene, und Godot zeichnet sie einmal, bevor `rundlauf.gd::_ready()`
+    # sich hier eintraegt - `_process()` kommt erst danach und kann die
+    # Sichtbarkeit nicht rueckwirkend nehmen. Mit `--schlund` faellt das
+    # sofort auf: die Szene wird im selben Atemzug gewechselt, das eine Bild
+    # bleibt, und in der Ausgabe stand ein Fehler auf einem Weg, den es gar
+    # nicht mehr gibt.
+    if lauf == null:
+        return
     var breite := _flaeche.size.x
     var hoehe := _flaeche.size.y
     if lauf.lage == lauf.Lage.ENDE:

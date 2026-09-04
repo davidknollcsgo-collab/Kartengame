@@ -55,6 +55,7 @@ const TESTS: PackedStringArray = [
     "_test_stosslicht_steht_in_der_sollkurve",
     "_test_kette_zahlt_punkte_und_keinen_naehrstoff",
     "_test_bluete_bleibt_ausserhalb_der_wirtschaft",
+    "_test_stroemung_wird_nur_einmal_gerechnet",
     "_test_lehrpfad_wird_von_der_tafel_nicht_verdeckt",
     "_test_toene_sind_hoerbar_und_sauber",
     "_test_grundton_schliesst_die_schleife",
@@ -2454,6 +2455,50 @@ func _test_kette_zahlt_punkte_und_keinen_naehrstoff() -> bool:
                 "wache.gd:%d bringt die Kette mit dem Naehrstoff zusammen"
                 % nummer):
             return false
+    return true
+
+
+## Es gibt genau eine Stroemung: die gezeichnete ist die wirkende.
+##
+## **Warum das ein Test ist und keine Absichtserklaerung.** Seit die
+## Schlieren im Wasser stehen, gibt es zwei Stellen, an denen sich der
+## Abtrieb zeigt - der Kegel dreht sich, und das Wasser wandert. Beide
+## kommen aus **einer** Zahl: `wache.gd` rechnet sie einmal aus
+## `Regeln.stroemung()` mal `stand.stroemung_faktor()` und reicht sie an
+## `kolonie.gd` weiter.
+##
+## Die naheliegende Bequemlichkeit waere, sie in `kolonie.gd` noch einmal zu
+## holen - es sind dieselben zwei Sinus, es sieht gleich aus, und es spart
+## eine Zuweisung. Nur haengt der Kegel zusaetzlich am Koloniestand: wer die
+## Kammer hebt, bekommt weniger Abtrieb. Eine zweite Rechnung ohne diesen
+## Faktor liefe sofort auseinander, und dann zeigte das Wasser nach rechts,
+## waehrend der Strahl geradeaus stuende - genau der Fehler, gegen den die
+## Schlieren ueberhaupt eingebaut wurden.
+##
+## Gemessen wird deshalb am Quelltext: `kolonie.gd` darf `Regeln` nicht
+## kennen, und `wache.gd` muss den Abtrieb weiterreichen.
+func _test_stroemung_wird_nur_einmal_gerechnet() -> bool:
+    var kolonie := FileAccess.get_file_as_string(
+        "res://scripts/spiel/kolonie.gd")
+    if not _melde(not kolonie.is_empty(), "kolonie.gd nicht lesbar"):
+        return false
+    var nummer := 0
+    for zeile in kolonie.split("\n"):
+        nummer += 1
+        var rein := zeile.strip_edges()
+        if rein.begins_with("#"):
+            continue
+        if not _melde(not rein.contains("Regeln."),
+                "kolonie.gd:%d rechnet die Stroemung ein zweites Mal"
+                % nummer):
+            return false
+
+    var wache := FileAccess.get_file_as_string("res://scripts/spiel/wache.gd")
+    if not _melde(not wache.is_empty(), "wache.gd nicht lesbar"):
+        return false
+    if not _melde(wache.contains("_kolonie.abtrieb = abtrieb"),
+            "wache.gd muss den Abtrieb an die Kolonie weiterreichen"):
+        return false
     return true
 
 
