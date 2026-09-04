@@ -113,6 +113,7 @@ xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 720x1280 \
 | `--offen` | Rundumlauf ohne Nebel — für Schüsse, die den Grund zeigen sollen |
 | `--ende` | Rundumlauf: der Bericht nach der Fahrt, mit Beispielwerten |
 | `--pause` | Rundumlauf: die Pausentafel, mit Beispielwerten |
+| `--stoss <s>` | im Rundumlauf: löst das Stoßlicht s Sekunden vor dem Bild aus |
 | `--marke` | nur Schriftzug über der Szene — für das Feature-Bild |
 | `--messen <s>` | Bildrate im Rundumlauf, s Sekunden lang |
 | `--flach` | ohne Glühen — nur zum Messen, was die Nachbearbeitung kostet |

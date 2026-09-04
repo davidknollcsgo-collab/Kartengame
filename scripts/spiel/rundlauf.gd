@@ -261,6 +261,9 @@ var _zeige_pause := false
 ## Nur fuer Werkzeuge (`--marke`).
 var _nur_marke := false
 
+## Sekunden vor dem Bild, zu denen das Stosslicht ausgeloest wird.
+var _stoss_bei := -1.0
+
 ## Sekunden Bildratenmessung. 0 heisst: nicht messen.
 var _messen := 0.0
 
@@ -1205,8 +1208,45 @@ func _zeichne_kante() -> void:
         Color(0.62, 0.90, 0.96, 0.55 * naehe * puls), 2.0, true)
 
 
+## Der Ring des Stosslichts.
+##
+## **Er machte Schaden und war nicht zu sehen.** Man tippte den Knopf, etwas
+## starb, und im Bild passierte nichts - die eine Handlung neben dem Ziehen
+## hatte keine Gestalt. `_stoss_weit` lief seit jeher durch die Rechnung und
+## durch keine einzige Zeichenanweisung.
+##
+## Drei Lagen, damit er nach Druckwelle aussieht und nicht nach Kreis: ein
+## breiter blasser Hof, ein schmaler heller Kern und ein Nachlauf dahinter,
+## der zurueckbleibt. Er blendet mit dem Radius aus - was weit weg ist, hat
+## seine Wucht schon abgegeben.
+func _zeichne_stossring() -> void:
+    if _stoss_weit < 0.0:
+        return
+    var t := clampf(_stoss_weit / (Rundum.SICHT * 1.6), 0.0, 1.0)
+    var f := (1.0 - t) * (1.0 - t)
+    if f <= 0.002:
+        return
+    var stufen := 56
+    var kern := PackedVector2Array()
+    var nach := PackedVector2Array()
+    for i in stufen + 1:
+        var w := TAU * float(i) / float(stufen)
+        # Ein leichtes Flattern auf dem Radius: eine Druckwelle im Wasser
+        # ist kein Zirkelschlag.
+        var welle := 1.0 + 0.012 * sin(w * 7.0 + _wellenzeit * 3.0)
+        kern.append(_ort + Vector2.RIGHT.rotated(w) * _stoss_weit * welle)
+        nach.append(_ort + Vector2.RIGHT.rotated(w)
+            * maxf(0.0, _stoss_weit - 52.0) * welle)
+    _vorn.draw_polyline(nach, Color(GLUT.r, GLUT.g, GLUT.b, 0.10 * f),
+        3.0, true)
+    _vorn.draw_polyline(kern, Color(GLUT.r, GLUT.g, GLUT.b, 0.16 * f),
+        16.0, true)
+    _vorn.draw_polyline(kern, Color(1.0, 0.96, 0.86, 0.85 * f), 2.2, true)
+
+
 func _zeichne_vorn() -> void:
     _zeichne_kante()
+    _zeichne_stossring()
     _zeichne_spur()
     _zeichne_begleiter()
     _zeichne_boot()
@@ -1678,6 +1718,12 @@ func _lies_argumente() -> void:
                 # Nur der Schriftzug ueber der laufenden Szene - fuer das
                 # Feature-Bild des Ladens.
                 _nur_marke = true
+            "--stoss":
+                # Den Ring ansehen: er ist eine halbe Sekunde unterwegs und
+                # haengt an einer Beruehrung, die es in einer Aufnahme nicht
+                # gibt. Dieselbe Machart wie `--stoss` im Schlund.
+                if i + 1 < argumente.size():
+                    _stoss_bei = maxf(0.0, float(argumente[i + 1]))
             "--pause":
                 # Die Pausentafel ansehen, ohne sie zu treffen.
                 _zeige_pause = true
@@ -1707,7 +1753,12 @@ func _spiele_vor() -> void:
     _finger_fest = true
     _zieht = true
     var takt := 1.0 / 60.0
+    var stoss_ab := int((_vorlauf - _stoss_bei) / takt) if _stoss_bei >= 0.0 \
+        else -1
     for i in int(_vorlauf / takt):
+        if i == stoss_ab:
+            _stoss_kuehl = 0.0
+            stosslicht()
         # Ein Daumen, der langsam kreist: so sieht man Fahrt und Drehung
         # zugleich, statt eines stehenden Bootes.
         var w := float(i) * takt * 0.55
