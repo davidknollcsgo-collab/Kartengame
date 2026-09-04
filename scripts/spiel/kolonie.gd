@@ -789,6 +789,12 @@ func _draw() -> void:
 ## herausgeholt.
 const RANKE_TEILE := 26
 
+## Wieviele Naehrschuebe gleichzeitig in einer Ranke unterwegs sind, wie
+## schnell sie laufen (Anteil der Ranke je Sekunde) und wie lang einer ist.
+const RANKE_SCHUEBE: PackedInt32Array = [0, 1, 2]
+const RANKE_TEMPO := 0.17
+const RANKE_SCHUB_BREIT := 0.17
+
 
 func _zeichne_ranken() -> void:
     for seite: float in SEITEN:
@@ -847,6 +853,38 @@ func _zeichne_ranken() -> void:
             POLYP_FARBE.b, 0.05), 22.0, true)
         draw_polyline(hof, Color(POLYP_FARBE.r, POLYP_FARBE.g,
             POLYP_FARBE.b, 0.05), 11.0, true)
+
+        # **Die Leitbahn: es fliesst etwas darin.**
+        #
+        # Die Ranke war bisher ein Koerper, der da steht - beleuchtet,
+        # bewachsen, aber ohne Zeichen, dass die Kolonie sie versorgt. Eine
+        # helle Ader in ihrer Mitte, ueber die ein paar Schuebe nach oben
+        # laufen, sagt das in einem Bild: die Kolonie schickt etwas zu ihren
+        # Knospen, und deshalb wachsen dort Polypen.
+        #
+        # Der Schub ist ein schmales Fenster, das ueber `t` wandert. Ohne
+        # das Fenster waere es eine gleichmaessig helle Linie - also ein
+        # Draht, und Draehte hatte diese Ranke schon.
+        for schub in RANKE_SCHUEBE:
+            var lage := fmod(zeit * RANKE_TEMPO + float(schub)
+                / float(RANKE_SCHUEBE.size()) + seite * 0.31, 1.0)
+            var ader := PackedVector2Array()
+            var aderfarbe := PackedColorArray()
+            for i in RANKE_TEILE + 1:
+                var t := float(i) / float(RANKE_TEILE)
+                if t > 0.94:
+                    break
+                ader.append(Graben.ranke(seite, t))
+                # Der Abstand zum Schub, einmal ringsherum gedacht: sonst
+                # reisst der helle Fleck am oberen Ende ab, statt oben
+                # auszulaufen und unten neu anzusetzen.
+                var d := absf(t - lage)
+                d = minf(d, 1.0 - d)
+                var stark := pow(clampf(1.0 - d / RANKE_SCHUB_BREIT,
+                    0.0, 1.0), 2.0) * clampf((0.96 - t) * 8.0, 0.0, 1.0)
+                aderfarbe.append(Color(1.0, 0.96, 0.80, 0.34 * stark))
+            if ader.size() >= 2:
+                draw_polyline_colors(ader, aderfarbe, 2.2, true)
 
         # Ein Saum auf der dem Schlund zugewandten Seite: das ist die Kante,
         # die der Kegel trifft, und ohne sie ist die Ranke eine Silhouette.
