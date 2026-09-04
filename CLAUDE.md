@@ -689,6 +689,15 @@ Ausweichen, kein Timing, kein Bogen um die Felsen — alles, was ein Spieler
 zusätzlich kann, geht als Reserve in das Ergebnis ein. Gemessen wird deshalb
 eine **untere Schranke**, und sie wird auch so gemeldet.
 
+**Sie meldet auch, was eine Fahrt einbringt — und woran das zu messen ist.**
+Nicht an `Wellen.ertrag()`: der ist der *entworfene* Wellenwert, gezahlt wird
+aber je Tier über `Wellen.wert_in()`, und das hat eine Untergrenze von eins.
+In frühen Wellen, wo der Ertrag einstellig und die Welle hundert Tiere groß
+ist, liegt die tatsächliche Ausbeute um ein Vielfaches darüber — in **beiden**
+Schleifen, und `tools/simulation.gd` rechnet ebenso. Der richtige Maßstab ist
+deshalb, was die Schlundwache für dieselben Wellen zahlen würde. Gemessen:
+214 gegen 212, 147 gegen 154, 210 gegen 184 — eine Fahrt zahlt eine Sitzung.
+
 **Sie meldet den Rückstand, nicht nur die Sekunden.** Eine Zahl wie „68 s"
 sagt nichts; eine Welle hat ein entworfenes Eintrittsfenster
 (`Wellen.fenster`, hier auf die Dichte umgerechnet), und was darüber

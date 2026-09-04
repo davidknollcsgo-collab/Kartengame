@@ -1776,12 +1776,7 @@ func _fahre_probe() -> void:
         # Rueckstand macht aus einer Zahl eine Aussage, und die Zusage im
         # Plan lautet vierzig bis siebzig Sekunden je Welle.
         var fenster := probe_fenster(dran)
-        # **Was eine Fahrt einbringt, gehoert in dieselbe Zeile.** Die
-        # Wirtschaft ist an die Kosten gekoppelt (Zusage 10); ob der
-        # Rundumlauf das einhaelt, sieht man nur, wenn das Soll danebensteht.
-        # Soll ist die Summe der `ertrag()` der gespielten Wellen - eine
-        # Fahrt ist eine Sitzung, und eine Sitzung zahlt ihre Wellen.
-        soll_lohn += Wellen.ertrag(dran)
+        soll_lohn += schlund_lohn(dran, stroemung)
         print(" %5d | %6d | %8.1f | %7.1f | %+9.1f | %6d | %6d (%6d)%s"
             % [dran, huelle, t, fenster, t - fenster, erlegt,
             verdient, int(round(soll_lohn)),
@@ -1811,6 +1806,26 @@ func _fahre_probe() -> void:
         return
     print("Untere Schranke: der Pilot traegt %d Wellen." % _fahrprobe)
     get_tree().quit()
+
+
+## Was **die Schlundwache** fuer dieselbe Welle zahlen wuerde.
+##
+## Das ist der richtige Massstab und nicht `Wellen.ertrag()`. Der Ertrag ist
+## der entworfene Wellenwert; gezahlt wird aber je Tier ueber
+## `Wellen.wert_in()`, und das hat eine Untergrenze von eins. In fruehen
+## Wellen, wo der Ertrag einstellig und die Welle hundert Tiere gross ist,
+## liegt die tatsaechliche Ausbeute deshalb um ein Vielfaches darueber - in
+## **beiden** Schleifen, und der Kolonielauf rechnet ebenso.
+##
+## Die Frage, die hier beantwortet werden soll, lautet also nicht "zahlt der
+## Rundumlauf den Ertrag?", sondern "zahlt eine Fahrt so viel wie eine
+## Sitzung im Schlund?" - das ist die Zusage, an der die Wirtschaft haengt.
+static func schlund_lohn(nummer: int, mit_stroemung: bool) -> float:
+    var summe := 0.0
+    for a in Wellen.auftritte(nummer):
+        summe += Tagesstroemung.ausbeute(
+            Wellen.wert_in(int(a[&"art"]), nummer), mit_stroemung)
+    return summe
 
 
 ## Die Kolonie auf die Sollstufe dieser Welle stellen.
