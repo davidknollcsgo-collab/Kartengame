@@ -115,8 +115,8 @@ xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 720x1280 \
 | `--pause` | Rundumlauf: die Pausentafel, mit Beispielwerten |
 | `--stoss <s>` | im Rundumlauf: löst das Stoßlicht s Sekunden vor dem Bild aus |
 | `--marke` | nur Schriftzug über der Szene — für das Feature-Bild |
-| `--messen <s>` | Bildrate im Rundumlauf, s Sekunden lang |
-| `--flach` | ohne Glühen — nur zum Messen, was die Nachbearbeitung kostet |
+| `--messen <s>` | Bildrate, s Sekunden lang — in beiden Schleifen |
+| `--flach` | ohne Glühen — nur zum Messen, in beiden Schleifen |
 | `--stufen <n>` | im Rundumlauf: alle Kammern auf Stufe n |
 | `--kolonie <n>` | im Rundumlauf: schlägt den Ausbau auf Reiter n auf |
 
@@ -750,14 +750,24 @@ Welle 24):
 
 | Stand | Bilder/s |
 |---|---|
-| Schlundwache | 12,1 |
-| Rundumlauf | 7,1 |
+| Schlundwache | 9,9 |
+| Schlundwache ohne Glühen (`--flach`) | 12,5 |
+| Rundumlauf | 7,0 |
 | Rundumlauf ohne Glühen (`--flach`) | 8,7 |
 
 Daraus zwei Zahlen, die vorher geschätzt waren: der Rundumlauf kostet rund
 das Anderthalbfache der Schlundwache, und **das Glühen ist ein Fünftel des
 Bildes** — es bleibt trotzdem, denn es ist der Grund, warum die Leuchtröhren
 wie Röhren aussehen und nicht wie Striche.
+
+**Die Schlundwache hatte bis dahin gar kein Glühen.** Der `WorldEnvironment`
+mit `glow_enabled` stand nur in `rundum.tscn` — die Kernschleife, also
+genau das, was in der Werbung gezeigt wird, lief ohne Nachbearbeitung. Es
+ist derselbe Umgebungsblock in beiden Szenen, und er kostet in beiden
+dasselbe Fünftel des Bildes (12,5 auf 9,9). Dafür sehen leuchtende Tiere
+zum ersten Mal aus, als leuchteten sie, statt hell gezeichnet zu sein — in
+einem Spiel, dessen ganze Aussage Biolumineszenz ist, war das die größte
+einzelne Lücke im Bild.
 
 Beide Zahlen sind seit der ersten Messung (8,1 und 5,2) gestiegen, obwohl
 seither Photophoren, Schleppen, Kleinzeug, eine vierte Felslage, Schlote,

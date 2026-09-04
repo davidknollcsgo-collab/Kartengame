@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://scripts/spiel/wache.gd" id="1_wache"]
 [ext_resource type="Script" path="res://scripts/spiel/kolonie.gd" id="2_kolonie"]
@@ -10,6 +10,17 @@
 [ext_resource type="Shader" path="res://shaders/graben.gdshader" id="6_graben"]
 [ext_resource type="Script" path="res://scripts/ui/hud.gd" id="7_hud"]
 [ext_resource type="Script" path="res://scripts/ui/kolonie_schirm.gd" id="8_kolonie"]
+
+[sub_resource type="Environment" id="Environment_glut"]
+background_mode = 3
+glow_enabled = true
+glow_normalized = true
+glow_intensity = 2.6
+glow_strength = 1.3
+glow_bloom = 0.55
+glow_blend_mode = 1
+glow_hdr_threshold = 0.30
+glow_hdr_scale = 3.0
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_graben"]
 shader = ExtResource("6_graben")
@@ -28,6 +39,9 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+
+[node name="Leuchten" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_glut")
 
 [node name="Kamera" type="Camera2D" parent="."]
 

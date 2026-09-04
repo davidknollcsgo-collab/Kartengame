@@ -1215,6 +1215,7 @@ func _lies_entwicklerschalter() -> void:
     var bauen := false
     var messen := 0.0
     var stau := false
+    var flach := false
     var halt := false
     var welle := 0
     var polypenzahl := 0
@@ -1259,6 +1260,11 @@ func _lies_entwicklerschalter() -> void:
                     messen = float(argumente[i + 1])
             "--stau":
                 stau = true
+            "--flach":
+                # Ohne Gluehen. **Nur zum Messen**: so laesst sich der
+                # Anteil der Nachbearbeitung am Bild beziffern, statt ihn
+                # zu schaetzen. Derselbe Schalter wie im Rundumlauf.
+                flach = true
             "--lehre":
                 # Der Lehrpfad laeuft genau einmal je Spielstand. Ohne
                 # Schalter liesse sich Schritt 6 nur ansehen, indem man die
@@ -1298,6 +1304,10 @@ func _lies_entwicklerschalter() -> void:
     if welle > 0 or polypenzahl > 0:
         _bereite_welle_vor()
 
+    if flach:
+        var leuchten := get_node_or_null("Leuchten") as WorldEnvironment
+        if leuchten != null:
+            leuchten.environment.glow_enabled = false
     if messen > 0.0:
         _miss_bildrate(messen, stau)
         return
