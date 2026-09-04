@@ -504,6 +504,23 @@ Licht ein Werkzeug gegen Tiere und sonst nichts. Gerechnet wird mit
 ein Riff, das anders hell wird als der Kegel ist, wäre eine dritte Wahrheit
 über dasselbe Licht.
 
+**Und was im Licht steht, wirft einen Schatten.** Der Grund war bisher
+gleichmäßig hell, wo der Kegel hinfiel — ein Fels wurde angeleuchtet wie
+eine Fläche, und dahinter blieb es genauso hell wie daneben. Damit sagte das
+Licht, wie weit man sieht, aber nicht, was zwischen einem und der Ferne
+steht. Zwei Regeln halten den Schatten dort, wo er hingehört: **nur die
+vorderste Lage wirft** (`fest` — derselbe Fels, an dem das Boot anstößt),
+und **nur der Grund liegt im Schatten, nie ein Tier**. Das zweite ist nicht
+nur Physik — der Kegel ist ein Licht über dem Grund, die Räuber schwimmen
+in der Wassersäule darüber —, sondern Zusage 2: ein Tier im Fels-Schatten
+sähe dunkel aus und brennte weiter, und das wäre eine zweite Wahrheit über
+dasselbe Licht.
+
+Der Saum läuft dabei auf dem **echten Umriss** und nicht auf einer Sehne
+quer durch den Fels. Der erste Anlauf zog eine gerade Linie durch die
+Mitte, und im Bild sah das aus wie ein Kratzer auf dem Stein — eine Kante
+gehört an den Rand, sonst ist sie keine.
+
 **Nicht jedes Tier will an das Boot.** `wild.gd` zieht Fischschwärme über den
 Grund, die vor dem Licht auseinanderstieben und sonst nichts tun: kein
 Schaden in beide Richtungen, kein Nährstoff, keine Punkte, in keiner
@@ -705,14 +722,25 @@ Welle 24):
 
 | Stand | Bilder/s |
 |---|---|
-| Schlundwache | 8,1 |
-| Rundumlauf | 5,2 |
-| Rundumlauf ohne Glühen (`--flach`) | 6,8 |
+| Schlundwache | 12,1 |
+| Rundumlauf | 7,1 |
+| Rundumlauf ohne Glühen (`--flach`) | 8,7 |
 
 Daraus zwei Zahlen, die vorher geschätzt waren: der Rundumlauf kostet rund
 das Anderthalbfache der Schlundwache, und **das Glühen ist ein Fünftel des
 Bildes** — es bleibt trotzdem, denn es ist der Grund, warum die Leuchtröhren
 wie Röhren aussehen und nicht wie Striche.
+
+Beide Zahlen sind seit der ersten Messung (8,1 und 5,2) gestiegen, obwohl
+seither Photophoren, Schleppen, Kleinzeug, eine vierte Felslage, Schlote,
+Schwärme und die Felsschatten dazugekommen sind. Das ist kein Zufall,
+sondern der Grund, warum hier gemessen und nicht geschätzt wird: **jede
+dieser Erweiterungen wurde nachgemessen**, und wo eine teuer war, wurde
+nicht sie gestrichen, sondern ihre Ursache gesucht — abgetastete
+Felskanten statt elftausend Sinus je Bild, neun Prozent Dichte in der
+hintersten Lage, Keulung am echten Radius. Der Fels-Schatten kostete
+messbar **nichts** (6,8 auf 7,1, also im Rauschen), weil nur die vorderste
+Lage wirft und nur, was der Kegel wirklich trifft.
 
 ### Die Fahrprobe
 

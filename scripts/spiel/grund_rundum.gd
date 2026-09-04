@@ -502,6 +502,7 @@ func _draw() -> void:
         _zeichne_bewuchs(lage)
     _zeichne_kleinzeug()
     _zeichne_schlote()
+    _zeichne_schatten()
     _zeichne_staub()
     _zeichne_funde()
     # **Zuletzt.** Der Nebel deckt ab, was darunter liegt, statt dass jedes
@@ -618,6 +619,99 @@ func _schopf(p: Vector2, r: float, farbe: Color, a: float, dreh: float,
             halm.append(p + Vector2.RIGHT.rotated(w + wiege * t * t)
                 * r * arme[i] * t)
         draw_polyline(halm, Color(farbe.r, farbe.g, farbe.b, a), 1.1, true)
+
+
+## Wie weit ein Schatten hinter seinem Fels liegt, als Vielfaches der
+## Kegelreichweite, und wie dunkel er hoechstens wird.
+const SCHATTEN_LAENGE := 0.85
+const SCHATTEN_TIEFE := 0.62
+
+
+## Was im Licht steht, wirft einen Schatten.
+##
+## **Der Grund war bisher gleichmaessig hell, wo der Kegel hinfiel** - ein
+## Fels wurde angeleuchtet wie eine Flaeche, und dahinter blieb es genauso
+## hell wie daneben. Damit war das Licht flach: es sagte, wie weit man
+## sieht, aber nicht, was zwischen einem und der Ferne steht. Ein Schatten
+## sagt beides auf einmal, und er bewegt sich mit dem Finger.
+##
+## **Nur die vorderste Lage wirft.** `fest` ist derselbe Fels, an dem das
+## Boot anstoesst; was dahinter liegt, ist Kulisse in einer anderen Ebene
+## und haette dort nichts zu verdecken.
+##
+## **Und nur der Grund liegt im Schatten, nie ein Tier.** Der Kegel ist ein
+## Licht ueber dem Grund, die Raeuber schwimmen in der Wassersaeule darueber
+## - ein Fels am Boden verdunkelt sie also nicht. Das ist nicht nur
+## Physik, sondern Zusage 2: was hell gezeichnet wird, macht Schaden. Ein
+## Tier im Fels-Schatten saehe dunkel aus und braennte weiter, und das waere
+## eine zweite Wahrheit ueber dasselbe Licht.
+func _zeichne_schatten() -> void:
+    if licht_reichweite <= 0.0:
+        return
+    for f in _felsen:
+        if not bool(f[&"fest"]):
+            continue
+        var ort: Vector2 = f[&"ort"]
+        var breit := float(f[&"weit"]) * 0.82
+        if not _im_blick(ort, breit + 40.0):
+            continue
+        if not _bekannt(ort):
+            continue
+        var hell := _angeleuchtet(ort)
+        if hell <= 0.02:
+            continue
+        var weg := ort - licht_spitze
+        var fern := weg.length()
+        # Steht die Spitze im Fels, gibt es keine Richtung zum Werfen.
+        if fern <= breit * 1.05:
+            continue
+        var richtung := weg / fern
+        # Der Halbwinkel, unter dem der Fels von der Spitze aus erscheint -
+        # daraus die beiden Beruehrpunkte der Sichtlinien.
+        var spreiz := asin(clampf(breit / fern, 0.0, 0.999))
+        var laenge := licht_reichweite * SCHATTEN_LAENGE
+        var links := richtung.rotated(-spreiz)
+        var rechts := richtung.rotated(spreiz)
+        var nah := sqrt(maxf(fern * fern - breit * breit, 1.0))
+        var a := licht_spitze + links * nah
+        var b := licht_spitze + rechts * nah
+        # Der Schatten wird nach hinten breiter, weil die Lichtquelle ein
+        # Punkt ist: dieselben zwei Linien, nur weitergezogen.
+        var c := licht_spitze + rechts * (nah + laenge)
+        var d := licht_spitze + links * (nah + laenge)
+        var tiefe := SCHATTEN_TIEFE * hell
+        # Zwei Lagen: der Kern gleich hinter dem Fels ist dunkler als das
+        # ausgefranste Ende. Ein Schatten mit **einer** Deckung endet an
+        # einer Kante, und eine Kante im Wasser gibt es nicht.
+        var mitte_c := licht_spitze + rechts * (nah + laenge * 0.34)
+        var mitte_d := licht_spitze + links * (nah + laenge * 0.34)
+        draw_colored_polygon(PackedVector2Array([a, b, mitte_c, mitte_d]),
+            Color(NEBEL_FARBE.r, NEBEL_FARBE.g, NEBEL_FARBE.b, tiefe))
+        draw_colored_polygon(
+            PackedVector2Array([mitte_d, mitte_c, c, d]),
+            Color(NEBEL_FARBE.r, NEBEL_FARBE.g, NEBEL_FARBE.b, tiefe * 0.42))
+        # Der Saum: wo das Licht am Fels vorbeistreift, steht die hellste
+        # Kante des Bildes. Ohne ihn wirkt der Fels ausgeschnitten.
+        #
+        # Er laeuft auf dem **echten Umriss** und nicht auf einer Sehne
+        # quer durch den Fels. Der erste Anlauf zog eine gerade Linie durch
+        # die Mitte, und im Bild sah das aus wie ein Kratzer auf dem Stein -
+        # eine Kante gehoert an den Rand, sonst ist sie keine.
+        var umriss: PackedVector2Array = f[&"umriss"]
+        var saum := Color(0.62, 0.88, 0.92, 0.34 * hell)
+        var zug := PackedVector2Array()
+        for j in umriss.size() + 1:
+            var e := umriss[j % umriss.size()]
+            # Zur Spitze hin zeigende Kante: das ist die beschienene Seite.
+            if (e - ort).normalized().dot(richtung) < -0.12:
+                zug.append(e)
+            elif zug.size() >= 2:
+                draw_polyline(zug, saum, 2.0, true)
+                zug = PackedVector2Array()
+            else:
+                zug = PackedVector2Array()
+        if zug.size() >= 2:
+            draw_polyline(zug, saum, 2.0, true)
 
 
 func _zeichne_staub() -> void:
