@@ -975,9 +975,24 @@ func _zeichne_polypen() -> void:
                 Color(POLYP_FARBE.r, POLYP_FARBE.g, POLYP_FARBE.b, 0.10), 1.0, true)
 
         # Kelch aus Tentakeln.
-        for k in 7:
-            var w := TAU * float(k) / 7.0 + sin(zeit * 1.3 + float(i)) * 0.2
-            var spitze := p + Vector2(cos(w), sin(w)) * Graben.POLYP_RADIUS * 1.5
+        #
+        # **Sechs bis neun, und jeder Kelch steht anders herum.** Vorher
+        # waren es siebenmal sieben Arme in derselben Ausrichtung - im Bild
+        # eine Reihe gleicher Schneeflocken. Gewuerfelt wird aus dem Ort der
+        # Knospe, nicht aus einer Zufallszahl: derselbe Polyp sieht in jedem
+        # Bild gleich aus, und wer ihn abraeumt und neu setzt, bekommt
+        # denselben zurueck.
+        var eigen := fmod(absf(p.x) * 0.0173 + absf(p.y) * 0.0091, 1.0)
+        var arme := 6 + int(eigen * 4.0)
+        var dreh := eigen * TAU
+        for k in arme:
+            var w := TAU * float(k) / float(arme) + dreh \
+                + sin(zeit * 1.3 + float(i)) * 0.2
+            # Nicht alle gleich lang: ein Kelch aus gleich langen Armen ist
+            # ein Zahnrad.
+            var lang := Graben.POLYP_RADIUS \
+                * (1.32 + 0.34 * sin(float(k) * 2.7 + eigen * 9.0))
+            var spitze := p + Vector2(cos(w), sin(w)) * lang
             draw_line(p, spitze, Color(POLYP_FARBE.r, POLYP_FARBE.g,
                 POLYP_FARBE.b, 0.55), 2.0)
             draw_circle(spitze, 1.8, Color(0.85, 1.0, 0.95, 0.7))
