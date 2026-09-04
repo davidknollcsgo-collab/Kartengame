@@ -30,8 +30,12 @@ const SAAT := 0x4e454b52
 ## im Schlund hatte.
 const UEBERSTAND := 150.0
 
-const TIEFE := 3
-const LAGEN_KRAFT: PackedFloat32Array = [0.34, 0.62, 1.0]
+## **Vier Lagen statt dreier.** Die hinterste ist neu: sehr grosse, sehr
+## dunkle Massive, die kaum mehr sind als ein Umriss. Sie geben dem Bild
+## einen Horizont - vorher war der Grund gleichmaessig dicht besetzt, und was
+## ueberall gleich weit weg ist, ist nirgends weit weg.
+const TIEFE := 4
+const LAGEN_KRAFT: PackedFloat32Array = [0.14, 0.34, 0.62, 1.0]
 
 ## Die Farben des Riffs. Dieselbe Familie wie im Schlund, damit die beiden
 ## Schleifen wie derselbe Graben aussehen.
@@ -55,6 +59,7 @@ var _bewuchs: Array[Dictionary] = []
 var _staub: PackedVector2Array = []
 var _staub_takt: PackedFloat32Array = []
 var _funde: Array[Dictionary] = []
+var _schlote: Array[Dictionary] = []
 
 
 func _ready() -> void:
@@ -78,12 +83,14 @@ func baue(welle: int) -> void:
     _felsen.clear()
     _bewuchs.clear()
     _funde.clear()
+    _schlote.clear()
     var rng := RandomNumberGenerator.new()
     rng.seed = SAAT + welle
     _baue_rippel(rng)
     _baue_felsen(rng)
     _baue_bewuchs(rng)
     _baue_staub(rng)
+    _baue_schlote(rng)
     _baue_funde(rng)
 
 
@@ -137,10 +144,20 @@ func _baue_rippel(rng: RandomNumberGenerator) -> void:
 ## als zweite Kontur.
 func _baue_felsen(rng: RandomNumberGenerator) -> void:
     for _i in 190:
-        var lage := rng.randi() % TIEFE
+        # **Nicht gleich viele je Lage.** Die hinterste traegt Massive vom
+        # Zweieinhalbfachen der Groesse; gleich viele davon wie vorne heisst
+        # siebenmal so viel Flaeche, und in Software-Rasterung ist Flaeche
+        # das, was kostet - gemessen 6,0 auf 4,5 Bilder je Sekunde. Ein
+        # Horizont braucht ohnehin keine Dichte, sondern Ruhe.
+        var wurf := rng.randf()
+        var lage := 0 if wurf < 0.09 else (1 + (rng.randi() % (TIEFE - 1)))
         var ort := _wuerfel_ort(rng)
+        # Die hinterste Lage ist nicht nur blasser, sondern **groesser**.
+        # Ein kleiner blasser Fels sieht aus wie ein kleiner Fels im Nebel;
+        # ein grosser blasser sieht aus wie ein Berg in der Ferne.
         var gross := rng.randf_range(26.0, 96.0) \
-            * lerpf(0.55, 1.0, float(lage) / float(TIEFE - 1))
+            * (2.6 if lage == 0 else lerpf(0.55, 1.0,
+                float(lage - 1) / float(TIEFE - 2)))
         # **Die Form kommt aus `Riff`, nicht von hier.** Sie ist dieselbe,
         # die das Boot abstoesst - ein Fels, der anders aussieht als er sich
         # anfuehlt, ist unlernbar.
@@ -164,6 +181,7 @@ func _baue_felsen(rng: RandomNumberGenerator) -> void:
         # frisch heraus, und zwar zweimal je Fels (Umriss und Schulter). Bei
         # vierzig sichtbaren Felsen sind das elftausend Sinus je Bild fuer
         # eine Form, die seit dem Start feststeht.
+        fels[&"weit"] = Riff.hoechster_radius(fels)
         fels[&"umriss"] = _felskante(fels)
         fels[&"schulter"] = _felskante(fels, 0.58)
         _felsen.append(fels)
@@ -221,6 +239,88 @@ func _baue_bewuchs(rng: RandomNumberGenerator) -> void:
         })
 
 
+## Schlote: Risse im Grund, aus denen es warm herausleuchtet und aufsteigt.
+##
+## **Der Grund war ueberall gleich kalt.** Riff, Bewuchs und Sediment liegen
+## alle im selben Blaugruen; was fehlte, war eine zweite Quelle - etwas, das
+## von unten leuchtet statt angeleuchtet zu werden, und das sich bewegt,
+## ohne dass man es angefahren hat.
+##
+## Sie stehen **ausserhalb von allem**: kein Schaden, kein Naehrstoff, keine
+## Punkte, in keiner `Wellen.auftritte()`. Dieselbe Begruendung wie bei der
+## Funkenbluete und den Fischschwaermen - was nichts kostet und nichts
+## zahlt, verschiebt auch nichts.
+const SCHLOTE := 30
+
+## Wie hoch eine Fahne steigt, und wieviele Blasen sie traegt.
+const FAHNE_HOCH := 190.0
+const FAHNE_BLASEN := 9
+
+func _baue_schlote(rng: RandomNumberGenerator) -> void:
+    for _i in SCHLOTE:
+        # Warm oder kalt: heisse Quellen und kalte Sicker. Zwei Farben
+        # reichen - drei waeren Konfetti.
+        var heiss := rng.randf() < 0.55
+        _schlote.append({
+            &"ort": _wuerfel_ort(rng),
+            &"gross": rng.randf_range(9.0, 22.0),
+            &"takt": rng.randf_range(0.22, 0.55),
+            &"phase": rng.randf_range(0.0, TAU),
+            &"neigung": rng.randf_range(-0.5, 0.5),
+            &"farbe": Color(1.0, 0.62, 0.30) if heiss
+                else Color(0.44, 0.86, 0.94),
+        })
+
+
+## Ein Schlot: ein Mund im Grund und eine Fahne darueber.
+##
+## Die Blasen steigen **entlang der Zeit**, nicht entlang einer Bahn: jede
+## bekommt ihren Platz aus `zeit` und ihrer eigenen Nummer, laeuft nach oben
+## und faengt oben wieder unten an. Damit braucht keine von ihnen einen
+## eigenen Zustand, und der Schlot kostet nichts, wenn er nicht im Bild ist.
+func _zeichne_schlote() -> void:
+    for sch in _schlote:
+        var p: Vector2 = sch[&"ort"]
+        if not _im_blick(p, FAHNE_HOCH) or not _bekannt(p):
+            continue
+        var farbe: Color = sch[&"farbe"]
+        var gr: float = sch[&"gross"]
+        var takt: float = sch[&"takt"]
+        var puls := 0.5 + 0.5 * sin(zeit * takt * 3.0 + float(sch[&"phase"]))
+        var schraeg := Vector2(float(sch[&"neigung"]), -1.0).normalized()
+
+        # **Ein Spalt, kein Ring.** Als voller Kreis gezeichnet sah der
+        # Schlot aus wie eine Fundstelle oder ein kleiner Bewuchs - im
+        # Bild lauter gleiche Kringel. Ein Riss quer zur Fahne ist auf einen
+        # Blick etwas anderes als alles andere im Feld.
+        var quer := schraeg.orthogonal()
+        var lippe := PackedVector2Array()
+        for j in 9:
+            var u := lerpf(-1.0, 1.0, float(j) / 8.0)
+            # Die Lippe woelbt sich der Fahne entgegen: ein Mund, kein
+            # Strich.
+            lippe.append(p + quer * u * gr
+                + schraeg * (1.0 - u * u) * gr * 0.34)
+        draw_polyline(lippe,
+            Color(farbe.r, farbe.g, farbe.b, 0.08 + 0.08 * puls), 9.0, true)
+        draw_polyline(lippe,
+            Color(farbe.r, farbe.g, farbe.b, 0.42 + 0.30 * puls), 1.6, true)
+        # Der Glutfleck darin - das Einzige im Feld, das von unten leuchtet.
+        draw_circle(p + schraeg * gr * 0.16, gr * (0.34 + 0.12 * puls),
+            Color(farbe.r, farbe.g, farbe.b, 0.14 + 0.16 * puls))
+
+        for j in FAHNE_BLASEN:
+            var t := fmod(zeit * takt + float(j) / float(FAHNE_BLASEN), 1.0)
+            # Oben duenner und blasser: die Fahne loest sich auf, statt
+            # abgeschnitten zu enden.
+            var a := (1.0 - t) * (0.34 + 0.24 * puls)
+            var seit := sin(t * 5.0 + float(j)) * gr * 0.55 * t
+            var b := p + schraeg * (t * FAHNE_HOCH) \
+                + schraeg.orthogonal() * seit
+            draw_circle(b, maxf(0.7, gr * 0.24 * (1.0 - t * 0.6)),
+                Color(farbe.r, farbe.g, farbe.b, a))
+
+
 func _baue_staub(rng: RandomNumberGenerator) -> void:
     var weite := Rundum.FELD_RADIUS + UEBERSTAND
     _staub.resize(900)
@@ -268,6 +368,7 @@ func _draw() -> void:
     for lage in TIEFE:
         _zeichne_felsen(lage)
         _zeichne_bewuchs(lage)
+    _zeichne_schlote()
     _zeichne_staub()
     _zeichne_funde()
     # **Zuletzt.** Der Nebel deckt ab, was darunter liegt, statt dass jedes
@@ -286,7 +387,11 @@ func _zeichne_rippel() -> void:
 func _zeichne_felsen(lage: int) -> void:
     var kraft: float = LAGEN_KRAFT[lage]
     for f in _felsen:
-        if int(f[&"lage"]) != lage or not _im_blick(f[&"ort"], 140.0):
+        # Der Rand haengt an der Groesse des Felsens: ein Massiv von
+        # zweihundertfuenfzig Einheiten Radius, das mit hundertvierzig
+        # gekeult wird, springt am Bildrand ins Bild.
+        if int(f[&"lage"]) != lage \
+                or not _im_blick(f[&"ort"], float(f[&"weit"]) + 40.0):
             continue
         var umriss: PackedVector2Array = f[&"umriss"]
         # Die Flaeche deckt nur ab, was dahinter liegt - dunkler als das
