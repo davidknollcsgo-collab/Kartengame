@@ -219,6 +219,20 @@ var _begleiter_ziel: Array[int] = []
 ## als stuende das Wasser still.
 var _spur: Array[Vector2] = []
 
+## Blasen im Kielwasser: Ort, Alter, Groesse.
+##
+## **Die Spur allein war ein Strich.** Ein Boot, das durch Wasser faehrt,
+## reisst Luft mit; die loest sich hinter ihm auf, treibt auseinander und
+## bleibt kurz stehen, waehrend das Boot weiterfaehrt. Genau das
+## unterscheidet Fahrt von Verschiebung.
+##
+## Sie haengen an der Fahrt und nicht an der Zeit: wer steht, macht keine
+## Blasen.
+const BLASEN_HOECHSTENS := 60
+const BLASEN_LEBEN := 1.4
+var _blasen: Array[Dictionary] = []
+var _blasen_takt := 0.0
+
 ## Wie stark das Boot in die Kurve legt. Aus der Drehrate gerechnet, nicht
 ## gewuerfelt - wer nach rechts zieht, sieht das Boot nach rechts kippen, und
 ## genau das macht eine Bewegung lesbar, bevor sie stattgefunden hat.
@@ -612,6 +626,7 @@ func _fuehre_boot(delta: float) -> void:
         _spur.append(_ort)
         if _spur.size() > SPUR_LAENGE:
             _spur.remove_at(0)
+    _fuehre_blasen(delta)
 
     # Die Stroemung dreht den Kegel weg - das ist der ganze Reiz von
     # Abschnitt 2: man zielt nicht dorthin, wo man treffen will. Dieselbe
@@ -625,6 +640,57 @@ func _fuehre_boot(delta: float) -> void:
     _kegel.tiefe_kern = Regeln.tiefe_kern(welle_nummer)
     _kegel.schein = Regeln.helligkeit(welle_nummer, _wellenzeit)
     _kegel.queue_redraw()
+    # Der Grund bekommt denselben Kegel, mit dem auch gerechnet wird.
+    _grund.licht_spitze = _ort
+    _grund.licht_richtung = _wirksam
+    _grund.licht_halbwinkel = _kegel.halbwinkel
+    _grund.licht_reichweite = _kegel.reichweite
+    _grund.licht_rand_kern = _kegel.rand_kern
+    _grund.licht_tiefe_kern = _kegel.tiefe_kern
+    _grund.licht_schein = _kegel.schein
+
+
+## Die Blasen im Kielwasser.
+##
+## Sie entstehen am Heck, bekommen den halben Schwung des Bootes nach hinten
+## mit und treiben dann auseinander. Erzeugt wird nach **Strecke**, nicht
+## nach Zeit: bei halber Fahrt halb so viele, im Stand keine.
+func _fuehre_blasen(delta: float) -> void:
+    var tempo := _fahrt.length()
+    _blasen_takt -= tempo * delta
+    while _blasen_takt <= 0.0 and tempo > BOOT_TEMPO * 0.18:
+        _blasen_takt += 26.0
+        if _blasen.size() >= BLASEN_HOECHSTENS:
+            break
+        var quer := _blick.orthogonal()
+        _blasen.append({
+            &"ort": _ort - _blick * BOOT_RADIUS * 0.9
+                + quer * randf_range(-9.0, 9.0),
+            &"zug": -_fahrt * randf_range(0.18, 0.34)
+                + quer * randf_range(-26.0, 26.0),
+            &"alter": 0.0,
+            &"gross": randf_range(1.6, 4.2),
+        })
+    for i in range(_blasen.size() - 1, -1, -1):
+        var b := _blasen[i]
+        b[&"alter"] = float(b[&"alter"]) + delta
+        if float(b[&"alter"]) >= BLASEN_LEBEN:
+            _blasen.remove_at(i)
+            continue
+        # Wasserwiderstand: sie kommen schnell heraus und werden langsam.
+        b[&"zug"] = Vector2(b[&"zug"]).lerp(Vector2.ZERO,
+            clampf(2.2 * delta, 0.0, 1.0))
+        b[&"ort"] = Vector2(b[&"ort"]) + Vector2(b[&"zug"]) * delta
+
+
+func _zeichne_blasen() -> void:
+    for b in _blasen:
+        var t := float(b[&"alter"]) / BLASEN_LEBEN
+        # Sie werden groesser und blasser - Luft, die sich im Wasser loest.
+        var r := float(b[&"gross"]) * (1.0 + t * 1.6)
+        var a := (1.0 - t) * (1.0 - t) * 0.34
+        _vorn.draw_arc(Vector2(b[&"ort"]), r, 0.0, TAU, 10,
+            Color(0.72, 0.92, 0.98, a), 1.0, true)
 
 
 ## Vom Menue aus: los.
@@ -644,6 +710,8 @@ func starte() -> void:
     atem = 0.0
     gehalten = false
     bestmarke = false
+    _blasen.clear()
+    _spur.clear()
     # Die naechste Welle sagt der Koloniestand. `--welle` sticht das aus -
     # ein Werkzeug soll zeigen koennen, was es zeigen will.
     welle_nummer = _erste_welle if _erste_welle > 0 \
@@ -1266,6 +1334,7 @@ func _zeichne_vorn() -> void:
     _zeichne_kante()
     _zeichne_stossring()
     _zeichne_spur()
+    _zeichne_blasen()
     _zeichne_begleiter()
     _zeichne_boot()
 

@@ -53,6 +53,25 @@ var zeit := 0.0
 ## alles sichtbar - so bleiben Werkzeugschuesse ohne Nebel brauchbar.
 var karte: Karte = null
 
+## Der Kegel des Bootes, damit der Grund darauf reagieren kann.
+##
+## **Der Bewuchs war Kulisse.** Er stand da, in immer derselben Deckung, egal
+## ob das Licht darueberging oder nicht - und damit war das Licht ein
+## Werkzeug gegen Tiere und sonst nichts. Ein Riff, das aufleuchtet, wenn man
+## es anleuchtet, macht aus dem Kegel eine Taschenlampe: man schwenkt ihn
+## auch dann, wenn gerade nichts angreift.
+##
+## Gerechnet wird mit **derselben** `Schlund.beleuchtung()` wie Schaden und
+## Kegelbild (Zusage 2) - ein Riff, das anders hell wird als der Kegel ist,
+## waere eine dritte Wahrheit ueber dasselbe Licht.
+var licht_spitze := Vector2.ZERO
+var licht_richtung := Vector2.ZERO
+var licht_halbwinkel := 0.0
+var licht_reichweite := 0.0
+var licht_rand_kern := Schlund.RAND_KERN
+var licht_tiefe_kern := Schlund.TIEFE_KERN
+var licht_schein := 1.0
+
 var _rippel: Array[PackedVector2Array] = []
 var _felsen: Array[Dictionary] = []
 var _bewuchs: Array[Dictionary] = []
@@ -287,6 +306,9 @@ func _zeichne_schlote() -> void:
         var gr: float = sch[&"gross"]
         var takt: float = sch[&"takt"]
         var puls := 0.5 + 0.5 * sin(zeit * takt * 3.0 + float(sch[&"phase"]))
+        # Auch der Schlot antwortet auf das Licht - schwaecher als der
+        # Bewuchs, weil er selbst leuchtet und nicht nur zurueckwirft.
+        puls = minf(1.6, puls + 1.4 * _angeleuchtet(p))
         var schraeg := Vector2(float(sch[&"neigung"]), -1.0).normalized()
 
         # **Ein Spalt, kein Ring.** Als voller Kreis gezeichnet sah der
@@ -338,6 +360,15 @@ func _wuerfel_ort(rng: RandomNumberGenerator) -> Vector2:
     var weite := Rundum.FELD_RADIUS + UEBERSTAND
     return Vector2.RIGHT.rotated(rng.randf_range(0.0, TAU)) \
         * sqrt(rng.randf()) * weite
+
+
+## Wie hell der Kegel an dieser Stelle steht, 0 bis 1.
+func _angeleuchtet(ort: Vector2) -> float:
+    if licht_reichweite <= 0.0:
+        return 0.0
+    return Schlund.beleuchtung(licht_spitze, licht_richtung, licht_halbwinkel,
+        licht_reichweite, ort, licht_rand_kern, licht_tiefe_kern) \
+        * licht_schein
 
 
 ## Ob ein Ort schon aufgedeckt ist. Ohne Karte ist alles offen.
@@ -425,7 +456,11 @@ func _zeichne_bewuchs(lage: int) -> void:
             + float(b[&"phase"]))
         var arme: PackedFloat32Array = b[&"arme"]
         var dreh: float = b[&"dreh"]
-        var a := (0.16 + 0.10 * atem) * kraft
+        # Im Licht bluehen sie auf: bis zum Vierfachen der Ruhedeckung.
+        # Der Anteil ist bewusst gross - eine Aenderung, die man suchen
+        # muss, ist keine.
+        var a := (0.16 + 0.10 * atem) * kraft \
+            * (1.0 + 3.0 * _angeleuchtet(p))
         match int(b[&"art"]):
             0:
                 _faecher(p, gr, farbe, a, dreh, arme, atem)

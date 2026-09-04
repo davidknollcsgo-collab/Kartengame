@@ -467,6 +467,14 @@ einem Aufruf mit Farbe an den Ecken. Die Deckung läuft damit über eine ganze
 Feldbreite aus, und das Raster verschwindet, obwohl es dasselbe geblieben
 ist.
 
+**Der Grund antwortet auf das Licht.** Bewuchs im Kegel blüht bis zum
+Vierfachen seiner Ruhedeckung auf, Schlote glimmen heller. Vorher war das
+Riff Kulisse — es stand da, egal ob man es anleuchtete, und damit war das
+Licht ein Werkzeug gegen Tiere und sonst nichts. Gerechnet wird mit
+**derselben** `Schlund.beleuchtung()` wie Schaden und Kegelbild (Zusage 2);
+ein Riff, das anders hell wird als der Kegel ist, wäre eine dritte Wahrheit
+über dasselbe Licht.
+
 **Nicht jedes Tier will an das Boot.** `wild.gd` zieht Fischschwärme über den
 Grund, die vor dem Licht auseinanderstieben und sonst nichts tun: kein
 Schaden in beide Richtungen, kein Nährstoff, keine Punkte, in keiner
