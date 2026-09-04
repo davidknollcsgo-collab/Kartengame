@@ -118,7 +118,35 @@ func baue(welle: int) -> void:
 
 func _process(delta: float) -> void:
     zeit += delta
+    _fuehre_glut(delta)
     queue_redraw()
+
+
+## Wie schnell das Nachleuchten wieder abklingt.
+const GLUT_ABKLANG := 0.55
+
+
+## **Was der Kegel gestreift hat, glimmt weiter.**
+##
+## Ein Riff, das genau so lange leuchtet wie das Licht darauf faellt, ist ein
+## Scheinwerfer auf einer Wand. Biolumineszenz ist eine Antwort des Tieres:
+## sie setzt mit dem Reiz ein und laesst danach nach. Damit zieht der Kegel
+## eine Spur ueber den Grund, und man sieht, wo man eben war - was in einem
+## Feld, das im Dunkeln liegt, mehr ist als Zierde.
+##
+## Nur der Bewuchs, nicht das Kleinzeug: vierhundertzwanzig Zustaende je Bild
+## sind nichts, sechsundzwanzighundert waeren spuerbar.
+func _fuehre_glut(delta: float) -> void:
+    var ab := clampf(GLUT_ABKLANG * delta, 0.0, 1.0)
+    for b in _bewuchs:
+        var p: Vector2 = b[&"ort"]
+        var g := float(b[&"glut"])
+        if not _im_blick(p, 60.0):
+            # Ausserhalb des Bildes klingt es trotzdem ab - sonst kommt man
+            # zurueck und findet eine Spur von vor zwei Minuten.
+            b[&"glut"] = maxf(0.0, g - ab)
+            continue
+        b[&"glut"] = maxf(_angeleuchtet(p), g - ab)
 
 
 ## Sedimentrippel: lange, flache Wellenlinien quer ueber den Grund.
@@ -258,6 +286,9 @@ func _baue_bewuchs(rng: RandomNumberGenerator) -> void:
             &"takt": rng.randf_range(0.25, 0.8),
             &"phase": rng.randf_range(0.0, TAU),
             &"farbe": FARBEN[rng.randi() % FARBEN.size()],
+            # Wieviel Nachleuchten der Bewuchs gerade traegt. Siehe
+            # `_fuehre_glut()`.
+            &"glut": 0.0,
         })
 
 
@@ -530,8 +561,10 @@ func _zeichne_bewuchs(lage: int) -> void:
         # Im Licht bluehen sie auf: bis zum Vierfachen der Ruhedeckung.
         # Der Anteil ist bewusst gross - eine Aenderung, die man suchen
         # muss, ist keine.
+        # Das Nachleuchten steht hier statt der reinen Beleuchtung: es ist
+        # ihr Hoechstwert der letzten Sekunden und faellt danach ab.
         var a := (0.16 + 0.10 * atem) * kraft \
-            * (1.0 + 3.0 * _angeleuchtet(p))
+            * (1.0 + 3.0 * float(b[&"glut"]))
         match int(b[&"art"]):
             0:
                 _faecher(p, gr, farbe, a, dreh, arme, atem)

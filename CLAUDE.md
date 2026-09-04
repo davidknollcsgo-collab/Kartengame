@@ -467,6 +467,14 @@ einem Aufruf mit Farbe an den Ecken. Die Deckung läuft damit über eine ganze
 Feldbreite aus, und das Raster verschwindet, obwohl es dasselbe geblieben
 ist.
 
+**Und was der Kegel gestreift hat, glimmt weiter** (`GLUT_ABKLANG`). Ein
+Riff, das genau so lange leuchtet wie das Licht darauf fällt, ist ein
+Scheinwerfer auf einer Wand; Biolumineszenz ist eine Antwort des Tieres — sie
+setzt mit dem Reiz ein und lässt danach nach. Damit zieht der Kegel eine Spur
+über den Grund, und man sieht, wo man eben war. Nur der Bewuchs führt diesen
+Zustand, nicht das Kleinzeug: vierhundertzwanzig Werte je Bild sind nichts,
+sechsundzwanzighundert wären spürbar.
+
 **Detail dort, wo man ist.** `KLEINZEUG` streut sechsundzwanzighundert
 Kleinigkeiten über das Feld — Kies, Schalen, Seesterne, Röhrchen —, gezeichnet
 aber nur in einem Umkreis von `KLEIN_SICHT` um die Bildmitte und zum Rand hin
