@@ -125,6 +125,36 @@ func _strich(a: Vector2, b: Vector2, farbe: Color, dicke: float) -> void:
     draw_line(a, b, farbe, dicke, true)
 
 
+## Die Leuchtpunkte laengs des Koerpers.
+##
+## Sie sitzen paarweise links und rechts der Bahn, und die Welle laeuft von
+## der Nase zum Schwanz - so herum, weil ein Tier, dessen Lichter nach vorn
+## laufen, aussieht, als schwimme es rueckwaerts.
+func _leuchtpunkte(p: Vector2, r: float, farbe: Color, t: Raeuber,
+        hitze: float) -> void:
+    var zahl := clampi(int(r * 0.22), 3, 7)
+    var k := t.richtung
+    var quer := k.orthogonal()
+    for i in zahl:
+        var u := float(i) / float(zahl - 1)
+        # Von der Nase (0.55 r) bis zum Schwanz (-0.75 r).
+        var laengs := lerpf(0.55, -0.75, u)
+        # Die Welle: eine Sekunde von vorn nach hinten.
+        var welle := 0.5 + 0.5 * sin(_zeit * 4.4 - u * 3.4 + t.phase * 5.0)
+        var a := (0.20 + 0.55 * welle) * (1.0 + hitze)
+        var gr := r * (0.055 + 0.030 * welle)
+        var hell := Color(minf(1.0, farbe.r * 1.5), minf(1.0, farbe.g * 1.5),
+            minf(1.0, farbe.b * 1.5), 1.0)
+        for seite: float in SEITEN:
+            var wo := p + k * r * laengs + quer * seite * r * 0.34
+            # Erst der Hof, dann der Punkt: ein Photophor ist ein Licht im
+            # Wasser und kein Fleck auf der Haut - ohne den Hof sieht er aus
+            # wie eine Scheckung, und die leuchtet nicht.
+            draw_circle(wo, gr * 2.8, Color(hell.r, hell.g, hell.b,
+                minf(1.0, a) * 0.22))
+            draw_circle(wo, gr, Color(hell.r, hell.g, hell.b, minf(1.0, a)))
+
+
 ## Die Schleppe eines Tieres: sein Weg, verblassend.
 ##
 ## **Sie misst sich selbst.** Die Punkte werden nach Strecke aufgeschrieben,
@@ -276,6 +306,20 @@ func _zeichne(t: Raeuber, stufe := 0) -> void:
     elif stufe == 1:
         draw_circle(p, r * 1.6 * puls, Color(farbe.r, farbe.g, farbe.b,
             0.08 + 0.13 * hitze))
+
+    # **Leuchtpunkte.** Eine Reihe kleiner Lichter laengs des Koerpers, die
+    # als Welle von vorn nach hinten durchlaeuft.
+    #
+    # Das ist das Kennzeichen der Tiefsee schlechthin - fast alles, was dort
+    # lebt, traegt Photophoren -, und es steht **vor** der Verzweigung, gilt
+    # also fuer alle zwoelf Arten auf einmal. Zahl und Abstand kommen aus dem
+    # Radius, die Phase aus `t.phase`: gleich grosse Tiere blinken deshalb
+    # nicht im Gleichtakt.
+    #
+    # Nur in der obersten Stufe. Sie sind Zierde, und Zierde geht als Erstes,
+    # wenn das Bild voll wird.
+    if stufe == 0:
+        _leuchtpunkte(p, r, farbe, t, hitze)
 
     # Bei sehr vielen Tieren nur noch Umriss und Farbe: die Form bleibt
     # lesbar, die Zierde geht.
