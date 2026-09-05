@@ -56,6 +56,7 @@ const TESTS: PackedStringArray = [
     "_test_kette_zahlt_punkte_und_keinen_naehrstoff",
     "_test_bluete_bleibt_ausserhalb_der_wirtschaft",
     "_test_stroemung_wird_nur_einmal_gerechnet",
+    "_test_mutationszwang_bleibt_im_werkzeug",
     "_test_keine_art_kostet_ein_vielfaches",
     "_test_toene_sind_hoerbar_und_sauber",
     "_test_grundton_schliesst_die_schleife",
@@ -2567,6 +2568,64 @@ func _test_stroemung_wird_nur_einmal_gerechnet() -> bool:
         "res://scripts/spiel/rundlauf.gd")
     if not _melde(lauf.contains("_grund.abtrieb = abtrieb"),
             "rundlauf.gd muss den Abtrieb an den Grund weiterreichen"):
+        return false
+    return true
+
+
+## Alle `.gd` unter `verzeichnis`, samt Unterordnern.
+func _skripte(verzeichnis: String, hinein: PackedStringArray) -> void:
+    var d := DirAccess.open(verzeichnis)
+    if d == null:
+        return
+    d.list_dir_begin()
+    var name := d.get_next()
+    while name != "":
+        var pfad := verzeichnis.path_join(name)
+        if d.current_is_dir():
+            _skripte(pfad, hinein)
+        elif name.ends_with(".gd"):
+            hinein.append(pfad)
+        name = d.get_next()
+    d.list_dir_end()
+
+
+## `Mutationen.erzwinge()` dreht an jeder Welle - und darf nur im Messstand
+## stehen.
+##
+## Der Hebel gibt es, weil `in_welle()` an der Wellennummer haengt: wer eine
+## einzelne Mutation messen will, kann sie nicht herbeiwuenschen, indem er
+## die Nummer wechselt - dann wechselt die ganze Welle mit. Genau deshalb ist
+## er aber auch die schaerfste Schraube in der Datenschicht: einmal gesetzt
+## und vergessen, traegt **jede** Welle des Spiels dieselben Zuege, und der
+## Wellenpruefer wuerde es nicht melden, weil er dieselbe Luege misst.
+##
+## Also liest dieser Test den Quelltext: ausserhalb von `tools/` darf der
+## Name nirgends auftauchen - nicht im Spiel, nicht im Kern, nicht in den
+## Daten selbst.
+func _test_mutationszwang_bleibt_im_werkzeug() -> bool:
+    var dateien := PackedStringArray()
+    _skripte("res://scripts", dateien)
+    if not _melde(dateien.size() > 10, "keine Skripte gefunden"):
+        return false
+    for datei in dateien:
+        var quelle := FileAccess.get_file_as_string(datei)
+        var nummer := 0
+        for zeile in quelle.split("\n"):
+            nummer += 1
+            var rein := zeile.strip_edges()
+            if rein.begins_with("#"):
+                continue
+            if rein.begins_with("static func erzwinge("):
+                continue
+            if not _melde(not rein.contains("erzwinge(")
+                    and not rein.contains(".frei()"),
+                    "%s:%d dreht am Mutationszwang - der gehoert in tools/"
+                    % [datei, nummer]):
+                return false
+
+    # Und die Datei, in der er steht, muss ihn leer lassen.
+    if not _melde(Mutationen.in_welle(1).is_empty(),
+            "Welle 1 traegt Mutationen - steht der Zwang noch?"):
         return false
     return true
 

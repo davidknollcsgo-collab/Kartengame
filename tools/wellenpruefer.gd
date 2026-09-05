@@ -108,6 +108,7 @@ func _init() -> void:
             print("  OK   " + zeile)
         else:
             print("  FALL " + zeile)
+            print("       woran: " + _woran(lauf))
             gefallen += 1
             if erste_wand == 0:
                 erste_wand = lauf[lauf.size() - 1].welle
@@ -127,6 +128,39 @@ func _init() -> void:
 
 
 ## Je Sitzung: wie weit darf der Ausbau zurueckliegen, bevor sie faellt?
+## Was diese Sitzung die Huelle gekostet hat, nach Arten geordnet.
+##
+## **Eine gefallene Sitzung ohne diese Zeile ist eine Meldung ohne Befund.**
+## Vorher stand hier nur "FALL", und die Ursache musste man erraten oder
+## durch Weglassen einzelner Arten einkreisen - ein Lauf von sechs Minuten
+## je Versuch. Die Zeile sagt es in einem Lauf.
+##
+## Die Mutationen stehen dabei, weil sie in Zyklus 2 der halbe Grund sind:
+## dieselbe Art kostet gepanzert das Mehrfache.
+static func _woran(lauf: Array[Simulation.Ergebnis]) -> String:
+    var summe := {}
+    for e in lauf:
+        for art in e.verlust_je_art:
+            summe[art] = int(summe.get(art, 0)) + int(e.verlust_je_art[art])
+
+    var arten: Array = summe.keys()
+    arten.sort_custom(func(a, b): return int(summe[a]) > int(summe[b]))
+
+    var teile := PackedStringArray()
+    for i in mini(3, arten.size()):
+        teile.append("%s %d" % [Arten.name_von(int(arten[i])),
+            int(summe[arten[i]])])
+
+    var muts := PackedStringArray()
+    for m in Mutationen.in_welle(lauf[lauf.size() - 1].welle):
+        muts.append(Mutationen.name_von(m))
+
+    var wo := ", ".join(teile)
+    if not muts.is_empty():
+        wo += "  [" + ", ".join(muts) + "]"
+    return wo
+
+
 func _spielraum() -> void:
     print("Spielraum je Sitzung - niedrigster Ausbaustand, der noch traegt")
     print("")

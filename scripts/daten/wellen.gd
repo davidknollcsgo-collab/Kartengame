@@ -357,6 +357,13 @@ static var _umgebung_nummer := -1
 static var _umgebung_wert := 1.0
 
 
+## Wirft das Gedaechtnis weg. Nur der Messstand braucht das - er aendert die
+## Mutationen unter derselben Wellennummer, und dann stimmt der gemerkte Wert
+## nicht mehr.
+static func vergiss_umgebung() -> void:
+    _umgebung_nummer = -1
+
+
 static func umgebung(nummer: int) -> float:
     if nummer != _umgebung_nummer:
         _umgebung_wert = Regeln.wirkungsgrad(nummer) * Mutationen.wirkungsgrad(nummer)

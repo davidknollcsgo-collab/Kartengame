@@ -74,6 +74,16 @@ class Ergebnis extends RefCounted:
     ## Wie oft ein Raeuber das Boot erreicht hat. Nicht dasselbe wie der
     ## Huellenverlust: ein Leitwesen kostet mehr als ein Schleier.
     var treffer: int = 0
+
+    ## Welche Art wieviel Huelle gekostet hat - Artindex auf Huellenpunkte.
+    ##
+    ## **Ohne das sagt eine gefallene Sitzung nur, dass sie gefallen ist.**
+    ## Der Spiegler wurde genau so gefunden: er stand mit sechsunddreissig
+    ## von hundertfuenfundvierzig Huellenpunkten an der Spitze, waehrend die
+    ## gemessenen Artenkosten ihn bei 0,94 fuehrten - unauffaellig. Was ihn
+    ## teuer machte, war die **Auswahl** (`Schlund.brennende()` nimmt ihn im
+    ## Kern des Kegels nicht), und das sieht man nur hier.
+    var verlust_je_art: Dictionary = {}
     var dauer: float = 0.0
     var naehrstoffe: int = 0
 
@@ -414,6 +424,9 @@ static func welle(nummer: int, z: Zustand) -> Ergebnis:
                 # Zurueckwerfen statt entfernen: ein Raeuber, der beim
                 # Treffer verschwindet, macht aus dem Boot eine Wand.
                 e.treffer += 1
+                var kostet := mini(z.huelle, Arten.wucht(t.art))
+                e.verlust_je_art[t.art] = \
+                    int(e.verlust_je_art.get(t.art, 0)) + kostet
                 z.huelle = maxi(0, z.huelle - Arten.wucht(t.art))
                 t.ort = boot + (t.ort - boot).normalized() \
                     * (Rundum.BOOT_RADIUS + 190.0)

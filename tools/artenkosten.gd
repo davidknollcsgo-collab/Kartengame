@@ -60,8 +60,17 @@ static func zeit_bis_tot(art: int, welle: int) -> float:
             Arten.umlauf(art), 0.0)
         var soll := Schlund.zielrichtung(Vector2.ZERO, ort, blick)
         blick = Schlund.gedreht(blick, soll, Graben.DREHTEMPO, TAKT)
+        # **Ohne Abschnittsregel, aber mit dem echten Kegel.** Hier standen
+        # `0.0, 0.0` fuer Kernhaerte und Tiefe - das sind keine Standardwerte,
+        # sondern die haertesten, die es gibt: der Kegel faellt dann vom
+        # ersten Meter an ab und ist nirgends voll hell. Gemessen wurde damit
+        # ein Licht, das im Spiel nicht vorkommt, und zwar fuer jede Art
+        # verschieden stark - lange Anmarschwege litten mehr als kurze.
+        # Weglassen heisst `Schlund.RAND_KERN`/`TIEFE_KERN`, also ruhiges
+        # Wasser; was die Abschnitte davon abziehen, steht in
+        # `Regeln.wirkungsgrad()` und gehoert nicht in den Artenvergleich.
         var hell := Schlund.beleuchtung(Vector2.ZERO, blick, z.halbwinkel(),
-            z.reichweite(), ort, 0.0, 0.0)
+            z.reichweite(), ort)
         rest -= Schlund.schaden_an(z.leistung(), hell,
             Wellen.panzer_in(art, welle),
             Wellen.mindest_licht_in(art, welle),

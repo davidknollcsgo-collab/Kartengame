@@ -130,8 +130,52 @@ static func zahl_in(nummer: int) -> int:
 static var _letzte_nummer := -1
 static var _letzte_liste := PackedInt32Array()
 
+## **Nur fuer den Messstand.** Ist etwas gesetzt, traegt jede Welle genau
+## diese Zuege - `tools/mutationskosten.gd` misst damit dieselbe Welle einmal
+## mit und einmal ohne einen Zug. Anders geht es nicht: `in_welle()` haengt
+## an der Wellennummer, und wer eine Mutation einzeln anschauen will, kann
+## sie nicht herbeiwuenschen, indem er die Nummer wechselt - dann wechselt
+## die ganze Welle mit.
+##
+## Im Spiel bleibt es leer, und `_test_mutationszwang_bleibt_im_werkzeug`
+## liest den Quelltext daraufhin: ausserhalb von `tools/` darf `erzwinge()`
+## nirgends stehen. Eine Schraube, die nur ein Werkzeug drehen darf, muss
+## festgeschraubt sein.
+static var _zwang := PackedInt32Array()
+static var _zwang_an := false
+
+
+## Setzt den Zwang und wirft das Gedaechtnis weg.
+##
+## **Die leere Liste ist ein gueltiger Zwang** und heisst "gar keine
+## Mutation" - nicht "kein Zwang". Der erste Anlauf hat beides
+## zusammengeworfen, und dann war der Nullfall des Messstands in Wahrheit die
+## gewachsene Welle mit ihren zwei bis drei Zuegen: gemessen wurde jede
+## Mutation gegen eine haertere Welle als sich selbst, und alle sechs kamen
+## billiger heraus, als sie eingepreist sind. Zum Aufheben gibt es `frei()`.
+##
+## Wer danach `Wellen.staerke()` fragt, muss auch dort vergessen lassen -
+## `Wellen.vergiss_umgebung()`. Zwei Gedaechtnisse, zwei Handgriffe; sie hier
+## zusammenzufassen hiesse, dass diese Datei `Wellen` kennt, und dann zeigen
+## die Abhaengigkeiten im Kreis.
+static func erzwinge(liste: PackedInt32Array) -> void:
+    _zwang = liste
+    _zwang_an = true
+    _letzte_nummer = -1
+    _letzte_liste = PackedInt32Array()
+
+
+## Hebt den Zwang auf: die Wellen tragen wieder, was ihre Nummer hergibt.
+static func frei() -> void:
+    _zwang = PackedInt32Array()
+    _zwang_an = false
+    _letzte_nummer = -1
+    _letzte_liste = PackedInt32Array()
+
 
 static func in_welle(nummer: int) -> PackedInt32Array:
+    if _zwang_an:
+        return _zwang
     if nummer == _letzte_nummer:
         return _letzte_liste
 
