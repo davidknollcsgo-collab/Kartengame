@@ -48,47 +48,56 @@ godot --headless --path . --script tools/wellenpruefer.gd     # 4 Umdrehungen, ~
 godot --headless --path . --script tools/wellenpruefer.gd -- --spielraum
 godot --headless --path . --script tools/kolonielauf.gd       # 120 Tage Kolonie, ~4 min
 godot --headless --path . --script tools/artenkosten.gd       # was eine Art wirklich kostet
+godot --headless --path . --script tools/mutationskosten.gd   # was ein Zug wirklich kostet, ~30 min
+godot --headless --path . --script tools/mutationskosten.gd -- --zug Plated
 ```
 
-> **Der Wellenprüfer ist rot, und zwar ehrlich.** Er meldet achtzehn
-> gefallene Fahrten, die erste Wand bei Welle 85. Die Fahrprobe im selben
-> Stand trägt neunzig Wellen, verliert aber zwischen 87 und 89 sechzehn von
-> sechsundzwanzig Hülle — **beide zeigen auf dieselbe Stelle**, der Prüfer
-> nur früher, weil er nur ausweichen kann, indem er heranfährt.
+> **Der Wellenprüfer meldet zwei gefallene Sitzungen von achtundvierzig**,
+> die erste Wand bei Welle 164. Er war einmal bei fünfunddreißig; der Weg
+> dorthin steht unten, weil jeder Schritt eine Lehre ist und keiner geraten
+> war.
 >
-> Das ist ein **offener Balance-Posten** und keine Schranke, die gelockert
-> wird, damit CI grün wird — siehe Zusage 26. Zwei unabhängige Werkzeuge
-> sagen dasselbe; das ist ein Fund, kein Messfehler.
->
-> **Der Weg dorthin, gemessen.** Von 35 gefallenen Fahrten (Wand bei 67) über
-> 15 (86) und 18 (85) auf jetzt 14 (95). Was dabei wirklich half und was
-> nicht:
+> Die zwei Reste sind ein **offener Balance-Posten** und kein Anlass, eine
+> Schranke zu lockern — siehe Zusage 26.
 >
 > | Schritt | Fälle | Wand |
 > |---|---|---|
-> | Ausgangslage | 17 | 82 |
-> | Spiegler ganz aus dem Pool (**nur ein Versuch**) | 8 | 119 |
-> | Spiegler-Schwelle 0,78 → 0,90 | 16 | 85 |
-> | Spiegler-Aufwand 1,30 → 2,2 | **14** | **95** |
+> | Prüfer erstmals auf die Fahrt gerichtet | 35 | 67 |
+> | `staerke()` durch `DICHTE` geteilt | 15 | 86 |
+> | Begleiterzahl aus der Zuchtkammer | — | 161 |
+> | nach den neuen Arten und dem fahrenden Simulator | 33 | 70 |
+> | Simulator nimmt die Hülle aus `Ausbau.huelle()` | 18 | 85 |
+> | Spiegler-Aufwand 1,30 → 2,2 | 14 | 95 |
+> | `Schlund.SPIEGEL_REST` 0,45 → 0,58 | 12 | 161 |
+> | **Mutationsstärken gemessen und gesenkt** | **2** | **164** |
 >
-> Die Ablation war der entscheidende Versuch: **der Spiegler allein trug die
-> Hälfte.** Die Schwelle zu heben brachte fast nichts — der Kern des Kegels
-> liegt ohnehin über beiden Werten. Es ist der **Rest**, nicht die Grenze:
-> `Schlund.SPIEGEL_REST` lässt ihn im Kern 45 % Schaden nehmen, er bindet
-> also das 1/0,45fache an Kegelzeit, und genau das steht jetzt in seinem
-> Aufwand. Der Preis ist damit abgeleitet und nicht angepasst, bis der
-> Prüfer grün wird.
+> **Drei Lehren, die sich jedes Mal wiederholt haben.**
 >
-> **Was es nicht ist:** der Kreiser war zwar um das 2,6fache unterbewertet,
-> das verschob die Wand aber nur von 85 auf 82. Und es sind nicht die
-> Schwärme — die Spawncloud kostet über eine ganze Fahrt zwei von
-> einunddreißig Hülle.
+> *Erstens: ein Preis regelt, wie viele kommen — nicht, ob sie sterben.* Beim
+> Spiegler stand er nach zwei Preiserhöhungen weiter an der Spitze der
+> Trefferliste. Was half, war die Eigenschaft selbst (`SPIEGEL_REST`), und
+> zwar nur so weit, wie die Lernbarkeitsschranke sie trägt.
 >
-> **Was offen bleibt:** die restlichen 14 Fälle. Nach dem Spiegler stehen
-> **Lunge Eel** und **Shellback** oben in der Trefferliste. Und ein zweiter
-> Verdacht: `Wellen.umgebung()` fällt in späten Abschnitten weit ab, und ein
-> Budget kann zwar Lebenspunkte kürzen, aber **kein Zeitfenster verlängern**.
-> Wer das anfasst, fasst `Wellen.fenster()` an und nicht die Schranke.
+> *Zweitens: was am einzelnen Tier gemessen wird, verfehlt den Rundumlauf.*
+> `tools/artenkosten.gd` hält den Kegel durchgehend auf ein Tier; Tempo,
+> Drift und Schub kosten dort nichts. Sie kosten, **weil der Kegel bei jemand
+> anderem ist** — und das sieht nur ein Werkzeug, das eine ganze Welle fährt
+> (`tools/mutationskosten.gd`).
+>
+> *Drittens: ein fester Abzug lässt sich nicht multiplikativ bezahlen.*
+> `Mutationen.PANZER_ANTEIL` stand auf 0,14 der Leistung bei **voller**
+> Helligkeit. Im Rundumlauf schwenkt der Kegel, die meisten Ziele stehen im
+> Halbschatten, ein Abschnitt nimmt noch einmal davon weg — vierzehn Prozent
+> vom Maximum waren über die Hälfte des tatsächlichen Schadens. Gemessen: der
+> Zug allein kostete 868 von rund tausend Hüllenpunkten über achtzig Wellen.
+>
+> **Was offen bleibt:** die zwei Sitzungen (Wellen 161–165 und 176). Oben in
+> ihrer Trefferliste stehen **Shellback** und **Spawncloud** — beide mit
+> Aufwand 1,0 und beide gemessen darüber (0,80 und 1,52 in
+> `tools/artenkosten.gd`). Und ein zweiter Verdacht, unverändert:
+> `Wellen.umgebung()` fällt in späten Abschnitten weit ab, und ein Budget
+> kann zwar Lebenspunkte kürzen, aber **kein Zeitfenster verlängern**. Wer
+> das anfasst, fasst `Wellen.fenster()` an und nicht die Schranke.
 
 Der Kolonielauf ist das Werkzeug, das die meisten Fehler gefunden hat. Er
 **spielt die Wellen wirklich durch** — mit dem Koloniestand, den ein normaler
