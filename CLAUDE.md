@@ -60,24 +60,35 @@ godot --headless --path . --script tools/artenkosten.gd       # was eine Art wir
 > wird, damit CI grün wird — siehe Zusage 26. Zwei unabhängige Werkzeuge
 > sagen dasselbe; das ist ein Fund, kein Messfehler.
 >
-> **Was es nicht ist**, ist inzwischen gemessen. Der Kreiser war um das
-> 2,6fache unterbewertet; das war ein echter Buchungsfehler, hat die Wand
-> aber nur von 85 auf 82 verschoben. Und es sind auch nicht die Schwärme:
-> die Spawncloud kostet über eine ganze Fahrt zwei von einunddreißig Hülle.
+> **Der Weg dorthin, gemessen.** Von 35 gefallenen Fahrten (Wand bei 67) über
+> 15 (86) und 18 (85) auf jetzt 14 (95). Was dabei wirklich half und was
+> nicht:
 >
-> **Was es sein dürfte.** Die Hülle geht bei jedem gefallenen Lauf an
-> dieselben drei: **Mirrorshell**, **Lunge Eel**, **Shellback**. Der
-> Spiegler erklärt sich von selbst — `Schlund.brennende()` nimmt die Tiere
-> mit der größten Wirkung zuerst, und ein Spiegler im Kern des Kegels nimmt
-> fast nichts, wird also nie gewählt und läuft in Ruhe heran. Sein
-> `hoechst_licht` von 0,78 war für die Schlundwache entworfen, wo ein Kegel
-> einer Bahn gegenüberstand; hier heißt „nur der Saum brennt ihn" faktisch
-> „er ist unverwundbar, solange man irgendetwas anderes bekämpft".
+> | Schritt | Fälle | Wand |
+> |---|---|---|
+> | Ausgangslage | 17 | 82 |
+> | Spiegler ganz aus dem Pool (**nur ein Versuch**) | 8 | 119 |
+> | Spiegler-Schwelle 0,78 → 0,90 | 16 | 85 |
+> | Spiegler-Aufwand 1,30 → 2,2 | **14** | **95** |
 >
-> Ein zweiter Verdacht bleibt offen: `Wellen.umgebung()` fällt in späten
-> Abschnitten weit ab, und ein Budget kann zwar Lebenspunkte kürzen, aber
-> **kein Zeitfenster verlängern**. Wer das anfasst, fasst `Wellen.fenster()`
-> an und nicht die Schranke.
+> Die Ablation war der entscheidende Versuch: **der Spiegler allein trug die
+> Hälfte.** Die Schwelle zu heben brachte fast nichts — der Kern des Kegels
+> liegt ohnehin über beiden Werten. Es ist der **Rest**, nicht die Grenze:
+> `Schlund.SPIEGEL_REST` lässt ihn im Kern 45 % Schaden nehmen, er bindet
+> also das 1/0,45fache an Kegelzeit, und genau das steht jetzt in seinem
+> Aufwand. Der Preis ist damit abgeleitet und nicht angepasst, bis der
+> Prüfer grün wird.
+>
+> **Was es nicht ist:** der Kreiser war zwar um das 2,6fache unterbewertet,
+> das verschob die Wand aber nur von 85 auf 82. Und es sind nicht die
+> Schwärme — die Spawncloud kostet über eine ganze Fahrt zwei von
+> einunddreißig Hülle.
+>
+> **Was offen bleibt:** die restlichen 14 Fälle. Nach dem Spiegler stehen
+> **Lunge Eel** und **Shellback** oben in der Trefferliste. Und ein zweiter
+> Verdacht: `Wellen.umgebung()` fällt in späten Abschnitten weit ab, und ein
+> Budget kann zwar Lebenspunkte kürzen, aber **kein Zeitfenster verlängern**.
+> Wer das anfasst, fasst `Wellen.fenster()` an und nicht die Schranke.
 
 Der Kolonielauf ist das Werkzeug, das die meisten Fehler gefunden hat. Er
 **spielt die Wellen wirklich durch** — mit dem Koloniestand, den ein normaler
@@ -146,6 +157,15 @@ heran. Gemessen kostet er 0,94, in einer echten Fahrt ist er der teuerste
 Posten der Hülle. Deshalb ist `_test_keine_art_kostet_ein_vielfaches` bei
 Faktor 2 angesetzt und nicht bei 1,2: er soll fangen, was um ein Vielfaches
 danebenliegt, und nicht das Messrauschen bewerten.
+
+**Der Einstieg in die Kolonie zeigte gar nichts mehr.** `Lehrpfad` wurde
+ausschließlich aus `wache.gd` gesetzt; seit deren Löschung stand `_lehre` für
+immer auf −1, und ein neuer Spieler bekam die Fahrt erklärt und den Ausbau
+**nicht**. Toter Code, der aussieht wie ein Einstieg. Der Pfad erklärt jetzt
+nur noch die Kolonie — die Fahrt erklärt sich selbst (`rundlauf.gd::LEHRE`) —,
+und `kolonie_schirm.gd` führt ihn selbst: weiter geht es, wenn der Spieler
+**getan hat, wovon der Satz redet**, nicht nach einer Uhr. Wer liest, soll
+nicht überholt werden.
 
 ## Optik prüfen (Screenshots)
 

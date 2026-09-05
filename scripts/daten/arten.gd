@@ -84,7 +84,7 @@ const TABELLE: Array[Dictionary] = [
     {
         &"kennung": &"ZAHNKIEFER",
         &"name": "Fangjaw",
-        &"regel": "Sinks straight and dies fast. The yardstick for everything else.",
+        &"regel": "Comes straight at you and dies fast. The yardstick for everything else.",
         &"leben": 22.0,
         &"tempo": 92.0,
         &"radius": 17.0,
@@ -137,7 +137,7 @@ const TABELLE: Array[Dictionary] = [
     {
         &"kennung": &"SCHILDKORALLE",
         &"name": "Shieldcoral",
-        &"regel": "Armour: a flat amount is subtracted each second. Guard polyps barely scratch it.",
+        &"regel": "Armour: a flat amount is subtracted each second. Your escort barely scratches it.",
         &"leben": 58.0,
         &"tempo": 44.0,
         &"radius": 24.0,
@@ -167,7 +167,7 @@ const TABELLE: Array[Dictionary] = [
     {
         &"kennung": &"TREIBANKER",
         &"name": "Driftanchor",
-        &"regel": "Drifts sideways across the screen. Leaves the cone even if you hold still.",
+        &"regel": "Slides sideways as it closes. Leaves the cone even if you hold still.",
         &"leben": 44.0,
         &"tempo": 56.0,
         &"radius": 19.0,
@@ -182,7 +182,7 @@ const TABELLE: Array[Dictionary] = [
     {
         &"kennung": &"SPRUNGAAL",
         &"name": "Lunge Eel",
-        &"regel": "Sinks in bursts. Your usual tracking misses it.",
+        &"regel": "Closes in bursts. Your usual tracking misses it.",
         &"leben": 28.0,
         &"tempo": 118.0,
         &"radius": 14.0,
@@ -207,7 +207,23 @@ const TABELLE: Array[Dictionary] = [
         &"farbe": Color(0.80, 0.84, 0.98),
         &"ab_welle": 54,
         &"hoechst_licht": 0.78,
-        &"aufwand": 1.30,
+        # **Der Preis kommt aus `Schlund.SPIEGEL_REST`.**
+        #
+        # Im Kern des Kegels nimmt er nur 45 % Schaden. Ein Daumen, der auf
+        # das naechste Tier zielt, hat ihn meistens genau dort - also bindet
+        # er im Schnitt das 1/0,45fache an Kegelzeit, und das ist 2,2.
+        # Eingetragen stand 1,30.
+        #
+        # Der Unterschied ist gemessen und nicht geschaetzt: nimmt man ihn
+        # ganz aus dem Pool, faellt der Wellenpruefer von siebzehn auf acht
+        # Sitzungen und die erste Wand wandert von Welle 82 auf 119. Er
+        # allein trug die Haelfte.
+        #
+        # **Was nicht geholfen hat:** die Schwelle von 0,78 auf 0,90 zu
+        # heben. Sechzehn statt siebzehn Faelle - der Kern des Kegels liegt
+        # ohnehin ueber beiden Werten, also aendert die Schwelle fast
+        # nichts. Es ist der Rest, nicht die Grenze.
+        &"aufwand": 2.2,
     },
     {
         &"kennung": &"LAICHWOLKE",
@@ -290,7 +306,7 @@ const TABELLE: Array[Dictionary] = [
     {
         &"kennung": &"SCHLUNDMUTTER",
         &"name": "Maw Mother",
-        &"regel": "Warden at the end of every section. Slow, very tough - and one hit costs a third of the brood.",
+        &"regel": "Warden at the end of every section. Slow, very tough - and one hit costs four times what anything else does.",
         &"leben": 1.0,
         # So langsam, dass sie erst gegen Ende der Welle bei der Brut waere.
         # Das ist der Entwurf: sie ist das Finale, nicht die Ueberraschung.

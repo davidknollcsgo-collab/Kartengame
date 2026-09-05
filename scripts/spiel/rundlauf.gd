@@ -341,6 +341,11 @@ func _ready() -> void:
     # liegt der Bildschirm ueber einer Welle, die nie gelaufen ist, und im
     # Bestiarium steht zwoelfmal "Not yet encountered". Ohne Schuss gilt der
     # Schalter sofort - dann will ihn jemand einfach ansehen.
+    # **Der Einstieg in die Kolonie laesst sich ansehen.** `--lehre n` setzt
+    # den Schritt dort genauso wie in der Fahrt; ohne das gaebe es fuer den
+    # halben Einstieg keinen Schuss.
+    if _lehre_ab >= 0 and _lehre_ab < Lehrpfad.anzahl():
+        _koloniebild.zeige_einstieg(_lehre_ab)
     if _kolonie_reiter >= 0 and _schuss.is_empty():
         oeffne_kolonie(_kolonie_reiter)
     if _fahrprobe > 0:

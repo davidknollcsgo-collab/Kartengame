@@ -2256,8 +2256,22 @@ func _test_jede_brutlinie_tut_etwas() -> bool:
 ##
 ## Umgekehrt darf kein Ziel zweimal vorkommen: zwei Schritte, die auf
 ## denselben Ring zeigen, sind einer zu viel.
+## Der Einstieg in die Kolonie ist vollstaendig und schickt niemanden zurueck.
+##
+## **Die alte Regel war "ein Ziel, ein Schritt".** Sie stimmte, solange ein
+## Ziel ein einzelnes Bedienelement war - der Wellenknopf, das Gelege, eine
+## Knospe. Seit der Einstieg nur noch die Kolonie erklaert, ist ein Ziel ein
+## **Reiter**, und mehrere Saetze auf demselben Reiter sind kein Fehler,
+## sondern der Normalfall: Kammer heben, was die Kammern tun, was der Schacht
+## aufmacht.
+##
+## Was stattdessen gilt: jeder Schritt hat Titel und Satz, jeder zeigt auf
+## einen Reiter, den es gibt, und die Reihenfolge geht **nie zurueck** - ein
+## Einstieg, der den Spieler zwischen zwei Reitern hin und her schickt, ist
+## eine Schnitzeljagd und keine Fuehrung.
 func _test_lehrpfad_zeigt_auf_alles() -> bool:
-    var gezaehlt := {}
+    var zuletzt := -1
+    var gesehen := {}
     for schritt in Lehrpfad.anzahl():
         if not _melde(not Lehrpfad.titel(schritt).is_empty(),
                 "Lehrschritt %d hat keinen Titel" % schritt):
@@ -2265,21 +2279,36 @@ func _test_lehrpfad_zeigt_auf_alles() -> bool:
         if not _melde(Lehrpfad.satz(schritt).length() > 20,
                 "Lehrschritt %d hat keinen Satz" % schritt):
             return false
-        var ziel := Lehrpfad.ziel(schritt)
-        if ziel == Lehrpfad.Ziel.KEINS:
-            continue
-        if not _melde(not gezaehlt.has(ziel),
-                "Zwei Lehrschritte zeigen auf dasselbe Ziel %d" % ziel):
+        var r := Lehrpfad.reiter(schritt)
+        if not _melde(r >= 0 and r < Lehrpfad.REITER_ANZAHL,
+                "Lehrschritt %d zeigt auf Reiter %d, den es nicht gibt"
+                % [schritt, r]):
             return false
-        gezaehlt[ziel] = schritt
+        if not _melde(r >= zuletzt,
+                "Lehrschritt %d schickt von Reiter %d zurueck auf %d"
+                % [schritt, zuletzt, r]):
+            return false
+        zuletzt = r
+        gesehen[Lehrpfad.ziel(schritt)] = true
 
     for ziel in Lehrpfad.Ziel.values():
         if ziel == Lehrpfad.Ziel.KEINS:
             continue
-        if not _melde(gezaehlt.has(ziel),
+        if not _melde(gesehen.has(ziel),
                 "Auf Ziel %d zeigt kein Lehrschritt" % ziel):
             return false
-    return true
+
+    # **Und die Reiterzahl muss stimmen.** `Lehrpfad` gibt einen Index
+    # zurueck, `kolonie_schirm.gd` zeichnet die Reiter - laufen die beiden
+    # auseinander, zeigt ein Satz auf einen Reiter, den es nicht gibt, und
+    # das faellt erst auf, wenn ihn jemand erreicht.
+    var quelle := FileAccess.get_file_as_string(
+        "res://scripts/ui/kolonie_schirm.gd")
+    var zeile := quelle.substr(quelle.find("enum Sicht"), 80)
+    var wieviele := zeile.split("}")[0].split(",").size()
+    return _melde(wieviele == Lehrpfad.REITER_ANZAHL,
+        "der Koloniebildschirm hat %d Reiter, der Lehrpfad rechnet mit %d"
+        % [wieviele, Lehrpfad.REITER_ANZAHL])
 
 
 ## Jede Nische muss auf ihrer Ranke sitzen.

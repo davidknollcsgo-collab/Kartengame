@@ -217,6 +217,9 @@ func _eingabe(ereignis: InputEvent) -> void:
         if _reiter[r].has_point(ort):
             Klang.spiele(Klang.Ton.TIPP)
             _sicht = r as Sicht
+            # Wer den Tagesreiter aufschlaegt, hat den Satz darueber gelesen.
+            if _sicht == Sicht.TAG:
+                _einstieg_weiter(&"TAG")
             _loeschen_sicher = false
             _meldung_leben = 0.0
             return
@@ -290,6 +293,11 @@ func _versuche_ausbau(kammer: int) -> void:
         return
     if stand.starte_bau(kammer, Time.get_unix_time_from_system()):
         Klang.spiele(Klang.Ton.POLYP, 0.8)
+        # Getan, wovon der Satz redet - erst die Kammer, dann der Schacht.
+        _einstieg_weiter(&"KAMMER")
+        _einstieg_weiter(&"WOFUER")
+        if kammer == Kammern.Kammer.TIEFENSCHACHT:
+            _einstieg_weiter(&"SCHACHT")
         Fortschritt.sichere()
         Fortschritt.stand_geaendert.emit()
         _zeige("Digging the %s" % Kammern.name_von(kammer))
@@ -355,6 +363,7 @@ func _versuche_linie(index: int) -> void:
         return
     if stand.zuechte(index):
         Klang.spiele(Klang.Ton.KAMMER, 1.1, 0.7)
+        _einstieg_weiter(&"LINIEN")
         Fortschritt.sichere()
         Fortschritt.stand_geaendert.emit()
         _zeige("%s bred" % Brutlinien.name_von(index))
@@ -369,6 +378,7 @@ func _zeige(was: String) -> void:
 
 func _zeichne() -> void:
     _miss_geraeterand()
+    _fuehre_einstieg()
     var breite := _flaeche.size.x
     # Der Fuss haengt am unteren Rand; was das Geraet dort beansprucht, muss
     # von der nutzbaren Hoehe ab, sonst liegt "BACK TO THE MAW" unter dem
@@ -477,7 +487,7 @@ func _zeichne() -> void:
     # der den Spielstand loescht. Ein Erklaertext, der eine Schaltflaeche
     # verdeckt, ist schlimmer als keiner - und der Satz redet ohnehin von den
     # Kammern.
-    if Lehrpfad.in_der_kolonie(_lehre) and _sicht == Sicht.KAMMERN:
+    if Lehrpfad.gilt(_lehre) and Lehrpfad.reiter(_lehre) == int(_sicht):
         _lehrtafel(breite, hoehe)
     _fusszeile(breite, hoehe)
 
@@ -1989,16 +1999,73 @@ func _stufenzeile(wo: Vector2, breite: float, stufe: int, bis: int,
         NAEHR if stufe >= bis else LEISE, false, true)
 
 
-## Setzt den Lehrschritt. `wache.gd` ruft das; -1 heisst: nichts anzeigen.
+## Setzt den Lehrschritt von aussen. -1 heisst: nichts anzeigen.
+##
+## **Der Bildschirm treibt ihn seit der Loeschung selbst** - siehe
+## `_fuehre_einstieg()`. Diese Tuer bleibt fuer die Werkzeuge (`--lehre`)
+## und fuer den Fall, dass ihn spaeter wieder jemand von aussen setzen will.
 func zeige_einstieg(schritt: int) -> void:
     _lehre = schritt
+    _lehre_von_hand = schritt >= 0
+
+
+## Ob der Schritt von aussen gesetzt wurde. Ohne diese Marke ueberschreibt
+## `_fuehre_einstieg()` im naechsten Bild, was `--lehre` gerade gesetzt hat -
+## und der Schalter, mit dem man den Einstieg ansehen will, zeigt nichts.
+var _lehre_von_hand := false
+
+
+## Den Einstieg fuehren, solange er laeuft.
+##
+## **Er lief nirgends mehr.** Gesetzt wurde er ausschliesslich aus
+## `wache.gd`; seit deren Loeschung stand `_lehre` fuer immer auf -1, und ein
+## neuer Spieler bekam die Fahrt erklaert und den Ausbau gar nicht. Der
+## Bildschirm, um den es geht, ist dieser - also fuehrt er ihn selbst.
+##
+## Weiter geht es, wenn der Spieler **getan hat, wovon der Satz redet**: eine
+## Kammer gehoben, eine Linie gezuechtet, den Tagesreiter geoeffnet. Eine Uhr
+## waere hier falsch - wer liest, soll nicht ueberholt werden.
+func _fuehre_einstieg() -> void:
+    if _lehre_von_hand:
+        return
+    var stand: KolonieStand = Fortschritt.stand
+    if stand.einstieg < 0 or stand.einstieg >= Lehrpfad.anzahl():
+        _lehre = -1
+        return
+    _lehre = stand.einstieg
+
+
+## Der Spieler hat getan, was der laufende Schritt verlangt.
+func _einstieg_weiter(kennung: StringName) -> void:
+    var stand: KolonieStand = Fortschritt.stand
+    if not Lehrpfad.gilt(stand.einstieg):
+        return
+    if Lehrpfad.kennung(stand.einstieg) != kennung:
+        return
+    stand.einstieg += 1
+    Fortschritt.sichere()
 
 
 ## Dieselbe Tafel wie im HUD, nur ohne Ring: hier zeigt der Bildschirm selbst
 ## schon auf die Kammern, weil er aus nichts anderem besteht.
+## Wieviele Zeilen der Satz hoechstens bekommt, und wie hoch eine ist.
+const LEHR_ZEILEN := 3
+const LEHR_ZEILENHOCH := 18.0
+
+
 func _lehrtafel(breite: float, hoehe: float) -> void:
     var puls := 0.5 + 0.5 * sin(_zeit * 2.0)
-    var kasten := Rect2(RAND, hoehe - FUSS - 74.0, breite - RAND * 2.0, 64.0)
+    # **Der Satz wird umgebrochen, und der Kasten waechst mit.**
+    #
+    # Er stand in einer Zeile in einem Kasten fester Hoehe, und die Saetze
+    # des alten Einstiegs waren kurz genug dafuer. Die neuen sind es nicht:
+    # "…even with the app closed" lief rechts aus dem Bild, und ein
+    # Erklaertext, dessen Ende fehlt, erklaert die Haelfte.
+    var innen := breite - RAND * 2.0 - 30.0
+    var zeilen := _breche_um(Lehrpfad.satz(_lehre), 13, innen)
+    var hoch := 34.0 + float(zeilen.size()) * LEHR_ZEILENHOCH + 10.0
+    var kasten := Rect2(RAND, hoehe - FUSS - hoch - 10.0,
+        breite - RAND * 2.0, hoch)
     _flaeche.draw_rect(kasten, Color(0.035, 0.105, 0.135, 0.92))
     _flaeche.draw_rect(kasten, Color(0.42, 0.86, 0.92, 0.24 + 0.16 * puls),
         false, 1.4)
@@ -2008,8 +2075,30 @@ func _lehrtafel(breite: float, hoehe: float) -> void:
         Lehrpfad.titel(_lehre), 16, NAEHR)
     _text(Vector2(kasten.end.x - 14.0, kasten.position.y + 24.0),
         "%d/%d" % [_lehre + 1, Lehrpfad.anzahl()], 12, LEISE, false, true)
-    _text(Vector2(kasten.position.x + 16.0, kasten.position.y + 48.0),
-        Lehrpfad.satz(_lehre), 13, SCHRIFT)
+    for i in zeilen.size():
+        _text(Vector2(kasten.position.x + 16.0,
+            kasten.position.y + 46.0 + float(i) * LEHR_ZEILENHOCH),
+            zeilen[i], 13, SCHRIFT)
+
+
+## Einen Satz auf eine Breite umbrechen. Wortweise - mitten im Wort zu
+## trennen braeuchte Silbenregeln, und die haengen an der Sprache.
+func _breche_um(satz: String, groesse: int, weite: float) -> PackedStringArray:
+    var zeilen := PackedStringArray()
+    var laufend := ""
+    for wort in satz.split(" "):
+        var versuch := wort if laufend.is_empty() else laufend + " " + wort
+        if _schrift.get_string_size(versuch, HORIZONTAL_ALIGNMENT_LEFT, -1,
+                groesse).x <= weite or laufend.is_empty():
+            laufend = versuch
+        else:
+            zeilen.append(laufend)
+            laufend = wort
+        if zeilen.size() >= LEHR_ZEILEN:
+            break
+    if not laufend.is_empty() and zeilen.size() < LEHR_ZEILEN:
+        zeilen.append(laufend)
+    return zeilen
 
 
 func _fusszeile(breite: float, hoehe: float) -> void:

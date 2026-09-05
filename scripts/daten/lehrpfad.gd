@@ -31,80 +31,56 @@ extends RefCounted
 ## Worauf der Ring zeigt.
 enum Ziel {
     KEINS,          ## Kein Ring - der Satz steht fuer sich.
-    KEGEL,          ## Ein wandernder Ring im unteren Drittel: der Daumen.
-    WELLENKNOPF,    ## Der Knopf, der die Welle losschickt.
-    BRUT,           ## Das Gelege.
-    NISCHE,         ## Die naechste freie Knospe an der Ranke.
-    STOSSKNOPF,     ## Der Knopf unten rechts: das Stosslicht.
-    KOLONIEKNOPF,   ## Der Weg in die Kolonie.
-    KAMMERN,        ## Im Koloniebildschirm: die Kammerliste.
+    KAMMERN,        ## Die Kammerliste.
+    LINIEN,         ## Der Reiter mit den Brutlinien.
+    TAG,            ## Der Tagesreiter.
 }
 
-## Die Schritte in der Reihenfolge, in der sie fallen. Die Reihenfolge ist
-## nicht frei gewaehlt, sondern die des Spiels selbst: rufen, ziehen, treffen,
-## die Welle ueberstehen, bauen, ausbauen, wiederkommen.
+## Der Einstieg **in die Kolonie**, und nur dorthin.
 ##
-## **Gerufen wird zuerst, nicht gezogen.** Hier stand "HOLD AND SWEEP" an
-## erster Stelle - und der erste Bildschirm, den ein neuer Spieler sieht, ist
-## die Bauphase. Dort gibt es keinen Kegel zu ziehen: Tippen setzt einen
-## Polypen, und die Zeile darueber sagt genau das. Der allererste Satz des
-## Spiels widersprach also der Zeile direkt ueber ihm und dem Bildschirm, auf
-## dem er stand. Ein Einstieg, dessen erster Schritt auf dem ersten Bild
-## nicht stimmt, kostet mehr Vertrauen als er aufbaut.
+## **Er zeigte lange gar nichts.** Vorher standen hier neun Schritte, die
+## den Spieler durch die Schlundwache fuehrten - rufen, ziehen, treffen, die
+## Brut halten, einen Polypen setzen. Die Schleife ist geloescht, und der
+## einzige Aufrufer war `wache.gd`: seit deren Loeschung setzte niemand mehr
+## den Schritt, `_lehre` blieb auf -1, und ein neuer Spieler bekam die Fahrt
+## erklaert und den Ausbau **gar nicht**. Toter Code, der aussieht wie ein
+## Einstieg.
+##
+## Die Fahrt erklaert sich seither selbst (`rundlauf.gd::LEHRE`, drei Saetze
+## waehrend gespielt wird). Was dort nicht hingehoert, ist die Kolonie: sie
+## ist ein eigener Bildschirm, man kommt freiwillig hin, und dort hat ein
+## Satz Platz. Also erklaert dieser Pfad genau das - und hoert auf, wo der
+## Bildschirm aufhoert.
 const TAFEL: Array[Dictionary] = [
-    {
-        &"kennung": &"STARTEN",
-        &"titel": "SEND FOR THEM",
-        &"satz": "Nothing comes out of the dark until you call it. Five waves make one session.",
-        &"ziel": Ziel.WELLENKNOPF,
-    },
-    {
-        &"kennung": &"ZIEHEN",
-        &"titel": "HOLD AND SWEEP",
-        &"satz": "Press anywhere and drag. The light cone follows your finger.",
-        &"ziel": Ziel.KEGEL,
-    },
-    {
-        &"kennung": &"BRENNEN",
-        &"titel": "LIGHT BURNS",
-        &"satz": "Whatever stands in the cone takes damage. The bright core burns fastest, and the cone holds only a few at once.",
-        &"ziel": Ziel.KEINS,
-    },
-    {
-        &"kennung": &"STOSS",
-        &"titel": "THE BURST",
-        &"satz": "Tap the ring, bottom right. The guardian throws a shockwave that hits everything it crosses - even outside the cone. It recharges on its own.",
-        &"ziel": Ziel.STOSSKNOPF,
-    },
-    {
-        &"kennung": &"BRUT",
-        &"titel": "GUARD THE BROOD",
-        &"satz": "A raider that slips past takes an egg. Lose every egg and the session ends - the colony keeps what it earned.",
-        &"ziel": Ziel.BRUT,
-    },
-    {
-        &"kennung": &"POLYP",
-        &"titel": "GROW A POLYP",
-        &"satz": "Between waves, tap a bud on the vine. The guard polyp that grows there fires on its own while you sweep.",
-        &"ziel": Ziel.NISCHE,
-    },
-    {
-        &"kennung": &"KOLONIE",
-        &"titel": "OPEN THE COLONY",
-        &"satz": "Nutrients from the maw are spent down in the trench. That is where the cone gets stronger.",
-        &"ziel": Ziel.KOLONIEKNOPF,
-    },
     {
         &"kennung": &"KAMMER",
         &"titel": "RAISE A CHAMBER",
-        &"satz": "Tap a chamber to raise it. It takes time to dig, and it keeps digging while you are away.",
+        &"satz": "Tap a chamber to raise it. It takes time to dig, and it keeps digging while you are away - even with the app closed.",
         &"ziel": Ziel.KAMMERN,
     },
     {
-        &"kennung": &"SITZUNG",
-        &"titel": "FIVE WAVES A SESSION",
-        &"satz": "After five waves the brood is whole again and the polyps are gone. Come back, go deeper, and take the trench a section at a time.",
-        &"ziel": Ziel.KEINS,
+        &"kennung": &"WOFUER",
+        &"titel": "WHAT THE CHAMBERS DO",
+        &"satz": "The light organ makes the beam burn hotter and hold more at once. The brood chamber is your hull. The polyp chamber sends more escorts down with you.",
+        &"ziel": Ziel.KAMMERN,
+    },
+    {
+        &"kennung": &"SCHACHT",
+        &"titel": "THE SHAFT OPENS THE TRENCH",
+        &"satz": "The deep shaft is what lets you dive further. Raise it and the next section of the trench opens.",
+        &"ziel": Ziel.KAMMERN,
+    },
+    {
+        &"kennung": &"LINIEN",
+        &"titel": "BREED A LINE",
+        &"satz": "Lines are bred, never drawn - you pick one, nutrients are the price, the result is fixed. Several can carry at once; the brood chamber opens the slots.",
+        &"ziel": Ziel.LINIEN,
+    },
+    {
+        &"kennung": &"TAG",
+        &"titel": "COME BACK TOMORROW",
+        &"satz": "Three waves a day pay double, and the calendar hands you something for showing up. The trench keeps what you earned either way.",
+        &"ziel": Ziel.TAG,
     },
 ]
 
@@ -126,12 +102,35 @@ static func satz(schritt: int) -> String:
     return String(TAFEL[clampi(schritt, 0, TAFEL.size() - 1)][&"satz"])
 
 
+## Die feste Kennung eines Schritts. Deutsch und unveraenderlich - der
+## Bildschirm fragt danach, ob der Spieler getan hat, wovon der Satz redet,
+## und ein angezeigter Titel darf sich aendern, ohne dass das bricht.
+static func kennung(schritt: int) -> StringName:
+    return TAFEL[clampi(schritt, 0, TAFEL.size() - 1)][&"kennung"]
+
+
 static func ziel(schritt: int) -> int:
     return int(TAFEL[clampi(schritt, 0, TAFEL.size() - 1)][&"ziel"])
 
 
-## Ob dieser Schritt im Koloniebildschirm steht statt im Schlund. Der
-## Bildschirm deckt das HUD ab; ein Satz, der dort faellig ist, muss dort
-## gezeichnet werden, sonst zeigt er auf etwas, das gerade nicht zu sehen ist.
-static func in_der_kolonie(schritt: int) -> bool:
-    return gilt(schritt) and ziel(schritt) == Ziel.KAMMERN
+## Wieviele Reiter der Koloniebildschirm hat.
+##
+## **Steht hier, obwohl der Bildschirm sie zeichnet.** `Lehrpfad.reiter()`
+## gibt einen Reiterindex zurueck, also muss die Datenschicht wissen, wieviele
+## es gibt - sonst zeigt ein Schritt auf einen Reiter, den es nicht gibt, und
+## das faellt erst auf, wenn ihn jemand erreicht. Der Testlauf haelt die Zahl
+## gegen das `enum Sicht` in `kolonie_schirm.gd`.
+const REITER_ANZAHL := 5
+
+
+## Auf welchem Reiter dieser Schritt faellig ist. Ein Satz ueber die
+## Brutlinien, der auf dem Kammerreiter steht, zeigt auf etwas, das gerade
+## nicht zu sehen ist.
+static func reiter(schritt: int) -> int:
+    match ziel(schritt):
+        Ziel.LINIEN:
+            return 1
+        Ziel.TAG:
+            return 4
+        _:
+            return 0

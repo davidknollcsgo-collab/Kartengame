@@ -95,14 +95,14 @@ const TABELLE: Array[Dictionary] = [
     },
     {
         &"name": "Polyp Chamber",
-        &"zweck": "Guard polyps hit harder and cost less.",
+        &"zweck": "More escorts ride with you, and each one hits harder.",
         &"kosten": 22.0,
         &"wachstum": 1.58,
         &"zeit_faktor": 0.8,
     },
     {
         &"name": "Brood Chamber",
-        &"zweck": "More brood in the maw - more mistakes you survive.",
+        &"zweck": "A thicker hull, and room to carry more bred lines at once.",
         &"kosten": 34.0,
         &"wachstum": 1.52,
         &"zeit_faktor": 1.15,
