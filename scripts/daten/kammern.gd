@@ -245,6 +245,23 @@ static func winkel_faktor(leuchtorgan: int) -> float:
     return 1.0 + WINKEL_JE_STUFE * maxi(0, leuchtorgan)
 
 
+## Wieviele Begleiter die Zuchtkammer stellt.
+##
+## **Eine Stufe alle drei Kammerstufen**, gedeckelt. Die Zahl ist so
+## gewaehlt, dass sie auf `Ausbau.stufe_soll()` genau die Kurve trifft, die
+## vorher als `1 + (welle - 1) / 8` in `Ausbau` stand - dieselben Werte an
+## jedem Punkt, nur jetzt aus der Kammer statt aus der Wellennummer. Damit
+## gilt hier dasselbe wie fuer Leistung, Reichweite und Winkel: es gibt
+## genau eine Ausbaukurve, und der Spieler benutzt dieselben Funktionen wie
+## der Pruefer.
+const BEGLEITER_JE_STUFEN := 3
+
+
+static func begleiter(zuchtkammer: int) -> int:
+    return clampi(1 + maxi(0, zuchtkammer) / BEGLEITER_JE_STUFEN,
+        1, Rundum.BEGLEITER_HOECHSTENS)
+
+
 static func polyp_leistung(zuchtkammer: int) -> float:
     return Graben.POLYP_LEISTUNG * (1.0 + POLYP_JE_STUFE * maxi(0, zuchtkammer))
 

@@ -49,13 +49,22 @@ godot --headless --path . --script tools/wellenpruefer.gd -- --spielraum
 godot --headless --path . --script tools/kolonielauf.gd      # 120 Tage Kolonie, ~4 min
 ```
 
-> **Offen seit der Löschung der Schlundwache:** `tools/simulation.gd` — der
-> Kern, auf dem Wellenprüfer *und* Kolonielauf stehen — modelliert noch die
-> gelöschte Schleife: ein fester Wächter, Räuber, die von oben sinken,
-> Wehrpolypen in Nischen. Er ist rein (kennt weder Szene noch Autoload) und
-> läuft deshalb weiter durch, aber er misst ein Spiel, das es nicht mehr
-> gibt. Bis er auf die Fahrt umgebaut ist, ist die **Fahrprobe** der einzige
-> Wächter, der die gespielte Schleife anfasst.
+> **Wellenprüfer und Kolonielauf sind rot, und zwar ehrlich.** Seit sie die
+> gefahrene Schleife messen statt der gelöschten, melden beide dasselbe: die
+> Wellen 1 bis 160 tragen, ab Welle 161 fällt es auseinander. Der
+> Wellenprüfer zählt zehn gefallene Fahrten, alle in Zyklus 2, wo die
+> Sollstufe am Kammerdeckel steht und die Mutationen sich stapeln; der
+> Kolonielauf kommt in 120 Tagen bis Welle 221, meldet aber 60 gefallene
+> Sitzungen und achtzehn Tage Stillstand bei Welle 171.
+>
+> Das ist ein **offener Balance-Posten** und keine Schranke, die gelockert
+> wird, damit CI grün wird — siehe Zusage 26. Zwei unabhängige Werkzeuge und
+> die Fahrprobe sagen dasselbe; das ist ein Fund, kein Messfehler.
+>
+> Der wahrscheinlichste Grund steht schon im Werkzeug: `Wellen.umgebung()`
+> fällt in Zyklus 2 auf 0,35, und ein Budget kann zwar Lebenspunkte kürzen,
+> aber **kein Zeitfenster verlängern**. Wer das anfasst, fasst
+> `Wellen.fenster()` an und nicht die Schranke.
 
 Der Kolonielauf ist das Werkzeug, das die meisten Fehler gefunden hat. Er
 **spielt die Wellen wirklich durch** — mit dem Koloniestand, den ein normaler
@@ -440,6 +449,34 @@ unter einer strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
    eins, und beides zusammen machte aus einem Zahnkiefer im Strahl einen
    weißen Klecks mit einer Flosse daran. Ganz weg darf er nicht: er trägt die
    **Farbe** der Art nach außen, und die Nachbearbeitung kennt nur Helligkeit.
+
+29. **Die Wellenstärke ist durch `Rundum.DICHTE` geteilt.** Gespielt wird nie
+   eine Welle allein: eine Fahrtrunde nimmt `DICHTE` Wellen auf einmal und
+   schiebt sie ineinander. `Ausbau.durchsatz()` sagt, was ein Spieler in
+   **einer** Welle leisten kann — drei davon gleichzeitig sind das Dreifache
+   an Leben gegen dieselbe Leistung.
+
+   Solange es zwei Schleifen gab, hing an `DICHTE` ausdrücklich keine
+   Zusage („von Hand gesetzt und von Hand nachgesehen"), weil der
+   Wellenprüfer die Fahrt nicht messen konnte. Seit er es tut, hängt die
+   ganze Kurve daran: der erste Lauf des umgebauten Prüfers meldete
+   **fünfunddreißig** gefallene Fahrten, erste Wand bei Welle 67 — und der
+   Pilot der Fahrprobe stand bei Welle 60 unabhängig davon auf vier von
+   zwanzig Hülle. Zwei Werkzeuge, dieselbe Aussage.
+
+   Der Ertrag bleibt unberührt: `wert_in()` ist ein **Anteil** an
+   `staerke()`, und die Fahrt teilt ihn noch einmal durch `DICHTE`. Drei
+   Drittel einer gedrittelten Welle sind eine ganze.
+
+30. **Die Zahl der Begleiter kommt aus der Zuchtkammer.** Sie waren fest
+   drei, während `Ausbau.durchsatz()` mit bis zu acht Polypen rechnete — die
+   Sollkurve setzte also eine Leistung voraus, die es im Boot nicht gab.
+   `Kammern.begleiter()` sagt jetzt, wie viele es sind, `Ausbau.begleiter()`
+   liest dieselbe Funktion auf `stufe_soll()` ab, und `rundlauf.gd` stellt
+   sie bei jedem Ausbau neu auf. Das ist Zusage 8 für eine weitere Größe:
+   eine Ausbaukurve, dieselben `Kammern`-Funktionen für Spieler und Prüfer.
+
+   Nach beiden Korrekturen: von „Wand bei Welle 67" über 86 auf **161**.
 
 ## Der Rundumlauf — die Schleife
 

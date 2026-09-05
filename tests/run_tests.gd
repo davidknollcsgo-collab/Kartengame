@@ -106,7 +106,7 @@ const TESTS: PackedStringArray = [
     "_test_polyp_kosten_steigen",
     "_test_abschnitt",
     "_test_erste_wellen_sind_ueberstehbar",
-    "_test_polypen_verbessern_nie_nichts",
+    "_test_staerkeres_boot_ist_nie_langsamer",
 ]
 
 var _fehler: PackedStringArray = []
@@ -1060,9 +1060,25 @@ func _test_die_welle_hat_einen_bogen() -> bool:
     # Dass einzelne Wellen ausscheren, ist ausserdem gewollt. Ein Bogen, den
     # jede Welle exakt gleich traegt, waere wieder dasselbe Foerderband, nur
     # mit anderer Steigung.
+    # **Gezaehlt statt je Welle abgebrochen.**
+    #
+    # Hier stand "keine einzelne Welle darf den Bogen umdrehen", und das war
+    # richtig, solange eine Welle sechzig Tiere gross war. Seit
+    # `Wellen.staerke()` durch `Rundum.DICHTE` geteilt wird - gespielt werden
+    # drei Wellen ineinander -, hat eine einzelne noch sechs bis zwanzig.
+    # Bei zwanzig Tieren in drei Dritteln entscheidet ein Schleierschwarm,
+    # wohin der Bogen zeigt, und Welle 4 meldete 6 zu 3.
+    #
+    # Das ist dieselbe Lektion wie beim ersten Anlauf dieses Tests, eine
+    # Groessenordnung tiefer: **der Bogen ist eine Eigenschaft der
+    # Verteilung, nicht jeder einzelnen Welle.** Die Verteilung wird deshalb
+    # weiter streng geprueft (24 / 40 Prozent ueber 214 Wellen); je Welle
+    # wird nur noch gezaehlt, damit eine systematische Umkehr trotzdem
+    # auffiele.
     var vorn := 0.0
     var hinten := 0.0
     var ohne := 0
+    var rueckwaerts := 0
     var geprueft := 0
     for n in range(1, Graben.ZYKLUS * 3 + 1):
         var liste := Wellen.auftritte(n)
@@ -1078,13 +1094,8 @@ func _test_die_welle_hat_einen_bogen() -> bool:
         hinten += float(drittel[2]) / ganz
         if drittel[2] <= drittel[0]:
             ohne += 1
-        # Keine einzelne Welle darf den Bogen umdrehen. Ein Ansturm zu
-        # Beginn, der dann abflaut, ist kein Bogen mit Streuung, sondern ein
-        # Bogen rueckwaerts - und der liest sich als Fehler.
-        if not _melde(float(drittel[0]) <= float(drittel[2]) * 1.5 + 1.0,
-                "Welle %d laeuft rueckwaerts: %d vorn gegen %d hinten"
-                % [n, drittel[0], drittel[2]]):
-            return false
+        if float(drittel[0]) > float(drittel[2]) * 1.5 + 1.0:
+            rueckwaerts += 1
         geprueft += 1
 
     if not _melde(geprueft > 200, "zu wenige Wellen geprueft: %d" % geprueft):
@@ -1100,7 +1111,14 @@ func _test_die_welle_hat_einen_bogen() -> bool:
             "die Welle faengt zu leer an: %.1f %% im ersten Drittel"
             % (vorn / g * 100.0)):
         return false
-    return _melde(ohne < geprueft / 20,
+    # Gemessen: 3 von 214 laufen rueckwaerts, 33 von 214 haben keinen Bogen.
+    # Die Schranken liegen mit Abstand darueber, aber weit unter dem, was
+    # eine systematische Umkehr bedeuten wuerde.
+    if not _melde(rueckwaerts < geprueft / 20,
+            "%d von %d Wellen laufen rueckwaerts - das ist keine Streuung mehr"
+            % [rueckwaerts, geprueft]):
+        return false
+    return _melde(ohne < geprueft / 4,
         "%d von %d Wellen ohne Bogen - das ist keine Streuung mehr"
         % [ohne, geprueft])
 
@@ -1206,7 +1224,7 @@ func _test_ausbau_verschlechtert_nie() -> bool:
             "Ziele": [float(Ausbau.ziele(n)), float(Ausbau.ziele(n + 1))],
             "Reichweite": [Ausbau.reichweite_faktor(n), Ausbau.reichweite_faktor(n + 1)],
             "Winkel": [Ausbau.winkel_faktor(n), Ausbau.winkel_faktor(n + 1)],
-            "Polypen": [float(Ausbau.polypen(n)), float(Ausbau.polypen(n + 1))],
+            "Begleiter": [float(Ausbau.begleiter(n)), float(Ausbau.begleiter(n + 1))],
             "Durchsatz": [Ausbau.durchsatz(n), Ausbau.durchsatz(n + 1)],
         }
         for was in paare:
@@ -1246,30 +1264,45 @@ func _test_erste_wellen_sind_ueberstehbar() -> bool:
     # im Testlauf auffaellt und nicht erst im eigenen Werkzeug.
     var lauf := Simulation.sitzung(1)
     if not _melde(lauf.size() == Graben.WELLEN_JE_SITZUNG,
-            "die erste Sitzung muss vollstaendig durchlaufen"):
+            "die erste Fahrt muss vollstaendig durchlaufen"):
         return false
     for e in lauf:
         if not _melde(e.ueberstanden, "Welle %d faellt mit Grundwerten" % e.welle):
             return false
-    return _melde(lauf[0].durchgelassen == 0,
+    # **Die erste Runde ohne einen einzigen Treffer.** Das ist die
+    # Einstiegszusage: wer zum ersten Mal faehrt, verliert keine Huelle,
+    # bevor er verstanden hat, was er tut. Und sie wird von einem Fahrer
+    # eingehalten, der nicht einmal ausweicht.
+    return _melde(lauf[0].treffer == 0,
         "in Welle 1 darf mit vernuenftigem Spiel nichts durchkommen, es waren %d"
-        % lauf[0].durchgelassen)
+        % lauf[0].treffer)
 
 
-func _test_polypen_verbessern_nie_nichts() -> bool:
-    # Dasselbe Versprechen wie bei HYPHA fuer die Myzel-Knoten: kein Ausbau
-    # darf etwas verschlechtern. Sonst waere die geprueft Lösbarkeit wertlos.
-    var ohne := Simulation.Zustand.new()
-    var e_ohne := Simulation.welle(4, ohne)
+## Ein staerkeres Boot raeumt eine Welle nie langsamer.
+##
+## Dasselbe Versprechen wie bei HYPHA fuer die Myzel-Knoten: kein Ausbau darf
+## etwas verschlechtern. `_test_ausbau_verschlechtert_nie` prueft die Kurve
+## als Zahlen; hier wird sie **gespielt**, weil eine Zahl monoton sein kann
+## und die Welle daraus trotzdem laenger wird - etwa wenn ein weiterer Kegel
+## den Schaden auf mehr Ziele verteilt, statt ihn zu buendeln.
+##
+## Gemessen wird die Dauer und nicht die Huelle: bei Grundwerten faellt in
+## Welle 4 ohnehin kein Treffer, und ein Vergleich zweier Nullen sagt nichts.
+func _test_staerkeres_boot_ist_nie_langsamer() -> bool:
+    var schwach := Simulation.Zustand.new()
+    var e_schwach := Simulation.welle(4, schwach)
 
-    var mit := Simulation.Zustand.new()
-    mit.polypen.append(Graben.NISCHEN[0])
-    mit.polypen.append(Graben.NISCHEN[1])
-    var e_mit := Simulation.welle(4, mit)
+    var stark := Simulation.Zustand.new()
+    stark.leistung_faktor = 2.0
+    var e_stark := Simulation.welle(4, stark)
 
-    return _melde(e_mit.brut_nachher >= e_ohne.brut_nachher,
-        "Polypen duerfen die Brut nie schlechter stellen (%d < %d)"
-        % [e_mit.brut_nachher, e_ohne.brut_nachher])
+    if not _melde(e_stark.dauer <= e_schwach.dauer + 0.001,
+            "doppelte Leistung darf nie laenger brauchen (%.1f > %.1f)"
+            % [e_stark.dauer, e_schwach.dauer]):
+        return false
+    return _melde(e_stark.huelle_nachher >= e_schwach.huelle_nachher,
+        "doppelte Leistung darf die Huelle nie schlechter stellen (%d < %d)"
+        % [e_stark.huelle_nachher, e_schwach.huelle_nachher])
 
 # --- Kammern ---------------------------------------------------------------
 
@@ -1839,8 +1872,11 @@ func _test_wellenstaerke_folgt_dem_wirkungsgrad() -> bool:
     # Wellenpruefer meldete nach Einfuehrung der Regeln fuenf gefallene
     # Sitzungen ab Welle 36.
     for n in range(1, Graben.ZYKLUS + 1):
+        # Geteilt durch `Rundum.DICHTE`, weil eine Fahrtrunde so viele
+        # Wellen auf einmal nimmt - siehe `Wellen.staerke()`.
         var erwartet := Ausbau.durchsatz(n) * Wellen.WIRKUNGSGRAD \
-            * Regeln.wirkungsgrad(n) * Wellen.fenster(n) * Wellen.druck(n)
+            * Regeln.wirkungsgrad(n) * Wellen.fenster(n) * Wellen.druck(n) \
+            / float(Rundum.DICHTE)
         if not is_equal_approx(Wellen.staerke(n), erwartet):
             return _melde(false, "Welle %d rechnet den Wirkungsgrad nicht ein" % n)
     return true
@@ -2382,7 +2418,7 @@ func _test_stosslicht_steht_in_der_sollkurve() -> bool:
     for n in [1, 20, 60, 140, 240]:
         var leistung := Graben.LEISTUNG * Ausbau.leistung_faktor(n)
         var ohne := leistung * float(Ausbau.ziele(n)) \
-            + Graben.POLYP_LEISTUNG * float(Ausbau.polypen(n))
+            + Graben.POLYP_LEISTUNG * float(Ausbau.begleiter(n))
         var mit := Ausbau.durchsatz(n)
         var anteil := mit - ohne
         var soll := leistung * (Graben.STOSS_WERT / Graben.STOSS_ABKUEHLUNG)

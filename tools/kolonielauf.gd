@@ -170,17 +170,26 @@ func _init() -> void:
             z.reichweite_faktor = stand.reichweite_faktor()
             z.winkel_faktor = stand.winkel_faktor()
             z.ziele_zusatz = stand.ziele() - Graben.ZIELE
-            z.brut = stand.brut_leben()
+            z.begleiter_zahl = stand.begleiter()
+            # **Die Huelle ist die Brut.** Die Brutkammer hebt weiter die
+            # Zahl der Fehler, die man uebersteht - nur haengt sie jetzt am
+            # Boot und nicht an einem Gelege.
+            z.huelle = stand.brut_leben()
+            z.huelle_voll = z.huelle
 
             for i in WELLEN_JE_SITZUNG:
                 # Der Graben gibt nur her, was der Tiefenschacht geoeffnet
                 # hat. Wer weiter ist, spielt seine tiefste offene Welle noch
                 # einmal - das bringt Naehrstoff, aber keinen Fortschritt.
                 var nummer := mini(stand.hoechste_welle + i, stand.offene_welle())
-                Simulation.baue_polypen(z)
                 var vorher := z.naehrstoffe
                 var e := Simulation.welle(nummer, z)
-                zeit += Wellen.dauer(nummer)
+                # **Die Dauer einer Runde, nicht einer Welle.** Gespielt
+                # werden `Rundum.DICHTE` Wellen auf einmal; wer mit
+                # `Wellen.dauer()` rechnet, macht die Sitzung um ein
+                # Mehrfaches zu kurz - und findet dann keine Wartemauer,
+                # weil er den Tag nicht vollbekommt.
+                zeit += Wellen.rundendauer(nummer)
 
                 # Die Tagesstroemung gehoert in die Messung, sonst misst das
                 # Werkzeug ein anderes Spiel als das, das gespielt wird.

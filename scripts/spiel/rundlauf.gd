@@ -36,12 +36,20 @@ extends Node2D
 ## Feldliteral keinen Typ ableitet - siehe die Konventionen.
 const SEITEN: PackedFloat32Array = [-1.0, 1.0]
 
-## Wieviele Wellen gleichzeitig laufen. Siehe `_bereite_welle_vor()`.
-const DICHTE := 3
+## Die Zahlen, die Spiel und Pruefer beide kennen muessen, stehen in
+## `Rundum` - siehe dort. Hier nur, was allein das Bild betrifft.
+const DICHTE := Rundum.DICHTE
+const BOOT_RADIUS := Rundum.BOOT_RADIUS
+const BISS_SPERRE := Rundum.BISS_SPERRE
+const LAUER_ANTEIL := Rundum.LAUER_ANTEIL
+const WECK_RADIUS := Rundum.WECK_RADIUS
+const LAUER_NAH := Rundum.LAUER_NAH
+const LAUER_WEIT := Rundum.LAUER_WEIT
+const BEGLEITER_ABSTAND := Rundum.BEGLEITER_ABSTAND
+const BEGLEITER_REICHWEITE := Rundum.BEGLEITER_REICHWEITE
 
 const BOOT_TEMPO := 260.0
 const BOOT_TRAEGHEIT := 6.0
-const BOOT_RADIUS := 32.0
 const DREH_TEMPO := 7.0
 
 ## Wie traege die Kamera folgt und wie weit sie vorausschaut.
@@ -53,31 +61,8 @@ const DREH_TEMPO := 7.0
 const KAMERA_TRAEGHEIT := 6.5
 const KAMERA_VORAUS := 0.16
 
-const BEGLEITER_ABSTAND := 96.0
 const BEGLEITER_TRAEGHEIT := 3.4
-const BEGLEITER_REICHWEITE := 210.0
 const BEGLEITER_TAKT := 0.9
-
-## Wie lange ein Raeuber braucht, bis er nach einem Treffer wieder beisst.
-const BISS_SPERRE := 0.9
-
-## **Nicht jeder Raeuber kommt von aussen auf einen zu.** Jeder vierte liegt
-## schon in der Karte und wartet - am Grund, still, blass. Wer geradeaus
-## faehrt, trifft irgendwann einen; wer den Kegel voraushaelt, sieht ihn
-## vorher.
-##
-## Das ist der Grund, warum das Aufdecken der Karte etwas kostet: eine
-## unbekannte Ecke ist nicht nur dunkel, es kann auch etwas darin liegen.
-const LAUER_ANTEIL := 0.25
-
-## Ab welchem Abstand ein Lauerer erwacht. Kleiner als die Sicht: man soll
-## ihn sehen koennen, bevor er kommt.
-const WECK_RADIUS := 420.0
-
-## Wie weit vom Boot ein Lauerer gelegt wird. Nicht naeher als der
-## Weckradius - sonst waere er schon wach, bevor die Welle laeuft.
-const LAUER_NAH := 560.0
-const LAUER_WEIT := 1400.0
 
 @onready var _schwarm: Node2D = $Schwarm
 @onready var _kegel: Node2D = $Kegel
@@ -332,9 +317,7 @@ func _ready() -> void:
     _koloniebild.zurueck_beschriftung = "BACK TO THE TRENCH"
     _kamera.position = _ort
     _stelle_ausbau_ein()
-    for i in 3:
-        _begleiter.append(Vector2.ZERO)
-        _begleiter_ziel.append(-1)
+    _stelle_begleiter_auf()
     _bereite_welle_vor()
     if _zeige_ende:
         starte()
@@ -389,6 +372,27 @@ func _stelle_ausbau_ein() -> void:
     # Und die Huelle aus der Brutkammer - sie ist die Brut (siehe oben), also
     # haengt sie an derselben Kammer.
     huelle_voll = maxi(1, Fortschritt.stand.brut_leben())
+    _stelle_begleiter_auf()
+
+
+## Wieviele Begleiter mitfahren - aus der Zuchtkammer.
+##
+## **Sie waren einmal fest drei**, waehrend `Ausbau.durchsatz()` mit bis zu
+## acht rechnete. Die Sollkurve setzte damit eine Leistung voraus, die es im
+## Boot nicht gab, und der Wellenpruefer meldete ab Welle 86 gefallene
+## Fahrten. Was in die Kurve eingeht, muss der Spieler auch haben - und wer
+## die Zuchtkammer hebt, soll es an mehr als einer Zahl im Ausbau merken.
+##
+## Wer wegfaellt, verliert nur seinen Platz; die Reihenfolge bleibt, damit
+## ein Begleiter beim Bauen nicht quer durchs Bild springt.
+func _stelle_begleiter_auf() -> void:
+    var soll := maxi(1, Fortschritt.stand.begleiter())
+    while _begleiter.size() > soll:
+        _begleiter.remove_at(_begleiter.size() - 1)
+        _begleiter_ziel.remove_at(_begleiter_ziel.size() - 1)
+    while _begleiter.size() < soll:
+        _begleiter.append(_ort)
+        _begleiter_ziel.append(-1)
 
 
 func leistung() -> float:
@@ -1935,9 +1939,10 @@ const PROBE_DECKEL := 180.0
 ## Die `DICHTE` Wellen laufen ineinander und nicht hintereinander. Der
 ## letzte Auftritt kommt damit aus der letzten der drei Wellen - deren
 ## Fenster ist das laengste - und wird um hoechstens `(DICHTE - 1) * 1.6`
-## Sekunden verschoben (der Wurf in `_bereite_welle_vor()`).
+## Das Eintrittsfenster einer Fahrtrunde. Steht in `Wellen`, weil drei
+## Stellen dieselbe Zahl brauchen - siehe dort.
 static func probe_fenster(nummer: int) -> float:
-    return Wellen.fenster(nummer + DICHTE - 1) + float(DICHTE - 1) * 1.6
+    return Wellen.rundenfenster(nummer)
 
 
 func _fahre_probe() -> void:

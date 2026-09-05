@@ -17,10 +17,6 @@ extends RefCounted
 ##
 ## Reine Datenschicht: keine Szenen-, keine Autoload-Bezuege.
 
-## Zuchtkammer: wie viele Wehrpolypen der Spieler bis dahin gewohnt ist zu
-## stellen. Nicht wie viele er *kann* - die Nischen sind schon ab Welle 1 alle
-## da, aber die Naehrstoffe dafuer nicht.
-const WELLEN_JE_POLYP := 8
 
 
 # --- Der Waechter auf der Sollstufe ---------------------------------------
@@ -53,8 +49,15 @@ static func winkel_faktor(nummer: int) -> float:
     return Kammern.winkel_faktor(stufe_soll(nummer))
 
 
-static func polypen(nummer: int) -> int:
-    return clampi(1 + maxi(0, nummer - 1) / WELLEN_JE_POLYP, 0, Graben.NISCHEN.size())
+## Wieviele Begleiter die Sollkurve auf dieser Welle voraussetzt.
+##
+## **Aus derselben `Kammern`-Funktion wie beim Spieler**, nicht aus einer
+## zweiten Formel ueber der Wellennummer. Vorher stand hier
+## `1 + (nummer - 1) / 8`; das traf dieselben Werte, war aber eine eigene
+## Kurve neben der Kammerkurve - und genau daran ist in diesem Projekt
+## schon einmal ein Pruefer auseinandergelaufen (Zusage 8).
+static func begleiter(nummer: int) -> int:
+    return Kammern.begleiter(stufe_soll(nummer))
 
 
 ## Roher Schaden je Sekunde, den dieser Stand aufbringen kann, wenn alle Ziele
@@ -62,7 +65,7 @@ static func polypen(nummer: int) -> int:
 static func durchsatz(nummer: int) -> float:
     var leistung := Graben.LEISTUNG * leistung_faktor(nummer)
     var kegel := leistung * ziele(nummer)
-    var polyp := Graben.POLYP_LEISTUNG * polypen(nummer)
+    var polyp := Graben.POLYP_LEISTUNG * begleiter(nummer)
     # **Das Stosslicht gehoert hier hinein, sonst waere es geschenkt.**
     #
     # Zusicherung: was die Welle leichter macht, geht in die Sollkurve ein -

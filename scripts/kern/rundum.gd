@@ -127,6 +127,64 @@ static func schritt(ort: Vector2, ziel: Vector2, tempo: float,
 ## sie im Kegel und verdeckten genau das, worauf man zielt; ringsherum waere
 ## keine Formation, sondern ein Kranz, und man saehe nicht mehr, wohin man
 ## faehrt.
+## --- Zahlen, die Spiel und Pruefer beide brauchen ---
+##
+## **Sie standen in `rundlauf.gd`.** Das ging, solange nur die Szene sie
+## brauchte. Seit `tools/simulation.gd` dieselbe Schleife nachrechnet, geht
+## es nicht mehr: ein `--script`-Lauf kennt keine Autoloads, `rundlauf.gd`
+## haengt an `Fortschritt`, und wer die Zahl deshalb im Pruefer abschreibt,
+## hat zwei Beschreibungen desselben Spiels. Genau daran ist bei HYPHA der
+## Loesbarkeitspruefer auseinandergelaufen.
+##
+## Hier stehen deshalb die Zahlen, die **beide** kennen muessen. Was nur das
+## Bild betrifft - Kameratraegheit, Zeichenabstaende, Taktfrequenzen der
+## Animation -, bleibt drueben.
+
+## Wieviele Wellen gleichzeitig laufen.
+##
+## Mehr Tiere als in einer einzelnen Welle, und das ist Absicht: man faehrt,
+## sieht in alle Richtungen und hat Begleiter dabei. Eine Wellenstaerke, die
+## fuer einen festen Posten gerechnet ist, fuehlt sich in Fahrt leer an.
+const DICHTE := 3
+
+## Wie gross das Boot ist - der Radius, ab dem ein Raeuber beisst.
+const BOOT_RADIUS := 32.0
+
+## Wie lange ein Raeuber braucht, bis er nach einem Treffer wieder beisst.
+const BISS_SPERRE := 0.9
+
+## **Nicht jeder Raeuber kommt von aussen auf einen zu.** Jeder vierte liegt
+## schon in der Karte und wartet - am Grund, still, blass. Wer geradeaus
+## faehrt, trifft irgendwann einen; wer den Kegel voraushaelt, sieht ihn
+## vorher.
+##
+## Das ist der Grund, warum das Aufdecken der Karte etwas kostet: eine
+## unbekannte Ecke ist nicht nur dunkel, es kann auch etwas darin liegen.
+const LAUER_ANTEIL := 0.25
+
+## Ab welchem Abstand ein Lauerer erwacht. Kleiner als die Sicht: man soll
+## ihn sehen koennen, bevor er kommt.
+const WECK_RADIUS := 420.0
+
+## Wie weit vom Boot ein Lauerer gelegt wird. Nicht naeher als der
+## Weckradius - sonst waere er schon wach, bevor die Welle laeuft.
+const LAUER_NAH := 560.0
+const LAUER_WEIT := 1400.0
+
+## Wieviele Begleiter hoechstens mitfahren, wie weit hinter dem Boot sie
+## stehen und wie weit sie schiessen.
+##
+## **Wieviele es wirklich sind, sagt die Zuchtkammer** - siehe
+## `Kammern.begleiter()`. Hier standen einmal fest drei, waehrend
+## `Ausbau.durchsatz()` mit bis zu acht rechnete: die Sollkurve setzte also
+## eine Leistung voraus, die es im Boot nicht gab, und der Wellenpruefer
+## meldete ab Welle 86 Faelle. Was in die Kurve eingeht, muss der Spieler
+## auch haben.
+const BEGLEITER_HOECHSTENS := 8
+const BEGLEITER_ABSTAND := 96.0
+const BEGLEITER_REICHWEITE := 210.0
+
+
 const FAECHER := 0.62
 
 

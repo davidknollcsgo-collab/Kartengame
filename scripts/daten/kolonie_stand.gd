@@ -496,6 +496,11 @@ func schwellen_nachlass() -> float:
     return Brutlinien.schwellen_nachlass(linie)
 
 
+## Wieviele Begleiter mitfahren. Aus der Zuchtkammer, wie ihre Staerke.
+func begleiter() -> int:
+    return Kammern.begleiter(stufe(Kammern.Kammer.ZUCHTKAMMER))
+
+
 func polyp_leistung() -> float:
     return Kammern.polyp_leistung(stufe(Kammern.Kammer.ZUCHTKAMMER))
 

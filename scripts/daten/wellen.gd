@@ -323,9 +323,25 @@ static func druck(nummer: int) -> float:
 ##
 ## Abgeleitet aus dem, was ein Spieler auf dieser Stufe leisten kann - nicht
 ## aus einer freien Wachstumszahl. Siehe die Begruendung in `ausbau.gd`.
+## **Geteilt durch `Rundum.DICHTE`.** Gespielt wird nie eine Welle allein:
+## eine Fahrtrunde nimmt `DICHTE` Wellen auf einmal und schiebt sie
+## ineinander. `Ausbau.durchsatz()` sagt, was ein Spieler in **einer** Welle
+## leisten kann - drei davon gleichzeitig sind das Dreifache an Leben gegen
+## dieselbe Leistung.
+##
+## Das war die Luecke, die der umgebaute Wellenpruefer als erstes fand:
+## fuenfunddreissig gefallene Fahrten, die erste Wand bei Welle 67 - und der
+## Pilot der Fahrprobe stand bei Welle 60 auf vier von zwanzig Huelle, also
+## unabhaengig davon dasselbe Bild. Solange es zwei Schleifen gab, hing an
+## `DICHTE` ausdruecklich keine Zusage ("von Hand gesetzt und von Hand
+## nachgesehen"); seit es nur noch eine gibt, haengt die ganze Kurve daran.
+##
+## Der Ertrag bleibt davon unberuehrt: `wert_in()` ist ein **Anteil** an
+## `staerke()`, und die Fahrt teilt ihn noch einmal durch `DICHTE`. Drei
+## Drittel einer gedrittelten Welle sind eine ganze.
 static func staerke(nummer: int) -> float:
     return Ausbau.durchsatz(nummer) * WIRKUNGSGRAD * umgebung(nummer) \
-        * fenster(nummer) * druck(nummer)
+        * fenster(nummer) * druck(nummer) / float(Rundum.DICHTE)
 
 
 ## Was Abschnittsregel und Mutationen zusammen an Wirkungsgrad kosten. Eine
@@ -385,9 +401,31 @@ static func anlauf(lage: float) -> float:
     return pow(clampf(lage, 0.0, 1.0), ANSTIEG)
 
 
-## Ungefaehre Gesamtdauer der Welle in Sekunden. Fuer Anzeige und Balance.
+## Ungefaehre Gesamtdauer **einer** Welle in Sekunden. Fuer Anzeige.
 static func dauer(nummer: int) -> float:
     return fenster(nummer) + NACHLAUF
+
+
+## Das Eintrittsfenster einer **Fahrtrunde**: `Rundum.DICHTE` Wellen,
+## ineinander statt hintereinander.
+##
+## **Nicht `fenster(nummer)`.** Gespielt wird nie eine Welle allein - eine
+## Runde nimmt `DICHTE` auf einmal und schiebt sie um hoechstens 1.6 s je
+## Versatz auseinander. Das laengste der drei Fenster ist das der letzten.
+##
+## Steht hier und nicht in `rundlauf.gd`, weil drei Stellen dieselbe Zahl
+## brauchen: die Fahrprobe misst den Rueckstand daran, der Kolonielauf die
+## Sitzungslaenge, und die Szene selbst richtet sich danach. Drei
+## Abschriften derselben Formel laufen auseinander - das ist in diesem
+## Projekt schon zweimal passiert.
+static func rundenfenster(nummer: int) -> float:
+    return fenster(nummer + Rundum.DICHTE - 1) \
+        + float(Rundum.DICHTE - 1) * 1.6
+
+
+## Wie lange eine Fahrtrunde ungefaehr dauert, samt Nachlauf.
+static func rundendauer(nummer: int) -> float:
+    return rundenfenster(nummer) + NACHLAUF
 
 
 ## Alle Auftritte einer Welle, nach Zeit sortiert.

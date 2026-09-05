@@ -7,6 +7,12 @@ extends SceneTree
 ## bezahlt hat.* Eine Wand im Fortschritt ist in einem Spiel mit Werbung und
 ## Kaeufen kein Balance-Fehler, sondern ein Vertrauensbruch.
 ##
+## **Was hier gemessen wird, ist eine untere Schranke.** `Simulation` faehrt
+## nicht - das Boot steht, und die Raeuber kommen zu ihm. Ein Mensch weicht
+## aus, zieht einen Pulk auseinander und holt sich Nachzuegler; all das geht
+## als Reserve in das Ergebnis ein. Wer hier faellt, faellt in einem Spiel
+## ohne Ausweichen; wer hier traegt, traegt in jedem Fall.
+##
 ##     godot --headless --path . --script tools/wellenpruefer.gd
 ##
 ## Exitcode 1, sobald eine Sitzung mit den Grundwerten faellt.
@@ -90,10 +96,10 @@ func _init() -> void:
 
         var ok := true
         for e in lauf:
-            zeile += "| W%2d Brut %2d/%2d durch %2d " % [
-                e.welle, e.brut_nachher, Graben.BRUT_LEBEN, e.durchgelassen]
-            if e.brut_nachher < knappste and e.ueberstanden:
-                knappste = e.brut_nachher
+            zeile += "| W%2d Huelle %2d/%2d Treffer %2d " % [
+                e.welle, e.huelle_nachher, e.huelle_vorher, e.treffer]
+            if e.huelle_nachher < knappste and e.ueberstanden:
+                knappste = e.huelle_nachher
                 knappste_welle = e.welle
             if not e.ueberstanden:
                 ok = false
@@ -111,7 +117,7 @@ func _init() -> void:
     print("")
     if gefallen == 0:
         print("Alle %d Wellen mit Grundwerten ueberstanden." % BIS)
-        print("Knappster Ausgang: Welle %d mit %d/%d Brut."
+        print("Knappster Ausgang: Welle %d mit %d/%d Huelle."
             % [knappste_welle, knappste, Graben.BRUT_LEBEN])
         quit(0)
     else:
