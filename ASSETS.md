@@ -45,13 +45,11 @@ Laufzeit aus `_draw()`-Aufrufen und eigenen GDShadern:
 | Was | Wo |
 |---|---|
 | Wasser, Meeresschnee, Tiefenverlauf | `shaders/graben.gdshader` |
-| Ranken mit Knospen, Wehrpolypen, Riff am Grund, Kalkwulst, Brut | `scripts/spiel/kolonie.gd` |
-| Schlickschwaden und nahe Flocken im Vordergrund | `scripts/spiel/vordergrund.gd` |
 | Alle zwölf Räuberarten | `scripts/spiel/schwarm.gd` |
 | Lichtkegel und Staub im Strahl | `scripts/spiel/kegel.gd` |
 | Funken und Trefferstrahlen | `scripts/spiel/funken.gd` |
-| Meeresgrund, Felsen, Bewuchs, Nebel und Fundstellen des Rundumlaufs | `scripts/spiel/grund_rundum.gd` |
-| Boot, Begleiter und Spur des Rundumlaufs | `scripts/spiel/rundlauf.gd` |
+| Meeresgrund, Felsen, Bewuchs, Schlote, Nebel und Fundstellen | `scripts/spiel/grund_rundum.gd` |
+| Boot, Begleiter, Schleppe und Übersichtskarte | `scripts/spiel/rundlauf.gd` |
 | Fischschwärme, die nicht angreifen | `scripts/spiel/wild.gd` |
 
 Das ist Absicht und nicht nur eine Frage der Dateigröße: prozedural erzeugte

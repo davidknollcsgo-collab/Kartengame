@@ -112,9 +112,6 @@ enum Lage { MENUE, SPIEL, PAUSE, ENDE }
 
 var lage := Lage.MENUE
 
-## Gesetzt, wenn diese Szene sofort wieder verlassen wird.
-var _abgetreten := false
-
 var welle_nummer := 1
 ## Die wievielte Welle **dieser Sitzung**. Siehe `starte()`.
 var welle_in_sitzung := 0
@@ -304,14 +301,6 @@ var _stufen_ab := -1
 
 
 func _ready() -> void:
-    # Der Gegenweg zu `--rundum`: die Werkzeuge (Ladenbilder, Schuesse,
-    # Bildratenmessung) wollen direkt in die Schlundwache.
-    if "--schlund" in OS.get_cmdline_user_args():
-        _abgetreten = true
-        get_tree().change_scene_to_file.call_deferred(
-            "res://scenes/schlund.tscn")
-        return
-
     _lies_argumente()
     if _stufen_ab >= 0:
         for k in Kammern.Kammer.size():
@@ -330,7 +319,6 @@ func _ready() -> void:
     if wasser != null and wasser.material != null:
         wasser.material.set_shader_parameter("rundum", 1.0)
     _vorn.draw.connect(_zeichne_vorn)
-    _schwarm.led = true
     _hud.lauf = self
     _menue.lauf = self
     _menue.nur_marke = _nur_marke
@@ -366,7 +354,11 @@ func _ready() -> void:
         verdient = 1840
         erlegt = 214
         lage = Lage.PAUSE
-    if _kolonie_reiter >= 0:
+    # **Der Ausbau erst nach dem Vorlauf**, wenn ein Schuss ansteht: sonst
+    # liegt der Bildschirm ueber einer Welle, die nie gelaufen ist, und im
+    # Bestiarium steht zwoelfmal "Not yet encountered". Ohne Schuss gilt der
+    # Schalter sofort - dann will ihn jemand einfach ansehen.
+    if _kolonie_reiter >= 0 and _schuss.is_empty():
         oeffne_kolonie(_kolonie_reiter)
     if _fahrprobe > 0:
         _fahre_probe.call_deferred()
@@ -482,8 +474,6 @@ func _bereite_welle_vor() -> void:
 
 
 func _process(delta: float) -> void:
-    if _abgetreten:
-        return
     # **Pause heisst Pause.** Kein Takt, kein Schritt, kein Schaden - und
     # der Zaehler der Welle steht ebenfalls, sonst treten waehrend der Pause
     # Tiere ein, die man nicht kommen sah.
@@ -644,7 +634,10 @@ func _fuehre_boot(delta: float) -> void:
     _kegel.tiefe_kern = Regeln.tiefe_kern(welle_nummer)
     _kegel.schein = Regeln.helligkeit(welle_nummer, _wellenzeit)
     _kegel.queue_redraw()
-    # Der Grund bekommt denselben Kegel, mit dem auch gerechnet wird.
+    # Der Grund bekommt denselben Kegel, mit dem auch gerechnet wird - und
+    # die Tiere dieselbe Lichtquelle, damit ihr Randlicht dorthin zeigt, wo
+    # das Boot wirklich steht.
+    _schwarm.lichtquelle = _ort
     _grund.licht_spitze = _ort
     _grund.licht_richtung = _wirksam
     _grund.licht_halbwinkel = _kegel.halbwinkel
@@ -775,11 +768,8 @@ func brich_ab() -> void:
     _beende(false)
 
 
-## Android meldet Hintergrund und Zurueck-Taste hierher - dieselbe Regelung
-## wie in `wache.gd`.
+## Android meldet Hintergrund und Zurueck-Taste hierher.
 func _notification(was: int) -> void:
-    if _abgetreten:
-        return
     match was:
         NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_WM_WINDOW_FOCUS_OUT:
             pausiere()
@@ -1906,8 +1896,8 @@ func _lies_argumente() -> void:
 func _spiele_vor() -> void:
     if _sofort:
         starte()
-    # Fester Takt, damit dasselbe Bild entsteht, egal wie schnell der Rechner
-    # ist - genauso wie `wache.gd::_nimm_auf()` es macht.
+    # Fester Takt, damit dasselbe Bild entsteht, egal wie schnell der
+    # Rechner ist.
     _finger_fest = true
     _zieht = true
     var takt := 1.0 / 60.0
@@ -1985,7 +1975,7 @@ func _fahre_probe() -> void:
         # Rueckstand macht aus einer Zahl eine Aussage, und die Zusage im
         # Plan lautet vierzig bis siebzig Sekunden je Welle.
         var fenster := probe_fenster(dran)
-        soll_lohn += schlund_lohn(dran, stroemung)
+        soll_lohn += wellen_lohn(dran, stroemung)
         print(" %5d | %6d | %8.1f | %7.1f | %+9.1f | %6d | %6d (%6d)%s"
             % [dran, huelle, t, fenster, t - fenster, erlegt,
             verdient, int(round(soll_lohn)),
@@ -2017,19 +2007,22 @@ func _fahre_probe() -> void:
     get_tree().quit()
 
 
-## Was **die Schlundwache** fuer dieselbe Welle zahlen wuerde.
+## Was eine Welle wert ist, wenn man sie ganz erlegt.
 ##
 ## Das ist der richtige Massstab und nicht `Wellen.ertrag()`. Der Ertrag ist
-## der entworfene Wellenwert; gezahlt wird aber je Tier ueber
+## der **entworfene** Wellenwert; gezahlt wird aber je Tier ueber
 ## `Wellen.wert_in()`, und das hat eine Untergrenze von eins. In fruehen
 ## Wellen, wo der Ertrag einstellig und die Welle hundert Tiere gross ist,
-## liegt die tatsaechliche Ausbeute deshalb um ein Vielfaches darueber - in
-## **beiden** Schleifen, und der Kolonielauf rechnet ebenso.
+## liegt die tatsaechliche Ausbeute deshalb um ein Vielfaches darueber - und
+## der Kolonielauf rechnet ebenso.
 ##
-## Die Frage, die hier beantwortet werden soll, lautet also nicht "zahlt der
-## Rundumlauf den Ertrag?", sondern "zahlt eine Fahrt so viel wie eine
-## Sitzung im Schlund?" - das ist die Zusage, an der die Wirtschaft haengt.
-static func schlund_lohn(nummer: int, mit_stroemung: bool) -> float:
+## Die Frage, die hier beantwortet werden soll, lautet also nicht "zahlt die
+## Fahrt den Ertrag?", sondern "holt der Pilot heraus, was in der Welle
+## liegt?" - das ist die Zusage, an der die Wirtschaft haengt.
+##
+## Rein: keine Szene, kein Koloniestand. Der Kolonielauf darf sie ebenso
+## fragen, und genau deshalb steht hier eine Rechnung und nicht zwei.
+static func wellen_lohn(nummer: int, mit_stroemung: bool) -> float:
     var summe := 0.0
     for a in Wellen.auftritte(nummer):
         summe += Tagesstroemung.ausbeute(
@@ -2118,6 +2111,13 @@ func _nimm_auf() -> void:
     if _schuss.is_empty():
         return
     _spiele_vor()
+    if _kolonie_reiter >= 0:
+        # **Erst anhalten, dann aufschlagen.** `oeffne_kolonie()` weist eine
+        # laufende Fahrt ab, und das ist richtig so - im Spiel fuehrt der Weg
+        # zum Ausbau ueber die Pause. Der Schuss geht denselben Weg.
+        if lage == Lage.SPIEL:
+            pausiere()
+        oeffne_kolonie(_kolonie_reiter)
     # Wo das Boot steht, damit man den Ausschnitt nicht im Bild suchen muss.
     print("BOOT %.1f %.1f  KAMERA %.1f %.1f  strom=%s"
         % [_ort.x, _ort.y, _kamera.position.x, _kamera.position.y,

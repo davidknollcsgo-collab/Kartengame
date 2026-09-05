@@ -4,9 +4,20 @@
 
 **NEKTON** — eine biolumineszente Kolonie in einem Tiefseegraben.
 
-Die Kernschleife heißt **Schlundwache**: ein Finger zieht einen Lichtkegel über
-den Grabeneingang, was darin liegt wird verbrannt, zwischen den Wellen setzt
-man Wehrpolypen in die Knospen der beiden Ranken.
+Die Kernschleife ist der **Rundumlauf**: ein Boot fährt durch offenes Wasser
+über dem Grabengrund, ein Finger führt Blick und Fahrt, der Lichtkegel dreht
+sich mit — Räuber kommen aus allen Richtungen, Begleiter fahren mit, und was
+im Licht steht, brennt.
+
+**Es gab bis September 2026 eine zweite Schleife**, die *Schlundwache*: ein
+fester Wächter, ein Kegel über dem Grabeneingang, Räuber, die von oben
+sinken, Wehrpolypen in den Knospen zweier Ranken. Sie ist gelöscht. Wer im
+Quelltext oder in älteren Commits über `wache.gd`, `waechter.gd`,
+`kolonie.gd`, `vordergrund.gd`, `ui/hud.gd` oder `scenes/schlund.tscn`
+stolpert: die gibt es nicht mehr, und sie kommen nicht zurück. Der Grund
+steht in einem Satz — **eine Schleife, eine Wahrheit.** Zwei Schleifen
+nebeneinander hießen zwei Optiken, zwei HUDs, zwei Lehrpfade und zwei
+Stellen, an denen jede Zusage gelten muss.
 
 Die Struktur ist von Kingshot abgeschaut — casual Kernschleife vorn,
 Aufbauspiel dahinter. **Nur die Struktur.** Kein Code, kein Asset, keine Figur,
@@ -37,6 +48,14 @@ godot --headless --path . --script tools/wellenpruefer.gd     # 4 Umdrehungen, ~
 godot --headless --path . --script tools/wellenpruefer.gd -- --spielraum
 godot --headless --path . --script tools/kolonielauf.gd      # 120 Tage Kolonie, ~4 min
 ```
+
+> **Offen seit der Löschung der Schlundwache:** `tools/simulation.gd` — der
+> Kern, auf dem Wellenprüfer *und* Kolonielauf stehen — modelliert noch die
+> gelöschte Schleife: ein fester Wächter, Räuber, die von oben sinken,
+> Wehrpolypen in Nischen. Er ist rein (kennt weder Szene noch Autoload) und
+> läuft deshalb weiter durch, aber er misst ein Spiel, das es nicht mehr
+> gibt. Bis er auf die Fahrt umgebaut ist, ist die **Fahrprobe** der einzige
+> Wächter, der die gespielte Schleife anfasst.
 
 Der Kolonielauf ist das Werkzeug, das die meisten Fehler gefunden hat. Er
 **spielt die Wellen wirklich durch** — mit dem Koloniestand, den ein normaler
@@ -91,40 +110,33 @@ und auf leer prüfen.
 ## Optik prüfen (Screenshots)
 
 ```bash
-xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 720x1280 \
-  -- --schuss /pfad/bild.png --welle 22 --zeit 20
+xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 720x1600 \
+  -- --schuss /pfad/bild.png --spiel --welle 22 --zeit 20 --stufen 14 --lehre 9
 ```
 
 | Schalter | Wirkung |
 |---|---|
 | `--schuss <datei>` | speichert und beendet |
+| `--spiel` | nimmt im Spiel auf, nicht im Titelbild |
 | `--welle <n>` | beginnt bei Welle n |
-| `--zeit <s>` | rechnet n Sekunden Welle mit festem Takt vor |
-| `--polypen <n>` | stellt n Wehrpolypen auf |
-| `--stau` | dreht den Kegel weg und macht die Brut unverwundbar |
-| `--pause` | haelt das Spiel an, wie Android es im Hintergrund tut |
-| `--bauen` | nimmt die Bauphase auf, statt die Welle zu starten |
-| `--kolonie <n>` | öffnet den Koloniebildschirm: 0 Kammern, 1 Linien, 2 Arten, 3 Züge, 4 Tag |
-| `--endschirm <n>` | 0 gefallen, 1 Sitzung gehalten, 2 Graben durchgestanden |
+| `--zeit <s>` | rechnet n Sekunden Fahrt mit festem Takt vor |
+| `--offen` | ohne Nebel — für Schüsse, die den Grund zeigen sollen |
+| `--ende` | der Bericht nach der Fahrt, mit Beispielwerten |
+| `--pause` | die Pausentafel, mit Beispielwerten |
+| `--stoss <s>` | löst das Stoßlicht s Sekunden vor dem Bild aus |
+| `--kolonie <n>` | schlägt den Ausbau auf Reiter n auf: 0 Kammern, 1 Linien, 2 Arten, 3 Züge, 4 Tag |
 | `--stufen <n>` | setzt alle Kammern auf Stufe n |
-| `--lehre <n>` | setzt den Lehrpfad auf Schritt n (0–7) |
-| `--heim` | zeigt die Rückkehrtafel mit Beispielwerten |
-| `--stoss <s>` | stößt das Stoßlicht s Sekunden vor dem Bild ab |
-| `--offen` | Rundumlauf ohne Nebel — für Schüsse, die den Grund zeigen sollen |
-| `--ende` | Rundumlauf: der Bericht nach der Fahrt, mit Beispielwerten |
-| `--pause` | Rundumlauf: die Pausentafel, mit Beispielwerten |
-| `--stoss <s>` | im Rundumlauf: löst das Stoßlicht s Sekunden vor dem Bild aus |
+| `--lehre <n>` | setzt den Einstieg auf Schritt n; 9 schaltet ihn ab |
 | `--marke` | nur Schriftzug über der Szene — für das Feature-Bild |
-| `--messen <s>` | Bildrate, s Sekunden lang — in beiden Schleifen |
-| `--flach` | ohne Glühen — nur zum Messen, in beiden Schleifen |
-| `--stufen <n>` | im Rundumlauf: alle Kammern auf Stufe n |
-| `--kolonie <n>` | im Rundumlauf: schlägt den Ausbau auf Reiter n auf |
+| `--messen <s>` | Bildrate, s Sekunden lang |
+| `--flach` | ohne Glühen — nur zum Messen |
+| `--fahrprobe <n>` | der Autopilot bis Welle n, headless |
 
-**`--stau` braucht man oefter, als es aussieht.** Im Vorlauf steht der
-Finger fest ueber dem Schlund, und der Kegel raeumt in spaeten Wellen alles
-weg, was eintritt: ein Bild von Welle 30 nach sechs Sekunden zeigte achtzehn
-verbleibende Tiere in der Anzeige und kein einziges im Bild. Wer die Tiere
-ansehen will, braucht den Schalter.
+**`--kolonie` hält vorher an.** `oeffne_kolonie()` weist eine laufende Fahrt
+ab — im Spiel führt der Weg zum Ausbau über die Pause, und der Schuss geht
+denselben Weg. Ohne `--spiel` und `--zeit` davor steht im Bestiarium
+zwölfmal „Not yet encountered": der Reiter zeigt, was schon aufgetreten ist,
+und aufgetreten ist nur, was gespielt wurde.
 
 ## Spielbare Einzeldatei
 
@@ -429,26 +441,13 @@ unter einer strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
    weißen Klecks mit einer Flosse daran. Ganz weg darf er nicht: er trägt die
    **Farbe** der Art nach außen, und die Nachbearbeitung kennt nur Helligkeit.
 
-## Der Rundumlauf
+## Der Rundumlauf — die Schleife
 
-**Die App startet jetzt im Titelbildschirm** (`scenes/rundum.tscn`), und das
-Menü führt in beide Schleifen: `PLAY` in den Rundumlauf, `TRENCH WATCH` in die
-Schlundwache. Auf einem Telefon gibt es keine Kommandozeile — hinter einem
-Schalter war der Rundumlauf dort überhaupt nicht erreichbar.
-
-**Und wieder heraus.** Die Schlundwache war eine Einbahnstraße: wer sie vom
-Titelbild aus betrat, kam auf einem Telefon nicht mehr zurück — es gibt kein
-Fenster zum Schließen, die Zurück-Taste führt in die Pause, und die Pause
-kannte genau einen Ausgang („tap anywhere to go on"). Auf dem Pausenschleier
-steht deshalb jetzt **LEAVE THE WATCH**, und er wird vor dem „irgendwohin"
-abgefragt — sonst fängt das Weitertippen ihn ab.
-
-Für die Werkzeuge gibt es den Gegenweg: **`--schlund`** springt direkt in die
-alte Szene, so wie `--rundum` vorher andersherum. `tools/ladenbilder.sh` und
-alle Schuss-Aufrufe brauchen ihn.
+Die App startet im Titelbildschirm (`scenes/rundum.tscn`, die **einzige**
+Szene), und das Menü führt in die Fahrt: `PLAY`, daneben `COLONY`, `LINES`
+und `DAILY`.
 
 ```bash
-godot --path . -- --schlund --schuss /pfad/bild.png --welle 22
 godot --path . -- --schuss /pfad/bild.png --spiel --welle 24 --zeit 30
 ```
 
@@ -456,27 +455,17 @@ godot --path . -- --schuss /pfad/bild.png --spiel --welle 24 --zeit 30
 zerreißt es die Sektion, und Godot meldet `no main scene defined` — was wie
 ein fehlender Eintrag aussieht und keiner ist.
 
-## Der Rundumlauf (Versuch, nicht Ersatz)
-
-```bash
-godot --path . -- --rundum
-xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 720x1600 \
-  -- --rundum --schuss /pfad/bild.png --welle 14 --zeit 24
-```
-
 Ein bewegliches Boot in offenem Wasser, Räuber aus allen Richtungen, Polypen
-als Begleiter. Liegt **neben** dem Spiel: `--rundum` schaltet in
-`scenes/rundum.tscn` um, ohne den Schalter ändert sich am bestehenden Weg
-nichts.
+als Begleiter.
 
-Der Umbau war deutlich billiger als geschätzt, aus zwei Gründen, die beide
-schon im Code standen:
+Der Umbau aus der alten Schleife war deutlich billiger als geschätzt, aus
+zwei Gründen, die beide schon im Code standen — und sie erklären zugleich,
+warum nach der Löschung so wenig übrig blieb:
 
-* **`Schlund` ist längst rundum.** `beleuchtung()`, `getroffen()`,
-  `zielrichtung()`, `gedreht()` rechnen mit freien Vektoren und wissen nichts
-  von oben und unten. Sie werden unverändert weiterverwendet — die Zusage,
-  dass gezeichnetes Licht und Schaden dieselbe Rechnung sind, überlebt den
-  Umbau.
+* **`scripts/kern/schlund.gd` ist längst rundum.** `beleuchtung()`,
+  `getroffen()`, `zielrichtung()`, `gedreht()` rechnen mit freien Vektoren
+  und wissen nichts von oben und unten. Der Name kommt aus der gelöschten
+  Schleife, der Inhalt nicht: es ist der Lichtkern, und er bleibt.
 * **Die Tierkunst kennt kein Oben.** Jede der zwölf Arten wird relativ zu
   `t.richtung` und deren Senkrechten gezeichnet. Sie sehen in jeder
   Blickrichtung richtig aus, ohne dass eine Linie neu gezogen wurde. Die
@@ -628,14 +617,11 @@ insgesamt in der Kolonie liegt: der Bericht ist die Stelle, an der man
 zwischen Bauen und noch einer Fahrt entscheidet, und dafür braucht man den
 Kontostand und nicht nur die Beute dieser Fahrt.
 
-**Der Ausbau ist derselbe Bildschirm wie im Schlund**, nicht ein zweiter.
-`kolonie_schirm.gd` ist eine Ebene und keine Szene, hängt an `Fortschritt`
-und `Kammern` und kennt seinen Wirt nicht — er passt in `rundum.tscn`, ohne
-dass eine Zeile in ihm geändert werden musste (nur `zurueck_beschriftung`
-kam dazu: „BACK TO THE MAW" in einem Boot mitten im Graben ist schlicht
-falsch). Ein eigener Ausbaubildschirm für diese Schleife wäre eine zweite
-Wahrheit über dieselben Kammern. Erreichbar über `COLONY` im Titelbild **und**
-im Bericht — nach der Fahrt liegt der Nährstoff frisch in der Kolonie, und
+**Der Ausbau ist eine Ebene, keine Szene.** `kolonie_schirm.gd` hängt an
+`Fortschritt` und `Kammern` und kennt seinen Wirt nicht — deshalb überlebte
+er die Löschung der alten Schleife, ohne dass eine Zeile in ihm geändert
+werden musste (nur `zurueck_beschriftung` blieb: „BACK TO THE TRENCH").
+Erreichbar über `COLONY` im Titelbild **und** im Bericht — nach der Fahrt liegt der Nährstoff frisch in der Kolonie, und
 das ist der Moment, in dem man ihn ausgeben will.
 
 **Und die Werte des Bootes kommen aus der Kolonie**, nicht aus der Sollkurve.
@@ -741,8 +727,8 @@ Handlung und einen Knopf. Jeder Schritt wartet auf **die Handlung**, nicht
 auf eine Uhr (fahren, zwei erlegen, das Stoßlicht auslösen), hält nichts an
 und verlangt nichts; wer ihn nicht liest, spielt trotzdem. Danach steht
 `KolonieStand.einstieg_fahrt` auf 1, und er kommt nie wieder — eine **eigene**
-Zahl neben `einstieg`, weil wer die Schlundwache kennt noch nicht weiß, dass
-man hier fährt.
+Zahl neben `einstieg`, weil beide getrennt gelten: der eine erklärt die
+Kolonie, der andere die Fahrt.
 
 **Eine Fahrt ist `Graben.WELLEN_JE_SITZUNG` Wellen lang** — genau wie eine
 Sitzung im Schlund (Zusage 9), und danach steht der Bericht: „DIVE COMPLETE"
@@ -771,26 +757,15 @@ Welle 24):
 
 | Stand | Bilder/s |
 |---|---|
-| Schlundwache | 9,9 |
-| Schlundwache ohne Glühen (`--flach`) | 12,5 |
 | Rundumlauf | 7,0 |
 | Rundumlauf ohne Glühen (`--flach`) | 8,7 |
 
-Daraus zwei Zahlen, die vorher geschätzt waren: der Rundumlauf kostet rund
-das Anderthalbfache der Schlundwache, und **das Glühen ist ein Fünftel des
+Daraus eine Zahl, die vorher geschätzt war: **das Glühen ist ein Fünftel des
 Bildes** — es bleibt trotzdem, denn es ist der Grund, warum die Leuchtröhren
-wie Röhren aussehen und nicht wie Striche.
+wie Röhren aussehen und nicht wie Striche, und in einem Spiel, dessen ganze
+Aussage Biolumineszenz ist, ist das keine Verzierung.
 
-**Die Schlundwache hatte bis dahin gar kein Glühen.** Der `WorldEnvironment`
-mit `glow_enabled` stand nur in `rundum.tscn` — die Kernschleife, also
-genau das, was in der Werbung gezeigt wird, lief ohne Nachbearbeitung. Es
-ist derselbe Umgebungsblock in beiden Szenen, und er kostet in beiden
-dasselbe Fünftel des Bildes (12,5 auf 9,9). Dafür sehen leuchtende Tiere
-zum ersten Mal aus, als leuchteten sie, statt hell gezeichnet zu sein — in
-einem Spiel, dessen ganze Aussage Biolumineszenz ist, war das die größte
-einzelne Lücke im Bild.
-
-Beide Zahlen sind seit der ersten Messung (8,1 und 5,2) gestiegen, obwohl
+Die Zahl ist seit der ersten Messung (5,2) gestiegen, obwohl
 seither Photophoren, Schleppen, Kleinzeug, eine vierte Felslage, Schlote,
 Schwärme und die Felsschatten dazugekommen sind. Das ist kein Zufall,
 sondern der Grund, warum hier gemessen und nicht geschätzt wird: **jede
@@ -820,8 +795,10 @@ aber je Tier über `Wellen.wert_in()`, und das hat eine Untergrenze von eins.
 In frühen Wellen, wo der Ertrag einstellig und die Welle hundert Tiere groß
 ist, liegt die tatsächliche Ausbeute um ein Vielfaches darüber — in **beiden**
 Schleifen, und `tools/simulation.gd` rechnet ebenso. Der richtige Maßstab ist
-deshalb, was die Schlundwache für dieselben Wellen zahlen würde. Gemessen:
-214 gegen 212, 147 gegen 154, 210 gegen 184 — eine Fahrt zahlt eine Sitzung.
+deshalb `rundlauf.gd::wellen_lohn()` — was in den Wellen dieser Fahrt
+überhaupt an Nährstoff liegt, Tier für Tier über `Wellen.wert_in()`
+aufsummiert. Gemessen: 214 gegen 212, 147 gegen 154, 210 gegen 184 — der
+Pilot holt heraus, was da ist.
 
 **Sie meldet den Rückstand, nicht nur die Sekunden.** Eine Zahl wie „68 s"
 sagt nichts; eine Welle hat ein entworfenes Eintrittsfenster
@@ -861,9 +838,12 @@ neue Apps kein APK mehr an. Er braucht `use_gradle_build=true`, weil `min_sdk`
 und `target_sdk` sonst wirkungslos bleiben, und einen Freigabeschluessel aus
 den Repository-Geheimnissen - im Quelltext hat der nichts zu suchen.
 
-**In Ladenbildern darf nichts stehen, was es im Spiel nicht gibt.** `--stau`
-setzte die Brut auf 1000000, und in der Kopfzeile stand "999997 / 44". Jetzt
-macht der Schalter die Brut unverwundbar, statt die Anzeige zu faelschen.
+**In Ladenbildern darf nichts stehen, was es im Spiel nicht gibt.** Ein
+Schalter für Schüsse setzte einmal die Brut auf 1000000, und in der
+Kopfzeile stand "999997 / 44" — eine Aufnahme, die ein Spiel zeigt, das es
+nicht gibt. Aus demselben Grund laufen die Aufnahmen mit `--stufen 14` und
+nicht auf dem leeren Spielstand des Behälters: wer Welle 40 sieht, hat eine
+gewachsene Kolonie.
 
 ## APK bauen
 

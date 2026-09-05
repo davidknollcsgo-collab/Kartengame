@@ -81,8 +81,9 @@ jobs:
 
       # Vor dem Bauen: laeuft das Spiel ueberhaupt?
       #
-      # Der Testlauf allein reicht dafuer nicht. Er laedt `wache.gd`, `hud.gd`
-      # und `kolonie_schirm.gd` nie, weil ein `--script`-Lauf keine Autoloads
+      # Der Testlauf allein reicht dafuer nicht. Er laedt `rundlauf.gd`,
+      # `rund_hud.gd` und `kolonie_schirm.gd` nie, weil ein `--script`-Lauf
+      # keine Autoloads
       # kennt - ein Parse-Fehler in einer dieser Dateien blieb dort gruen und
       # kam als APK heraus, die beim Start nichts tut. Deshalb wird das Spiel
       # hier wirklich gestartet und die Ausgabe auf SCRIPT ERROR geprueft.

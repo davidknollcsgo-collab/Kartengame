@@ -60,13 +60,9 @@ const KORN_GROESSTE := 1.7
 const KORN_HOF := 3.6
 
 
-## Wo der Kegel ansetzt.
-##
-## Stand als Konstante `Graben.WAECHTER` in `_draw()`. Der Rundumlauf laesst
-## den Waechter fahren, und ein Kegel, dessen Spitze festgenagelt ist, kann
-## dabei nicht mitkommen. Der Standardwert ist derselbe wie vorher, die
-## bestehende Szene setzt ihn nie - fuer sie aendert sich also nichts.
-var spitze := Graben.WAECHTER
+## Wo der Kegel ansetzt. `rundlauf.gd` setzt ihn je Bild auf den Ort des
+## Bootes; ein Kegel, dessen Spitze festgenagelt ist, kann nicht mitfahren.
+var spitze := Vector2.ZERO
 
 var richtung := Vector2.UP
 var halbwinkel := Graben.HALBWINKEL

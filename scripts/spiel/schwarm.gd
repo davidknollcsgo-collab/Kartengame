@@ -27,8 +27,21 @@ const SEHR_DICHT_AB := 140
 const SEITEN: PackedFloat32Array = [-1.0, 1.0]
 
 
-## Wird von `wache.gd` gesetzt.
+## Wird von `rundlauf.gd` gesetzt.
 var tiere: Array[Raeuber] = []
+
+## Wo das Licht herkommt - die Spitze des Kegels, also das Boot.
+##
+## **Weitergereicht, nicht angenommen.** Hier stand der feste Sitz des
+## Waechters aus der geloeschten Schlundwache. Dort war das richtig: der
+## Kegel setzte immer an derselben Stelle an. Hier faehrt er mit, und ein
+## Randlicht, das auf einen festen Weltpunkt zeigt, sagt dem Spieler die
+## halbe Zeit die falsche Richtung - die dem Boot zugewandte Kante war nur
+## dann hell, wenn das Boot zufaellig gerade dort stand.
+##
+## Es ist derselbe Ort, den `rundlauf.gd` auch an `_grund.licht_spitze`
+## gibt: eine Lichtquelle, eine Zahl.
+var lichtquelle := Vector2.ZERO
 
 ## Wellenzeit, fuer alles, was zappeln soll, ohne mit dem Alter des einzelnen
 ## Tieres zu laufen.
@@ -52,21 +65,19 @@ func _ready() -> void:
     material = stoff
 
 
-## Die Funkenbluete dieser Welle, oder null. `wache.gd` setzt sie.
+## Die Funkenbluete dieser Welle, oder null. `rundlauf.gd` setzt sie.
 var bluete: Bluete = null
 
 ## --- Leuchtroehren statt Papierschnitt ---
 ##
-## Im Rundumlauf sollen die Tiere aussehen wie Leuchtlinien: kein Koerper aus
-## Farbe, sondern ein Zug, der glimmt. Das ist nicht bloss Geschmack - dort
-## laeuft eine Nachbearbeitung mit Gluehen, und ein Gluehen greift an
-## **hellen, schmalen** Stellen. Eine breite Flaeche mit halber Deckung wird
-## davon nur milchig; eine helle duenne Linie wird davon zu einer Roehre.
+## Die Tiere sollen aussehen wie Leuchtlinien: kein Koerper aus Farbe,
+## sondern ein Zug, der glimmt. Das ist nicht bloss Geschmack - die Szene
+## laeuft mit einer Nachbearbeitung, und ein Gluehen greift an **hellen,
+## schmalen** Stellen. Eine breite Flaeche mit halber Deckung wird davon nur
+## milchig; eine helle duenne Linie wird davon zu einer Roehre.
 ##
-## Der Schalter steht hier und nicht im Rundumlauf, weil die zwoelf
-## Zeichenfunktionen hier stehen - und weil der Schlund unveraendert bleiben
-## soll. Ohne ihn aendert sich dort nichts: `led` ist aus.
-var led := false
+## Das stand bis zur Loeschung der Schlundwache hinter einem Schalter, damit
+## die andere Schleife unveraendert blieb. Es gibt nur noch eine.
 
 ## Wie deutlich das Tier gerade gezeichnet wird, 0 bis 1.
 ##
@@ -88,11 +99,8 @@ func _fuellung(punkte: PackedVector2Array, farbe: Color) -> void:
     if punkte.size() < 3:
         return
     farbe = _gedeckt(farbe)
-    if led:
-        draw_colored_polygon(punkte, Color(farbe.r * 0.22, farbe.g * 0.22,
-            farbe.b * 0.22, farbe.a * 0.45))
-        return
-    draw_colored_polygon(punkte, farbe)
+    draw_colored_polygon(punkte, Color(farbe.r * 0.22, farbe.g * 0.22,
+        farbe.b * 0.22, farbe.a * 0.45))
 
 
 ## Ein Linienzug. Bei Leuchtroehren zweimal: ein weiter blasser Hof und ein
@@ -102,27 +110,21 @@ func _zug(punkte: PackedVector2Array, farbe: Color, dicke: float) -> void:
     if punkte.size() < 2:
         return
     farbe = _gedeckt(farbe)
-    if led:
-        draw_polyline(punkte, Color(farbe.r, farbe.g, farbe.b,
-            farbe.a * 0.22), dicke * 3.4, true)
-        draw_polyline(punkte, Color(minf(1.0, farbe.r * 1.5),
-            minf(1.0, farbe.g * 1.5), minf(1.0, farbe.b * 1.5),
-            minf(1.0, farbe.a * 1.7)), maxf(1.0, dicke * 0.9), true)
-        return
-    draw_polyline(punkte, farbe, dicke, true)
+    draw_polyline(punkte, Color(farbe.r, farbe.g, farbe.b,
+        farbe.a * 0.22), dicke * 3.4, true)
+    draw_polyline(punkte, Color(minf(1.0, farbe.r * 1.5),
+        minf(1.0, farbe.g * 1.5), minf(1.0, farbe.b * 1.5),
+        minf(1.0, farbe.a * 1.7)), maxf(1.0, dicke * 0.9), true)
 
 
 ## Dasselbe fuer eine einzelne Strecke.
 func _strich(a: Vector2, b: Vector2, farbe: Color, dicke: float) -> void:
     farbe = _gedeckt(farbe)
-    if led:
-        draw_line(a, b, Color(farbe.r, farbe.g, farbe.b, farbe.a * 0.22),
-            dicke * 3.4, true)
-        draw_line(a, b, Color(minf(1.0, farbe.r * 1.5),
-            minf(1.0, farbe.g * 1.5), minf(1.0, farbe.b * 1.5),
-            minf(1.0, farbe.a * 1.7)), maxf(1.0, dicke * 0.9), true)
-        return
-    draw_line(a, b, farbe, dicke, true)
+    draw_line(a, b, Color(farbe.r, farbe.g, farbe.b, farbe.a * 0.22),
+        dicke * 3.4, true)
+    draw_line(a, b, Color(minf(1.0, farbe.r * 1.5),
+        minf(1.0, farbe.g * 1.5), minf(1.0, farbe.b * 1.5),
+        minf(1.0, farbe.a * 1.7)), maxf(1.0, dicke * 0.9), true)
 
 
 ## Die Leuchtpunkte laengs des Koerpers.
@@ -213,7 +215,7 @@ func _draw() -> void:
         if not t.lebendig:
             continue
         deckung = LAUER_DECKUNG if t.lauert else 1.0
-        if led and not t.lauert:
+        if not t.lauert:
             _schleppe(t)
         _zeichne(t, stufe)
     deckung = 1.0
@@ -993,7 +995,7 @@ func _schwarmherz(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) 
 func _randlicht(p: Vector2, r: float, farbe: Color, t: Raeuber) -> void:
     if t.licht <= 0.05:
         return
-    var zum_licht := (Graben.WAECHTER - p)
+    var zum_licht := (lichtquelle - p)
     if zum_licht.length_squared() < 1.0:
         return
     var w := zum_licht.angle()
@@ -1077,9 +1079,9 @@ func _spiegler(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> 
             Color(0.86, 0.94, 1.0, 0.14 * blenden))
         draw_circle(glanz, r * (0.16 + 0.34 * blenden),
             Color(1.0, 1.0, 1.0, 0.42 * blenden))
-        # Ein kurzer Strahl zurueck zum Waechter - das Licht kommt von dort,
+        # Ein kurzer Strahl zurueck zur Lampe - das Licht kommt von dort,
         # also geht es auch dorthin zurueck.
-        var heim := (Graben.WAECHTER - p).normalized()
+        var heim := (lichtquelle - p).normalized()
         draw_line(glanz, glanz + heim * r * (0.8 + 1.6 * blenden),
             Color(0.92, 0.98, 1.0, 0.30 * blenden), 1.6)
 

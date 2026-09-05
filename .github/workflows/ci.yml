@@ -74,7 +74,7 @@ jobs:
         run: godot --headless --path . --script tools/kolonielauf.gd
 
       # **Der Testlauf allein beweist nicht, dass das Spiel läuft.** Er lädt
-      # `rundlauf.gd`, `hud.gd` und `kolonie_schirm.gd` nie - ein
+      # `rundlauf.gd`, `rund_hud.gd` und `kolonie_schirm.gd` nie - ein
       # `--script`-Lauf kennt keine Autoloads. Ein Parse-Fehler in einer
       # dieser Dateien bleibt dort grün, und das Spiel startet dann
       # *scheinbar*: kein Fehler im Bild, keine Ausgabe, nur ein Prozess, der

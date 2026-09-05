@@ -32,17 +32,8 @@ trap 'rm -rf "$STAND"' EXIT
 export HOME="$STAND"
 export XDG_DATA_HOME="$STAND/.local/share"
 
-# Zwei Schuesse, weil es zwei Schleifen gibt. `schuss` geht in die
-# Schlundwache (`--schlund`), `fahrt` bleibt im Rundumlauf, mit dem die App
-# jetzt startet.
-schuss () {
-  local name="$1"; shift
-  xvfb-run -a godot --path . --rendering-driver opengl3 \
-    --resolution "$GROESSE" -- --schlund --schuss "$ZIEL/$name.png" "$@" \
-    > /dev/null 2>&1
-  echo "  $ZIEL/$name.png"
-}
-
+# Es gibt nur noch eine Schleife. `fahrt` nimmt sie auf - im Spiel, im
+# Titelbild, im Bericht oder auf einem Reiter des Ausbaus, je nach Schaltern.
 fahrt () {
   local name="$1"; shift
   xvfb-run -a godot --path . --rendering-driver opengl3 \
@@ -69,21 +60,23 @@ fahrt  1-fahrt   --spiel --welle 24 --zeit 26 --stufen 14 $FERTIG
 fahrt  2-titel   --zeit 6 --stufen 14 $FERTIG
 # 3. Der Bericht nach einer Fahrt.
 fahrt  3-bericht --ende --zeit 3 $FERTIG
-# 4. Die andere Schleife - der Kegel gegen eine volle Welle.
+# 4. Eine spaete Welle, ohne Nebel: der Grund, ueber den man faehrt.
 #
-# **Auch hier `--stufen 14`.** Ohne den Schalter steht in der Kopfzeile eine
-# Brut von 12 und ein Konto von 40 - der leere Spielstand des Behaelters -
-# neben einer Welle 22. In diesem Zustand ist nie ein Spieler: wer bis
-# Welle 22 kommt, hat eine gewachsene Kolonie. Ein Ladenbild soll das Spiel
-# zeigen, das man bekommt, und dazu gehoert ein Stand, den es gibt.
-schuss 4-wache   --welle 22 --zeit 12 --stufen 14 $FERTIG
-# 5. Die Tiere, ohne dass der Kegel sie wegraeumt.
-schuss 5-arten   --welle 40 --zeit 22 --stau --stufen 14 $FERTIG
-# 6. Das Aufbauspiel: der Schnitt durch die Kolonie.
-schuss 6-kolonie --kolonie 0 --stufen 14 $FERTIG
-# 7. Was eine Brutlinie aendert.
-schuss 7-linien  --kolonie 1 --stufen 14 $FERTIG
-# 8. Das Bestiarium - die Regeln stehen im Spiel, nicht in einem Wiki.
-schuss 8-arten   --kolonie 2 --stufen 14 $FERTIG
+# **Auch hier `--stufen 14`.** Ohne den Schalter steht in der Kopfzeile der
+# leere Spielstand des Behaelters neben einer Welle 40. In diesem Zustand
+# ist nie ein Spieler: wer so tief kommt, hat eine gewachsene Kolonie. Ein
+# Ladenbild soll das Spiel zeigen, das man bekommt, und dazu gehoert ein
+# Stand, den es gibt.
+fahrt  4-tief    --spiel --offen --welle 40 --zeit 30 --stufen 14 $FERTIG
+# 5. Das Aufbauspiel: der Schnitt durch die Kolonie.
+fahrt  5-kolonie --kolonie 0 --stufen 14 $FERTIG
+# 6. Was eine Brutlinie aendert.
+fahrt  6-linien  --kolonie 1 --stufen 14 $FERTIG
+# 7. Das Bestiarium - die Regeln stehen im Spiel, nicht in einem Wiki.
+#
+# **Mit einer Welle davor.** Der Reiter zeigt, was schon aufgetreten ist;
+# ohne gespielte Welle stuenden dort zwoelf Zeilen "Not yet encountered" -
+# ein Ladenbild, das nur sagt, dass man nichts gesehen hat.
+fahrt  7-arten   --spiel --welle 40 --zeit 26 --kolonie 2 --stufen 14 $FERTIG
 
 echo "fertig."

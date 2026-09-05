@@ -56,7 +56,6 @@ const TESTS: PackedStringArray = [
     "_test_kette_zahlt_punkte_und_keinen_naehrstoff",
     "_test_bluete_bleibt_ausserhalb_der_wirtschaft",
     "_test_stroemung_wird_nur_einmal_gerechnet",
-    "_test_lehrpfad_wird_von_der_tafel_nicht_verdeckt",
     "_test_toene_sind_hoerbar_und_sauber",
     "_test_grundton_schliesst_die_schleife",
     "_test_mutationen_tabelle_vollstaendig",
@@ -2315,7 +2314,7 @@ const DEUTSCHE_WOERTER: PackedStringArray = [
 
 func _test_sichtbares_bleibt_englisch() -> bool:
     var dateien: PackedStringArray = [
-        "res://scripts/ui/hud.gd", "res://scripts/ui/kolonie_schirm.gd",
+        "res://scripts/ui/kolonie_schirm.gd",
         # Der Rundumlauf faellt unter dieselbe Regel. Sein Entwurf kam
         # auf Deutsch, und genau so hatte ich das Bedienbild auch
         # geschrieben - "HUELLE", "WELLE", "PUNKTE". Der Waechter hat
@@ -2434,8 +2433,9 @@ func _test_kette_zahlt_punkte_und_keinen_naehrstoff() -> bool:
             "der Kettenfaktor braucht einen Deckel"):
         return false
 
-    var quelle := FileAccess.get_file_as_string("res://scripts/spiel/wache.gd")
-    if not _melde(not quelle.is_empty(), "wache.gd nicht lesbar"):
+    var quelle := FileAccess.get_file_as_string(
+        "res://scripts/spiel/rundlauf.gd")
+    if not _melde(not quelle.is_empty(), "rundlauf.gd nicht lesbar"):
         return false
 
     # **Die Regel als Satz:** Naehrstoff und Kette treffen sich nirgends.
@@ -2452,7 +2452,7 @@ func _test_kette_zahlt_punkte_und_keinen_naehrstoff() -> bool:
         if not (rein.contains("Fortschritt.aendere(") or rein.contains("verdient")):
             continue
         if not _melde(not rein.contains("kette"),
-                "wache.gd:%d bringt die Kette mit dem Naehrstoff zusammen"
+                "rundlauf.gd:%d bringt die Kette mit dem Naehrstoff zusammen"
                 % nummer):
             return false
     return true
@@ -2478,35 +2478,11 @@ func _test_kette_zahlt_punkte_und_keinen_naehrstoff() -> bool:
 ## Gemessen wird deshalb am Quelltext: `kolonie.gd` darf `Regeln` nicht
 ## kennen, und `wache.gd` muss den Abtrieb weiterreichen.
 func _test_stroemung_wird_nur_einmal_gerechnet() -> bool:
-    var kolonie := FileAccess.get_file_as_string(
-        "res://scripts/spiel/kolonie.gd")
-    if not _melde(not kolonie.is_empty(), "kolonie.gd nicht lesbar"):
-        return false
-    var nummer := 0
-    for zeile in kolonie.split("\n"):
-        nummer += 1
-        var rein := zeile.strip_edges()
-        if rein.begins_with("#"):
-            continue
-        if not _melde(not rein.contains("Regeln."),
-                "kolonie.gd:%d rechnet die Stroemung ein zweites Mal"
-                % nummer):
-            return false
-
-    var wache := FileAccess.get_file_as_string("res://scripts/spiel/wache.gd")
-    if not _melde(not wache.is_empty(), "wache.gd nicht lesbar"):
-        return false
-    if not _melde(wache.contains("_kolonie.abtrieb = abtrieb"),
-            "wache.gd muss den Abtrieb an die Kolonie weiterreichen"):
-        return false
-
-    # Im Rundumlauf dasselbe: dort treibt der Schwebstoff mit, und der
-    # Grund holt sich die Zahl ebenfalls nicht selbst.
     var grund := FileAccess.get_file_as_string(
         "res://scripts/spiel/grund_rundum.gd")
     if not _melde(not grund.is_empty(), "grund_rundum.gd nicht lesbar"):
         return false
-    nummer = 0
+    var nummer := 0
     for zeile in grund.split("\n"):
         nummer += 1
         var rein := zeile.strip_edges()
@@ -2725,43 +2701,6 @@ func _test_kamera_zeigt_den_eintritt_nie() -> bool:
     return true
 
 
-## Der Lehrpfad wird von der Abschnittstafel nicht verdeckt.
-##
-## Beide stehen in der Bildmitte, und einer von beiden muss weichen. Wer
-## weicht, ist keine Geschmacksfrage: die Tafel sagt, warum sich das Spiel
-## anders anfuehlt, der Lehrschritt sagt, wie man es ueberhaupt spielt. Der
-## zweite Satz ist der dringendere - und zwar genau in den Wellen, in denen
-## beide anstehen, denn der erste Abschnitt faellt in Welle 1.
-##
-## Geprueft wird die Kopplung, nicht das Bild: `zeige_abschnitt()` und
-## `zeige_mutation()` muessen den laufenden Lehrpfad abfragen, bevor sie die
-## Tafel starten, und es muss einen Weg zurueck geben - sonst waere die
-## Ankuendigung nicht zurueckgestellt, sondern weg.
-func _test_lehrpfad_wird_von_der_tafel_nicht_verdeckt() -> bool:
-    var quelle := FileAccess.get_file_as_string("res://scripts/ui/hud.gd")
-    if not _melde(not quelle.is_empty(), "hud.gd nicht lesbar"):
-        return false
-
-    for name in ["zeige_abschnitt", "zeige_mutation"]:
-        var start := quelle.find("func %s(" % name)
-        if not _melde(start >= 0, "%s() fehlt" % name):
-            return false
-        var rumpf := quelle.substr(start, 320)
-        if not _melde(rumpf.contains("_lehre >= 0"),
-                "%s() startet die Tafel ohne nach dem Lehrpfad zu fragen"
-                % name):
-            return false
-        if not _melde(rumpf.contains("_stau_"),
-                "%s() verwirft die Ankuendigung, statt sie zu stauen" % name):
-            return false
-
-    if not _melde(quelle.contains("_stau_abschnitt = -1")
-            and quelle.contains("_stau_mutation = -1"),
-            "das Stauende wird nie geleert - die Tafel kaeme zweimal"):
-        return false
-    return true
-
-
 ## Die Funkenbluete steht ausserhalb von Wirtschaft und Wellenbudget.
 ##
 ## Sie ist kein Raeuber: sie greift nichts an, sie steht in keiner
@@ -2795,8 +2734,9 @@ func _test_bluete_bleibt_ausserhalb_der_wirtschaft() -> bool:
             % [mit, Graben.ZYKLUS]):
         return false
 
-    var quelle := FileAccess.get_file_as_string("res://scripts/spiel/wache.gd")
-    if not _melde(not quelle.is_empty(), "wache.gd nicht lesbar"):
+    var quelle := FileAccess.get_file_as_string(
+        "res://scripts/spiel/rundlauf.gd")
+    if not _melde(not quelle.is_empty(), "rundlauf.gd nicht lesbar"):
         return false
     var nummer := 0
     for zeile in quelle.split("\n"):
@@ -2807,7 +2747,7 @@ func _test_bluete_bleibt_ausserhalb_der_wirtschaft() -> bool:
         if not (rein.contains("Fortschritt.aendere(") or rein.contains("verdient")):
             continue
         if not _melde(not rein.contains("bluete"),
-                "wache.gd:%d bringt die Bluete mit dem Naehrstoff zusammen"
+                "rundlauf.gd:%d bringt die Bluete mit dem Naehrstoff zusammen"
                 % nummer):
             return false
     return true

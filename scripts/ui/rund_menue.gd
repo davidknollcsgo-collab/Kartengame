@@ -29,7 +29,6 @@ const KNOEPFE: Array[Dictionary] = [
     # Die alte Schleife bleibt erreichbar. Sie ist fertig, geprueft und
     # verkaufbar - sie hinter einem Kommandozeilenschalter zu begraben, waere
     # das Wegwerfen von Monaten.
-    {&"kennung": &"SCHLUND", &"text": "TRENCH WATCH"},
 ]
 
 var lauf: Node = null
@@ -92,8 +91,6 @@ func _gewaehlt(i: int) -> void:
     match KNOEPFE[i][&"kennung"]:
         &"SPIELEN":
             lauf.starte()
-        &"SCHLUND":
-            get_tree().change_scene_to_file("res://scenes/schlund.tscn")
         &"AUSBAU":
             lauf.oeffne_kolonie(0)
         &"LINIEN":
@@ -345,10 +342,8 @@ func _zeichne() -> void:
     # **Das erste Bild kommt vor dem Wirt.** Die Ebene steht sichtbar in der
     # Szene, und Godot zeichnet sie einmal, bevor `rundlauf.gd::_ready()`
     # sich hier eintraegt - `_process()` kommt erst danach und kann die
-    # Sichtbarkeit nicht rueckwirkend nehmen. Mit `--schlund` faellt das
-    # sofort auf: die Szene wird im selben Atemzug gewechselt, das eine Bild
-    # bleibt, und in der Ausgabe stand ein Fehler auf einem Weg, den es gar
-    # nicht mehr gibt.
+    # Sichtbarkeit nicht rueckwirkend nehmen. Ohne diese Abfrage stand bei
+    # jedem Start ein Zugriff auf Nil in der Ausgabe.
     if lauf == null:
         return
     var breite := _flaeche.size.x
