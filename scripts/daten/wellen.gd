@@ -594,6 +594,25 @@ static func lebenssumme(nummer: int) -> float:
     return summe
 
 
+## Summe des **Aufwands**, den die Welle tatsaechlich einkauft.
+##
+## **Nicht dasselbe wie die Lebenssumme**, und genau darauf kommt es an: das
+## Budget ist in Aufwand denominiert, nicht in Lebenspunkten. Eine Art mit
+## `aufwand` 3,2 zieht das 3,2fache ihres Lebens vom Budget ab - weil sie
+## dreimal so lange braucht, bis sie faellt, und die Welle deshalb dreimal
+## so lange bindet.
+##
+## Wer die Lebenssumme gegen `staerke()` haelt, misst deshalb, wieviel Leben
+## fuer das Budget herausgekommen ist, und nicht, ob das Budget aufgegangen
+## ist. Bei kleinen Aufschlaegen faellt der Unterschied nicht auf; beim
+## Kreiser mit 3,2 sah es aus, als bliebe die Haelfte des Budgets liegen.
+static func aufwandsumme(nummer: int) -> float:
+    var summe := 0.0
+    for a in auftritte(nummer):
+        summe += aufwand_in(a[&"art"], nummer)
+    return summe
+
+
 static func billigste(moeglich: PackedInt32Array) -> int:
     var beste := moeglich[0]
     for i in moeglich:

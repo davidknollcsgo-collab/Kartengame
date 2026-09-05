@@ -45,7 +45,7 @@ Laufzeit aus `_draw()`-Aufrufen und eigenen GDShadern:
 | Was | Wo |
 |---|---|
 | Wasser, Meeresschnee, Tiefenverlauf | `shaders/graben.gdshader` |
-| Alle zwölf Räuberarten | `scripts/spiel/schwarm.gd` |
+| Alle siebzehn Räuberarten | `scripts/spiel/schwarm.gd` |
 | Lichtkegel und Staub im Strahl | `scripts/spiel/kegel.gd` |
 | Funken und Trefferstrahlen | `scripts/spiel/funken.gd` |
 | Meeresgrund, Felsen, Bewuchs, Schlote, Nebel und Fundstellen | `scripts/spiel/grund_rundum.gd` |

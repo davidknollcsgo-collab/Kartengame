@@ -46,7 +46,8 @@ godot --headless --import                                     # class_name-Regis
 godot --headless --path . --script tests/run_tests.gd         # ~3 s, Exitcode 1 bei Fehler
 godot --headless --path . --script tools/wellenpruefer.gd     # 4 Umdrehungen, ~6 min
 godot --headless --path . --script tools/wellenpruefer.gd -- --spielraum
-godot --headless --path . --script tools/kolonielauf.gd      # 120 Tage Kolonie, ~4 min
+godot --headless --path . --script tools/kolonielauf.gd       # 120 Tage Kolonie, ~4 min
+godot --headless --path . --script tools/artenkosten.gd       # was eine Art wirklich kostet
 ```
 
 > **Der Wellenprüfer ist rot, und zwar ehrlich.** Er meldet achtzehn
@@ -59,10 +60,24 @@ godot --headless --path . --script tools/kolonielauf.gd      # 120 Tage Kolonie,
 > wird, damit CI grün wird — siehe Zusage 26. Zwei unabhängige Werkzeuge
 > sagen dasselbe; das ist ein Fund, kein Messfehler.
 >
-> Ein wahrscheinlicher Grund steht schon im Werkzeug: `Wellen.umgebung()`
-> fällt in späten Abschnitten weit ab, und ein Budget kann zwar
-> Lebenspunkte kürzen, aber **kein Zeitfenster verlängern**. Wer das
-> anfasst, fasst `Wellen.fenster()` an und nicht die Schranke.
+> **Was es nicht ist**, ist inzwischen gemessen. Der Kreiser war um das
+> 2,6fache unterbewertet; das war ein echter Buchungsfehler, hat die Wand
+> aber nur von 85 auf 82 verschoben. Und es sind auch nicht die Schwärme:
+> die Spawncloud kostet über eine ganze Fahrt zwei von einunddreißig Hülle.
+>
+> **Was es sein dürfte.** Die Hülle geht bei jedem gefallenen Lauf an
+> dieselben drei: **Mirrorshell**, **Lunge Eel**, **Shellback**. Der
+> Spiegler erklärt sich von selbst — `Schlund.brennende()` nimmt die Tiere
+> mit der größten Wirkung zuerst, und ein Spiegler im Kern des Kegels nimmt
+> fast nichts, wird also nie gewählt und läuft in Ruhe heran. Sein
+> `hoechst_licht` von 0,78 war für die Schlundwache entworfen, wo ein Kegel
+> einer Bahn gegenüberstand; hier heißt „nur der Saum brennt ihn" faktisch
+> „er ist unverwundbar, solange man irgendetwas anderes bekämpft".
+>
+> Ein zweiter Verdacht bleibt offen: `Wellen.umgebung()` fällt in späten
+> Abschnitten weit ab, und ein Budget kann zwar Lebenspunkte kürzen, aber
+> **kein Zeitfenster verlängern**. Wer das anfasst, fasst `Wellen.fenster()`
+> an und nicht die Schranke.
 
 Der Kolonielauf ist das Werkzeug, das die meisten Fehler gefunden hat. Er
 **spielt die Wellen wirklich durch** — mit dem Koloniestand, den ein normaler
@@ -113,6 +128,24 @@ das letzte Statement der Funktion ist.
 **Achtung beim Fehler-Check in der Shell:** `godot ... | grep ... | head` gibt
 immer Erfolg zurück, weil `head` gelingt. Die Ausgabe in eine Variable fangen
 und auf leer prüfen.
+
+**`tools/artenkosten.gd` misst, was `Arten.aufwand()` behauptet.** Die Zahl
+sagt, wieviel Wellenbudget ein Tier kostet, und `Wellen.auftritte()` kauft
+danach ein — sie war von Hand gesetzt, und von Hand gesetzte Zahlen laufen
+der Wirklichkeit davon. Der Kreiser stand auf 1,24 und brauchte gemessen das
+**3,3fache** der Zeit, die der Zahnkiefer je Lebenspunkt braucht: das Budget
+kaufte dreimal so viele, wie es bezahlte, und der Wellenprüfer meldete eine
+Wand, deren Ursache nirgends stand.
+
+Das Werkzeug lässt ein einzelnes Tier gegen denselben Kegel laufen und misst
+die Zeit bis zum Tod, geteilt durch die Lebenspunkte. Was es **nicht** sieht,
+ist alles, was aus der Auswahl kommt: `Schlund.brennende()` nimmt die Tiere
+mit der größten Wirkung zuerst, und der Spiegler steht im Kern des Kegels,
+wo er fast nichts abbekommt — also wird er nie gewählt und läuft in Ruhe
+heran. Gemessen kostet er 0,94, in einer echten Fahrt ist er der teuerste
+Posten der Hülle. Deshalb ist `_test_keine_art_kostet_ein_vielfaches` bei
+Faktor 2 angesetzt und nicht bei 1,2: er soll fangen, was um ein Vielfaches
+danebenliegt, und nicht das Messrauschen bewerten.
 
 ## Optik prüfen (Screenshots)
 

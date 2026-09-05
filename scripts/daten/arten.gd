@@ -254,7 +254,13 @@ const TABELLE: Array[Dictionary] = [
         &"takt": 1.1,
         &"farbe": Color(1.00, 0.74, 0.38),
         &"ab_welle": 66,
-        &"aufwand": 1.24,
+        # **Gemessen, nicht geschaetzt.** Hier stand 1,24, und
+        # `tools/artenkosten.gd` mass das 3,3fache: er kreist, der Kegel
+        # laeuft ihm nach, und er braucht siebenundzwanzig Sekunden statt
+        # vier. Das Wellenbudget kaufte damit dreimal soviel Kreiser, wie es
+        # bezahlte - und der Wellenpruefer meldete eine Wand, deren Ursache
+        # nirgends stand.
+        &"aufwand": 3.2,
         # **Sein ganzer Entwurf.** Er haelt diesen Abstand und laeuft
         # seitlich weiter, statt geradeaus zu kommen. Im Schlund waere das
         # sinnlos gewesen - dort sank alles dieselbe Bahn nach unten. Hier

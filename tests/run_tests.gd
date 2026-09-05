@@ -56,6 +56,7 @@ const TESTS: PackedStringArray = [
     "_test_kette_zahlt_punkte_und_keinen_naehrstoff",
     "_test_bluete_bleibt_ausserhalb_der_wirtschaft",
     "_test_stroemung_wird_nur_einmal_gerechnet",
+    "_test_keine_art_kostet_ein_vielfaches",
     "_test_toene_sind_hoerbar_und_sauber",
     "_test_grundton_schliesst_die_schleife",
     "_test_mutationen_tabelle_vollstaendig",
@@ -1182,7 +1183,12 @@ func _test_wellen_dauer_im_rahmen() -> bool:
 
 func _test_wellen_treffen_ihr_budget() -> bool:
     for n in range(1, Graben.ZYKLUS + 1):
-        var summe := Wellen.lebenssumme(n)
+        # **Aufwand, nicht Leben.** Das Budget ist in Aufwand denominiert:
+        # eine Art mit `aufwand` 3,2 zieht das 3,2fache ihres Lebens ab, weil
+        # sie dreimal so lange bindet. Wer hier die Lebenssumme haelt, misst,
+        # wieviel Leben herausgekommen ist - nicht, ob das Budget aufging.
+        # Beim Kreiser sah das aus, als bliebe die Haelfte liegen.
+        var summe := Wellen.aufwandsumme(n)
         var soll := Wellen.staerke(n)
         if not _melde(summe > 0.0, "Welle %d ist leer" % n):
             return false
@@ -2534,6 +2540,31 @@ func _test_stroemung_wird_nur_einmal_gerechnet() -> bool:
             "rundlauf.gd muss den Abtrieb an den Grund weiterreichen"):
         return false
     return true
+
+
+## Keine Art kostet ein Vielfaches von dem, was sie bezahlt.
+##
+## **Der Fund, aus dem dieser Test entstanden ist:** der Kreiser stand auf
+## einem Aufwand von 1,24 und brauchte gemessen das 3,3fache der Zeit, die
+## der Zahnkiefer je Lebenspunkt braucht. `Wellen.auftritte()` kauft nach
+## `Arten.aufwand()` ein, also kaufte das Budget dreimal soviel Kreiser, wie
+## es bezahlte. Der Wellenpruefer meldete eine Wand ab Welle 85, und ihre
+## Ursache stand nirgends - sie war eine von Hand gesetzte Zahl, die der
+## Wirklichkeit davongelaufen war.
+##
+## Die Schranke ist bewusst **locker**. `tools/artenkosten.gd` misst ein
+## einzelnes Tier ohne Zieldeckel und ohne Nachbarn; alles, was aus der
+## Auswahl kommt, sieht es nicht (siehe dort). Ein Faktor von 1,7 ist damit
+## noch Messrauschen, einer von 2,6 nicht mehr.
+func _test_keine_art_kostet_ein_vielfaches() -> bool:
+    var kosten := preload("res://tools/artenkosten.gd")
+    var schlimm: Array = kosten.schlimmster_faktor()
+    var faktor := float(schlimm[0])
+    var wer := int(schlimm[1])
+    return _melde(faktor <= 2.0,
+        "%s kostet das %.2ffache seines Aufwands - das Wellenbudget kauft "
+        % [Arten.name_von(wer) if wer >= 0 else "?", faktor]
+        + "mehr davon, als es sich leisten kann")
 
 
 ## Die gerechneten Toene sind hoerbar, unverzerrt und knacksfrei.
