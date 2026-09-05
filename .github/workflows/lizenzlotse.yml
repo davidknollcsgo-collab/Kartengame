@@ -1,0 +1,54 @@
+name: Lizenzlotse
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "lizenzlotse/**"
+      - ".github/workflows/lizenzlotse.yml"
+  pull_request:
+    paths:
+      - "lizenzlotse/**"
+      - ".github/workflows/lizenzlotse.yml"
+
+concurrency:
+  group: lotse-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: lizenzlotse
+
+jobs:
+  pruefen:
+    name: Typen, Tests, Bau
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: lizenzlotse/package-lock.json
+      - name: Pakete installieren
+        run: npm ci
+      - name: Typprüfung
+        run: npx tsc -p tsconfig.json --noEmit
+      - name: Tests
+        run: npm test
+      - name: Oberfläche und Server bauen
+        run: npm run build
+      # Deckt ab, was Unit-Tests nicht sehen: fehlende Dateien im Bau,
+      # falsche Pfade, ein Server, der gar nicht erst hochkommt.
+      - name: Server startet und antwortet
+        run: |
+          set -euo pipefail
+          DATENBANK=$(mktemp -d)/probe.sqlite PORT=4124 node bau/server/server/index.js &
+          server=$!
+          for versuch in $(seq 20); do
+            if curl -sf http://127.0.0.1:4124/api/gesundheit > /dev/null; then break; fi
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:4124/api/gesundheit
+          curl -sf -o /dev/null http://127.0.0.1:4124/
+          kill "$server"

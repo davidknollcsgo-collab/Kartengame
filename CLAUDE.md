@@ -99,6 +99,29 @@ Regeln, die schon einmal Fehler verhindert haben:
 - Beispieldaten in `src/fachlogik/beispiele.ts` rechnen vom gewünschten
   Stichtag zurück; die Tests prüfen das über mehrere Kalendertage
 
+## Lizenzlotse (`lizenzlotse/`)
+
+Drittes Projekt im Verzeichnisbaum: findet ungenutzte Microsoft-365-Lizenzen
+und beziffert sie in Euro. Node und TypeScript, eigener CI-Arbeitsablauf.
+
+```bash
+cd lizenzlotse
+npm run pruefen        # Typprüfung und Tests
+npm run dev            # Server :4001, Oberfläche :5174
+```
+
+Regeln, die schon einmal Fehler verhindert haben:
+
+- Analyse gehört in `src/fachlogik/analyse.ts`, frei von Datenbank und Netz
+- Eine Abstufung wird nur vorgeschlagen, wenn ein Dienst des laufenden Plans
+  nachweislich ungenutzt ist. Ohne diese Bedingung empfiehlt die Regel jedem
+  Business Premium den Wechsel auf Business Standard — beide schalten
+  dieselben Dienste frei, der Unterschied liegt in Sicherheitsfunktionen, die
+  kein Nutzungsbericht zeigt
+- Die ausgewiesene Ersparnis wird immer nach `sicher` und `pruefen` getrennt
+- Beispieldaten erzeugen CSV-Text und laufen durch denselben Import wie echte
+  Ausgaben — ein Importfehler fällt damit schon in der Demo auf
+
 ## Konventionen
 
 - Bezeichner und Kommentare auf Deutsch, passend zum Projekt

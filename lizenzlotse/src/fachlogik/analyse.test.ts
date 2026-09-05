@@ -121,7 +121,7 @@ describe("Regallizenzen", () => {
 
     test("der Verlängerungstermin steht in der Empfehlung", () => {
         const ergebnis = werte([], [abo({ gekauft: 10, zugewiesen: 3, laufzeitEnde: "2027-03-31" })]);
-        expect(ergebnis.befunde[0]!.empfehlung).toContain("2027-03-31");
+        expect(ergebnis.befunde[0]!.empfehlung).toContain("31.03.2027");
     });
 });
 
@@ -265,5 +265,45 @@ describe("Summen und Vorsicht", () => {
     test("laufende Lizenzkosten rechnen mit gekauften, nicht zugewiesenen Plätzen", () => {
         const ergebnis = werte([], [abo({ gekauft: 10, zugewiesen: 6 })]);
         expect(ergebnis.lizenzkostenCentMonat).toBe(10 * 2550);
+    });
+});
+
+describe("Grenzen der Abstufung", () => {
+    test("gleicher Dienstumfang ist kein Grund für eine Abstufung", () => {
+        // Business Premium und Business Standard schalten dieselben Dienste
+        // frei; der Preisunterschied steckt in Sicherheit und Verwaltung.
+        const ergebnis = werte([
+            konto({
+                skus: ["SPB"],
+                letzteAktivitaet: {
+                    exchange: plusTage(HEUTE, -1),
+                    teams: plusTage(HEUTE, -1),
+                    onedrive: plusTage(HEUTE, -1),
+                    sharepoint: plusTage(HEUTE, -1),
+                    office: plusTage(HEUTE, -1),
+                },
+            }),
+        ]);
+        expect(ergebnis.befunde).toHaveLength(0);
+    });
+
+    test("ein nachweislich ungenutzter Dienst rechtfertigt sie sehr wohl", () => {
+        const ergebnis = werte([
+            konto({
+                skus: ["SPB"],
+                letzteAktivitaet: { exchange: plusTage(HEUTE, -1), teams: plusTage(HEUTE, -1) },
+            }),
+        ]);
+        const befund = ergebnis.befunde.find((b) => b.art === "ueberdimensioniert")!;
+        expect(befund.zielSku).toBe("O365_BUSINESS_ESSENTIALS");
+        expect(befund.begruendung).toContain("Office-Anwendungen");
+    });
+});
+
+describe("Sprache", () => {
+    test("ein einzelner Platz steht nicht im Plural", () => {
+        const ergebnis = werte([], [abo({ gekauft: 11, zugewiesen: 10 })]);
+        expect(ergebnis.befunde[0]!.titel).toContain("1 Platz unbenutzt");
+        expect(ergebnis.befunde[0]!.titel).not.toContain("1 Plätze");
     });
 });

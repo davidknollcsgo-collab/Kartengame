@@ -22,7 +22,7 @@ import {
     type Dienst,
     type Konto,
 } from "./typen.ts";
-import { anzahl as inWorten, euro } from "./formate.ts";
+import { anzahl as inWorten, datumKurz, euro } from "./formate.ts";
 
 export interface Regelwerk {
     /** Ab wann gilt ein Konto als inaktiv. */
@@ -183,7 +183,7 @@ export function werteAus(
                 sicherheit: "pruefen",
                 titel: `${konto.anzeigename}: seit ${ruhetage} Tagen inaktiv`,
                 begruendung:
-                    `Letzte Aktivität am ${zuletzt}. Zugewiesen: ${skuListe(lizenzen)} ` +
+                    `Letzte Aktivität am ${datumKurz(zuletzt)}. Zugewiesen: ${skuListe(lizenzen)} ` +
                     `für ${euro(kosten)} im Monat.`,
                 empfehlung:
                     "Klären, ob die Person noch im Unternehmen ist. Elternzeit und lange " +
@@ -210,14 +210,15 @@ export function werteAus(
             id: befundId("regallizenz", null, abo.sku),
             art: "regallizenz",
             sicherheit: offen > regelwerk.reserveLizenzen ? "sicher" : "pruefen",
-            titel: `${skuName(abo.sku)}: ${offen} Plätze unbenutzt gekauft`,
+            titel: `${skuName(abo.sku)}: ${inWorten(offen, "Platz", "Plätze")} unbenutzt gekauft`,
             begruendung:
                 `${abo.gekauft} Plätze gekauft, ${abo.zugewiesen} zugewiesen. ` +
-                `${offen} Plätze kosten ${euro(wert)} im Monat, ohne dass jemand sie nutzt.`,
+                `${inWorten(offen, "Platz kostet", "Plätze kosten")} ${euro(wert)} im Monat, ` +
+                `ohne dass jemand sie nutzt.`,
             empfehlung:
                 offen > regelwerk.reserveLizenzen
                     ? "Platzzahl zur nächsten Verlängerung reduzieren." +
-                      (abo.laufzeitEnde ? ` Laufzeit endet am ${abo.laufzeitEnde}.` : "")
+                      (abo.laufzeitEnde ? ` Die Laufzeit endet am ${datumKurz(abo.laufzeitEnde)}.` : "")
                     : "Kleine Reserve für neue Mitarbeiter kann sinnvoll sein — bewusst entscheiden.",
             kontoId: null,
             upn: null,
@@ -280,7 +281,7 @@ export function werteAus(
                 sicherheit: letzte ? "pruefen" : "sicher",
                 titel: `${konto.anzeigename}: ${definition.name} ohne Nutzung`,
                 begruendung: letzte
-                    ? `${DIENST_TEXT[dienst]} wurde zuletzt am ${letzte} genutzt, das ist ` +
+                    ? `${DIENST_TEXT[dienst]} wurde zuletzt am ${datumKurz(letzte)} genutzt, das ist ` +
                       `${ruhetage} Tage her.`
                     : `Für ${DIENST_TEXT[dienst]} ist keinerlei Nutzung verzeichnet.`,
                 empfehlung:
@@ -297,20 +298,34 @@ export function werteAus(
         }
 
         // 7. Großer Plan, kleiner Bedarf.
+        //
+        // Eine Abstufung wird nur vorgeschlagen, wenn der Bericht auch etwas
+        // hergibt: Mindestens ein Dienst des laufenden Plans muss ungenutzt
+        // sein. Ohne diese Bedingung empfiehlt die Regel jedem Business
+        // Premium den Wechsel auf Business Standard — die beiden schalten
+        // dieselben Dienste frei und unterscheiden sich in Verwaltung und
+        // Sicherheit, wovon Nutzungsberichte nichts wissen. Solche Ersparnis
+        // wäre erfunden.
         if (genutzt.length === 0) continue;
         for (const id of basisplaene) {
             const definition = sku(id);
             if (!definition?.abstufungen?.length) continue;
+            const unbenutzteDienste = definition.dienste.filter((dienst) => !genutzt.includes(dienst));
+            if (unbenutzteDienste.length === 0) continue;
             const kandidaten = definition.abstufungen
                 .map((ziel) => sku(ziel))
                 .filter((ziel): ziel is NonNullable<typeof ziel> => Boolean(ziel))
                 .filter((ziel) => genutzt.every((dienst) => ziel.dienste.includes(dienst)))
+                // Ein Plan mit demselben Dienstumfang ist kein Beleg, sondern
+                // nur billiger — die Differenz steckt dann in Funktionen, die
+                // hier niemand messen kann.
+                .filter((ziel) => ziel.dienste.length < definition.dienste.length)
                 .sort((a, b) => preis(a.id) - preis(b.id));
             const ziel = kandidaten[0];
             if (!ziel) continue;
             const wert = preis(id) - preis(ziel.id);
             if (wert <= 0) continue;
-            const ungenutzt = definition.dienste.filter((dienst) => !genutzt.includes(dienst));
+            const ungenutzt = unbenutzteDienste;
             befunde.push({
                 id: befundId("ueberdimensioniert", konto.id, id),
                 art: "ueberdimensioniert",
@@ -323,8 +338,9 @@ export function werteAus(
                         : "") +
                     `${ziel.name} deckt den tatsächlichen Bedarf ab.`,
                 empfehlung:
-                    `Auf ${ziel.name} abstufen — spart ${euro(wert)} im Monat. ` +
-                    `Vorher prüfen, ob Funktionen jenseits der Nutzungsberichte gebraucht werden.`,
+                    `Auf ${ziel.name} abstufen — spart ${euro(wert)} im Monat. Vorher prüfen, ` +
+                    `ob Funktionen gebraucht werden, die in keinem Nutzungsbericht auftauchen: ` +
+                    `Geräteverwaltung, erweiterter Bedrohungsschutz, Archivierung.`,
                 kontoId: konto.id,
                 upn: konto.upn,
                 anzeigename: konto.anzeigename,

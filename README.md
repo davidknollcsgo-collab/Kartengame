@@ -82,9 +82,12 @@ Kein fremder Code, keine fremden Assets. Herkunft und Lizenz jeder Datei stehen
 in [ASSETS.md](ASSETS.md), die Lizenzen der Abhängigkeiten in
 [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
 
-## Zweites Projekt im selben Verzeichnisbaum
+## Weitere Projekte im selben Verzeichnisbaum
 
-`vertragsfristen-waechter/` enthält ein eigenständiges Werkzeug, das mit dem
-Spiel nichts zu tun hat: es überwacht Kündigungsfristen von Versicherungen,
-Software-Abos, Miet- und Wartungsverträgen. Eigene Abhängigkeiten, eigene
-Tests, eigener CI-Arbeitsablauf — siehe `vertragsfristen-waechter/README.md`.
+Zwei eigenständige Werkzeuge, die mit dem Spiel nichts zu tun haben. Jedes hat
+eigene Abhängigkeiten, eigene Tests und einen eigenen CI-Arbeitsablauf.
+
+- `vertragsfristen-waechter/` — überwacht Kündigungsfristen von
+  Versicherungen, Software-Abos, Miet- und Wartungsverträgen
+- `lizenzlotse/` — findet ungenutzte Microsoft-365-Lizenzen und beziffert sie
+  in Euro
