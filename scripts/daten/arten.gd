@@ -207,23 +207,27 @@ const TABELLE: Array[Dictionary] = [
         &"farbe": Color(0.80, 0.84, 0.98),
         &"ab_welle": 54,
         &"hoechst_licht": 0.78,
-        # **Der Preis kommt aus `Schlund.SPIEGEL_REST`.**
-        #
-        # Im Kern des Kegels nimmt er nur 45 % Schaden. Ein Daumen, der auf
-        # das naechste Tier zielt, hat ihn meistens genau dort - also bindet
-        # er im Schnitt das 1/0,45fache an Kegelzeit, und das ist 2,2.
-        # Eingetragen stand 1,30.
+        # **Der Preis kommt aus `Schlund.SPIEGEL_REST`** und wandert mit
+        # ihm: 1/0,58 ist 1,72. Ein Daumen, der auf das naechste Tier zielt,
+        # hat den Spiegler meistens im Kern des Kegels - also bindet er im
+        # Schnitt genau diesen Kehrwert an Kegelzeit. Eingetragen stand 1,30
+        # und danach von Hand 2,2; beide Male geraten.
         #
         # Der Unterschied ist gemessen und nicht geschaetzt: nimmt man ihn
-        # ganz aus dem Pool, faellt der Wellenpruefer von siebzehn auf acht
-        # Sitzungen und die erste Wand wandert von Welle 82 auf 119. Er
+        # ganz aus dem Pool, fiel der Wellenpruefer von siebzehn auf acht
+        # Sitzungen und die erste Wand wanderte von Welle 82 auf 119. Er
         # allein trug die Haelfte.
         #
         # **Was nicht geholfen hat:** die Schwelle von 0,78 auf 0,90 zu
         # heben. Sechzehn statt siebzehn Faelle - der Kern des Kegels liegt
         # ohnehin ueber beiden Werten, also aendert die Schwelle fast
         # nichts. Es ist der Rest, nicht die Grenze.
-        &"aufwand": 2.2,
+        #
+        # Und ein hoeherer Preis allein reichte auch nicht: er regelt, wie
+        # **viele** kommen, nicht ob sie sterben. Bei Aufwand 2,2 stand er
+        # weiter an der Spitze der Trefferliste. Deshalb ist der Rest selbst
+        # gestiegen - siehe `Schlund.SPIEGEL_REST`.
+        &"aufwand": 1.72,
     },
     {
         &"kennung": &"LAICHWOLKE",

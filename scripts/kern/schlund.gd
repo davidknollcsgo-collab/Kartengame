@@ -112,7 +112,40 @@ static func schaden_je_sekunde(leistung: float, helligkeit: float) -> float:
 ## langsam; wer lernt, ihn im Randlicht mitlaufen zu lassen, fuenfmal so
 ## schnell. Der Unterschied ist gross genug, dass man ihn merkt, und klein
 ## genug, dass niemand steckenbleibt.
-const SPIEGEL_REST := 0.45
+## **Und im Rundumlauf reicht 0,45 nicht.** Dort ist der Saum des Kegels
+## nicht mehr da, wo der Spieler steht: gemessen liegt die Helligkeit bei
+## 200 Einheiten auf 0,93 und bei 260 auf 0,88 - also ueber jeder Schwelle,
+## die man dem Spiegler geben koennte. Das schwache Randlicht faengt erst
+## jenseits von fuenfhundert Einheiten an, und dorthin kommt niemand
+## freiwillig, weil die Tiere auf einen zulaufen.
+##
+## Im Schlund war das anders: dort sank alles eine feste Bahn herunter, die
+## Entfernung wechselte stark, und "im Randlicht mitlaufen lassen" war eine
+## Sache von Geduld. Hier waere es eine Sache von Rueckwaertsfahren.
+##
+## Gemessen: bei 0,45 kostete der Spiegler in sechs Fahrten sechsunddreissig
+## Huelle - mehr als jede andere Art, und mehr als doppelt so viel wie die
+## zweite. Ihn ganz aus dem Pool zu nehmen halbierte die gefallenen Fahrten.
+##
+## **Warum es 0,58 sind und nicht 0,7.** Der Wellenpruefer sagt klar 0,7:
+##
+##     0,45 (Aufwand 2,2)   14 gefallene Sitzungen, erste Wand Welle  95
+##     0,58 (Aufwand 1,72)  12 gefallene Sitzungen, erste Wand Welle 161
+##     0,70 (Aufwand 1,45)   7 gefallene Sitzungen, erste Wand Welle 163
+##
+## Dagegen steht `_test_spiegler_brennt_nur_im_randlicht`: der Sprung an der
+## Grenze muss das Anderthalbfache ueberschreiten, sonst ist die Regel dieser
+## Art nicht mehr lernbar - man merkt den Wechsel nicht, und dann ist sie kein
+## Tier mit einem Griff, sondern eines mit mehr Leben. Bei 0,7 liegt der
+## Sprung bei 1,40 und der Test faellt.
+##
+## Die Schranke wird nicht gelockert, damit eine Zahl durchgeht (Zusage 26).
+## 0,58 ist der groesste Rest, der sie noch traegt - er holt die Wand von 95
+## auf 161 und laesst dem Randlicht sein Gefaelle. Die fuenf Sitzungen
+## Unterschied zu 0,7 liegen alle jenseits von Welle 161, also im offenen
+## Balance-Posten, und der wird nicht dadurch geloest, dass man diese Art
+## unauffaellig macht.
+const SPIEGEL_REST := 0.58
 
 
 static func schaden_an(leistung: float, helligkeit: float, panzer: float,
