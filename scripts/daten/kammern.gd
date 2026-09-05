@@ -272,6 +272,24 @@ static func polyp_kosten(zuchtkammer: int, gebaut: int) -> int:
     return maxi(1, int(round(Graben.polyp_kosten(gebaut) * (1.0 - rabatt))))
 
 
+## Wieviele Brutlinien gleichzeitig tragen koennen.
+##
+## **Aus der Brutkammer**, weil dort gezuechtet wird: mehr Brut heisst mehr
+## Linien, die man zugleich fuehren kann. Vorher trug die Kolonie genau
+## eine, und alles weitere Gezuechtete lag brach - man zahlte fuer sechs
+## Dinge und benutzte eines.
+##
+## Gedeckelt, weil ein Aufbau aus allem kein Aufbau mehr ist: wer am Ende
+## jede Linie zugleich traegt, hat nichts gewaehlt.
+const LINIEN_JE_STUFEN := 13
+const LINIEN_HOECHSTENS := 4
+
+
+static func linien_plaetze(brutkammer: int) -> int:
+    return clampi(1 + maxi(0, brutkammer) / LINIEN_JE_STUFEN,
+        1, LINIEN_HOECHSTENS)
+
+
 static func brut_leben(brutkammer: int) -> int:
     return Graben.BRUT_LEBEN + maxi(0, brutkammer) / STUFEN_JE_EI
 

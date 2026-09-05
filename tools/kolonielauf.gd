@@ -174,8 +174,8 @@ func _init() -> void:
             # **Die Huelle ist die Brut.** Die Brutkammer hebt weiter die
             # Zahl der Fehler, die man uebersteht - nur haengt sie jetzt am
             # Boot und nicht an einem Gelege.
-            z.huelle = stand.brut_leben()
-            z.huelle_voll = z.huelle
+            z.huelle_voll = stand.brut_leben()
+            z.huelle = z.huelle_voll
 
             for i in WELLEN_JE_SITZUNG:
                 # Der Graben gibt nur her, was der Tiefenschacht geoeffnet

@@ -49,22 +49,20 @@ godot --headless --path . --script tools/wellenpruefer.gd -- --spielraum
 godot --headless --path . --script tools/kolonielauf.gd      # 120 Tage Kolonie, ~4 min
 ```
 
-> **Wellenprüfer und Kolonielauf sind rot, und zwar ehrlich.** Seit sie die
-> gefahrene Schleife messen statt der gelöschten, melden beide dasselbe: die
-> Wellen 1 bis 160 tragen, ab Welle 161 fällt es auseinander. Der
-> Wellenprüfer zählt zehn gefallene Fahrten, alle in Zyklus 2, wo die
-> Sollstufe am Kammerdeckel steht und die Mutationen sich stapeln; der
-> Kolonielauf kommt in 120 Tagen bis Welle 221, meldet aber 60 gefallene
-> Sitzungen und achtzehn Tage Stillstand bei Welle 171.
+> **Der Wellenprüfer ist rot, und zwar ehrlich.** Er meldet achtzehn
+> gefallene Fahrten, die erste Wand bei Welle 85. Die Fahrprobe im selben
+> Stand trägt neunzig Wellen, verliert aber zwischen 87 und 89 sechzehn von
+> sechsundzwanzig Hülle — **beide zeigen auf dieselbe Stelle**, der Prüfer
+> nur früher, weil er nur ausweichen kann, indem er heranfährt.
 >
 > Das ist ein **offener Balance-Posten** und keine Schranke, die gelockert
-> wird, damit CI grün wird — siehe Zusage 26. Zwei unabhängige Werkzeuge und
-> die Fahrprobe sagen dasselbe; das ist ein Fund, kein Messfehler.
+> wird, damit CI grün wird — siehe Zusage 26. Zwei unabhängige Werkzeuge
+> sagen dasselbe; das ist ein Fund, kein Messfehler.
 >
-> Der wahrscheinlichste Grund steht schon im Werkzeug: `Wellen.umgebung()`
-> fällt in Zyklus 2 auf 0,35, und ein Budget kann zwar Lebenspunkte kürzen,
-> aber **kein Zeitfenster verlängern**. Wer das anfasst, fasst
-> `Wellen.fenster()` an und nicht die Schranke.
+> Ein wahrscheinlicher Grund steht schon im Werkzeug: `Wellen.umgebung()`
+> fällt in späten Abschnitten weit ab, und ein Budget kann zwar
+> Lebenspunkte kürzen, aber **kein Zeitfenster verlängern**. Wer das
+> anfasst, fasst `Wellen.fenster()` an und nicht die Schranke.
 
 Der Kolonielauf ist das Werkzeug, das die meisten Fehler gefunden hat. Er
 **spielt die Wellen wirklich durch** — mit dem Koloniestand, den ein normaler
@@ -478,6 +476,29 @@ unter einer strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
 
    Nach beiden Korrekturen: von „Wand bei Welle 67" über 86 auf **161**.
 
+31. **Passives stehen außerhalb der Sollkurve.** Zusage 5 sagt: was die Welle
+   leichter macht, geht in `Ausbau.durchsatz()` ein. Ihre Begründung lautet
+   aber „eine Leistung, die *jeder Spieler in jeder Welle* hat" — und das
+   trifft auf die Brutlinien nicht zu. Sie sind eine Wahl, kein Grundwert;
+   wer keine gezüchtet hat, fände sonst eine Kurve vor, die welche
+   voraussetzt. Sie stehen deshalb außerhalb des Budgets, aus demselben Grund
+   wie die Funkenblüte (Zusage 18) — und genau das macht sie zur Belohnung
+   statt zur Pflicht. `tools/simulation.gd` kennt sie folgerichtig gar nicht:
+   der Wellenprüfer misst die Grundwerte, die Passives sind der Vorsprung
+   darüber.
+
+   Wieviele zugleich tragen, sagt `Kammern.linien_plaetze()` — die
+   Brutkammer, weil dort gezüchtet wird. Eins bis vier. Vorher trug die
+   Kolonie **genau eine**, und alles weitere Gezüchtete lag brach: man zahlte
+   für sechs Dinge und benutzte eines. Gedeckelt bleibt es trotzdem, denn wer
+   am Ende jede Linie zugleich trägt, hat nichts gewählt.
+
+32. **Was mehrere Linien zugleich tun, hängt von der Art der Wirkung ab.**
+   Faktoren multiplizieren sich, Zuschläge addieren sich, **Anteile nehmen
+   den größten** (`Brutlinien.gesamt_hoechst`). Der Anteil ist die Stelle,
+   an der es darauf ankommt: zwei Linien, die je 62 % Panzer wegfressen,
+   dürften nie 124 % ergeben — ein Panzer, der ins Negative kippt, heilt.
+
 ## Der Rundumlauf — die Schleife
 
 Die App startet im Titelbildschirm (`scenes/rundum.tscn`, die **einzige**
@@ -609,6 +630,29 @@ Ein Schwarm ist dabei genau das, was er von weitem ist: **viele, die in
 dieselbe Richtung sehen.** Der erste Anlauf gab jedem Fisch einen festen
 Platz im Weltraster und ließ ihn dorthin blicken, wo sein Platz lag — im
 Bild war das kein Schwarm, sondern ein Seeigel.
+
+**Drei Wege, die es im Schlund nicht geben konnte.** Dort sank alles dieselbe
+Bahn nach unten; hier hat ein Tier einen Ort, zu dem es *nicht* kommen kann.
+`Rundum.schritt()` kennt deshalb `umlauf` und `weichen`, `rundlauf.gd` dazu
+die Brut:
+
+* **Kreisen** (`Arten.umlauf`) — der Kreiser und das Ringmaul halten Abstand
+  und ziehen den Ring langsam enger (`Rundum.UMLAUF_ENGER`). Das stellt
+  Fahren und Zielen gegeneinander: wer sie im Kegel hält, dreht sich mit
+  und fährt nicht mehr. Der Ring **muss** enger werden — ein Tier, das ewig
+  auf demselben Abstand kreist, kann nie beißen, und ein Höhepunkt, der
+  nicht wehtun kann, ist keine Bedrohung, sondern eine Uhr.
+* **Zurückweichen** (`Arten.scheu`) — die Lichtscheue wird von der eigenen
+  Beleuchtung weggeschoben. Das dreht die übliche Antwort um: draufhalten
+  kostet hier Zeit, statt sie zu sparen. Gerechnet wird mit `t.licht`, also
+  mit derselben Zahl, aus der auch ihr Schaden fällt (Zusage 2) — sie sieht
+  aus, wie sie sich verhält.
+* **Absetzen** (`Arten.brut_takt`) — der Brutstock wirft Junge ab, solange
+  er lebt, gedeckelt auf `BRUT_DECKEL`. Die Jungen zahlen **nichts**: kein
+  Nährstoff, keine Punkte, kein Platz in einer `Wellen.auftritte()`. Sonst
+  wäre ein lange stehendes Leitwesen eine Nährstoffquelle, und die
+  Wirtschaft hängt an der Wellenzahl (Zusage 10). Sie zählen aber in
+  `_offen` mit — eine Welle, in der noch Junge schwimmen, ist nicht leer.
 
 **Nicht jeder Räuber kommt von außen.** Jeder vierte (`LAUER_ANTEIL`) liegt
 schon in der Karte und wartet — still und blass (`Schwarm.deckung`), bis das

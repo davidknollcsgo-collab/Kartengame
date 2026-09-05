@@ -396,6 +396,14 @@ static func fenster(nummer: int) -> float:
 ## die Auftritte weiter nach Zeit sortiert.
 const ANSTIEG := 0.75
 
+## Wie weit eine volle Gruppe (neun Tiere) in der Reihe nach hinten rutscht,
+## als Anteil des Fensters. Siehe `auftritte()`.
+const SCHWARM_SPAET := 0.16
+
+## Wieviele Sekunden hinter dem letzten Kleinvieh das Leitwesen eintritt,
+## falls es sonst ueberholt wuerde.
+const LEIT_ABSTAND := 0.8
+
 
 static func anlauf(lage: float) -> float:
     return pow(clampf(lage, 0.0, 1.0), ANSTIEG)
@@ -465,9 +473,11 @@ static func auftritte(nummer: int) -> Array[Dictionary]:
 
     while budget > 0.0 and gruppen.size() < deckel:
         var index := moeglich[rng.randi_range(0, moeglich.size() - 1)]
-        var anzahl := 1
-        if index == Arten.Art.SCHLEIER:
-            anzahl = rng.randi_range(3, 5)
+        # **Wieviele auf einen Schlag, sagt die Art.** Hier stand der
+        # Schleier namentlich; jede weitere Schwarmart haette an zwei Stellen
+        # eingetragen werden muessen, und die zweite vergisst man.
+        var g := Arten.gruppe(index)
+        var anzahl := rng.randi_range(g.x, g.y)
 
         var kosten := aufwand_in(index, nummer) * anzahl
         if kosten > budget:
@@ -497,9 +507,26 @@ static func auftritte(nummer: int) -> Array[Dictionary]:
         # ist die Rohlage; wohin sie in der Zeit faellt, sagt `anlauf()`.
         var lage := (float(g) + rng.randf_range(0.18, 0.82)) \
             / maxf(1.0, float(gruppen.size()))
+        # **Die Masse kommt spaeter.**
+        #
+        # Solange jede Gruppe ein bis fuenf Tiere gross war, trug `anlauf()`
+        # den Bogen allein. Seit es Schwaerme von sechs bis neun gibt,
+        # entscheidet ein einziger frueher Wurf ueber ein Drittel der Welle:
+        # gemessen fiel der Bogen von 23/42 auf 26/36 Prozent und damit unter
+        # die Zusage.
+        #
+        # Eine grosse Gruppe wird deshalb **geschoben**, nicht einsortiert.
+        # Der erste Anlauf hat nach Groesse sortiert; heraus kam 14/64
+        # Prozent und keine einzige Welle ohne Bogen - also genau das
+        # Foerderband mit Steigung, gegen das der Bogen gebaut wurde. Ein
+        # Schub laesst die Reihenfolge zufaellig und verschiebt nur das
+        # Gewicht.
+        var gross: Array = gruppen[g]
+        lage = minf(1.0, lage + SCHWARM_SPAET
+            * float(gross.size() - 1) / 8.0)
         var zeit := breite * anlauf(lage)
         var mitte := rng.randf_range(-Graben.EINTRITT_SEITE, Graben.EINTRITT_SEITE)
-        var gruppe: Array = gruppen[g]
+        var gruppe: Array = gross
 
         for k in gruppe.size():
             var streu := 0.0
@@ -534,6 +561,24 @@ static func auftritte(nummer: int) -> Array[Dictionary]:
                 &"x": clampf(mitte + streu, -Graben.EINTRITT_SEITE, Graben.EINTRITT_SEITE),
                 &"phase": rng.randf_range(0.0, TAU),
             })
+
+    # **Das Leitwesen tritt zuletzt ein** (Zusage 24), und zwar nicht nur
+    # meistens. Es steht als letzte Gruppe in der Reihe und bekaeme damit von
+    # allein den spaetesten Schlitz - aber `SCHWARM_SPAET` schiebt grosse
+    # Gruppen nach hinten, und ein Schwarm von neun kann daran vorbeiziehen.
+    # Genau das meldete Welle 170.
+    #
+    # Geschoben wird deshalb hinterher, und nur wenn noetig: der Hoehepunkt
+    # setzt einen Atemzug hinter dem letzten Kleinvieh ein.
+    if mit_leit:
+        var spaetestes := 0.0
+        for e in liste:
+            if int(e[&"art"]) != leit:
+                spaetestes = maxf(spaetestes, float(e[&"zeit"]))
+        for e in liste:
+            if int(e[&"art"]) == leit:
+                e[&"zeit"] = maxf(float(e[&"zeit"]),
+                    spaetestes + LEIT_ABSTAND)
 
     liste.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
         return a[&"zeit"] < b[&"zeit"])

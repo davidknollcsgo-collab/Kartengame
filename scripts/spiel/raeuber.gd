@@ -63,6 +63,16 @@ var lauert: bool = false
 ## Frueherere Orte auf der eigenen Bahn - fuer den Leib der Grabnatter.
 var rueckweg: Array[Vector2] = []
 
+## Sekunden seit dem letzten abgesetzten Jungen. Nur beim Brutstock.
+var brut_uhr: float = 0.0
+
+## Ob dieses Tier ein abgesetztes Junges ist.
+##
+## **Es zahlt dann nichts.** Kein Naehrstoff, keine Punkte - es stand in
+## keiner `Wellen.auftritte()` und damit in keinem Budget. Dieselbe
+## Begruendung wie bei der Funkenbluete (Zusage 18).
+var aus_brut: bool = false
+
 
 func anteil() -> float:
     return clampf(leben / maxf(0.001, leben_voll), 0.0, 1.0)

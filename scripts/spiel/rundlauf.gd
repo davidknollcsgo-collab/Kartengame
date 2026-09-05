@@ -1026,10 +1026,15 @@ func _bewege(delta: float) -> void:
             t.richtung = (_ort - t.ort).normalized()
         var art := Arten.art(t.art)
         var vorher := t.ort
+        # **Kreisen und Zurueckweichen.** Beides sind Eigenschaften der Art;
+        # `weichen` haengt zusaetzlich daran, wie hell das Tier gerade steht
+        # - dieselbe Zahl, aus der auch der Schaden faellt (Zusage 2). Wer
+        # eine Lichtscheue anleuchtet, schiebt sie weg, und man sieht warum.
         t.ort = Rundum.schritt(t.ort, _ort,
             Wellen.tempo_in(t.art, t.welle), art[&"schlaengel"],
             art[&"takt"], t.phase, t.alter, delta,
-            Wellen.drift_in(t.art, t.welle))
+            Wellen.drift_in(t.art, t.welle),
+            Arten.umlauf(t.art), Arten.scheu(t.art) * t.licht)
         var weg := t.ort - vorher
         if weg.length_squared() > 0.0001:
             t.richtung = weg.normalized()
@@ -1055,6 +1060,68 @@ func _bewege(delta: float) -> void:
             # Zurueckwerfen statt entfernen.
             t.ort = _ort + (t.ort - _ort).normalized() * (BOOT_RADIUS + 190.0)
             t.eintritt = _wellenzeit + BISS_SPERRE
+
+
+## Wieviele Junge ein Brutstock hoechstens gleichzeitig im Feld haelt.
+##
+## **Ohne Deckel ist es keine Uhr, sondern eine Lawine.** Wer den Stock
+## dreissig Sekunden stehen laesst, haette sonst zwoelf Junge dazu; mit dem
+## Deckel wird aus "spaeter zahlt sich raechen" ein "spaeter kostet Zeit".
+const BRUT_DECKEL := 6
+
+
+## Der Brutstock setzt ab, solange er lebt.
+##
+## **Die Jungen zahlen nichts.** Kein Naehrstoff, keine Punkte, kein Platz in
+## einer `Wellen.auftritte()` - dieselbe Begruendung wie bei der Funkenbluete
+## (Zusage 18): was nicht im Wellenbudget steht, darf auch nicht daraus
+## auszahlen, sonst waere ein lange stehendes Leitwesen eine Quelle und die
+## Wirtschaft haengt an der Wellenzahl (Zusage 10).
+##
+## Sie zaehlen aber in `_offen` mit - eine Welle, in der noch Junge
+## schwimmen, ist nicht leer, und die Anzeige darf nicht "0 LEFT" sagen,
+## waehrend einem sechs davon ins Boot fahren.
+func _setze_brut_ab(delta: float) -> void:
+    var junge := 0
+    for t in _tiere:
+        if t.lebendig and t.aus_brut:
+            junge += 1
+    for i in _tiere.size():
+        var t := _tiere[i]
+        if not t.lebendig or t.lauert or t.alter < 0.0:
+            continue
+        var takt := Arten.brut_takt(t.art)
+        if takt <= 0.0:
+            continue
+        t.brut_uhr += delta
+        if t.brut_uhr < takt:
+            continue
+        t.brut_uhr = 0.0
+        if junge >= BRUT_DECKEL:
+            continue
+        var art_neu := Arten.brut_art(t.art)
+        if art_neu < 0:
+            continue
+        junge += 1
+        var kind := Raeuber.new()
+        kind.art = art_neu
+        kind.welle = t.welle
+        kind.aus_brut = true
+        kind.eintritt = 0.0
+        kind.alter = 0.0
+        kind.phase = randf_range(0.0, TAU)
+        kind.leben = Wellen.leben_in(art_neu, t.welle)
+        kind.leben_voll = kind.leben
+        # Aus dem Leib heraus, in eine zufaellige Richtung - sonst stehen
+        # alle Jungen uebereinander auf demselben Punkt.
+        var raus := Vector2.RIGHT.rotated(randf_range(0.0, TAU))
+        kind.ort = t.ort + raus * Wellen.radius_in(t.art, t.welle) * 0.9
+        kind.richtung = raus
+        _tiere.append(kind)
+        _offen += 1
+        _funken.platzen(kind.ort, Arten.farbe(art_neu), 14.0)
+    if _schwarm.tiere.size() != _tiere.size():
+        _schwarm.tiere = _tiere
 
 
 ## Einen Lauerer wecken. Eine Stelle, weil es drei Anlaesse gibt: Naehe, ein
@@ -1153,6 +1220,8 @@ func _verbrenne(delta: float) -> void:
         t.hitze = 1.0
         t.glut = glut_dauer
 
+    _setze_brut_ab(delta)
+
     for t in _tiere:
         if t.lebendig and t.leben <= 0.0:
             t.lebendig = false
@@ -1164,9 +1233,16 @@ func _verbrenne(delta: float) -> void:
                 Fortschritt.melde_ziel(Tagesziel.Ziel.RAEUBER)
                 Fortschritt.setze_ziel(Tagesziel.Ziel.KETTE, kette)
             _kette_zeit = Graben.KETTE_FENSTER
-            punkte += int(round(float(Wellen.wert_in(t.art, t.welle))
-                * Graben.kette_faktor(kette)))
-            _lohne(t)
+            # **Ein abgesetztes Junges zahlt nichts.** Es stand in keiner
+            # `Wellen.auftritte()` und damit in keinem Budget; wer es
+            # bezahlte, machte aus einem lange stehenden Brutstock eine
+            # Naehrstoffquelle. Die Kette zaehlt es mit - sie ist eine
+            # Bestmarke und keine Waehrung (Zusage 16), und ein Schwarm, den
+            # man abraeumt, ist eine Kette.
+            if not t.aus_brut:
+                punkte += int(round(float(Wellen.wert_in(t.art, t.welle))
+                    * Graben.kette_faktor(kette)))
+                _lohne(t)
             if Arten.ist_leitwesen(t.art):
                 Tastsinn.gib(Tastsinn.Art.LEITWESEN)
             # **Derselbe Tod wie im Schlund.** Hier stand `platzen()` mit

@@ -24,9 +24,19 @@ extends RefCounted
 ##
 ## Der simulierte Fahrer ist **absichtlich schlechter als ein guter Mensch**:
 ##
-##   * Er **faehrt nicht**. Das Boot steht, und die Raeuber kommen zu ihm.
-##     Ein Mensch weicht aus, zieht einen Pulk auseinander und holt sich
-##     Nachzuegler; all das geht als Reserve in das Ergebnis ein.
+##   * Er faehrt **nur heran, nie weg** - dieselbe eine Regel, die auch der
+##     Pilot der Fahrprobe kann (`rundlauf.gd::_steuere_probe()`). Ein Mensch
+##     weicht aus, zieht einen Pulk auseinander und umfaehrt Felsen; all das
+##     geht als Reserve in das Ergebnis ein.
+##
+##     **Dass er ueberhaupt faehrt, ist noetig geworden.** Solange er stand,
+##     stimmten Pruefer und Fahrprobe ungefaehr ueberein; mit den kreisenden
+##     Arten nicht mehr. Ein Kreiser ist um Bewegung herum entworfen - er
+##     haelt Abstand und zieht den Ring langsam enger -, und gegen ein Boot,
+##     das nie ausweicht, ist er eine Zange. Der Pruefer meldete ab Welle 86
+##     Faelle, waehrend der fahrende Pilot mit **mehr** Huelle durchkam als
+##     vorher. Zwei Werkzeuge, die sich widersprechen, sind schlimmer als
+##     eines: man weiss nicht mehr, welchem man glaubt.
 ##   * Er zielt immer nur auf das naechste Tier und fuehrt den Kegel nicht
 ##     vor.
 ##   * Er loest das Stosslicht aus, sobald es geladen ist, statt es fuer den
@@ -43,6 +53,16 @@ const TAKT := 1.0 / 30.0
 ## **Laenger als im Schlund.** Dort lief eine Welle allein; hier laufen
 ## `Rundum.DICHTE` ineinander, also dauert eine Runde ein Mehrfaches.
 const HOECHSTDAUER := 300.0
+
+## Wieviele Junge ein Brutstock hoechstens gleichzeitig im Feld haelt -
+## derselbe Deckel wie `rundlauf.gd::BRUT_DECKEL`.
+const BRUT_DECKEL := 6
+
+## Wie schnell und wie traege das Boot faehrt - dieselben Zahlen wie in
+## `rundlauf.gd`. Sie stehen dort, weil sie sonst nur das Bild betraefen;
+## seit der Pruefer faehrt, betreffen sie beide.
+const BOOT_TEMPO := 260.0
+const BOOT_TRAEGHEIT := 6.0
 
 
 class Ergebnis extends RefCounted:
@@ -122,6 +142,17 @@ class Tier extends RefCounted:
     ## `Raeuber.stoss_nr` im Spiel, aus demselben Grund.
     var stoss_nr: int = -1
 
+    ## Sekunden seit dem letzten abgesetzten Jungen, und ob es selbst eines
+    ## ist. Dieselben zwei Felder wie `Raeuber` - der Brutstock setzt hier
+    ## genauso ab, sonst misst der Pruefer eine andere Welle.
+    var brut_uhr: float = 0.0
+    var aus_brut: bool = false
+
+    ## Wie hell es zuletzt im Kegel stand. Nur die Lichtscheue braucht es -
+    ## sie weicht zurueck, solange sie brennt, und das ist dieselbe Zahl, aus
+    ## der auch ihr Schaden faellt.
+    var licht: float = 0.0
+
 
 ## Die Tiere einer Fahrtrunde aufstellen.
 ##
@@ -171,6 +202,7 @@ static func welle(nummer: int, z: Zustand) -> Ergebnis:
     var tiere := stelle_auf(nummer)
     var boot := Vector2.ZERO
     var blick := Vector2.UP
+    var fahrt := Vector2.ZERO
     var zahl := maxi(1, z.begleiter_zahl)
     var begleiter: Array[Vector2] = []
     for i in zahl:
@@ -212,7 +244,8 @@ static func welle(nummer: int, z: Zustand) -> Ergebnis:
             t.ort = Rundum.schritt(t.ort, boot,
                 Wellen.tempo_in(t.art, t.welle), a[&"schlaengel"],
                 a[&"takt"], t.phase, t.alter, TAKT,
-                Wellen.drift_in(t.art, t.welle))
+                Wellen.drift_in(t.art, t.welle),
+                Arten.umlauf(t.art), Arten.scheu(t.art) * t.licht)
 
         # **Wenn sonst nichts mehr steht, erwachen die Uebrigen.** Sonst
         # haengt die Runde an einem Lauerer, der vierzehnhundert Einheiten
@@ -242,6 +275,18 @@ static func welle(nummer: int, z: Zustand) -> Ergebnis:
             var soll := Schlund.zielrichtung(boot, orte[n], blick)
             blick = Schlund.gedreht(blick, soll.rotated(-abtrieb),
                 Graben.DREHTEMPO, TAKT)
+            # **Heran, wenn es weit ist** - wortgleich mit dem Piloten der
+            # Fahrprobe. Der Finger sitzt auf einer Linie zum naechsten Tier,
+            # innerhalb der Totzone zielt er nur, darueber faehrt das Boot
+            # mit. Nah heisst also stehen und brennen, weit heisst hinfahren.
+            var her := (orte[n] - boot).normalized()
+            var weit := boot.distance_to(orte[n]) > 260.0
+            var finger := boot + her * (Rundum.TOTZONE
+                + (150.0 if weit else -20.0))
+            var soll_fahrt := Rundum.fahrt(boot, finger, BOOT_TEMPO)
+            fahrt = fahrt.lerp(soll_fahrt,
+                clampf(BOOT_TRAEGHEIT * TAKT, 0.0, 1.0))
+            boot = Rundum.gehalten(boot + fahrt * TAKT, Rundum.BOOT_RADIUS)
         var wirksam := blick.rotated(abtrieb)
         var schein := Regeln.helligkeit(nummer, zeit)
         var rand_kern := Regeln.rand_kern(nummer)
@@ -252,8 +297,10 @@ static func welle(nummer: int, z: Zustand) -> Ergebnis:
         #    so macht es auch das Spiel.
         var hell := PackedFloat32Array()
         for i in lebende.size():
-            hell.append(Schlund.beleuchtung(boot, wirksam, z.halbwinkel(),
-                z.reichweite(), orte[i], rand_kern, tiefe_kern) * schein)
+            var h := Schlund.beleuchtung(boot, wirksam, z.halbwinkel(),
+                z.reichweite(), orte[i], rand_kern, tiefe_kern) * schein
+            lebende[i].licht = h
+            hell.append(h)
 
         # Dieselbe Reihenfolge wie im Spiel: erst ausrechnen, was jedes Tier
         # abbekaeme, dann danach auswaehlen. Wer hier nach Helligkeit
@@ -298,7 +345,6 @@ static func welle(nummer: int, z: Zustand) -> Ergebnis:
         # 4. Die Begleiter. Jeder nimmt das naechste Tier in seiner
         #    Reichweite - dieselbe Wahl wie im Spiel, aus derselben Funktion.
         for i in begleiter.size():
-            # Ohne Traegheit: das Boot steht, also stehen sie auf ihrem Platz.
             begleiter[i] = Rundum.begleiter_ziel(i, begleiter.size(), boot,
                 blick, Rundum.BEGLEITER_ABSTAND)
             var b := Rundum.naechstes_ziel(begleiter[i], orte,
@@ -309,6 +355,38 @@ static func welle(nummer: int, z: Zustand) -> Ergebnis:
             # Begleiter kratzt an einer Schildkoralle kaum noch.
             lebende[b].leben -= maxf(0.0, Graben.POLYP_LEISTUNG
                 - Wellen.panzer_in(lebende[b].art, nummer)) * TAKT
+
+        # 4b. Der Brutstock setzt ab, solange er lebt. Derselbe Deckel wie
+        #     im Spiel: ohne ihn ist es keine Uhr, sondern eine Lawine.
+        var junge := 0
+        for t in tiere:
+            if t.lebendig and t.aus_brut:
+                junge += 1
+        for t in lebende:
+            var takt := Arten.brut_takt(t.art)
+            if takt <= 0.0:
+                continue
+            t.brut_uhr += TAKT
+            if t.brut_uhr < takt:
+                continue
+            t.brut_uhr = 0.0
+            if junge >= BRUT_DECKEL:
+                continue
+            var art_neu := Arten.brut_art(t.art)
+            if art_neu < 0:
+                continue
+            junge += 1
+            var kind := Tier.new()
+            kind.art = art_neu
+            kind.welle = nummer
+            kind.aus_brut = true
+            kind.eintritt = 0.0
+            kind.leben = Wellen.leben_in(art_neu, nummer)
+            kind.phase = float(tiere.size()) * 0.7
+            kind.ort = t.ort + Vector2.RIGHT.rotated(kind.phase) \
+                * Wellen.radius_in(t.art, nummer) * 0.9
+            tiere.append(kind)
+            offen += 1
 
         # 5. Tote zaehlen, Bisse abrechnen.
         #
@@ -322,12 +400,15 @@ static func welle(nummer: int, z: Zustand) -> Ergebnis:
             if t.leben <= 0.0:
                 t.lebendig = false
                 offen -= 1
-                z.lohn_rest += float(Wellen.wert_in(t.art, nummer)) \
-                    / float(Rundum.DICHTE)
-                var lohn := int(floor(z.lohn_rest))
-                if lohn > 0:
-                    z.lohn_rest -= float(lohn)
-                    z.naehrstoffe += lohn
+                # Ein abgesetztes Junges zahlt nichts - es stand in keinem
+                # Budget. Genau wie im Spiel.
+                if not t.aus_brut:
+                    z.lohn_rest += float(Wellen.wert_in(t.art, nummer)) \
+                        / float(Rundum.DICHTE)
+                    var lohn := int(floor(z.lohn_rest))
+                    if lohn > 0:
+                        z.lohn_rest -= float(lohn)
+                        z.naehrstoffe += lohn
             elif t.ort.distance_to(boot) < Rundum.BOOT_RADIUS \
                     + Wellen.radius_in(t.art, nummer) * 0.5:
                 # Zurueckwerfen statt entfernen: ein Raeuber, der beim
@@ -355,6 +436,10 @@ static func stelle_ein(z: Zustand, nummer: int, verstaerkung := 1.0) -> void:
     z.winkel_faktor = Ausbau.winkel_faktor(nummer)
     z.ziele_zusatz = Ausbau.ziele(nummer) - Graben.ZIELE
     z.begleiter_zahl = Ausbau.begleiter(nummer)
+    # **Auch die Huelle.** Sie fehlte hier, und der Pruefer fuhr die ganze
+    # Strecke mit dem Grundwert von zwoelf gegen Wellen, die fuer
+    # vierundzwanzig gerechnet sind.
+    z.huelle_voll = Ausbau.huelle(nummer)
 
 
 ## Eine ganze Fahrt: `Graben.WELLEN_JE_SITZUNG` Runden ab `erste`.
@@ -363,6 +448,10 @@ static func stelle_ein(z: Zustand, nummer: int, verstaerkung := 1.0) -> void:
 ## dem Spiel: der Koloniestand bleibt, die Huelle einer Fahrt nicht.
 static func sitzung(erste: int, verstaerkung := 1.0) -> Array[Ergebnis]:
     var z := Zustand.new()
+    # Die Huelle steht beim Aufbruch voll und haelt ueber die ganze Fahrt -
+    # genau wie im Spiel.
+    stelle_ein(z, erste, verstaerkung)
+    z.huelle = z.huelle_voll
     var liste: Array[Ergebnis] = []
     for i in Graben.WELLEN_JE_SITZUNG:
         var nummer := erste + i

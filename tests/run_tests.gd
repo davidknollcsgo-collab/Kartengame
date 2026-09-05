@@ -1628,8 +1628,8 @@ func _test_zuchtkalender_laeuft_einmal_und_endet_auf_einer_linie() -> bool:
     if not _melde(stand.linien.size() == vorher_linien + 1,
             "die geschenkte Linie fehlt im Bestand"):
         return false
-    if not _melde(stand.linie != Brutlinien.Linie.KEINE,
-            "die geschenkte Linie muss auch die Wache uebernehmen"):
+    if not _melde(not stand.tragende().is_empty(),
+            "die geschenkte Linie muss auch einen Platz bekommen"):
         return false
 
     # Und danach ist Schluss. Ein Kalender, der sich auffuellt, verschenkt
@@ -1648,7 +1648,7 @@ func _test_stand_uebersteht_das_sichern() -> bool:
     stand.naehrstoffe = 4321
     stand.hoechste_welle = 33
     stand.linien.append(Brutlinien.Linie.STROMSINN)
-    stand.linie = Brutlinien.Linie.STROMSINN
+    stand.aktive.append(Brutlinien.Linie.STROMSINN)
     stand.bau_kammer = Kammern.Kammer.FILTERBECKEN
     stand.bau_fertig_um = 12345.5
     stand.zuletzt_gesehen = 999.25
@@ -1673,7 +1673,7 @@ func _test_stand_uebersteht_das_sichern() -> bool:
         "Naehrstoffe": [stand.naehrstoffe, zurueck.naehrstoffe],
         "Hoechste Welle": [stand.hoechste_welle, zurueck.hoechste_welle],
         "Linien": [Array(stand.linien), Array(zurueck.linien)],
-        "Linie": [stand.linie, zurueck.linie],
+        "Aktive": [Array(stand.aktive), Array(zurueck.aktive)],
         "Baukammer": [stand.bau_kammer, zurueck.bau_kammer],
         "Bauende": [stand.bau_fertig_um, zurueck.bau_fertig_um],
         "Zuletzt gesehen": [stand.zuletzt_gesehen, zurueck.zuletzt_gesehen],
@@ -1725,7 +1725,7 @@ func _test_stand_uebersteht_das_sichern() -> bool:
         &"naehrstoffe": -100,
         &"hoechste_welle": 9999,
         &"linien": [42],
-        &"linie": 42,
+        &"aktive": [42, -3],
         &"bau_kammer": 77,
         &"stroemung_offen": 99,
     })
@@ -1733,7 +1733,7 @@ func _test_stand_uebersteht_das_sichern() -> bool:
             and boese.stufe(1) == 0
             and boese.naehrstoffe == 0
             and boese.hoechste_welle == Graben.TIEFSTE
-            and boese.linie == Brutlinien.Linie.KEINE
+            and boese.tragende().is_empty()
             and boese.bau_kammer == -1
             and boese.stroemung_offen == Tagesstroemung.JE_TAG,
         "ein veraenderter Stand muss zurechtgebogen werden")

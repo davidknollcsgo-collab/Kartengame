@@ -60,6 +60,18 @@ static func begleiter(nummer: int) -> int:
     return Kammern.begleiter(stufe_soll(nummer))
 
 
+## Wieviel Huelle die Sollkurve auf dieser Welle voraussetzt.
+##
+## **Sie fehlte, und das war teuer.** `Simulation` fuhr mit
+## `Graben.BRUT_LEBEN` - zwoelf, dem Grundwert - waehrend die Kolonie auf
+## Welle 75 laengst vierundzwanzig hat. Der Wellenpruefer meldete deshalb
+## eine Wand bei Welle 70, die die Fahrprobe im selben Lauf nicht sah: sie
+## nimmt die Huelle aus dem Koloniestand, er nicht. Zwei Werkzeuge, die sich
+## widersprechen, sind schlimmer als eines.
+static func huelle(nummer: int) -> int:
+    return Kammern.brut_leben(stufe_soll(nummer))
+
+
 ## Roher Schaden je Sekunde, den dieser Stand aufbringen kann, wenn alle Ziele
 ## belegt sind.
 static func durchsatz(nummer: int) -> float:

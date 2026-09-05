@@ -100,22 +100,60 @@ static func fahrt(ort: Vector2, finger: Vector2,
 ## wandert. Andersherum - eine Querbewegung auf die Geschwindigkeit addiert -
 ## kann das Tier schneller werden als sein Tempo, und ein Raeuber, der beim
 ## Ausweichen beschleunigt, ist kein Entwurf, sondern ein Vorzeichenfehler.
+## `umlauf` ist der Abstand, den ein Tier zum Ziel haelt, statt heranzukommen
+## (0 heisst: geradewegs). `weichen` schiebt es zusaetzlich nach aussen,
+## solange es im Licht steht - beides sind Wege, die es im Schlund nicht geben
+## konnte, weil dort alles dieselbe Bahn nach unten sank.
 static func schritt(ort: Vector2, ziel: Vector2, tempo: float,
         schlaengel: float, takt: float, phase: float, zeit: float,
-        delta: float, drift := 0.0) -> Vector2:
+        delta: float, drift := 0.0, umlauf := 0.0, weichen := 0.0) -> Vector2:
     var zum_ziel := ziel - ort
     var weite := zum_ziel.length()
     if weite < 0.001:
         return ort
     var k := zum_ziel / weite
     var quer := k.orthogonal()
+
+    # **Kreisen statt kommen.** Innerhalb des Umlaufabstands dreht sich die
+    # Marschrichtung zur Seite; ausserhalb kommt das Tier weiter heran. Der
+    # Uebergang ist weich, sonst schnappt es auf dem Ring hin und her.
+    #
+    # Die Umlaufrichtung steckt in der Phase - dieselbe Zahl wie beim Pendeln
+    # und bei der Drift. Ein eigener Wuerfel dafuer waere eine zweite Quelle
+    # fuer denselben Zufall.
+    if umlauf > 0.0:
+        # **Der Ring wird enger.** Ein Tier, das ewig auf demselben Abstand
+        # kreist, kann nie beissen - und ein Hoehepunkt, der nicht wehtun
+        # kann, ist keine Bedrohung, sondern eine Uhr. Der Abstand schrumpft
+        # deshalb ueber die Lebenszeit: man hat Zeit, aber nicht beliebig
+        # viel, und man sieht sie kommen.
+        var eng := umlauf * maxf(0.0, 1.0 - zeit * UMLAUF_ENGER)
+        var innen := clampf((eng - weite) / maxf(1.0, umlauf * 0.5),
+            -1.0, 1.0)
+        var herum := quer * (1.0 if sin(phase) >= 0.0 else -1.0)
+        k = (k * (1.0 - absf(innen)) + herum * absf(innen)
+            - k * maxf(0.0, innen) * 0.55).normalized()
+        quer = k.orthogonal()
+    # **Zurueckweichen, solange es brennt.** `weichen` kommt aus der
+    # Helligkeit, in der das Tier gerade steht - wer es anleuchtet, schiebt
+    # es weg. Es kehrt nicht um: der Anteil ist gedeckelt, sonst stuende es
+    # ausserhalb der Reichweite und die Welle liefe in den Deckel.
+    if weichen > 0.0:
+        k = (k - (ziel - ort).normalized() * minf(1.6, weichen)).normalized()
     var seitlich := schlaengel * sin(takt * zeit + phase)
     if drift != 0.0:
         # Die Richtung steckt in der Phase - dieselbe Zahl wie beim Pendeln,
         # so wie in `Schlund.bahn()` auch. Ein eigener Wuerfel dafuer waere
         # eine zweite Quelle fuer denselben Zufall.
         seitlich += drift * zeit * (1.0 if cos(phase) >= 0.0 else -1.0)
-    var gelenkt := (ziel + quer * seitlich) - ort
+    # Gesteuert wird auf einen Punkt neben dem Ziel - bei Umlauf und Weichen
+    # auf einen Punkt in Marschrichtung, weil "das Ziel" dann nicht mehr dort
+    # liegt, wo das Tier hinwill.
+    # Fuer `umlauf == 0` und `weichen == 0` ist das Zeichen fuer Zeichen die
+    # alte Rechnung: `k * weite` **ist** `ziel - ort`. Der Weg jedes
+    # bestehenden Tieres bleibt damit unveraendert, und das muss er auch -
+    # sonst waere aus einer neuen Art eine neue Balance geworden.
+    var gelenkt := k * weite + quer * seitlich
     if gelenkt.length_squared() < 0.000001:
         return ort
     return ort + gelenkt.normalized() * tempo * delta
@@ -183,6 +221,13 @@ const LAUER_WEIT := 1400.0
 const BEGLEITER_HOECHSTENS := 8
 const BEGLEITER_ABSTAND := 96.0
 const BEGLEITER_REICHWEITE := 210.0
+
+
+## Wieviel Umlaufabstand ein kreisendes Tier je Sekunde verliert, als Anteil
+## seines Anfangsabstands. Bei 0.02 ist es nach knapp einer Minute heran -
+## lange genug, dass man es umkreisen sieht, kurz genug, dass Ignorieren
+## etwas kostet.
+const UMLAUF_ENGER := 0.02
 
 
 const FAECHER := 0.62

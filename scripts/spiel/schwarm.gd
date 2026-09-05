@@ -396,6 +396,16 @@ func _zeichne(t: Raeuber, stufe := 0) -> void:
             _sprungaal(p, r, farbe, t, hitze)
         Arten.Art.SPIEGLER:
             _spiegler(p, r, farbe, t, hitze)
+        Arten.Art.LAICHWOLKE:
+            _laichwolke(p, r, farbe, t, hitze)
+        Arten.Art.KREISER:
+            _kreiser(p, r, farbe, t, hitze)
+        Arten.Art.LICHTSCHEU:
+            _lichtscheu(p, r, farbe, t, hitze)
+        Arten.Art.RINGMAUL:
+            _ringmaul(p, r, farbe, t, hitze)
+        Arten.Art.BRUTSTOCK:
+            _brutstock(p, r, farbe, t, hitze)
         Arten.Art.SCHLUNDMUTTER:
             _schlundmutter(p, r, farbe, t, hitze)
         Arten.Art.KALKROCHEN:
@@ -1043,6 +1053,166 @@ func _kielwasser(p: Vector2, r: float, farbe: Color, t: Raeuber) -> void:
 ## Die Schale ist facettiert, weil eine glatte Kuppel wie eine Blase aussieht
 ## und eine Blase nichts zurueckwirft. Sechs Felder genuegen; bei zwoelf ist
 ## es wieder eine Kuppel.
+## Laichwolke: ein winziger Koerper mit zwei Wimpernkraenzen.
+##
+## **Bewusst arm an Linien.** Sechs bis neun kommen auf einen Schlag, und
+## wenn jedes davon ein Kunstwerk waere, saehe der Schwarm aus wie
+## Konfetti. Was ihn lesbar macht, ist die Wiederholung derselben einfachen
+## Form - der Schwarm ist die Figur, nicht das Tier.
+func _laichwolke(p: Vector2, r: float, farbe: Color, t: Raeuber,
+        hitze: float) -> void:
+    var k := t.richtung
+    var quer := k.orthogonal()
+    var schlag := sin(t.alter * 9.0 + t.phase)
+    var leib := PackedVector2Array([
+        p + k * r * 1.05,
+        p + quer * r * (0.52 + 0.12 * schlag),
+        p - k * r * 0.85,
+        p - quer * r * (0.52 - 0.12 * schlag),
+    ])
+    _koerper(leib, farbe, hitze)
+    # Zwei Wimpernkraenze, die gegeneinander schlagen.
+    for seite: float in SEITEN:
+        for i in 3:
+            var laengs := lerpf(0.35, -0.45, float(i) / 2.0)
+            var wurzel := p + k * r * laengs + quer * seite * r * 0.42
+            _strich(wurzel, wurzel + quer * seite * r * 0.5
+                - k * r * 0.16 * schlag * seite,
+                Color(farbe.r, farbe.g, farbe.b, 0.5), 1.0)
+
+
+## Kreiser: ein flacher Rumpf mit einem Ruderkranz, der zur Seite steht.
+##
+## Er kommt nie an, also zeigt seine Form quer zur Bahn und nicht nach vorn -
+## man soll ihm ansehen, dass er vorbeizieht statt zuzustossen.
+func _kreiser(p: Vector2, r: float, farbe: Color, t: Raeuber,
+        hitze: float) -> void:
+    var k := t.richtung
+    var quer := k.orthogonal()
+    var leib := PackedVector2Array([
+        p + k * r * 0.72 + quer * r * 0.30,
+        p + k * r * 0.30 + quer * r * 0.86,
+        p - k * r * 0.55 + quer * r * 0.72,
+        p - k * r * 0.80,
+        p - k * r * 0.55 - quer * r * 0.72,
+        p + k * r * 0.30 - quer * r * 0.86,
+        p + k * r * 0.72 - quer * r * 0.30,
+    ])
+    _koerper(leib, farbe, hitze)
+    # Der Ruderkranz: sechs kurze Blaetter laengs der Aussenkante, die in
+    # einer Welle durchlaufen - so sieht Seitwaertsfahrt aus.
+    for i in 6:
+        var u := float(i) / 5.0
+        var laengs := lerpf(0.55, -0.65, u)
+        var welle := sin(t.alter * 5.0 - u * 3.2 + t.phase)
+        for seite: float in SEITEN:
+            var wurzel := p + k * r * laengs + quer * seite * r * 0.78
+            _strich(wurzel, wurzel + quer * seite * r * (0.34 + 0.16 * welle)
+                + k * r * 0.14 * welle,
+                Color(farbe.r, farbe.g, farbe.b, 0.55), 1.4)
+    _zug(PackedVector2Array([p - k * r * 0.8, p + k * r * 0.7]),
+        farbe.lightened(0.3), 1.2)
+    _auge(p + k * r * 0.34, r * 0.15, hitze)
+
+
+## Lichtscheue: ein Koerper, der sich zusammenzieht, wenn er brennt.
+##
+## `t.licht` ist dieselbe Zahl, aus der auch ihr Schaden faellt und aus der
+## `Rundum.schritt()` ihr Zurueckweichen nimmt. Sie sieht damit genau so aus,
+## wie sie sich verhaelt: je heller, desto enger und desto weiter weg.
+func _lichtscheu(p: Vector2, r: float, farbe: Color, t: Raeuber,
+        hitze: float) -> void:
+    var k := t.richtung
+    var quer := k.orthogonal()
+    var eng := clampf(t.licht, 0.0, 1.0)
+    var breit := r * (0.86 - 0.30 * eng)
+    var schirm := PackedVector2Array()
+    for i in 11:
+        var w := lerpf(-PI * 0.62, PI * 0.62, float(i) / 10.0)
+        schirm.append(p + k * cos(w) * r * 0.92 + quer * sin(w) * breit)
+    schirm.append(p - k * r * (0.30 + 0.25 * eng))
+    _koerper(schirm, farbe, hitze)
+    # Faeden, die sich beim Zurueckweichen anlegen.
+    var faeden := 3 + int(_eigenart(t, 6.1) * 3.0)
+    for i in faeden:
+        var sspur := (float(i) - float(faeden - 1) * 0.5) * 0.36
+        var wurzel := p - k * r * 0.24 + quer * sspur * r
+        var wehen := sin(t.alter * 5.0 + float(i) + t.phase) * r * 0.24
+        _strich(wurzel, wurzel - k * r * (1.5 - 0.7 * eng)
+            + quer * wehen * (1.0 - eng),
+            Color(farbe.r, farbe.g, farbe.b, 0.4), 1.1)
+    _auge(p + k * r * 0.44, r * 0.14, hitze)
+
+
+## Ringmaul: ein offener Ring mit Zaehnen nach innen.
+##
+## Es kreist, also ist es quer gebaut wie der Kreiser - nur gross, mit einem
+## Maul, das nach innen zeigt. Ein Leitwesen muss man am Umriss erkennen.
+func _ringmaul(p: Vector2, r: float, farbe: Color, t: Raeuber,
+        hitze: float) -> void:
+    var k := t.richtung
+    var quer := k.orthogonal()
+    var atem := 0.5 + 0.5 * sin(t.alter * 1.2 + t.phase)
+
+    _gluehen(p, r * 1.5, farbe, 0.10 + 0.14 * hitze)
+    # Der Leib als offener Bogen quer zur Bahn.
+    var bogen := PackedVector2Array()
+    for i in 15:
+        var w := lerpf(-PI * 0.82, PI * 0.82, float(i) / 14.0)
+        var weit := r * (0.78 + 0.10 * sin(w * 3.0 + t.alter))
+        bogen.append(p + k * sin(w) * weit + quer * cos(w) * weit)
+    _fuellung(bogen, Color(farbe.r, farbe.g, farbe.b, 0.30))
+    _zug(bogen, farbe.lightened(0.28), 2.2)
+    # Zaehne nach innen - das Maul liegt auf der Innenseite des Rings.
+    for i in 11:
+        var w := lerpf(-PI * 0.76, PI * 0.76, float(i) / 10.0)
+        var aussen := p + k * sin(w) * r * 0.74 + quer * cos(w) * r * 0.74
+        var innen := p + k * sin(w) * r * (0.40 - 0.06 * atem) \
+            + quer * cos(w) * r * (0.40 - 0.06 * atem)
+        _strich(aussen, innen, Color(1.0, 0.94, 0.88, 0.6 + 0.3 * hitze), 1.6)
+    draw_circle(p, r * (0.20 + 0.05 * atem),
+        Color(farbe.r, farbe.g, farbe.b, 0.55))
+    _auge(p + k * r * 0.1, r * 0.16, hitze)
+
+
+## Brutstock: ein Stamm mit Knospen, aus denen die Jungen fallen.
+##
+## Die Knospen leeren sich sichtbar: `t.brut_uhr` laeuft gegen
+## `Arten.brut_takt()`, und genau diese Zahl treibt den Ring an, der sich um
+## den Kopf schliesst. Wer ihn ansieht, weiss, wieviel Zeit er noch hat.
+func _brutstock(p: Vector2, r: float, farbe: Color, t: Raeuber,
+        hitze: float) -> void:
+    var k := t.richtung
+    var quer := k.orthogonal()
+    var takt := maxf(0.001, Arten.brut_takt(t.art))
+    var reif := clampf(t.brut_uhr / takt, 0.0, 1.0)
+
+    _gluehen(p, r * 1.5, farbe, 0.10 + 0.14 * hitze)
+    # Der Stamm, leicht gebogen.
+    var stamm := PackedVector2Array()
+    for i in 9:
+        var u := float(i) / 8.0
+        stamm.append(p + k * r * lerpf(0.9, -0.95, u)
+            + quer * r * 0.16 * sin(u * 2.4 + t.alter * 0.7))
+    _zug(stamm, farbe.lightened(0.25), 4.0)
+    # Knospen an Seitenaesten. Die reifste sitzt vorn und wird groesser.
+    for i in 5:
+        var u := float(i) / 4.0
+        var seite := 1.0 if i % 2 == 0 else -1.0
+        var wurzel := p + k * r * lerpf(0.6, -0.7, u)
+        var spitze := wurzel + quer * seite * r * 0.62 - k * r * 0.1
+        _strich(wurzel, spitze, Color(farbe.r, farbe.g, farbe.b, 0.5), 1.6)
+        var gross := r * (0.13 + 0.10 * reif * (1.0 - u))
+        draw_circle(spitze, gross,
+            Color(minf(1.0, farbe.r * 1.3), minf(1.0, farbe.g * 1.3),
+                minf(1.0, farbe.b * 1.3), 0.55 + 0.35 * reif))
+    # Der Ring am Kopf schliesst sich, bis das naechste Junge faellt.
+    draw_arc(p + k * r * 0.62, r * 0.34, -PI * 0.5,
+        -PI * 0.5 + TAU * reif, 20,
+        Color(1.0, 0.92, 0.98, 0.55 + 0.35 * hitze), 2.0, true)
+    _auge(p + k * r * 0.62, r * 0.16, hitze)
+
+
 func _spiegler(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> void:
     var k := t.richtung
     var quer := k.orthogonal()

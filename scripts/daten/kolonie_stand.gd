@@ -22,7 +22,13 @@ var stufen := PackedInt32Array()
 
 ## Welche Brutlinien schon gezuechtet sind, und welche gerade traegt.
 var linien := PackedInt32Array()
-var linie := Brutlinien.Linie.KEINE
+## Welche Linien gerade **tragen**. Mehrere zugleich; wieviele, sagt die
+## Brutkammer (`Kammern.linien_plaetze()`).
+##
+## **Hier stand eine einzelne Zahl.** Die Kolonie trug genau eine Linie, und
+## alles weitere Gezuechtete lag brach - man zahlte fuer sechs Dinge und
+## benutzte eines. Aus der Wahl ist ein Aufbau geworden.
+var aktive := PackedInt32Array()
 var naehrstoffe := START_NAEHRSTOFF
 var hoechste_welle := 1
 
@@ -347,7 +353,7 @@ func hole_kalender() -> Dictionary:
         var l := kalender_linie()
         if l != Brutlinien.Linie.KEINE:
             linien.append(l)
-            linie = l
+            waehle_linie(l)
             return {&"linie": l}
         # Wer bis dahin alle Linien selbst gezuechtet hat, bekommt ihren Wert.
         # Ein leerer siebter Tag waere die schlechteste Belohnung von allen.
@@ -380,6 +386,49 @@ func hat_linie(index: int) -> bool:
     return linien.has(index)
 
 
+## Wieviele Linien gleichzeitig tragen koennen.
+func linien_plaetze() -> int:
+    return Kammern.linien_plaetze(stufe(Kammern.Kammer.BRUTKAMMER))
+
+
+## Ob diese Linie gerade traegt.
+func linie_traegt(index: int) -> bool:
+    return aktive.has(index)
+
+
+## Legt eine Linie auf einen Platz oder nimmt sie herunter.
+##
+## Ist kein Platz mehr frei, faellt die **aelteste** heraus. Das ist die
+## freundlichere Regel: wer eine siebte antippt, will sie tragen und nicht
+## eine Fehlermeldung lesen - und welche gehen muss, ist dann nicht seine
+## Entscheidung, sondern die Folge seiner eigenen Reihenfolge.
+func schalte_linie(index: int) -> bool:
+    if not hat_linie(index) or index == Brutlinien.Linie.KEINE:
+        return false
+    var wo := aktive.find(index)
+    if wo >= 0:
+        aktive.remove_at(wo)
+        return true
+    aktive.append(index)
+    while aktive.size() > linien_plaetze():
+        aktive.remove_at(0)
+    return true
+
+
+## Die tragenden Linien, gekuerzt auf die vorhandenen Plaetze.
+##
+## **Gekuerzt beim Lesen, nicht beim Bauen.** Die Zahl der Plaetze haengt an
+## der Brutkammer, und die kann sinken - nicht durch Abriss, aber durch einen
+## Spielstand aus einer Fassung mit anderem Deckel. Wer sich darauf
+## verlaesst, dass beim Setzen schon gekuerzt wurde, traegt dann eine Linie
+## zuviel, und zwar unsichtbar.
+func tragende() -> PackedInt32Array:
+    var plaetze := linien_plaetze()
+    if aktive.size() <= plaetze:
+        return aktive
+    return aktive.slice(aktive.size() - plaetze)
+
+
 ## Warum sich eine Linie gerade nicht zuechten laesst. Leer heisst: sie geht.
 func linie_hindernis(index: int) -> String:
     if hat_linie(index):
@@ -402,16 +451,20 @@ func zuechte(index: int) -> bool:
         return false
     naehrstoffe -= Brutlinien.kosten(index)
     linien.append(index)
-    linie = index
+    # Frisch gezuechtet heisst tragend - sonst zahlt man und merkt nichts.
+    if not aktive.has(index):
+        aktive.append(index)
+        while aktive.size() > linien_plaetze():
+            aktive.remove_at(0)
     return true
 
 
-## Waehlt eine bereits gezuechtete Linie aus.
+## Waehlt eine bereits gezuechtete Linie aus. Bleibt als Name erhalten, weil
+## der Zuchtkalender sie benutzt; sie legt jetzt einen Platz auf.
 func waehle_linie(index: int) -> bool:
-    if not hat_linie(index):
+    if not hat_linie(index) or aktive.has(index):
         return false
-    linie = index
-    return true
+    return schalte_linie(index)
 
 
 # --- Ertrag ----------------------------------------------------------------
@@ -451,49 +504,53 @@ func ernte_offline(jetzt: float) -> int:
 
 func leistung_faktor() -> float:
     return Kammern.leistung_faktor(stufe(Kammern.Kammer.LEUCHTORGAN)) \
-        * Brutlinien.leistung_faktor(linie)
+        * Brutlinien.gesamt_faktor(tragende(), Brutlinien.leistung_faktor)
 
 
 ## Nie unter eins: eine Linie darf den Waechter umbauen, aber nicht lahmlegen.
 func ziele() -> int:
     return maxi(1, Kammern.ziele(stufe(Kammern.Kammer.LEUCHTORGAN))
-        + Brutlinien.ziele_zusatz(linie))
+        + int(Brutlinien.gesamt_summe(tragende(), Brutlinien.ziele_zusatz)))
 
 
 func drehtempo() -> float:
-    return Graben.DREHTEMPO * Brutlinien.drehtempo_faktor(linie)
+    return Graben.DREHTEMPO * Brutlinien.gesamt_faktor(tragende(),
+        Brutlinien.drehtempo_faktor)
 
 
 func stroemung_faktor() -> float:
-    return Brutlinien.stroemung_faktor(linie)
+    return Brutlinien.gesamt_faktor(tragende(), Brutlinien.stroemung_faktor)
 
 
 func nachglut_dauer() -> float:
-    return Brutlinien.nachglut_dauer(linie)
+    return Brutlinien.gesamt_hoechst(tragende(), Brutlinien.nachglut_dauer)
 
 
 func nachglut_anteil() -> float:
-    return Brutlinien.nachglut_anteil(linie)
+    return Brutlinien.gesamt_hoechst(tragende(), Brutlinien.nachglut_anteil)
 
 
 func reichweite_faktor() -> float:
     return Kammern.reichweite_faktor(stufe(Kammern.Kammer.LEUCHTORGAN)) \
-        * Brutlinien.reichweite_faktor(linie)
+        * Brutlinien.gesamt_faktor(tragende(), Brutlinien.reichweite_faktor)
 
 
 func winkel_faktor() -> float:
     return Kammern.winkel_faktor(stufe(Kammern.Kammer.LEUCHTORGAN)) \
-        * Brutlinien.winkel_faktor(linie)
+        * Brutlinien.gesamt_faktor(tragende(), Brutlinien.winkel_faktor)
 
 
 ## Wieviel vom Panzer eines Raeubers wegfaellt - siehe Salzbrand.
+## Anteile nehmen den groessten, nicht die Summe: zwei Linien, die je 62 %
+## Panzer wegfressen, duerften nie 124 % ergeben.
 func panzerbruch() -> float:
-    return Brutlinien.panzerbruch(linie)
+    return Brutlinien.gesamt_hoechst(tragende(), Brutlinien.panzerbruch)
 
 
 ## Um wieviel jede Lichtschwelle nachlaesst - siehe Zwielicht.
 func schwellen_nachlass() -> float:
-    return Brutlinien.schwellen_nachlass(linie)
+    return Brutlinien.gesamt_hoechst(tragende(),
+        Brutlinien.schwellen_nachlass)
 
 
 ## Wieviele Begleiter mitfahren. Aus der Zuchtkammer, wie ihre Staerke.
@@ -524,7 +581,7 @@ func zu_wort() -> Dictionary:
         &"bestpunkte": bestpunkte,
         &"beste_kette": beste_kette,
         &"linien": Array(linien),
-        &"linie": linie,
+        &"aktive": Array(aktive),
         &"bau_kammer": bau_kammer,
         &"bau_fertig_um": bau_fertig_um,
         &"zuletzt_gesehen": zuletzt_gesehen,
@@ -559,9 +616,17 @@ static func aus_wort(wort: Dictionary) -> KolonieStand:
         var i := int(wert)
         if i >= 0 and i < Brutlinien.zahl() and not s.linien.has(i):
             s.linien.append(i)
-    s.linie = int(wort.get(&"linie", Brutlinien.Linie.KEINE))
-    if not s.linien.has(s.linie):
-        s.linie = Brutlinien.Linie.KEINE
+    # **Ein alter Stand hatte genau eine tragende Linie.** Er wird gelesen,
+    # als waere sie die erste im Aufbau - sonst faende ein Spieler nach dem
+    # Umbau eine Kolonie ohne Passiv vor und muesste erst suchen, was ihm
+    # fehlt.
+    var rohe_aktive: Array = wort.get(&"aktive", [])
+    if rohe_aktive.is_empty() and wort.has(&"linie"):
+        rohe_aktive = [wort[&"linie"]]
+    for wert in rohe_aktive:
+        var i := int(wert)
+        if i > 0 and s.linien.has(i) and not s.aktive.has(i):
+            s.aktive.append(i)
 
     s.naehrstoffe = maxi(0, int(wort.get(&"naehrstoffe", START_NAEHRSTOFF)))
     s.hoechste_welle = clampi(int(wort.get(&"hoechste_welle", 1)), 1, Graben.TIEFSTE)

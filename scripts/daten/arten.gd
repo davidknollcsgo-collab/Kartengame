@@ -19,9 +19,14 @@ enum Art {
     TREIBANKER,     ## Wandert quer durchs Bild, waehrend er sinkt.
     SPRUNGAAL,      ## Sinkt in Schueben - der Kegel laeuft ihm nach.
     SPIEGLER,       ## Brennt nur im Randlicht - der Kern prallt ab.
+    LAICHWOLKE,     ## Grosser Schwarm winziger Tiere. Viele Koerper, wenig Leben.
+    KREISER,        ## Kommt nicht heran - er umkreist das Boot.
+    LICHTSCHEU,     ## Weicht dem Kegel aus, solange er brennt.
     SCHLUNDMUTTER,  ## Leitwesen. Steht am Ende jedes Abschnitts, sonst nie.
     KALKROCHEN,     ## Leitwesen. Dicke Haut - nur der Kern des Kegels beisst.
     SCHWARMHERZ,    ## Leitwesen. Schnell und ausweichend statt gepanzert.
+    RINGMAUL,       ## Leitwesen. Umkreist - man muss ihm nachfahren.
+    BRUTSTOCK,      ## Leitwesen. Setzt Junge ab, solange es lebt.
 }
 
 ## --- Warum es drei Leitwesen gibt und nicht eines ---
@@ -40,6 +45,14 @@ enum Art {
 ##     fast alles; man muss den Kern treffen und dort bleiben.
 ##   * **Schwarmherz** - kein Panzer, dafuer schnell und weit schlaengelnd.
 ##     Draufhalten reicht nicht, man muss nachfuehren.
+##
+##   * **Ringmaul** - es kommt gar nicht erst heran, sondern haelt Abstand
+##     und kreist. Wer draufhaelt, dreht sich mit; wer fahren will, verliert
+##     es aus dem Kegel. Der erste Hoehepunkt, bei dem Fahren und Zielen
+##     gegeneinander stehen.
+##   * **Brutstock** - es setzt ab, solange es lebt. Wer es liegen laesst und
+##     die Kleinen abraeumt, raeumt fuer immer; wer es zuerst nimmt, steht
+##     dabei ungedeckt im Schwarm. Der einzige Hoehepunkt mit einer Uhr.
 ##
 ## Welches wo steht, sagt `leitwesen_fuer()` - und das ist keine Zufallswahl,
 ## sondern eine Zuordnung: der Kalkrochen darf nie in einem Abschnitt stehen,
@@ -93,6 +106,7 @@ const TABELLE: Array[Dictionary] = [
         &"takt": 3.1,
         &"farbe": Color(0.72, 0.62, 0.98),
         &"ab_welle": 3,
+        &"gruppe": [3, 5],
     },
     {
         &"kennung": &"PANZERKREBS",
@@ -196,6 +210,78 @@ const TABELLE: Array[Dictionary] = [
         &"aufwand": 1.30,
     },
     {
+        &"kennung": &"LAICHWOLKE",
+        &"name": "Spawncloud",
+        &"regel": "Comes six to nine at a time. Any one of them is nothing; all of them are a wall.",
+        # **Der Gegenentwurf zur Zaehigkeit.** Ueber die Wellen hinweg
+        # wachsen die Lebenspunkte je Tier, damit die Zahl lesbar bleibt -
+        # das ist richtig, macht das Bild aber mit der Zeit leer. Diese Art
+        # zieht in die andere Richtung: viel Koerper, fast kein Leben. Sie
+        # kostet dasselbe Budget wie ein mittleres Tier und fuellt dafuer den
+        # Schirm.
+        &"leben": 5.0,
+        # **Nicht kleiner.** `_test_takt_deckelt_den_sprung` haelt fest, dass
+        # ein Tier in einem Bild nie weiter kommt als sein eigener
+        # Durchmesser - sonst springt es durch den Rumpf, ohne ihn zu
+        # beruehren. Bei Radius 9 trug ein Schritt 23.5 Einheiten gegen 18
+        # Durchmesser.
+        &"tempo": 132.0,
+        &"radius": 12.0,
+        &"wucht": 1,
+        &"schlaengel": 32.0,
+        &"takt": 3.6,
+        &"farbe": Color(0.56, 0.98, 0.86),
+        &"ab_welle": 20,
+        # **Eins, nicht weniger.** Eine Art darf nie billiger sein als ihr
+        # Leben, sonst kauft das Wellenbudget an ihr mehr Leben, als es
+        # bezahlt. Der Schwarm wird trotzdem billig - nicht weil das Stueck
+        # unter Wert geht, sondern weil das Stueck fast nichts ist.
+        &"aufwand": 1.0,
+        # Wieviele auf einen Schlag kommen. Steht hier und nicht in
+        # `Wellen.auftritte()`, weil die Gruppengroesse eine Eigenschaft der
+        # Art ist - vorher stand der Schleier dort als Sonderfall im Code.
+        &"gruppe": [6, 9],
+    },
+    {
+        &"kennung": &"KREISER",
+        &"name": "Ringrunner",
+        &"regel": "Never closes in. It circles you - hold the beam and you stop steering.",
+        &"leben": 46.0,
+        &"tempo": 104.0,
+        &"radius": 16.0,
+        &"wucht": 2,
+        &"schlaengel": 8.0,
+        &"takt": 1.1,
+        &"farbe": Color(1.00, 0.74, 0.38),
+        &"ab_welle": 66,
+        &"aufwand": 1.24,
+        # **Sein ganzer Entwurf.** Er haelt diesen Abstand und laeuft
+        # seitlich weiter, statt geradeaus zu kommen. Im Schlund waere das
+        # sinnlos gewesen - dort sank alles dieselbe Bahn nach unten. Hier
+        # stellt er Fahren und Zielen gegeneinander: wer ihn im Kegel haelt,
+        # dreht sich mit ihm und faehrt nicht mehr.
+        &"umlauf": 260.0,
+    },
+    {
+        &"kennung": &"LICHTSCHEU",
+        &"name": "Shylight",
+        &"regel": "Backs away while lit. Half a beam only pushes it out of reach.",
+        &"leben": 34.0,
+        &"tempo": 96.0,
+        &"radius": 15.0,
+        &"wucht": 2,
+        &"schlaengel": 18.0,
+        &"takt": 1.9,
+        &"farbe": Color(0.72, 0.90, 0.66),
+        &"ab_welle": 78,
+        &"aufwand": 1.18,
+        # **Wer es anleuchtet, schiebt es weg.** Das dreht die uebliche
+        # Antwort um: draufhalten kostet hier Zeit, statt sie zu sparen. Man
+        # nimmt es mit dem Stosslicht, oder man laesst es kommen und faengt
+        # es kurz vor dem Rumpf.
+        &"scheu": 0.85,
+    },
+    {
         &"kennung": &"SCHLUNDMUTTER",
         &"name": "Maw Mother",
         &"regel": "Warden at the end of every section. Slow, very tough - and one hit costs a third of the brood.",
@@ -275,6 +361,54 @@ const TABELLE: Array[Dictionary] = [
         &"aufwand": 1.0,
         &"leitwesen": true,
     },
+    {
+        &"kennung": &"RINGMAUL",
+        &"name": "Ring Maw",
+        &"regel": "Warden that keeps its distance and circles. Hold the beam on it and you stop steering.",
+        &"leben": 1.0,
+        &"tempo": 58.0,
+        &"radius": 50.0,
+        &"wucht": 4,
+        &"schlaengel": 12.0,
+        &"takt": 0.7,
+        &"farbe": Color(0.98, 0.62, 0.24),
+        &"ab_welle": Graben.WELLEN_JE_ABSCHNITT,
+        &"panzer": 2.0,
+        &"aufwand": 1.0,
+        &"leitwesen": true,
+        # Weiter draussen als der Kreiser: ein Leitwesen soll man kommen
+        # sehen, und auf 260 Einheiten stuende es bereits im Kegel, ohne dass
+        # man gefahren waere.
+        &"umlauf": 400.0,
+    },
+    {
+        &"kennung": &"BRUTSTOCK",
+        &"name": "Broodstalk",
+        &"regel": "Warden that keeps spawning while it lives. Clear the young and you clear forever.",
+        &"leben": 1.0,
+        &"tempo": 26.0,
+        &"radius": 56.0,
+        &"wucht": 4,
+        &"schlaengel": 6.0,
+        &"takt": 0.4,
+        &"farbe": Color(0.70, 0.42, 0.98),
+        &"ab_welle": Graben.WELLEN_JE_ABSCHNITT,
+        &"panzer": 3.0,
+        &"aufwand": 1.0,
+        &"leitwesen": true,
+        # **Der einzige Hoehepunkt mit einer Uhr.** Alle `brut_takt` Sekunden
+        # setzt er ein Junges ab. Wer die Kleinen abraeumt und ihn stehen
+        # laesst, raeumt fuer immer; wer ihn zuerst nimmt, steht dabei
+        # ungedeckt im Schwarm.
+        #
+        # Die Jungen zahlen **nichts** und stehen in keinem Budget - sonst
+        # wuerde ein Leitwesen, das man lange stehen laesst, zur
+        # Naehrstoffquelle, und die Wirtschaft haengt an der Wellenzahl
+        # (Zusage 10). Dieselbe Begruendung wie bei der Funkenbluete
+        # (Zusage 18): was nichts zahlt, verschiebt auch nichts.
+        &"brut_takt": 2.4,
+        &"brut_art": &"LAICHWOLKE",
+    },
 ]
 
 
@@ -338,6 +472,53 @@ static func mindest_licht(index: int) -> float:
 ## Ab welcher Helligkeit der Strahl abprallt. 0.0 heisst: keine Obergrenze.
 static func hoechst_licht(index: int) -> float:
     return float(art(index).get(&"hoechst_licht", 0.0))
+
+
+# --- Was die Arten des Rundumlaufs anders machen ---------------------------
+#
+# Drei Eigenschaften, die es im Schlund nicht geben konnte: dort sank alles
+# dieselbe Bahn nach unten, also gab es kein Umkreisen, kein Zurueckweichen
+# und keinen Ort, an dem etwas absetzen koennte.
+
+## Auf welchem Abstand ein Tier um das Boot kreist, statt heranzukommen.
+## 0.0 heisst: es kommt geradewegs.
+static func umlauf(index: int) -> float:
+    return float(art(index).get(&"umlauf", 0.0))
+
+
+## Wie stark ein Tier zurueckweicht, solange es im Kegel steht. 0.0 heisst:
+## es laesst sich anleuchten.
+static func scheu(index: int) -> float:
+    return float(art(index).get(&"scheu", 0.0))
+
+
+## Alle wieviel Sekunden ein Tier ein Junges absetzt. 0.0 heisst: gar nicht.
+static func brut_takt(index: int) -> float:
+    return float(art(index).get(&"brut_takt", 0.0))
+
+
+## Welche Art dabei herauskommt, oder -1.
+static func brut_art(index: int) -> int:
+    var k: StringName = art(index).get(&"brut_art", &"")
+    if k == &"":
+        return -1
+    for i in TABELLE.size():
+        if TABELLE[i][&"kennung"] == k:
+            return i
+    return -1
+
+
+## Wieviele Tiere dieser Art auf einen Schlag kommen: [min, max].
+##
+## **Stand als Sonderfall in `Wellen.auftritte()`**, wo der Schleier
+## namentlich abgefragt wurde. Die Gruppengroesse ist aber eine Eigenschaft
+## der Art und keine des Wellenbaus - sonst muss man jede neue Schwarmart an
+## zwei Stellen eintragen und vergisst die zweite.
+static func gruppe(index: int) -> Vector2i:
+    var g: Array = art(index).get(&"gruppe", [])
+    if g.size() < 2:
+        return Vector2i(1, 1)
+    return Vector2i(int(g[0]), int(g[1]))
 
 
 static func drift(index: int) -> float:
@@ -412,7 +593,18 @@ static func leitwesen() -> int:
 ## wer den Graben zum zweiten Mal durchlaeuft, trifft dieselbe Folge unter
 ## haerteren Regeln. Das ist Absicht - eine Abfolge, die man kennt, ist der
 ## Unterschied zwischen einem Abstieg und einer Liste.
-const LEITFOLGE: PackedInt32Array = [0, 1, 2, 0, 2, 0, 1, 2]
+## **Fuenf Leitwesen auf acht Abschnitte, von Hand zugeordnet.**
+##
+## Die eine harte Regel steht in `_test_gepanzertes_leitwesen_nie_im_dunkeln`:
+## der Kalkrochen (Platz 1) darf nie in einem Abschnitt stehen, der den Kegel
+## abdunkelt - ein fester Abzug frisst von einem Fuenftel Helligkeit alles,
+## und dann steht dort ein unbesiegbares Tier. Er liegt deshalb auf 1 und 6,
+## den beiden Abschnitten ohne Dunkelphase.
+##
+## Der Rest ist Abwechslung: keine zwei gleichen nebeneinander, und jedes der
+## fuenf kommt in einer Umdrehung mindestens einmal vor. Vorher waren es
+## drei auf acht - man sah dasselbe Finale dreimal je Umdrehung.
+const LEITFOLGE: PackedInt32Array = [0, 1, 3, 2, 4, 0, 1, 3]
 
 
 static func leitwesen_fuer(abschnitt: int) -> int:

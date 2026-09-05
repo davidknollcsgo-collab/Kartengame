@@ -178,6 +178,52 @@ static func schwellen_nachlass(index: int) -> float:
     return ZWIELICHT_NACHLASS if index == Linie.ZWIELICHT else 0.0
 
 
+# --- Mehrere Linien zugleich -----------------------------------------------
+#
+# **Aus der Einzelwahl ist ein Aufbau geworden.** Vorher trug die Kolonie
+# genau eine Linie; alles, was man sonst gezuechtet hatte, lag brach. Das ist
+# die schlechteste Art, Auswahl zu bauen: man zahlt fuer sechs Dinge und
+# benutzt eines, und die fuenf anderen sind nur noch ein Vorwurf.
+#
+# Wieviele Plaetze es gibt, sagt die Brutkammer (`Kammern.linien_plaetze()`) -
+# gezuechtet wird, was die Brut hergibt. Damit ist es dieselbe Kopplung wie
+# ueberall sonst: eine Kammer, eine Kurve, eine Funktion fuer Spieler und
+# Pruefer.
+#
+# **Warum das nicht in `Ausbau.durchsatz()` gehoert.** Zusage 5 sagt: was die
+# Welle leichter macht, geht in die Sollkurve ein. Ihre Begruendung lautet
+# aber "eine Leistung, die *jeder Spieler in jeder Welle* hat" - und das
+# trifft auf die Linien nicht zu. Sie sind eine Wahl, kein Grundwert; wer
+# keine hat, faende sonst eine Kurve vor, die welche voraussetzt. Sie stehen
+# damit ausserhalb des Budgets, aus demselben Grund wie die Funkenbluete
+# (Zusage 18) - und genau das macht sie zur Belohnung statt zur Pflicht.
+
+## Faktoren multiplizieren sich, Zuschlaege addieren sich, Anteile nehmen den
+## groessten. Der Anteil ist die Stelle, an der es darauf ankommt: zwei
+## Linien, die je 62 % Panzer wegfressen, duerften nie 124 % ergeben.
+static func gesamt_faktor(aktive: PackedInt32Array,
+        was: Callable) -> float:
+    var f := 1.0
+    for i in aktive:
+        f *= float(was.call(i))
+    return f
+
+
+static func gesamt_summe(aktive: PackedInt32Array, was: Callable) -> float:
+    var summe := 0.0
+    for i in aktive:
+        summe += float(was.call(i))
+    return summe
+
+
+static func gesamt_hoechst(aktive: PackedInt32Array,
+        was: Callable) -> float:
+    var hoechst := 0.0
+    for i in aktive:
+        hoechst = maxf(hoechst, float(was.call(i)))
+    return hoechst
+
+
 ## In welcher Reihenfolge die Linien freigeschaltet werden. Eine Linie laesst
 ## sich erst zuechten, wenn die davor steht - sonst spart man auf die letzte
 ## und sieht die beiden anderen nie.

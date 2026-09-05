@@ -328,13 +328,20 @@ func _hole_ziel(index: int) -> void:
         _zeige("Already collected")
 
 
-## Zuechten oder, wenn schon gezuechtet, auswaehlen.
+## Zuechten oder, wenn schon gezuechtet, auf einen Platz legen und wieder
+## herunternehmen.
 func _versuche_linie(index: int) -> void:
     var stand: KolonieStand = Fortschritt.stand
     if stand.hat_linie(index):
-        if stand.linie == index:
-            _zeige("%s already carries the watch" % Brutlinien.name_von(index))
-        elif stand.waehle_linie(index):
+        if stand.linie_traegt(index):
+            # Herunternehmen ist ausdruecklich erlaubt: ein Aufbau, den man
+            # nur ergaenzen und nie umstellen kann, ist keine Wahl.
+            if stand.schalte_linie(index):
+                Klang.spiele(Klang.Ton.TIPP, 0.9)
+                Fortschritt.sichere()
+                Fortschritt.stand_geaendert.emit()
+                _zeige("%s stood down" % Brutlinien.name_von(index))
+        elif stand.schalte_linie(index):
             Klang.spiele(Klang.Ton.POLYP, 0.9)
             Fortschritt.sichere()
             Fortschritt.stand_geaendert.emit()
@@ -572,9 +579,16 @@ func _kopfzeile(breite: float, stand: KolonieStand) -> void:
         _text(Vector2(chip.end.x - 12.0, chip.position.y + 45.0), unten, 11,
             Color(NAEHR.r, NAEHR.g, NAEHR.b, 0.75), false, true)
 
-    if stand.linie != Brutlinien.Linie.KEINE:
-        _text(Vector2(breite * 0.5, 58.0), Brutlinien.name_von(stand.linie), 14,
-            Brutlinien.farbe(stand.linie), true)
+    # **Alle tragenden Linien, nicht nur die erste.** In der Kopfzeile stand
+    # eine einzelne, und seit mehrere zugleich tragen koennen, waere das eine
+    # Auskunft, die nur manchmal stimmt.
+    var traegt_jetzt := stand.tragende()
+    if not traegt_jetzt.is_empty():
+        var namen := PackedStringArray()
+        for i in traegt_jetzt:
+            namen.append(Brutlinien.name_von(i))
+        _text(Vector2(breite * 0.5, 58.0), " + ".join(namen), 14,
+            Brutlinien.farbe(traegt_jetzt[traegt_jetzt.size() - 1]), true)
 
     _flaeche.draw_line(Vector2(0.0, KOPF + _rand_oben),
         Vector2(breite, KOPF + _rand_oben),
@@ -986,12 +1000,18 @@ func _linienbild(breite: float, oben: float, unten: float,
     # 20:9-Schirm klafften dazwischen hundertneunzig Pixel, und eine
     # Ueberschrift ohne etwas darunter liest sich als fehlender Inhalt.
     # Sie gehoert an das Bild und nicht an die Kante.
+    # **Wieviele Plaetze belegt sind, steht hier und nirgends sonst.**
+    # Ohne die Zahl tippt man eine siebte Linie an, eine andere faellt
+    # heraus, und man sucht, welche - eine Regel, die man nur an ihrer
+    # Wirkung merkt, ist keine Regel.
+    var plaetze := stand.linien_plaetze()
     _text(Vector2(RAND, maxf(oben + 12.0, mitte_y - kegelhoch * 0.5 - 16.0)),
-        "WHAT THE LINE CHANGES", 13, LEISE)
+        "CARRYING %d OF %d - THE BROOD CHAMBER OPENS MORE"
+        % [stand.tragende().size(), plaetze], 13, LEISE)
 
     for index in Brutlinien.zahl():
         var mitte_x := RAND + 12.0 + breit * (float(index) + 0.5)
-        var traegt := stand.linie == index
+        var traegt := stand.linie_traegt(index)
         var hat := stand.hat_linie(index)
         var farbe := Brutlinien.farbe(index)
         var spitze := Vector2(mitte_x, mitte_y + kegelhoch * 0.5)
@@ -1314,6 +1334,65 @@ func _artsinnbild(p: Vector2, r: float, index: int, farbe: Color, kennt: bool) -
                 p + Vector2(r * 0.2, r * 0.2), p + Vector2(r * 0.9, -r * 0.5),
             ])
             _flaeche.draw_polyline(zack, farbe, 2.2)
+        Arten.Art.LAICHWOLKE:
+            # Viele winzige Koerper in einer Wolke - das ist die ganze
+            # Aussage der Art.
+            for i in 9:
+                var w := TAU * float(i) / 9.0 + _zeit * 0.3
+                var weit := r * (0.30 + 0.52 * absf(sin(float(i) * 2.1)))
+                _flaeche.draw_circle(p + Vector2(cos(w), sin(w) * 0.8) * weit,
+                    r * 0.13, Color(farbe.r, farbe.g, farbe.b, 0.85))
+        Arten.Art.KREISER:
+            # Ein Ring um eine Mitte, an der er nie ankommt.
+            _flaeche.draw_arc(p, r * 0.82, 0.0, TAU, 26,
+                Color(farbe.r, farbe.g, farbe.b, 0.55), 1.6)
+            _flaeche.draw_circle(p, r * 0.16,
+                Color(farbe.r, farbe.g, farbe.b, 0.35))
+            var lauf := _zeit * 1.2
+            _flaeche.draw_circle(p + Vector2(cos(lauf), sin(lauf)) * r * 0.82,
+                r * 0.22, farbe)
+        Arten.Art.LICHTSCHEU:
+            # Ein Koerper, der vor einem Strahl zurueckweicht.
+            _flaeche.draw_line(p + Vector2(-r * 0.95, -r * 0.7),
+                p + Vector2(-r * 0.2, -r * 0.1),
+                Color(1.0, 1.0, 0.96, 0.8), 1.8)
+            var bogen := PackedVector2Array()
+            for i in 9:
+                var w := lerpf(-PI * 0.55, PI * 0.55, float(i) / 8.0)
+                bogen.append(p + Vector2(r * 0.35, 0.0)
+                    + Vector2(cos(w), sin(w)) * r * 0.6)
+            _flaeche.draw_polyline(bogen, farbe, 2.2)
+            for i in 2:
+                _flaeche.draw_line(p + Vector2(r * 0.62, 0.0),
+                    p + Vector2(r * 0.95, (float(i) - 0.5) * r * 0.8),
+                    Color(farbe.r, farbe.g, farbe.b, 0.5), 1.4)
+        Arten.Art.RINGMAUL:
+            # Wie der Kreiser, aber weiter draussen und mit Zaehnen: ein
+            # Leitwesen muss man am Umriss erkennen.
+            _flaeche.draw_arc(p, r * 0.9, 0.0, TAU, 30,
+                Color(farbe.r, farbe.g, farbe.b, 0.45), 1.4)
+            for i in 10:
+                var w := TAU * float(i) / 10.0
+                var richtung := Vector2(cos(w), sin(w))
+                _flaeche.draw_line(p + richtung * r * 0.9,
+                    p + richtung * r * 0.66, farbe, 1.8)
+            _flaeche.draw_circle(p, r * 0.26,
+                Color(farbe.r, farbe.g, farbe.b, 0.75))
+        Arten.Art.BRUTSTOCK:
+            # Ein Stock, an dem Junge haengen und abfallen.
+            _flaeche.draw_line(p + Vector2(0.0, r * 0.9),
+                p + Vector2(0.0, -r * 0.5), farbe, 2.6)
+            for i in 3:
+                var t := float(i) / 2.0
+                var y := lerpf(r * 0.6, -r * 0.35, t)
+                var seite := 1.0 if i % 2 == 0 else -1.0
+                _flaeche.draw_line(p + Vector2(0.0, y),
+                    p + Vector2(seite * r * 0.6, y - r * 0.18),
+                    Color(farbe.r, farbe.g, farbe.b, 0.6), 1.6)
+                _flaeche.draw_circle(p + Vector2(seite * r * 0.68,
+                    y - r * 0.2), r * 0.16,
+                    Color(farbe.r, farbe.g, farbe.b, 0.9))
+            _flaeche.draw_circle(p + Vector2(0.0, -r * 0.62), r * 0.24, farbe)
         Arten.Art.SPIEGLER:
             # Ein facettierter Panzer und ein Strahl, der daran umkehrt -
             # genau das, was die Regel sagt.
@@ -1565,11 +1644,11 @@ func _tagesfuss(breite: float, y: float, stand: KolonieStand) -> void:
 
 
 ## Eine Brutlinie. Anders als eine Kammer hat sie keine Stufen - sie ist da
-## oder nicht, und genau eine traegt.
+## oder nicht, und mehrere koennen zugleich tragen.
 func _brutlinie(kasten: Rect2, index: int, stand: KolonieStand) -> void:
     var farbe := Brutlinien.farbe(index)
     var hat := stand.hat_linie(index)
-    var traegt := stand.linie == index
+    var traegt := stand.linie_traegt(index)
 
     _flaeche.draw_rect(kasten, Color(BAND_FARBE.r, BAND_FARBE.g, BAND_FARBE.b,
         0.92 if hat else 0.62))
