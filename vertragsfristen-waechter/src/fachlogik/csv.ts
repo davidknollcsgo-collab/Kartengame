@@ -34,9 +34,14 @@ const SPALTEN = [
     "Notizen",
 ];
 
+// Ein führendes =, +, - oder @ macht aus dem Feld in Excel eine Formel. Die
+// Werte stammen aus Vertragsdaten, die jemand eingetippt hat — also von außen.
+const FORMELZEICHEN = /^[=+\-@\t\r]/;
+
 function feld(wert: string | number | null | undefined): string {
-    const text = wert === null || wert === undefined ? "" : String(wert);
-    return /[";\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+    let text = wert === null || wert === undefined ? "" : String(wert);
+    if (FORMELZEICHEN.test(text)) text = `'${text}`;
+    return /[";\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
 function betrag(cent: number): string {

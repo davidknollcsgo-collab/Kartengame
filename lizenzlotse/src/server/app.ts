@@ -20,6 +20,7 @@ import ratenbremse from "@fastify/rate-limit";
 import statisch from "@fastify/static";
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import { werteAus, type Auswertung } from "../fachlogik/analyse.ts";
+import { csvFeld } from "../fachlogik/csvfeld.ts";
 import { heute } from "../fachlogik/datum.ts";
 import { baueBestand, type Quelldatei } from "../fachlogik/import.ts";
 import { preisliste, skuName, SKUS } from "../fachlogik/skus.ts";
@@ -602,10 +603,6 @@ export function baueApp(optionen: AppOptionen): FastifyInstance {
             "Befund", "Sicherheit", "Status", "Konto", "Anmeldename", "Produkt", "Zielprodukt",
             "Anzahl", "Ersparnis je Monat", "Ersparnis je Jahr", "Begründung", "Empfehlung",
         ];
-        const feld = (wert: unknown) => {
-            const text = wert === null || wert === undefined ? "" : String(wert);
-            return /[";\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-        };
         const betrag = (cent: number) => (cent / 100).toFixed(2).replace(".", ",");
         const zeilen = [spalten.join(";")];
         for (const b of befunde) {
@@ -618,7 +615,7 @@ export function baueApp(optionen: AppOptionen): FastifyInstance {
                     b["anzahl"], betrag(cent), betrag(cent * 12),
                     String(b["begruendung"]).replace(/\r?\n/g, " "),
                     String(b["empfehlung"]).replace(/\r?\n/g, " "),
-                ].map(feld).join(";"),
+                ].map(csvFeld).join(";"),
             );
         }
         return reply
