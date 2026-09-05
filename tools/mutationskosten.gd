@@ -29,9 +29,34 @@ extends SceneTree
 ## Nicht je Tier: ein Zug, der eingepreist ist, macht die Welle kleiner
 ## (`Wellen.staerke()` kauft weniger), und die wenigen Tiere sind dafuer
 ## einzeln schwerer. Je Tier gerechnet kaeme jeder Zug teuer heraus, auch ein
-## richtig bepreister. Je Welle gerechnet heisst richtig bepreist: **gleich
-## teuer wie ohne**. Das Verhaeltnis ist damit unmittelbar der Faktor, um den
-## `WIRKUNGSGRAD` danebenliegt.
+## richtig bepreister.
+##
+## **Der Nullfall ist trotzdem nicht ganz sauber, und das gehoert hierher.**
+## Eine Welle ohne jeden Zug hat das groesste Budget und kauft dafuer viele
+## billige Tiere; ein bepreister Zug nimmt Budget weg, und was zuerst
+## wegfaellt, sind die billigen. Die teuren bleiben - Gruppenmindestzahlen
+## und das Leitwesen stehen ohnehin im Feld. Ein Zug, der gar nichts tut,
+## kostet dadurch schon rund ein Sechstel mehr Huelle als gar keiner.
+## Gemessen: `Lightshy` 293, `Erratic` 350, `Surging` 337 gegen 287 - und bei
+## den letzten beiden liegt das nachweislich **nicht** am Zug, denn ein
+## Fuenftel weniger Drift und ein Sechstel weniger Schub aendern die Zahl
+## nicht (344/350 und 337/337).
+##
+## Der Wert dieser Tabelle liegt deshalb im **Vergleich zweier Laeufe**: eine
+## Staerke aendern, noch einmal messen, und die beiden Zahlen nebeneinander
+## legen. Budget und Zusammensetzung sind dann Wort fuer Wort dieselben, und
+## was sich unterscheidet, ist der Zug. So gemessen:
+##
+##     Plated   PANZER_ANTEIL   0,14 -> 0,045    868 -> 453 Huelle
+##     Swift    HAST_FAKTOR     1,22 -> 1,10     621 -> 440
+##     Bloated  LEBEN/RADIUS    1,6  -> 1,25     759 -> 420
+##     Erratic  DRIFT_ZUSATZ    0,55 -> 0,45     344 -> 350
+##     Surging  STOSS_ZUSATZ    0,45 -> 0,38     337 -> 337
+##
+## Drei Zuege kosten also wirklich etwas, und zwar viel; zwei kosten gar
+## nichts. Die Spalte `waere` unten liest die Tabelle wie eine Preisliste und
+## ist damit **zu streng** - sie schreibt den Nullfall-Aufschlag jedem Zug
+## zu. Als Rangfolge taugt sie, als Zahl zum Abschreiben nicht.
 ##
 ## `Mutationen.erzwinge()` ist der Hebel dafuer; er steht ausdruecklich nur
 ## fuer diesen Messstand da, und ein Waechter im Testlauf haelt ihn dort.
@@ -84,9 +109,20 @@ func _init() -> void:
     print("%-12s %10s %10s %10s %10s %10s"
         % ["Mutation", "Huelle", "je Welle", "Tiere", "eingetragen", "waere"])
 
+    # `-- --zug Plated` misst nur diesen einen. Ein voller Lauf dauert eine
+    # knappe halbe Stunde; wer an einer Zahl dreht, will nicht auf die
+    # anderen fuenf warten.
+    var nur := ""
+    var args := OS.get_cmdline_user_args()
+    for i in args.size():
+        if args[i] == "--zug" and i + 1 < args.size():
+            nur = args[i + 1]
+
     var schlimmster := 1.0
     var wer := "keine"
     for m in Mutationen.Mutation.size():
+        if nur != "" and Mutationen.name_von(m) != nur:
+            continue
         var b := messe(PackedInt32Array([m]))
         var je := b.verlust / wellen
         var f := je / maxf(0.001, grund)

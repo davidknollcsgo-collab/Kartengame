@@ -68,16 +68,47 @@ const SAAT := 0x4d555400
 ## Panzer als Anteil der Leistung, die der Kegel bei voller Helligkeit auf ein
 ## Ziel bringt. Abgeleitet aus der Sollkurve, nicht gewaehlt - genau wie das
 ## Leben eines Leitwesens.
-const PANZER_ANTEIL := 0.14
+##
+## **Hier stand 0,14, und das war die teuerste Zahl im Graben.** Sie klingt
+## nach vierzehn Prozent; sie ist es aber nur am hellsten Punkt des Kegels.
+## Ein Panzer zieht einen **festen** Betrag ab, und die Helligkeit, bei der
+## ein Tier wirklich brennt, liegt im Rundumlauf weit darunter - der Kegel
+## schwenkt, die meisten Ziele stehen im Halbschatten, und ein Abschnitt
+## nimmt noch einmal davon weg. Vierzehn Prozent vom Maximum waren damit ueber
+## die Haelfte des tatsaechlichen Schadens.
+##
+## Gemessen mit `tools/mutationskosten.gd`, gleiche Welle, gleiche
+## Zusammensetzung, nur diese Zahl geaendert: **868 Huellenpunkte bei 0,14,
+## 453 bei 0,045.** Der Zug allein kostete mehr als die ganze uebrige Welle.
+const PANZER_ANTEIL := 0.045
 
 ## Helligkeit, unter der eine lichtscheue Welle gar nichts abbekommt.
 const LICHT_SCHWELLE := 0.42
 
-const DRIFT_ZUSATZ := 0.55
-const STOSS_ZUSATZ := 0.45
-const HAST_FAKTOR := 1.22
-const AUFGEDUNSEN_LEBEN := 1.6
-const AUFGEDUNSEN_RADIUS := 1.35
+## **Drift und Schub kosten nichts, und das ist gemessen.** Ein Fuenftel
+## weniger Drift (0,55 auf 0,45) aendert den Huellenverlust ueber achtzig
+## Wellen von 344 auf 350, ein Sechstel weniger Schub (0,45 auf 0,38) von 337
+## auf 337. Beide Zuege aendern, **wie** eine Welle sich anfuehlt, und nicht,
+## was sie kostet - genau das soll eine Mutation tun. Sie bleiben deshalb
+## dort, wo sie stehen; die kleinen Abschlaege sind mitgemessen und schaden
+## nicht.
+const DRIFT_ZUSATZ := 0.45
+const STOSS_ZUSATZ := 0.38
+
+## **Tempo kostet sehr wohl.** 1,22 auf 1,10 gemessen: 621 Huelle auf 440.
+## Der Grund ist derselbe wie beim Panzer und faellt nur im Rundumlauf an -
+## der Kegel ist immer bei jemand anderem, und wer schneller ist, hat weniger
+## Sekunden im Licht, bevor er am Boot steht. Am einzelnen Tier gemessen
+## kostet Tempo gar nichts (der Kegel liegt dann ja durchgehend darauf); das
+## war der blinde Fleck des ersten Messstands.
+const HAST_FAKTOR := 1.10
+
+## **Der leere Zielplatz, gemessen.** 1,6/1,35 auf 1,25/1,20: 759 Huelle auf
+## 420. Der Kegel fasst `Ausbau.ziele()` Ziele gleichzeitig, und weniger,
+## zaehere Koerper heisst leere Plaetze - dieselbe Begruendung wie unten beim
+## Wirkungsgrad, jetzt mit einer Zahl dahinter.
+const AUFGEDUNSEN_LEBEN := 1.25
+const AUFGEDUNSEN_RADIUS := 1.20
 
 
 ## Was jede Mutation den Spieler an Wirkungsgrad kostet.
@@ -88,7 +119,16 @@ const AUFGEDUNSEN_RADIUS := 1.35
 ## eine nackte. Bei den Abschnittsregeln hat genau dieses Versaeumnis fuenf
 ## gefallene Sitzungen ab Welle 36 gekostet - siehe `Regeln.wirkungsgrad`.
 ##
-## Gemessen am Wellenpruefer, nicht geschaetzt.
+## Gemessen am Wellenpruefer, nicht geschaetzt - und seit es
+## `tools/mutationskosten.gd` gibt, auch einzeln. Die sechs Zahlen selbst
+## bleiben, wo sie stehen: gedreht wurde an den **Staerken** darueber, bis
+## jede Mutation ungefaehr das kostet, was hier eingepreist ist. Das ist die
+## richtige Reihenfolge - ein Zug, den man nur durch eine Drittelung des
+## Wellenbudgets bezahlen kann, ist keine Abwechslung mehr, sondern eine
+## andere Welle.
+##
+## Ergebnis am Wellenpruefer ueber 240 Wellen: **von zwoelf gefallenen
+## Sitzungen auf zwei.**
 ##
 ## `AUFGEDUNSEN` stand hier auf 1.0, weil ein groesseres Ziel leichter im
 ## Kegel zu halten sei, als ein zaeheres schwer zu toeten. Das war falsch, und
