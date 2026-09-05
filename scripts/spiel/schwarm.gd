@@ -351,11 +351,19 @@ func _zeichne(t: Raeuber, stufe := 0) -> void:
     # ein weisser Klecks mit einer Flosse daran. Der Hof bleibt trotzdem: er
     # traegt die **Farbe** der Art nach aussen, und die Nachbearbeitung
     # kennt nur Helligkeit.
+    #
+    # **Und kleine Tiere bekommen weniger davon.** Der Hof waechst mit dem
+    # Radius, die Nachbearbeitung nicht - bei einer Laichwolke von zwoelf
+    # Einheiten lag der Koerper vollstaendig im eigenen Schein, und drei
+    # davon im Strahl waren drei weisse Punkte. Was den Schwarm lesbar macht,
+    # ist die Wiederholung derselben Form; eine Form, die man nicht sieht,
+    # wiederholt sich nicht.
+    var klein := clampf(r / 18.0, 0.45, 1.0)
     if stufe == 0:
-        _gluehen(p, r * 2.2 * puls, farbe, 0.07 + 0.13 * hitze)
+        _gluehen(p, r * 2.2 * puls, farbe, (0.07 + 0.13 * hitze) * klein)
     elif stufe == 1:
         draw_circle(p, r * 1.6 * puls, Color(farbe.r, farbe.g, farbe.b,
-            0.045 + 0.07 * hitze))
+            (0.045 + 0.07 * hitze) * klein))
 
     # **Leuchtpunkte.** Eine Reihe kleiner Lichter laengs des Koerpers, die
     # als Welle von vorn nach hinten durchlaeuft.

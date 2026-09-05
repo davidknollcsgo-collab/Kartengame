@@ -495,6 +495,12 @@ unter einer strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
    dreizehnte Art) und Zierat innerhalb des Umrisses: Zahl der Kammzacken,
    Zahl und Länge der Fäden.
 
+   **Und kleine Tiere bekommen weniger Hof.** Er wächst mit dem Radius, die
+   Nachbearbeitung nicht — bei einer Laichwolke von zwölf Einheiten lag der
+   Körper vollständig im eigenen Schein, und drei davon im Strahl waren drei
+   weiße Punkte. Was einen Schwarm lesbar macht, ist die Wiederholung
+   derselben Form; eine Form, die man nicht sieht, wiederholt sich nicht.
+
    Und der handgezeichnete Hof ist seither **halbiert**. Die gestapelten
    Kreise waren der Ersatz für ein Glühen, das es nicht gab; jetzt gibt es
    eins, und beides zusammen machte aus einem Zahnkiefer im Strahl einen
