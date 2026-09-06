@@ -57,6 +57,7 @@ const TESTS: PackedStringArray = [
     "_test_bluete_bleibt_ausserhalb_der_wirtschaft",
     "_test_stroemung_wird_nur_einmal_gerechnet",
     "_test_mutationszwang_bleibt_im_werkzeug",
+    "_test_anstrich_faerbt_und_leuchtet_nicht",
     "_test_keine_art_kostet_ein_vielfaches",
     "_test_toene_sind_hoerbar_und_sauber",
     "_test_grundton_schliesst_die_schleife",
@@ -2627,6 +2628,74 @@ func _test_mutationszwang_bleibt_im_werkzeug() -> bool:
     if not _melde(Mutationen.in_welle(1).is_empty(),
             "Welle 1 traegt Mutationen - steht der Zwang noch?"):
         return false
+    return true
+
+
+## Ein Anstrich faerbt das Boot - und aendert nichts, was Schaden macht.
+##
+## **Das ist die Zusage, an der ein Skinsystem stirbt.** Zusage 2 sagt: was
+## hell gezeichnet wird, macht Schaden. Ein Anstrich, der den Kegel weiter,
+## breiter oder heller macht, waere damit ein Ausbau in Verkleidung - und die
+## Wahl waere keine Frage des Geschmacks mehr, sondern eine der Stufe. Wer
+## dann den huebschesten nimmt, spielt schwerer.
+##
+## Zwei Wege, das festzuhalten, und es braucht beide:
+##
+## 1. **Die Tabelle darf nur Farben fuehren.** Ein `&"reichweite": 1.1`
+##    daneben faellt in keinem Bild auf und wirkt sofort.
+## 2. **Der Quelltext darf `Skins` nicht dort anfassen, wo gerechnet wird.**
+##    Eine Zeile wie `_kegel.reichweite *= Skins.…` waere Punkt 1 gegenueber
+##    unauffaellig und genauso falsch.
+func _test_anstrich_faerbt_und_leuchtet_nicht() -> bool:
+    # Vollstaendig und ohne Ueberraschungen: genau diese Felder, kein Feld
+    # mehr. Die Kennung wird gegen das Enum geprueft (deutsch, fest), nicht
+    # der angezeigte Name (englisch, frei).
+    var erlaubt: PackedStringArray = ["kennung", "name", "regel", "haut",
+        "glut", "strahl", "kern", "ab_welle"]
+    for i in Skins.zahl():
+        var eintrag := Skins.anstrich(i)
+        for feld in erlaubt:
+            if not _melde(eintrag.has(StringName(feld)),
+                    "Anstrich %d fehlt das Feld %s" % [i, feld]):
+                return false
+        for schluessel in eintrag.keys():
+            if not _melde(erlaubt.has(String(schluessel)),
+                    "Anstrich %d fuehrt %s - ein Anstrich ist nur Farbe"
+                    % [i, schluessel]):
+                return false
+        if not _melde(String(eintrag[&"kennung"])
+                == Skins.Anstrich.keys()[i],
+                "Anstrich %d heisst anders als sein Enum" % i):
+            return false
+
+    # **Der erste steht jedem offen.** Sonst faehrt ein neuer Spieler ohne
+    # Anstrich, und `KolonieStand.skin` faellt beim Laden auf einen zurueck,
+    # den es fuer ihn nicht gibt.
+    if not _melde(Skins.ab_welle(0) == 0, "der erste Anstrich ist gesperrt"):
+        return false
+    for i in Skins.zahl():
+        if not _melde(Skins.frei(i, 100000), "Anstrich %d bleibt fuer immer zu" % i):
+            return false
+
+    # Und was gerechnet wird, bleibt unberuehrt.
+    var verboten: PackedStringArray = ["reichweite", "halbwinkel", "winkel",
+        "leistung", "schein", "rand_kern", "tiefe_kern", "ziele", "huelle",
+        "naehrstoff", "punkte"]
+    for datei in ["res://scripts/spiel/rundlauf.gd",
+            "res://scripts/spiel/kegel.gd",
+            "res://scripts/daten/kolonie_stand.gd"]:
+        var quelle := FileAccess.get_file_as_string(datei)
+        var nummer := 0
+        for zeile in quelle.split("\n"):
+            nummer += 1
+            var rein := zeile.strip_edges()
+            if rein.begins_with("#") or not rein.contains("Skins."):
+                continue
+            for wort in verboten:
+                if not _melde(not rein.contains(wort),
+                        "%s:%d laesst einen Anstrich an %s ruehren"
+                        % [datei, nummer, wort]):
+                    return false
     return true
 
 

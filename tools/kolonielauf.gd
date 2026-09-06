@@ -115,6 +115,9 @@ func _init() -> void:
     # Simulator spielt die Wellen wirklich - also weiss er es auch, wenn eine
     # Sitzung faellt. Frueher hat er es bloss verschwiegen.
     var faelle := 0
+    var faelle_welle := PackedInt32Array()
+    var faelle_rueckstand := PackedInt32Array()
+    var faelle_arten := {}
     var bewaeltigt := 0
     var stillstand := 0
     var laengster_stillstand := 0
@@ -198,6 +201,20 @@ func _init() -> void:
                     z.naehrstoffe += Tagesstroemung.ausbeute(roh, true) - roh
                 if not e.ueberstanden:
                     tages_faelle += 1
+                    # **Wo es passiert und wie weit zurueck.** "38 gefallene
+                    # Sitzungen" ist eine Zahl ohne Befund; der Wellenpruefer
+                    # sagt seit dem letzten Umbau, woran eine Sitzung
+                    # gefallen ist, und hier fehlte dasselbe. Die beiden
+                    # Werkzeuge messen verschiedene Spieler - dort der
+                    # Sollausbau, hier der Stand, den einer wirklich hat -,
+                    # und genau dieser Abstand ist der Verdacht.
+                    var soll_hier := Ausbau.stufe_soll(nummer)
+                    faelle_welle.append(nummer)
+                    faelle_rueckstand.append(soll_hier
+                        - stand.stufe(Kammern.Kammer.LEUCHTORGAN))
+                    for art in e.verlust_je_art:
+                        faelle_arten[art] = int(faelle_arten.get(art, 0)) \
+                            + int(e.verlust_je_art[art])
                     break
                 bewaeltigt = maxi(bewaeltigt, nummer)
                 stand.hoechste_welle = clampi(maxi(stand.hoechste_welle, nummer + 1),
@@ -293,6 +310,25 @@ func _init() -> void:
     else:
         print("Groesster Leerlauf: %.1f h - unter der Schwelle" % [mauer / 3600.0])
     print("Gefallene Sitzungen: %d" % faelle)
+    if not faelle_welle.is_empty():
+        var von := faelle_welle[0]
+        var bis := faelle_welle[faelle_welle.size() - 1]
+        var summe := 0
+        var schlimmster := 0
+        for r in faelle_rueckstand:
+            summe += r
+            schlimmster = maxi(schlimmster, r)
+        print("  von Welle %d bis %d, Rueckstand im Schnitt %.1f Stufen "
+            % [von, bis, float(summe) / float(faelle_rueckstand.size())]
+            + "(schlimmstenfalls %d)" % schlimmster)
+        var arten: Array = faelle_arten.keys()
+        arten.sort_custom(func(a, b):
+            return int(faelle_arten[a]) > int(faelle_arten[b]))
+        var teile := PackedStringArray()
+        for i in mini(4, arten.size()):
+            teile.append("%s %d" % [Arten.name_von(int(arten[i])),
+                int(faelle_arten[arten[i]])])
+        print("  woran: " + ", ".join(teile))
     print("Laengste Strecke ohne neue Welle: %d Tage%s" % [laengste_ohne_welle,
         " bei Welle %d" % welle_der_strecke if laengste_ohne_welle > 0 else ""])
     print("Laengster Stillstand (weder Welle noch Kammer): %d Tage%s"
