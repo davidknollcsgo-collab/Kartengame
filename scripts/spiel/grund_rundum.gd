@@ -915,15 +915,29 @@ func _faecher(p: Vector2, r: float, farbe: Color, a: float, dreh: float,
     # ein Sternchen; was ihn zur Gorgonie macht, ist das Gewebe dazwischen.
     # Es liegt unter den Rippen, damit die Rippen es teilen und nicht
     # umgekehrt.
+    #
+    # **Und die Haut hat einen Verlauf.** Sie war eine Flaeche in einer
+    # Farbe: am Fuss so deckend wie an der Kante, und damit ein Papierfaecher
+    # mit Speichen darauf. Gewebe zwischen zwei Rippen ist dort dicht, wo es
+    # ansetzt, und laeuft zur Kante hin aus - ein Faecher, der an seinem
+    # Rand endet, statt dort abgeschnitten zu sein.
     if spitzen.size() > 2:
         var haut := PackedVector2Array([p])
+        var toene := PackedColorArray([
+            Color(farbe.r, farbe.g, farbe.b, a * 0.52)])
         for sp in spitzen:
             haut.append(sp)
-        draw_colored_polygon(haut, Color(farbe.r, farbe.g, farbe.b, a * 0.30))
+            toene.append(Color(farbe.r, farbe.g, farbe.b, a * 0.10))
+        draw_polygon(haut, toene)
 
     for i in spitzen.size():
-        draw_line(p, spitzen[i], Color(farbe.r, farbe.g, farbe.b, a),
-            1.1, true)
+        # **Auch die Rippe laeuft aus.** Mit einer Farbe gezogen hat sie an
+        # der Spitze eine Kappe, und zehn Kappen auf einem Bogen sind ein
+        # Zahnrad. Zwei Farben auf demselben Zug kosten nichts weiter.
+        draw_polyline_colors(PackedVector2Array([p, spitzen[i]]),
+            PackedColorArray([
+                Color(farbe.r, farbe.g, farbe.b, a),
+                Color(farbe.r, farbe.g, farbe.b, a * 0.34)]), 1.1, true)
         # **Und jede zweite Rippe gabelt sich.** Eine Koralle waechst
         # verzweigt; gerade Speichen sind ein Rad. An jeder Rippe gemessen
         # kostete es acht Prozent Bildrate (6,5 auf 6,0) - bei bis zu zehn
