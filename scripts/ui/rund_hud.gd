@@ -107,7 +107,12 @@ func _tafel(kasten: Rect2, farbe := RAHMEN, deckung := 0.42,
 ## Eier. In einer Leiste von 158 Punkten waere jedes davon einen Punkt breit
 ## und der Zwischenraum zwei: eine gestrichelte Linie, aus der man nichts
 ## abliest. Darueber also ein glatter Balken und eine Zahl daneben.
-const SEGMENTE_HOECHSTENS := 22
+## **Zwoelf, nicht zweiundzwanzig.** Bei neunzehn Segmenten auf 158 Punkten
+## ist jedes sechs Punkte breit mit zwei Punkten Luft - im Bild eine
+## Schraffur, die man zaehlen muesste. Ein glatter Balken mit der Zahl
+## daneben sagt dasselbe in einem Blick. Segmente lohnen nur dort, wo jeder
+## einzelne Treffer sichtbar wegfaellt.
+const SEGMENTE_HOECHSTENS := 12
 
 
 func _balken(kasten: Rect2, ist: int, voll: int, farbe: Color) -> void:
@@ -177,10 +182,6 @@ func _zeichne() -> void:
 
     _zustand(breite)
     _welle(breite)
-    # Die Stroemungszeile schiebt die Punkte nach unten. Ohne das lagen sie
-    # zehn Punkte auseinander und in derselben Spalte - zwei Zeilen, die
-    # sich beruehren, liest man als eine.
-    _punkte(breite, 26.0 if lauf.stroemung else 0.0)
     _karte(hoehe)
     _knoepfe(breite, hoehe)
     _pause(breite)
@@ -196,10 +197,13 @@ func _zustand(_breite: float) -> void:
     var kasten := Rect2(RAND + _rand_seite, RAND + _rand_oben, 186.0, 62.0)
     _tafel(kasten)
     _text(kasten.position + Vector2(14.0, 22.0), "HULL", 11, LEISE)
-    if lauf.huelle_voll > SEGMENTE_HOECHSTENS:
-        _text(Vector2(kasten.end.x - 14.0, kasten.position.y + 22.0),
-            "%d / %d" % [int(lauf.huelle), int(lauf.huelle_voll)], 11,
-            LEISE, false, true)
+    # **Die Zahl steht immer da.** Sie stand nur oberhalb der Segmentgrenze,
+    # und darunter musste man Striche zaehlen, um zu wissen, wieviel man noch
+    # hat. Ein Balken sagt "ungefaehr so viel"; in dem Augenblick, in dem es
+    # darauf ankommt, will man es genau wissen.
+    _text(Vector2(kasten.end.x - 14.0, kasten.position.y + 22.0),
+        "%d / %d" % [int(lauf.huelle), int(lauf.huelle_voll)], 12,
+        SCHRIFT if lauf.huelle > 3 else WARNUNG, false, true)
     _balken(Rect2(kasten.position + Vector2(14.0, 28.0),
         Vector2(158.0, 7.0)), lauf.huelle, lauf.huelle_voll,
         HELL if lauf.huelle > 3 else WARNUNG)
@@ -213,37 +217,51 @@ func _zustand(_breite: float) -> void:
         WARM if ladung >= 1.0 else Color(WARM.r, WARM.g, WARM.b, 0.55))
 
 
-## Rechts oben: Welle, Auftrag, Zeit.
+## Rechts oben: Welle, Rest, Punkte - in **einer** Tafel.
+##
+## **Vorher waren es eine Tafel und zwei freistehende Zahlenbloecke.** Die
+## Welle stand in einem Kasten, Punkte und Kettenfaktor schwebten darunter im
+## Bild, und die Stroemungszeile schob beides gegeneinander. Drei Dinge, die
+## alle "wie steht es gerade" beantworten, in drei verschiedenen Formen - das
+## liest sich als drei Meldungen und nicht als ein Stand.
 func _welle(breite: float) -> void:
-    var kasten := Rect2(breite - RAND - _rand_seite - 150.0,
-        RAND + _rand_oben, 150.0, 62.0)
-    _tafel(kasten)
-    _text(Vector2(kasten.end.x - 14.0, kasten.position.y + 26.0),
-        "WAVE %d" % int(lauf.welle_nummer), 20, SCHRIFT, false, true)
-    _text(Vector2(kasten.end.x - 14.0, kasten.position.y + 44.0),
-        "%d LEFT" % int(lauf.offen()), 11, LEISE, false, true)
-    # Die Stroemung steht unter der Welle und nicht neben ihr: sie gehoert
-    # zu dieser Welle und nicht zum Bild.
-    if lauf.stroemung:
-        _text(Vector2(kasten.end.x - 14.0, kasten.position.y + 78.0),
-            "DAY CURRENT x2", 11, WARM, false, true)
-
-
-## Darunter: Punkte und der Kettenfaktor.
-func _punkte(breite: float, versatz: float) -> void:
-    var y := RAND + _rand_oben + 74.0 + versatz
-    var rechts := breite - RAND - _rand_seite - 4.0
-    _text(Vector2(rechts, y + 14.0), "SCORE", 11, LEISE, false, true)
-    _text(Vector2(rechts, y + 44.0),
-        Zahl.kurz(int(lauf.punkte)), 28, SCHRIFT, false, true)
     var kette: int = lauf.kette
-    if kette >= Graben.KETTE_AB:
+    var mit_kette := kette >= Graben.KETTE_AB
+    var hoch := 106.0
+    if lauf.stroemung:
+        hoch += 20.0
+    if mit_kette:
+        hoch += 20.0
+    var kasten := Rect2(breite - RAND - _rand_seite - 156.0,
+        RAND + _rand_oben, 156.0, hoch)
+    _tafel(kasten)
+    var rechts := kasten.end.x - 14.0
+    _text(Vector2(rechts, kasten.position.y + 26.0),
+        "WAVE %d" % int(lauf.welle_nummer), 20, SCHRIFT, false, true)
+    _text(Vector2(rechts, kasten.position.y + 44.0),
+        "%d LEFT" % int(lauf.offen()), 11, LEISE, false, true)
+
+    var y := kasten.position.y + 56.0
+    _flaeche.draw_line(Vector2(kasten.position.x + 14.0, y),
+        Vector2(rechts, y), Color(RAHMEN.r, RAHMEN.g, RAHMEN.b, 0.26), 1.0)
+
+    _text(Vector2(kasten.position.x + 14.0, y + 16.0), "SCORE", 11, LEISE)
+    _text(Vector2(rechts, y + 40.0), Zahl.kurz(int(lauf.punkte)), 26,
+        SCHRIFT, false, true)
+    y += 44.0
+    if mit_kette:
         # Der Faktor pulst, solange die Kette laeuft - er ist das Einzige im
         # Bild, das man verlieren kann, ohne getroffen zu werden.
         var puls := 0.5 + 0.5 * sin(_zeit * 6.0)
-        _text(Vector2(rechts, y + 66.0),
-            "x%.1f" % Graben.kette_faktor(kette), 17,
+        _text(Vector2(rechts, y + 16.0),
+            "CHAIN x%.1f" % Graben.kette_faktor(kette), 13,
             Color(WARM.r, WARM.g, WARM.b, 0.7 + 0.3 * puls), false, true)
+        y += 20.0
+    # Die Stroemung gehoert zu dieser Welle und nicht zum Bild, also steht
+    # sie mit in der Tafel.
+    if lauf.stroemung:
+        _text(Vector2(rechts, y + 16.0), "DAY CURRENT x2", 11, WARM,
+            false, true)
 
 
 ## Links unten: die Uebersichtskarte.

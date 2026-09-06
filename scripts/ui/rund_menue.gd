@@ -359,46 +359,58 @@ func _zeichne() -> void:
         _zeichne_marke(breite, hoehe)
         return
 
-    var oben := hoehe * 0.16
+    var oben := hoehe * 0.14
     _text(Vector2(RAND + 6.0, oben), "NEKTON", 46, SCHRIFT, false, 9.0)
     _text(Vector2(RAND + 10.0, oben + 30.0), "DEEP GUARD", 17, HELL, false, 7.0)
 
+    # **Die Bedienung gehoert nach unten.** Sie stand als schmale Spalte
+    # oben links: 232 Pixel von 720, unter dem Schriftzug, und zwei Drittel
+    # des Schirms blieben leer. Auf einem Telefon liegt der Daumen unten -
+    # ein Knopf in der oberen Ecke ist der am schlechtesten erreichbare Ort,
+    # den es gibt, und "PLAY" ist der Knopf, den man jedes Mal drueckt.
+    #
+    # Also: PLAY ueber die volle Breite, darunter die drei Nebenwege in
+    # einer Reihe. Dazwischen bleibt der Graben zu sehen, und der ist die
+    # eigentliche Werbung.
     _felder.clear()
-    var y := oben + 74.0
-    for i in KNOEPFE.size():
-        var kasten := Rect2(RAND, y, 232.0, 46.0)
+    var puls := 0.5 + 0.5 * sin(_zeit * 2.4)
+    var reihe_y := hoehe - 96.0 - 52.0
+    var spiel := Rect2(RAND, reihe_y - 74.0, breite - RAND * 2.0, 62.0)
+    _felder.append(spiel)
+    var weg := _hexweg(spiel, 18.0)
+    _flaeche.draw_colored_polygon(weg, Color(0.035, 0.115, 0.135, 0.86))
+    _flaeche.draw_polyline(weg + PackedVector2Array([weg[0]]),
+        Color(HELL.r, HELL.g, HELL.b, 0.45 + 0.35 * puls), 1.8, true)
+    _dreieck(Vector2(spiel.get_center().x - 52.0, spiel.get_center().y),
+        11.0, HELL)
+    _text(Vector2(spiel.get_center().x + 12.0, spiel.get_center().y + 8.0),
+        "PLAY", 24, SCHRIFT, true, 4.0)
+
+    var uebrig := KNOEPFE.size() - 1
+    var breit := (breite - RAND * 2.0 - 10.0 * float(uebrig - 1)) / float(uebrig)
+    for i in uebrig:
+        var kasten := Rect2(RAND + (breit + 10.0) * float(i), reihe_y,
+            breit, 48.0)
         _felder.append(kasten)
-        var erste := i == 0
-        var weg := _hexweg(kasten)
-        _flaeche.draw_colored_polygon(weg,
-            Color(0.035, 0.115, 0.135, 0.80) if erste
-            else Color(0.020, 0.052, 0.066, 0.72))
-        var zu := weg + PackedVector2Array([weg[0]])
-        # Der erste Knopf atmet. Er ist der einzige, den man beim ersten Mal
-        # druecken soll, und ein Ring, der sich bewegt, sagt das ohne Wort.
-        var puls := 0.5 + 0.5 * sin(_zeit * 2.4)
-        _flaeche.draw_polyline(zu, Color(HELL.r, HELL.g, HELL.b,
-            (0.45 + 0.35 * puls) if erste else 0.26), 1.4, true)
-        if erste:
-            _dreieck(kasten.position + Vector2(24.0, kasten.size.y * 0.5),
-                9.0, HELL)
-        _text(kasten.position + Vector2(44.0, 30.0),
-            String(KNOEPFE[i][&"text"]), 18,
-            SCHRIFT if erste else LEISE, false, 2.5)
-        var kennung: StringName = KNOEPFE[i][&"kennung"]
+        var weg2 := _hexweg(kasten, 12.0)
+        _flaeche.draw_colored_polygon(weg2, Color(0.020, 0.052, 0.066, 0.78))
+        _flaeche.draw_polyline(weg2 + PackedVector2Array([weg2[0]]),
+            Color(HELL.r, HELL.g, HELL.b, 0.26), 1.4, true)
+        _text(kasten.get_center() + Vector2(0.0, 6.0),
+            String(KNOEPFE[i + 1][&"text"]), 15, LEISE, true, 2.0)
+        var kennung: StringName = KNOEPFE[i + 1][&"kennung"]
         if (kennung == &"AUSBAU" and _kolonie_lohnt()) \
                 or (kennung == &"TAG" and _tag_lohnt()):
             _punkt(kasten, Color(0.52, 0.94, 0.80))
-        y += 56.0
 
-    _schiffskarte(breite, hoehe, y)
+    _schiffskarte(breite, hoehe, oben + 62.0, spiel.position.y - 18.0)
 
     # Der Satz aus dem Entwurf, unten. Er sagt in drei Woertern, was die
     # Sitzung ist - und er ist das Einzige hier, was Werbung sein darf.
-    _text(Vector2(breite * 0.5, hoehe - 74.0),
-        "DARK. FAST. ONE MORE DIVE.", 17, HELL, true, 2.0)
-    _text(Vector2(breite * 0.5, hoehe - 50.0),
-        "SURVIVE. BUILD. GO DEEPER.", 13, LEISE, true, 2.0)
+    _text(Vector2(breite * 0.5, hoehe - 62.0),
+        "DARK. FAST. ONE MORE DIVE.", 16, HELL, true, 2.0)
+    _text(Vector2(breite * 0.5, hoehe - 40.0),
+        "SURVIVE. BUILD. GO DEEPER.", 12, LEISE, true, 2.0)
 
 
 ## Nur der Schriftzug, mittig, mit der Zeile darunter.
@@ -428,7 +440,8 @@ func _zeichne_marke(breite: float, hoehe: float) -> void:
 ##
 ## Der Balken misst die Kammerstufe an `Kammern.HOECHSTSTUFE` - er sagt, wie
 ## weit die Kammer noch kann. Die Zahl daneben sagt, was sie jetzt tut.
-func _schiffskarte(breite: float, hoehe: float, oben: float) -> void:
+func _schiffskarte(breite: float, _hoehe: float, oben: float,
+        unterkante: float) -> void:
     var stand: KolonieStand = Fortschritt.stand
     var zeilen: Array[Array] = [
         ["HULL", "%d" % stand.brut_leben(),
@@ -446,7 +459,7 @@ func _schiffskarte(breite: float, hoehe: float, oben: float) -> void:
         hoch * zeilen.size() + 30.0)
     # Wenn unten kein Platz mehr ist, bleibt sie weg. Ein Kasten, der in die
     # Zeile unter ihm laeuft, ist schlimmer als keiner.
-    if kasten.end.y > hoehe - 96.0:
+    if kasten.end.y > unterkante:
         return
     var weg := _hexweg(kasten, 10.0)
     _flaeche.draw_colored_polygon(weg, Color(0.014, 0.040, 0.052, 0.72))
