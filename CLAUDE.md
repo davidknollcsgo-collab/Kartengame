@@ -854,6 +854,30 @@ insgesamt in der Kolonie liegt: der Bericht ist die Stelle, an der man
 zwischen Bauen und noch einer Fahrt entscheidet, und dafür braucht man den
 Kontostand und nicht nur die Beute dieser Fahrt.
 
+**Es gibt in diesem Spiel keine rechten Winkel** — kein Fels, kein Tier, kein
+Riff hat eine gerade Kante. Die Bedienoberfläche hatte nichts *als* rechte
+Winkel: jede Tafel bestand aus einer Fläche in einer Farbe, einem Rahmen von
+anderthalb Pixeln rundum und einem Streifen an der linken Kante. Fünf davon
+untereinander sind ein Antragsformular, das jemand über den Graben gelegt
+hat.
+
+Alle Tafeln gehen jetzt durch fünf Helfer in `kolonie_schirm.gd`, und die
+Regel darin ist dieselbe wie draußen: **wo ein Übergang hingehört, wird keine
+Kante gezeichnet.** `_tafelform()` rundet die Ecken (zehn Pixel — genug, dass
+nichts gestanzt wirkt, wenig genug, dass keine Zeile ins Runde läuft),
+`_tafelgrund()` legt einen Verlauf von oben nach unten hinein (Licht kommt in
+dieser Welt von oben), `_tafelkante()` zieht den Rand oben hell und unten
+aus, `_tafelstreifen()` lässt die Kammerfarbe in die Karte hinein scheinen
+statt als Balken darauf zu sitzen. `_tafelfuellung()` und `_tafelrand()` sind
+dasselbe für Knöpfe, die ihre Deckung schon in der Farbe tragen.
+
+**Und die Umstellung ist der Musterfall für die Warnung weiter oben.** Sie
+lief über einen regulären Ausdruck, der mehrzeilige Aufrufe zerriss —
+`draw_rect(knopf, farbe,\n false, 1.4)` wurde zu `_tafelfuellung(knopf,
+farbe,\n false, 1.4)`, also vier Argumente an eine Funktion mit zweien. Der
+Testlauf blieb **95/95 grün**, weil er `kolonie_schirm.gd` nie lädt. Gefunden
+hat es der Startlauf, in Sekunden.
+
 **Der Ausbau ist eine Ebene, keine Szene.** `kolonie_schirm.gd` hängt an
 `Fortschritt` und `Kammern` und kennt seinen Wirt nicht — deshalb überlebte
 er die Löschung der alten Schleife, ohne dass eine Zeile in ihm geändert

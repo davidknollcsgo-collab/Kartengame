@@ -637,8 +637,8 @@ func _kopfzeile(breite: float, stand: KolonieStand) -> void:
     var strom := stand.je_stunde()
     var unten := "" if strom <= 0.0 else "+%s / h" % Zahl.kurz(int(strom))
     var chip := Rect2(breite - RAND - _rand_seite - 150.0, 18.0 + o, 150.0, 52.0)
-    _flaeche.draw_rect(chip, Color(NAEHR.r, NAEHR.g, NAEHR.b, 0.07))
-    _flaeche.draw_rect(chip, Color(NAEHR.r, NAEHR.g, NAEHR.b, 0.28), false, 1.3)
+    _tafelfuellung(chip, Color(NAEHR.r, NAEHR.g, NAEHR.b, 0.07))
+    _tafelrand(chip, Color(NAEHR.r, NAEHR.g, NAEHR.b, 0.28), 1.3)
     _text(Vector2(chip.end.x - 12.0, chip.position.y + 28.0),
         Zahl.kurz(stand.naehrstoffe), 22, NAEHR, false, true)
     _text(Vector2(chip.position.x + 12.0, chip.position.y + 45.0),
@@ -684,9 +684,9 @@ func _umschalterzeile(breite: float) -> void:
         # Hand sieht man das nicht. Ein Strich unter dem aktiven sagt es
         # sofort - das ist der Reiter, in dem man steht.
         var aktiv := _sicht == i
-        _flaeche.draw_rect(kasten, Color(0.06, 0.16, 0.20, 0.92 if aktiv else 0.35))
-        _flaeche.draw_rect(kasten, Color(0.42, 0.86, 0.92, 0.45 if aktiv else 0.12),
-            false, 1.4)
+        _tafelgrund(kasten, 0.92 if aktiv else 0.35)
+        _tafelkante(kasten, Color(0.42, 0.86, 0.92),
+            0.45 if aktiv else 0.12, 1.4)
         _text(kasten.get_center() + Vector2(0.0, 5.0), BESCHRIFTUNG[i], 12,
             SCHRIFT if aktiv else LEISE, true)
         if aktiv:
@@ -702,16 +702,147 @@ func _umschalterzeile(breite: float) -> void:
                 4.0, NAEHR)
 
 
+## --- Tafeln ---------------------------------------------------------------
+##
+## **Eine Karte ist kein Formular.** Jede Tafel auf diesem Schirm bestand aus
+## denselben drei Anweisungen: eine Flaeche in einer Farbe, ein Rahmen von
+## anderthalb Pixeln rundum, ein Streifen an der linken Kante. Fuenf davon
+## untereinander sind fuenf gleiche Rechtecke mit Haarlinie - im Bild ist das
+## ein Antragsformular und kein Ort unter Wasser.
+##
+## Dieselbe Regel wie draussen im Graben (siehe CLAUDE.md, "Ein Ring ist kein
+## Kreis"): **wo ein Uebergang hingehoert, wird keine Kante gezeichnet.**
+## Drei Helfer setzen sie hier um, und alle Tafeln gehen durch sie.
+
+## Wie weit die Ecken einer Tafel gerundet sind.
+##
+## **Es gibt in diesem Spiel keine rechten Winkel** - kein Fels, kein Tier,
+## kein Riff hat eine gerade Kante. Die Bedienoberflaeche hatte nichts als
+## rechte Winkel, und deshalb sah sie aus wie ein Formular, das jemand ueber
+## den Graben gelegt hat. Zehn Pixel sind genug, dass eine Karte nicht mehr
+## gestanzt wirkt, und wenig genug, dass eine Zeile nicht ins Runde laeuft.
+const ECKE := 10.0
+
+## Wieviele Punkte eine Ecke bekommt. Drei reichen: bei zehn Pixeln Radius
+## liegt zwischen zwei Punkten weniger als ein Pixel Abweichung.
+const ECKPUNKTE := 4
+
+
+## Der Umriss einer Tafel mit gerundeten Ecken.
+func _tafelform(kasten: Rect2) -> PackedVector2Array:
+    var r := minf(ECKE, minf(kasten.size.x, kasten.size.y) * 0.5)
+    var punkte := PackedVector2Array()
+    var mitten := PackedVector2Array([
+        kasten.position + Vector2(r, r),
+        Vector2(kasten.end.x - r, kasten.position.y + r),
+        kasten.end - Vector2(r, r),
+        Vector2(kasten.position.x + r, kasten.end.y - r)])
+    for i in 4:
+        var von := PI + PI * 0.5 * float(i)
+        for j in ECKPUNKTE:
+            var w := von + PI * 0.5 * float(j) / float(ECKPUNKTE - 1)
+            punkte.append(mitten[i] + Vector2.RIGHT.rotated(w) * r)
+    return punkte
+
+
+## Der Grund einer Tafel: ein Verlauf von oben nach unten.
+##
+## Licht faellt in dieser Welt von oben - der Kegel des Bootes, das Glimmen
+## der Kolonie. Eine Flaeche, die oben so dunkel ist wie unten, ist ein
+## Aufkleber; ein Verlauf legt sie in denselben Raum wie alles andere.
+func _tafelgrund(kasten: Rect2, deckung: float) -> void:
+    var form := _tafelform(kasten)
+    var toene := PackedColorArray()
+    for punkt in form:
+        var t := clampf((punkt.y - kasten.position.y)
+            / maxf(1.0, kasten.size.y), 0.0, 1.0)
+        var st := lerpf(1.90, 0.42, t * t)
+        toene.append(Color(BAND_FARBE.r * st, BAND_FARBE.g * st * 0.94,
+            BAND_FARBE.b * st * 0.90, deckung))
+    _flaeche.draw_polygon(form, toene)
+
+
+## Eine gerundete Flaeche in einer Farbe. Fuer Knoepfe und Felder, die ihre
+## Deckung schon in der Farbe tragen.
+func _tafelfuellung(kasten: Rect2, farbe: Color) -> void:
+    var form := _tafelform(kasten)
+    _flaeche.draw_polygon(form, _einfarbig(form.size(), farbe))
+
+
+## Ein Feld aus n gleichen Farben. `draw_polygon` verlangt entweder genau
+## eine Farbe oder genau so viele wie Punkte; eine einzelne uebergeben zu
+## koennen waere bequem, geht aber nicht mit gerundeten Ecken.
+func _einfarbig(n: int, farbe: Color) -> PackedColorArray:
+    var feld := PackedColorArray()
+    feld.resize(n)
+    feld.fill(farbe)
+    return feld
+
+
+## Der Rand einer gerundeten Flaeche, in einer Farbe.
+func _tafelrand(kasten: Rect2, farbe: Color, dick: float) -> void:
+    var form := _tafelform(kasten)
+    form.append(form[0])
+    _flaeche.draw_polyline(form, farbe, dick, true)
+
+
+## Die Kante einer Tafel: oben hell, unten aus.
+##
+## `draw_rect(..., false, w)` zieht einen Rahmen mit ueberall derselben
+## Deckung - vier Striche, die zusammen ein Kaestchen ergeben. Ein Koerper
+## unter Licht hat eine helle Oberkante und keine helle Unterkante; der Zug
+## laeuft deshalb von unten links ueber oben nach unten rechts und verliert
+## dabei seine Deckung.
+func _tafelkante(kasten: Rect2, farbe: Color, deckung: float,
+        dick: float) -> void:
+    var form := _tafelform(kasten)
+    form.append(form[0])
+    var toene := PackedColorArray()
+    for punkt in form:
+        var t := clampf((punkt.y - kasten.position.y)
+            / maxf(1.0, kasten.size.y), 0.0, 1.0)
+        toene.append(Color(farbe.r, farbe.g, farbe.b,
+            deckung * lerpf(1.0, 0.16, t * t)))
+    _flaeche.draw_polyline_colors(form, toene, dick, true)
+
+
+## Der Streifen an der linken Kante - mit Schein statt als harter Balken.
+##
+## Er sagt, worum es in der Tafel geht, und er ist das Einzige darauf, das
+## eine kraeftige Farbe traegt. Als drei Pixel breiter Balken sass er wie ein
+## Aufkleber auf der Karte; der Schein daneben legt ihn hinein.
+func _tafelstreifen(kasten: Rect2, farbe: Color, deckung: float) -> void:
+    var kern := Color(farbe.r, farbe.g, farbe.b, deckung)
+    var aus := Color(farbe.r, farbe.g, farbe.b, 0.0)
+    var breit := minf(34.0, kasten.size.x * 0.4)
+    var r := minf(ECKE, minf(kasten.size.x, kasten.size.y) * 0.5)
+    _flaeche.draw_polygon(PackedVector2Array([
+        kasten.position + Vector2(0.0, r),
+        Vector2(kasten.position.x + breit, kasten.position.y),
+        Vector2(kasten.position.x + breit, kasten.end.y),
+        Vector2(kasten.position.x, kasten.end.y - r)]),
+        PackedColorArray([
+            Color(kern.r, kern.g, kern.b, deckung * 0.34), aus, aus,
+            Color(kern.r, kern.g, kern.b, deckung * 0.34)]))
+    # Der Kern des Streifens laeuft an beiden Enden aus, damit er nicht in
+    # die gerundete Ecke stoesst und dort abgeschnitten aussieht.
+    _flaeche.draw_polyline_colors(PackedVector2Array([
+        kasten.position + Vector2(1.6, r * 0.4),
+        kasten.position + Vector2(1.6, r * 1.2),
+        Vector2(kasten.position.x + 1.6, kasten.end.y - r * 1.2),
+        Vector2(kasten.position.x + 1.6, kasten.end.y - r * 0.4)]),
+        PackedColorArray([aus, kern, kern, aus]), 2.6, true)
+
+
 ## Ein Tagesziel mit Fortschrittsbalken.
 func _tagesziel(kasten: Rect2, index: int, stand: KolonieStand) -> void:
     var erfuellt := stand.ziel_erfuellt(index)
     var geholt := stand.ziel_geholt[index] == 1
     var farbe := NAEHR if erfuellt and not geholt else LEISE
 
-    _flaeche.draw_rect(kasten, Color(BAND_FARBE.r, BAND_FARBE.g, BAND_FARBE.b, 0.85))
-    _flaeche.draw_rect(kasten, Color(farbe.r, farbe.g, farbe.b, 0.32), false, 1.4)
-    _flaeche.draw_rect(Rect2(kasten.position, Vector2(3.0, kasten.size.y)),
-        Color(farbe.r, farbe.g, farbe.b, 0.85))
+    _tafelgrund(kasten, 0.85)
+    _tafelkante(kasten, farbe, 0.32, 1.4)
+    _tafelstreifen(kasten, farbe, 0.85)
 
     # Drei Zeilen dicht uebereinander statt drei ueber ein halbes Blatt
     # verteilt: Name, Balken, Zaehler. Der Lohn steht rechts daneben, weil er
@@ -729,8 +860,8 @@ func _tagesziel(kasten: Rect2, index: int, stand: KolonieStand) -> void:
 
     var balken := Rect2(links, kasten.end.y - 22.0,
         kasten.size.x - 150.0 - zahl_breit, 5.0)
-    _flaeche.draw_rect(balken, Color(0.0, 0.0, 0.0, 0.45))
-    _flaeche.draw_rect(Rect2(balken.position,
+    _tafelfuellung(balken, Color(0.0, 0.0, 0.0, 0.45))
+    _tafelfuellung(Rect2(balken.position,
         Vector2(balken.size.x * clampf(float(ist) / float(soll), 0.0, 1.0),
         balken.size.y)), farbe)
     _text(Vector2(balken.end.x + 12.0, kasten.end.y - 15.0), zahl, 12, LEISE)
@@ -1253,11 +1384,9 @@ func _artband(kasten: Rect2, index: int, stand: KolonieStand) -> void:
     if not kennt:
         farbe = Color(0.34, 0.44, 0.50)
 
-    _flaeche.draw_rect(kasten, Color(BAND_FARBE.r, BAND_FARBE.g, BAND_FARBE.b,
-        0.88 if kennt else 0.52))
-    _flaeche.draw_rect(kasten, Color(farbe.r, farbe.g, farbe.b, 0.28), false, 1.4)
-    _flaeche.draw_rect(Rect2(kasten.position, Vector2(3.0, kasten.size.y)),
-        Color(farbe.r, farbe.g, farbe.b, 0.85 if kennt else 0.30))
+    _tafelgrund(kasten, 0.88 if kennt else 0.52)
+    _tafelkante(kasten, farbe, 0.28, 1.4)
+    _tafelstreifen(kasten, farbe, 0.85 if kennt else 0.30)
 
     var mitte_y := kasten.position.y + kasten.size.y * 0.5
     _artsinnbild(Vector2(kasten.position.x + 46.0, mitte_y), 22.0, index, farbe, kennt)
@@ -1307,11 +1436,9 @@ func _mutationsband(kasten: Rect2, index: int, stand: KolonieStand) -> void:
     var kennt := stand.kennt_mutation(index)
     var farbe := MUTATION if kennt else Color(0.34, 0.44, 0.50)
 
-    _flaeche.draw_rect(kasten, Color(BAND_FARBE.r, BAND_FARBE.g, BAND_FARBE.b,
-        0.88 if kennt else 0.52))
-    _flaeche.draw_rect(kasten, Color(farbe.r, farbe.g, farbe.b, 0.28), false, 1.4)
-    _flaeche.draw_rect(Rect2(kasten.position, Vector2(3.0, kasten.size.y)),
-        Color(farbe.r, farbe.g, farbe.b, 0.85 if kennt else 0.30))
+    _tafelgrund(kasten, 0.88 if kennt else 0.52)
+    _tafelkante(kasten, farbe, 0.28, 1.4)
+    _tafelstreifen(kasten, farbe, 0.85 if kennt else 0.30)
 
     var mitte_y := kasten.position.y + kasten.size.y * 0.5
     _mutationssinnbild(Vector2(kasten.position.x + 46.0, mitte_y), 22.0, index,
@@ -1588,10 +1715,8 @@ func _grabenwertung(breite: float, y: float, stand: KolonieStand,
         var kasten := Rect2(RAND, zeile_y, breite - RAND * 2.0,
             zeilenhoch - 2.0)
         if selbst:
-            _flaeche.draw_rect(kasten, Color(BAND_FARBE.r, BAND_FARBE.g,
-                BAND_FARBE.b, 0.9))
-            _flaeche.draw_rect(Rect2(kasten.position, Vector2(3.0, kasten.size.y)),
-                NAEHR)
+            _tafelgrund(kasten, 0.9)
+            _tafelstreifen(kasten, NAEHR, 0.95)
 
         var farbe := NAEHR if selbst else LEISE
         var text_y := zeile_y + zeilenhoch * 0.5 + 5.0
@@ -1647,10 +1772,9 @@ func _zuchtkalender(breite: float, y: float, stand: KolonieStand) -> float:
         elif linientag:
             farbe = Brutlinien.farbe(Brutlinien.Linie.STROMSINN)
 
-        _flaeche.draw_rect(kasten, Color(BAND_FARBE.r, BAND_FARBE.g, BAND_FARBE.b,
-            0.9 if geholt or dran else 0.55))
-        _flaeche.draw_rect(kasten, Color(farbe.r, farbe.g, farbe.b,
-            0.7 if dran else 0.3), false, 1.8 if dran else 1.2)
+        _tafelgrund(kasten, 0.9 if geholt or dran else 0.55)
+        _tafelkante(kasten, farbe, 0.7 if dran else 0.3,
+            1.8 if dran else 1.2)
 
         _text(Vector2(kasten.get_center().x, kasten.position.y + 20.0),
             str(i + 1), 13, farbe if geholt or dran else LEISE, true)
@@ -1791,9 +1915,9 @@ func _bootreiter(breite: float, hoehe: float, stand: KolonieStand) -> void:
     _loeschen = Rect2(RAND, maxf(y + 30.0, unten), breite - RAND * 2.0, 38.0)
     var warnfarbe := Color(1.0, 0.52, 0.44) if _loeschen_sicher \
         else Color(0.44, 0.36, 0.36)
-    _flaeche.draw_rect(_loeschen, Color(0.10, 0.05, 0.05, 0.7))
-    _flaeche.draw_rect(_loeschen, Color(warnfarbe.r, warnfarbe.g, warnfarbe.b, 0.4),
-        false, 1.3)
+    _tafelfuellung(_loeschen, Color(0.10, 0.05, 0.05, 0.7))
+    _tafelrand(_loeschen, Color(warnfarbe.r, warnfarbe.g, warnfarbe.b, 0.4),
+        1.3)
     _text(_loeschen.get_center() + Vector2(0.0, 5.0),
         "REALLY DELETE?" if _loeschen_sicher else "Found the colony anew",
         14, warnfarbe, true)
@@ -1908,8 +2032,8 @@ func _reglerzeile(breite: float, y: float, was: String, wert: String) -> float:
 
 
 func _knopffeld(kasten: Rect2, text: String, farbe: Color, kante: Color) -> void:
-    _flaeche.draw_rect(kasten, Color(0.06, 0.16, 0.20, 0.85))
-    _flaeche.draw_rect(kasten, Color(kante.r, kante.g, kante.b, 0.30), false, 1.3)
+    _tafelgrund(kasten, 0.95)
+    _tafelkante(kasten, kante, 0.34, 1.3)
     _text(kasten.get_center() + Vector2(0.0, 5.0), text, 14, farbe, true)
 
 
@@ -1930,11 +2054,9 @@ func _skinfeld(kasten: Rect2, index: int, stand: KolonieStand) -> void:
     var haut := Skins.haut(index)
     var strahl := Skins.strahl(index)
 
-    _flaeche.draw_rect(kasten, Color(BAND_FARBE.r, BAND_FARBE.g, BAND_FARBE.b,
-        0.92 if frei else 0.55))
-    _flaeche.draw_rect(kasten, Color(haut.r, haut.g, haut.b,
-        0.75 if gewaehlt else (0.22 if frei else 0.08)),
-        false, 2.2 if gewaehlt else 1.3)
+    _tafelgrund(kasten, 0.92 if frei else 0.55)
+    _tafelkante(kasten, haut, 0.75 if gewaehlt else (0.22 if frei else 0.08),
+        2.2 if gewaehlt else 1.3)
 
     # Ein Boot im Kleinen, in den Farben dieses Anstrichs. **Gezeichnet und
     # nicht beschrieben**: was man waehlt, ist ein Aussehen, und ein
@@ -1973,12 +2095,10 @@ func _brutlinie(kasten: Rect2, index: int, stand: KolonieStand) -> void:
     var hat := stand.hat_linie(index)
     var traegt := stand.linie_traegt(index)
 
-    _flaeche.draw_rect(kasten, Color(BAND_FARBE.r, BAND_FARBE.g, BAND_FARBE.b,
-        0.92 if hat else 0.62))
-    _flaeche.draw_rect(kasten, Color(farbe.r, farbe.g, farbe.b,
-        0.62 if traegt else 0.26), false, 2.0 if traegt else 1.4)
-    _flaeche.draw_rect(Rect2(kasten.position, Vector2(3.0, kasten.size.y)),
-        Color(farbe.r, farbe.g, farbe.b, 0.85 if hat else 0.30))
+    _tafelgrund(kasten, 0.92 if hat else 0.62)
+    _tafelkante(kasten, farbe, 0.62 if traegt else 0.26,
+        2.0 if traegt else 1.4)
+    _tafelstreifen(kasten, farbe, 0.85 if hat else 0.30)
 
     var mitte_y := kasten.position.y + kasten.size.y * 0.5
     _brutsinnbild(Vector2(kasten.position.x + 46.0, mitte_y), 22.0, index, farbe, hat)
@@ -1997,12 +2117,12 @@ func _brutlinie(kasten: Rect2, index: int, stand: KolonieStand) -> void:
         KNOPF_BREIT, kasten.size.y - 20.0)
     var mitte := knopf.get_center()
     if traegt:
-        _flaeche.draw_rect(knopf, Color(farbe.r, farbe.g, farbe.b, 0.22))
-        _flaeche.draw_rect(knopf, Color(farbe.r, farbe.g, farbe.b, 0.9), false, 2.0)
+        _tafelfuellung(knopf, Color(farbe.r, farbe.g, farbe.b, 0.22))
+        _tafelrand(knopf, Color(farbe.r, farbe.g, farbe.b, 0.9), 2.0)
         _text(mitte + Vector2(0.0, 5.0), "CARRIES", 14, SCHRIFT, true)
     elif hat:
-        _flaeche.draw_rect(knopf, Color(0.06, 0.14, 0.17, 0.6))
-        _flaeche.draw_rect(knopf, Color(farbe.r, farbe.g, farbe.b, 0.5), false, 1.5)
+        _tafelfuellung(knopf, Color(0.06, 0.14, 0.17, 0.6))
+        _tafelrand(knopf, Color(farbe.r, farbe.g, farbe.b, 0.5), 1.5)
         _text(mitte + Vector2(0.0, 5.0), "SELECT", 14,
             Color(farbe.r, farbe.g, farbe.b, 0.9), true)
     else:
@@ -2011,13 +2131,11 @@ func _brutlinie(kasten: Rect2, index: int, stand: KolonieStand) -> void:
         var preis := Brutlinien.kosten(index)
         var reicht := frei and stand.naehrstoffe >= preis
         if reicht:
-            _flaeche.draw_rect(knopf, Color(farbe.r, farbe.g, farbe.b, 0.20))
-            _flaeche.draw_rect(knopf, Color(farbe.r, farbe.g, farbe.b, 0.85),
-                false, 1.8)
+            _tafelfuellung(knopf, Color(farbe.r, farbe.g, farbe.b, 0.20))
+            _tafelrand(knopf, Color(farbe.r, farbe.g, farbe.b, 0.85), 1.8)
         else:
-            _flaeche.draw_rect(knopf, Color(0.06, 0.08, 0.10, 0.5))
-            _flaeche.draw_rect(knopf, Color(SPERRE.r, SPERRE.g, SPERRE.b, 0.30),
-                false, 1.4)
+            _tafelfuellung(knopf, Color(0.06, 0.08, 0.10, 0.5))
+            _tafelrand(knopf, Color(SPERRE.r, SPERRE.g, SPERRE.b, 0.30), 1.4)
         if frei:
             _text(mitte + Vector2(0.0, -8.0), "BREED", 12,
                 SCHRIFT if reicht else LEISE, true)
@@ -2142,13 +2260,10 @@ func _kammer(kasten: Rect2, k: int, stand: KolonieStand, jetzt: float) -> void:
     var baut_hier := stand.bau_kammer == k
     var gedrueckt := _gedrueckt == k
 
-    _flaeche.draw_rect(kasten, Color(BAND_FARBE.r, BAND_FARBE.g, BAND_FARBE.b,
-        0.95 if gedrueckt else 0.82))
-    _flaeche.draw_rect(kasten, Color(farbe.r, farbe.g, farbe.b, 0.34), false, 1.4)
-
+    _tafelgrund(kasten, 0.95 if gedrueckt else 0.82)
+    _tafelkante(kasten, farbe, 0.34, 1.4)
     # Farbstreifen links - so ist die Kammer schon vor dem Lesen erkennbar.
-    _flaeche.draw_rect(Rect2(kasten.position, Vector2(3.0, kasten.size.y)),
-        Color(farbe.r, farbe.g, farbe.b, 0.85))
+    _tafelstreifen(kasten, farbe, 0.85)
 
     var mitte_y := kasten.position.y + kasten.size.y * 0.5
     _sinnbild(Vector2(kasten.position.x + 44.0, mitte_y - 8.0), 23.0, k, farbe, stufe)
@@ -2217,11 +2332,11 @@ func _ausbauknopf(knopf: Rect2, k: int, stand: KolonieStand, jetzt: float,
         var rest := stand.restzeit(jetzt)
         var ganz := maxf(0.001, Kammern.bauzeit(k, stufe))
         var anteil := clampf(1.0 - rest / ganz, 0.0, 1.0)
-        _flaeche.draw_rect(knopf, Color(0.0, 0.0, 0.0, 0.35))
+        _tafelfuellung(knopf, Color(0.0, 0.0, 0.0, 0.35))
         _flaeche.draw_rect(Rect2(knopf.position.x,
             knopf.end.y - knopf.size.y * anteil, knopf.size.x,
             knopf.size.y * anteil), Color(farbe.r, farbe.g, farbe.b, 0.30))
-        _flaeche.draw_rect(knopf, Color(farbe.r, farbe.g, farbe.b, 0.6), false, 1.6)
+        _tafelrand(knopf, Color(farbe.r, farbe.g, farbe.b, 0.6), 1.6)
         _text(mitte + Vector2(0.0, -4.0), "DIGGING", 12,
             Color(farbe.r, farbe.g, farbe.b, 0.9), true)
         _text(mitte + Vector2(0.0, 18.0), _dauer(rest), 17, SCHRIFT, true)
@@ -2238,9 +2353,8 @@ func _ausbauknopf(knopf: Rect2, k: int, stand: KolonieStand, jetzt: float,
             else "SHAFT TOO"
         var zweite := "" if voll or k == Kammern.Kammer.TIEFENSCHACHT \
             else "SHALLOW"
-        _flaeche.draw_rect(knopf, Color(0.10, 0.11, 0.12, 0.55))
-        _flaeche.draw_rect(knopf, Color(SPERRE.r, SPERRE.g, SPERRE.b, 0.35),
-            false, 1.4)
+        _tafelfuellung(knopf, Color(0.10, 0.11, 0.12, 0.55))
+        _tafelrand(knopf, Color(SPERRE.r, SPERRE.g, SPERRE.b, 0.35), 1.4)
         _text(mitte + Vector2(0.0, 0.0 if zweite.is_empty() else -6.0), was, 13,
             SPERRE, true)
         if not zweite.is_empty():
@@ -2250,20 +2364,19 @@ func _ausbauknopf(knopf: Rect2, k: int, stand: KolonieStand, jetzt: float,
     if stand.baut():
         # Es wird woanders gegraben. Kein zweiter Bau gleichzeitig - das steht
         # hier, damit niemand auf einen Knopf drueckt, der nichts tut.
-        _flaeche.draw_rect(knopf, Color(0.08, 0.10, 0.12, 0.5))
-        _flaeche.draw_rect(knopf, Color(LEISE.r, LEISE.g, LEISE.b, 0.25), false, 1.4)
+        _tafelfuellung(knopf, Color(0.08, 0.10, 0.12, 0.5))
+        _tafelrand(knopf, Color(LEISE.r, LEISE.g, LEISE.b, 0.25), 1.4)
         _text(mitte + Vector2(0.0, 5.0), "IN QUEUE", 13, LEISE, true)
         return
 
     var preis := stand.preis(k)
     var reicht := stand.naehrstoffe >= preis
     if reicht:
-        _flaeche.draw_rect(knopf, Color(farbe.r, farbe.g, farbe.b, 0.20))
-        _flaeche.draw_rect(knopf, Color(farbe.r, farbe.g, farbe.b, 0.85), false, 1.8)
+        _tafelfuellung(knopf, Color(farbe.r, farbe.g, farbe.b, 0.20))
+        _tafelrand(knopf, Color(farbe.r, farbe.g, farbe.b, 0.85), 1.8)
     else:
-        _flaeche.draw_rect(knopf, Color(0.06, 0.08, 0.10, 0.5))
-        _flaeche.draw_rect(knopf, Color(SPERRE.r, SPERRE.g, SPERRE.b, 0.30),
-            false, 1.4)
+        _tafelfuellung(knopf, Color(0.06, 0.08, 0.10, 0.5))
+        _tafelrand(knopf, Color(SPERRE.r, SPERRE.g, SPERRE.b, 0.30), 1.4)
 
     # Ein Pfeil nach oben statt des Wortes "upgrade": er ist in jeder Sprache
     # dasselbe und braucht ein Drittel des Platzes.
@@ -2304,9 +2417,9 @@ func _stufenzeile(wo: Vector2, breite: float, stufe: int, bis: int,
     var voll := float(maxi(1, bis))
     var anteil := clampf(float(stufe) / voll, 0.0, 1.0)
 
-    _flaeche.draw_rect(Rect2(wo.x, y - BALKEN_HOCH * 0.5, weit, BALKEN_HOCH),
+    _tafelfuellung(Rect2(wo.x, y - BALKEN_HOCH * 0.5, weit, BALKEN_HOCH),
         Color(0.34, 0.36, 0.38, 0.24))
-    _flaeche.draw_rect(Rect2(wo.x, y - BALKEN_HOCH * 0.5, weit * anteil,
+    _tafelfuellung(Rect2(wo.x, y - BALKEN_HOCH * 0.5, weit * anteil,
         BALKEN_HOCH), farbe)
     _text(Vector2(wo.x + breite, y + 5.0), "of %d" % bis, 11,
         NAEHR if stufe >= bis else LEISE, false, true)
@@ -2379,11 +2492,9 @@ func _lehrtafel(breite: float, hoehe: float) -> void:
     var hoch := 34.0 + float(zeilen.size()) * LEHR_ZEILENHOCH + 10.0
     var kasten := Rect2(RAND, hoehe - FUSS - hoch - 10.0,
         breite - RAND * 2.0, hoch)
-    _flaeche.draw_rect(kasten, Color(0.035, 0.105, 0.135, 0.92))
-    _flaeche.draw_rect(kasten, Color(0.42, 0.86, 0.92, 0.24 + 0.16 * puls),
-        false, 1.4)
-    _flaeche.draw_rect(Rect2(kasten.position, Vector2(3.0, kasten.size.y)),
-        Color(0.52, 0.94, 0.86, 0.85))
+    _tafelgrund(kasten, 0.94)
+    _tafelkante(kasten, Color(0.42, 0.86, 0.92), 0.24 + 0.16 * puls, 1.4)
+    _tafelstreifen(kasten, Color(0.52, 0.94, 0.86), 0.85)
     _text(Vector2(kasten.position.x + 16.0, kasten.position.y + 25.0),
         Lehrpfad.titel(_lehre), 16, NAEHR)
     _text(Vector2(kasten.end.x - 14.0, kasten.position.y + 24.0),
@@ -2418,9 +2529,9 @@ func _fusszeile(breite: float, hoehe: float) -> void:
     _schliessen = Rect2(RAND + _rand_seite, hoehe - FUSS + 8.0,
         breite - (RAND + _rand_seite) * 2.0, 52.0)
     var puls := 0.5 + 0.5 * sin(_zeit * 2.2)
-    _flaeche.draw_rect(_schliessen, Color(0.08, 0.20, 0.24, 0.9))
-    _flaeche.draw_rect(_schliessen, Color(0.42, 0.86, 0.92, 0.30 + 0.25 * puls),
-        false, 1.6)
+    _tafelfuellung(_schliessen, Color(0.08, 0.20, 0.24, 0.9))
+    _tafelrand(_schliessen, Color(0.42, 0.86, 0.92, 0.30 + 0.25 * puls),
+        1.6)
     _text(_schliessen.get_center() + Vector2(0.0, 6.0), zurueck_beschriftung,
         17, Color(0.82, 0.96, 1.0), true)
 
