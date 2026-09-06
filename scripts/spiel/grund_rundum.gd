@@ -750,13 +750,43 @@ func _zeichne_bewuchs(lage: int) -> void:
 func _faecher(p: Vector2, r: float, farbe: Color, a: float, dreh: float,
         arme: PackedFloat32Array, atem: float) -> void:
     var saum := PackedVector2Array()
+    var spitzen: Array[Vector2] = []
+    var winkel := PackedFloat32Array()
     for i in arme.size():
         var t := float(i) / float(maxi(1, arme.size() - 1))
         var w := dreh + lerpf(-1.05, 1.05, t)
         var laenge := r * arme[i] * (0.92 + 0.08 * atem)
         var spitze := p + Vector2.RIGHT.rotated(w) * laenge
-        draw_line(p, spitze, Color(farbe.r, farbe.g, farbe.b, a), 1.1, true)
+        spitzen.append(spitze)
+        winkel.append(w)
         saum.append(spitze)
+
+    # **Erst die Haut, dann die Rippen.** Ein Faecher aus lauter Speichen ist
+    # ein Sternchen; was ihn zur Gorgonie macht, ist das Gewebe dazwischen.
+    # Es liegt unter den Rippen, damit die Rippen es teilen und nicht
+    # umgekehrt.
+    if spitzen.size() > 2:
+        var haut := PackedVector2Array([p])
+        for sp in spitzen:
+            haut.append(sp)
+        draw_colored_polygon(haut, Color(farbe.r, farbe.g, farbe.b, a * 0.30))
+
+    for i in spitzen.size():
+        draw_line(p, spitzen[i], Color(farbe.r, farbe.g, farbe.b, a),
+            1.1, true)
+        # **Und jede zweite Rippe gabelt sich.** Eine Koralle waechst
+        # verzweigt; gerade Speichen sind ein Rad. An jeder Rippe gemessen
+        # kostete es acht Prozent Bildrate (6,5 auf 6,0) - bei bis zu zehn
+        # Rippen sind das zwanzig zusaetzliche Striche je Faecher. An jeder
+        # zweiten ist im Bild kein Unterschied zu sehen, und die Haelfte ist
+        # wieder da.
+        if i % 2 == 0:
+            var ast := p.lerp(spitzen[i], 0.68)
+            for seite: float in [-0.55, 0.55]:
+                draw_line(ast, ast + Vector2.RIGHT.rotated(winkel[i] + seite)
+                    * r * 0.22, Color(farbe.r, farbe.g, farbe.b, a * 0.8),
+                    1.0, true)
+
     if saum.size() > 2:
         draw_polyline(saum, Color(farbe.r, farbe.g, farbe.b, a * 0.7),
             1.0, true)
@@ -770,9 +800,18 @@ func _roehren(p: Vector2, r: float, farbe: Color, a: float, dreh: float,
         var fuss := p + Vector2.RIGHT.rotated(w) * r * 0.34
         var kopf := fuss + Vector2.RIGHT.rotated(w + 0.3) \
             * r * arme[i] * (0.7 + 0.06 * atem)
-        draw_line(fuss, kopf, Color(farbe.r, farbe.g, farbe.b, a), 1.3, true)
+        # Der Stiel ist Kalk und traegt nichts; die Krone ist das Tier.
+        draw_line(fuss, kopf, Color(farbe.r * 0.8, farbe.g * 0.8,
+            farbe.b * 0.8, a * 0.9), 1.8, true)
+        draw_circle(kopf, r * 0.13, Color(farbe.r, farbe.g, farbe.b, a * 0.5))
         draw_arc(kopf, r * 0.13, 0.0, TAU, 8,
             Color(farbe.r, farbe.g, farbe.b, a * 1.4), 1.0, true)
+        # Die Fangarme, quer zur Roehre - daran erkennt man einen
+        # Roehrenwurm und nicht einen Nagel mit Kopf.
+        for seite: float in [-1.1, 1.1]:
+            draw_line(kopf, kopf + Vector2.RIGHT.rotated(w + 0.3 + seite)
+                * r * 0.20, Color(farbe.r, farbe.g, farbe.b, a * 1.1),
+                1.0, true)
 
 
 ## Ein Schopf: gebogene Halme aus einem Punkt, die sich in der Stroemung
@@ -789,7 +828,18 @@ func _schopf(p: Vector2, r: float, farbe: Color, a: float, dreh: float,
             var t := float(j) / 5.0
             halm.append(p + Vector2.RIGHT.rotated(w + wiege * t * t)
                 * r * arme[i] * t)
-        draw_polyline(halm, Color(farbe.r, farbe.g, farbe.b, a), 1.1, true)
+        # **Unten dick, oben duenn.** Alles hier war einen Pixel breit, und
+        # ein Halm von gleicher Staerke ueber die ganze Laenge ist ein
+        # Strich. `draw_polyline` kann nicht verjuengen - zwei Zuege
+        # koennen es: die unteren zwei Drittel breiter, der Rest schmal.
+        draw_polyline(halm.slice(0, 4),
+            Color(farbe.r, farbe.g, farbe.b, a), 2.0, true)
+        draw_polyline(halm.slice(3, 6),
+            Color(farbe.r, farbe.g, farbe.b, a * 0.85), 1.0, true)
+        # Eine leuchtende Spitze. Viele Hydroiden der Tiefsee tragen sie,
+        # und im Bild ist sie das, was aus einem Grashalm etwas Lebendiges
+        # macht.
+        draw_circle(halm[5], 1.2, Color(farbe.r, farbe.g, farbe.b, a * 1.8))
 
 
 ## Wie weit ein Schatten hinter seinem Fels liegt, als Vielfaches der
