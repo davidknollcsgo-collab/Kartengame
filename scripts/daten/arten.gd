@@ -274,22 +274,38 @@ const TABELLE: Array[Dictionary] = [
         &"takt": 1.1,
         &"farbe": Color(1.00, 0.74, 0.38),
         &"ab_welle": 66,
-        # **Gemessen, nicht geschaetzt - und zweimal gemessen.** Hier stand
-        # zuerst 1,24, und `tools/artenkosten.gd` mass das 3,3fache: er
-        # kreise, der Kegel laufe ihm nach, er brauche siebenundzwanzig
-        # Sekunden statt vier. Also 3,2.
+        # **Gemessen, dann geglaubt, dann widerlegt.** Hier stand zuerst
+        # 1,24, und `tools/artenkosten.gd` mass das 3,3fache: der Kegel
+        # laeuft ihm nach, er braucht siebenundzwanzig Sekunden statt vier.
+        # Also 3,2.
         #
-        # Das war die richtige Zahl fuer ein kaputtes Verhalten. In
-        # `Rundum.schritt()` gewichtete der Umlauf das Kreisen umso staerker,
-        # je **weiter** das Tier vom Ring entfernt war - ein Kreiser kam
-        # damit nie an und lief dem Kegel bis ans Feldende davon. Seit das
-        # Vorzeichen stimmt, misst er 0,78 statt 3,3: er kommt heran wie
-        # jedes andere Tier, nur eben im Bogen.
+        # Nach der Reparatur des Umlaufs in `Rundum.schritt()` misst
+        # dasselbe Werkzeug **0,78**, und der naheliegende Schluss war, den
+        # Preis auf 1,0 zu senken. Das war falsch, und zwar messbar:
         #
-        # Bei 3,2 kaufte das Budget danach **viermal zu wenig** von ihm.
-        # Eine Zahl, die ein Verhalten bepreist, wird falsch, sobald man das
-        # Verhalten repariert - und sie meldet sich nicht von selbst.
-        &"aufwand": 1.0,
+        #     Welle  80    bei 3,2   24 Tiere,  6548 Leben
+        #                  bei 1,0   41 Tiere,  9236 Leben   (+41 %)
+        #     Welle 180    bei 3,2   56 Tiere, 25404 Leben
+        #                  bei 1,0   59 Tiere, 28428 Leben
+        #
+        # `aufwand` ist der Preis **je Lebenspunkt**; ein billigerer Kreiser
+        # laesst das Budget mehr Leben kaufen, und zwar fuer die ganze Welle.
+        # Der Kolonielauf sprang von achtunddreissig gefallenen Sitzungen auf
+        # hunderteinundzwanzig - der Wellenpruefer merkte nichts davon, weil
+        # er auf der Sollkurve spielt.
+        #
+        # **Warum die Messung hier nicht gilt.** `artenkosten.gd` haelt den
+        # Kegel unbedingt auf ein einzelnes Tier. Genau das kann man beim
+        # Kreiser nicht: er zieht seitlich weg, der Kegel verliert ihn, und
+        # was er wirklich kostet, entsteht aus der **Auswahl** - demselben
+        # blinden Fleck, der beim Spiegler 1,06 misst, waehrend er in einer
+        # echten Fahrt der teuerste Posten der Huelle ist.
+        #
+        # 3,2 ist deshalb keine Zahl fuer ein kaputtes Verhalten, sondern
+        # eine, die der Messstand nicht nachstellen kann. Sie bleibt, bis
+        # jemand sie in einer ganzen Welle misst - so wie
+        # `tools/mutationskosten.gd` es fuer die Zuege tut.
+        &"aufwand": 3.2,
         # **Sein ganzer Entwurf.** Er haelt diesen Abstand und laeuft
         # seitlich weiter, statt geradeaus zu kommen. Im Schlund waere das
         # sinnlos gewesen - dort sank alles dieselbe Bahn nach unten. Hier
