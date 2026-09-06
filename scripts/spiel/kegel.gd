@@ -16,8 +16,20 @@ const RINGE := 9            ## Aufloesung in der Tiefe
 
 ## Kaltes Blaugruen mit weissem Kern. Ein grauer Kegel sah im ersten Bild aus
 ## wie Nebel; Licht braucht Saettigung, nicht nur Helligkeit.
-const FARBE := Color(0.24, 0.86, 1.0)
-const KERN := Color(0.82, 1.0, 0.96)
+## **Der Skin faerbt, er leuchtet nicht.** `rundlauf.gd` setzt die beiden
+## Felder aus `Skins`, sobald der Ausbau gestellt wird - dieselbe Stelle, an
+## der auch Reichweite und Winkel herkommen, damit es nur eine gibt
+## (Zusage 27). Was ein Skin **nicht** anfasst, ist die Deckung: Form,
+## Reichweite und Helligkeit des Kegels kommen weiter aus
+## `Schlund.beleuchtung()`, und was hell gezeichnet wird, macht Schaden
+## (Zusage 2). Ein Skin, der den Kegel heller machte, waere ein Ausbau in
+## Verkleidung.
+##
+## Die Vorgabe ist das kalte Blaugruen mit weissem Kern. Ein grauer Kegel sah
+## im ersten Bild aus wie Nebel; Licht braucht Saettigung, nicht nur
+## Helligkeit.
+var farbe := Color(0.24, 0.86, 1.0)
+var kern := Color(0.82, 1.0, 0.96)
 ## **Der Keil ist leiser geworden, die Funken lauter.**
 ##
 ## Der Kegel war eine geschlossene helle Flaeche mit ein paar Punkten darin -
@@ -172,15 +184,15 @@ func _draw() -> void:
             var farben := PackedColorArray()
             for k in ecken.size():
                 var c := _farbe_an(spitze, ecken[k], puls)
-                farben.append(Color(KERN.r, KERN.g, KERN.b,
+                farben.append(Color(kern.r, kern.g, kern.b,
                     c.a * 0.34 * anteile[k] * anteile[k]))
             draw_polygon(ecken, farben)
 
     _zeichne_staub(spitze, puls)
 
     # Der Austritt am Waechter selbst - ein harter, heller Kern.
-    draw_circle(spitze, 13.0, Color(KERN.r, KERN.g, KERN.b, 0.55 * puls * schein))
-    draw_circle(spitze, 26.0, Color(FARBE.r, FARBE.g, FARBE.b, 0.16 * puls * schein))
+    draw_circle(spitze, 13.0, Color(kern.r, kern.g, kern.b, 0.55 * puls * schein))
+    draw_circle(spitze, 26.0, Color(farbe.r, farbe.g, farbe.b, 0.16 * puls * schein))
 
 
 ## Die Koerner im Strahl. Gezeichnet wird nur, was der Kegel wirklich trifft -
@@ -213,16 +225,16 @@ func _zeichne_staub(spitze: Vector2, puls: float) -> void:
         var deckung := hell * hell * STAUB_HELL * funkeln
         # Zwei Kreise: ein knapper Hof und ein harter Kern. Der dritte war der
         # weite Hof - er hat aus jedem Punkt eine Scheibe gemacht.
-        draw_circle(p, r * KORN_HOF, Color(FARBE.r, FARBE.g, FARBE.b, deckung * 0.11))
-        draw_circle(p, r, Color(KERN.r, KERN.g, KERN.b, deckung))
+        draw_circle(p, r * KORN_HOF, Color(farbe.r, farbe.g, farbe.b, deckung * 0.11))
+        draw_circle(p, r, Color(kern.r, kern.g, kern.b, deckung))
 
 
 func _farbe_an(spitze: Vector2, punkt: Vector2, puls: float) -> Color:
     var hell := Schlund.beleuchtung(spitze, richtung, halbwinkel, reichweite,
         punkt, rand_kern, tiefe_kern) * schein
     if hell <= 0.0:
-        return Color(FARBE.r, FARBE.g, FARBE.b, 0.0)
-    var mische := FARBE.lerp(KERN, hell * hell)
+        return Color(farbe.r, farbe.g, farbe.b, 0.0)
+    var mische := farbe.lerp(kern, hell * hell)
     return Color(mische.r, mische.g, mische.b,
         hell * STAERKE * puls * _schlieren(spitze, punkt))
 

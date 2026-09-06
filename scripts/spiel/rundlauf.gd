@@ -388,6 +388,14 @@ func _stelle_ausbau_ein() -> void:
     var stand: KolonieStand = Fortschritt.stand
     _kegel.halbwinkel = Graben.HALBWINKEL * stand.winkel_faktor()
     _kegel.reichweite = Graben.REICHWEITE * stand.reichweite_faktor()
+    # **Der Skin wird hier gesetzt und nirgends sonst.** Dieselbe Stelle wie
+    # Reichweite und Winkel - eine zweite Zuweisung anderswo waere eine
+    # zweite Wahrheit ueber dasselbe Boot (Zusage 27). Und es ist nur Farbe:
+    # Form, Reichweite und Deckung des Kegels bleiben unberuehrt.
+    _kegel.farbe = Skins.strahl(stand.skin)
+    _kegel.kern = Skins.kern(stand.skin)
+    _haut = Skins.haut(stand.skin)
+    _glut = Skins.glut(stand.skin)
     # Und die Huelle aus der Brutkammer - sie ist die Brut (siehe oben), also
     # haengt sie an derselben Kammer.
     huelle_voll = maxi(1, Fortschritt.stand.brut_leben())
@@ -1411,9 +1419,12 @@ func _welt(bild: Vector2) -> Vector2:
 # drei Begleiter und eine Zeile Zahlen. Die Raeuber zeichnet `Schwarm`, das
 # Licht der `Kegel` - beides unveraendert.
 
-const HAUT := Color(0.62, 0.88, 0.94)
+## **Rumpf und Glut kommen aus dem Skin** (`_stelle_ausbau_ein()`). Die
+## Vorgabe hier ist der Skin `TIEFENBLAU` - sie steht dabei, damit ein Bild
+## auch dann etwas zeigt, wenn der Ausbau noch nicht gestellt wurde.
+var _haut := Color(0.62, 0.88, 0.94)
+var _glut := Color(1.0, 0.86, 0.58)
 const HAUT_TIEF := Color(0.055, 0.135, 0.170)
-const GLUT := Color(1.0, 0.86, 0.58)
 const SPUR_LAENGE := 26
 
 
@@ -1485,9 +1496,9 @@ func _zeichne_stossring() -> void:
         kern.append(_ort + Vector2.RIGHT.rotated(w) * _stoss_weit * welle)
         nach.append(_ort + Vector2.RIGHT.rotated(w)
             * maxf(0.0, _stoss_weit - 52.0) * welle)
-    _vorn.draw_polyline(nach, Color(GLUT.r, GLUT.g, GLUT.b, 0.10 * f),
+    _vorn.draw_polyline(nach, Color(_glut.r, _glut.g, _glut.b, 0.10 * f),
         3.0, true)
-    _vorn.draw_polyline(kern, Color(GLUT.r, GLUT.g, GLUT.b, 0.16 * f),
+    _vorn.draw_polyline(kern, Color(_glut.r, _glut.g, _glut.b, 0.16 * f),
         16.0, true)
     _vorn.draw_polyline(kern, Color(1.0, 0.96, 0.86, 0.85 * f), 2.2, true)
 
@@ -1643,8 +1654,8 @@ func _boot_umriss(k: Vector2, quer: Vector2, r: float,
 func _zeichne_rumpf(umriss: PackedVector2Array, k: Vector2, r: float) -> void:
     _vorn.draw_colored_polygon(umriss, Color(0.020, 0.052, 0.068))
     var ring := umriss + PackedVector2Array([umriss[0]])
-    _vorn.draw_polyline(ring, Color(HAUT.r, HAUT.g, HAUT.b, 0.09), 5.0, true)
-    _vorn.draw_polyline(ring, Color(HAUT.r, HAUT.g, HAUT.b, 0.30), 1.5, true)
+    _vorn.draw_polyline(ring, Color(_haut.r, _haut.g, _haut.b, 0.09), 5.0, true)
+    _vorn.draw_polyline(ring, Color(_haut.r, _haut.g, _haut.b, 0.30), 1.5, true)
 
     # Der vordere Bogen noch einmal, heller. Wo "vorn" ist, sagt das Profil
     # und nicht eine zweite Zahl.
@@ -1653,7 +1664,7 @@ func _zeichne_rumpf(umriss: PackedVector2Array, k: Vector2, r: float) -> void:
         if (punkt - _ort).dot(k) > 0.0:
             vorne.append(punkt)
     if vorne.size() > 2:
-        _vorn.draw_polyline(vorne, Color(HAUT.r, HAUT.g, HAUT.b, 0.52),
+        _vorn.draw_polyline(vorne, Color(_haut.r, _haut.g, _haut.b, 0.52),
             1.5, true)
 
 
@@ -1664,7 +1675,7 @@ func _zeichne_spanten(k: Vector2, quer: Vector2, r: float,
         eng: Vector2) -> void:
     _vorn.draw_line(_ort - k * r * RUMPF_LANG * 0.72,
         _ort + k * r * RUMPF_LANG * 0.86,
-        Color(HAUT.r, HAUT.g, HAUT.b, 0.16), 1.0, true)
+        Color(_haut.r, _haut.g, _haut.b, 0.16), 1.0, true)
 
     for anteil: float in [-0.30, 0.10, 0.48]:
         var i := int(clampf((anteil + 1.0) * 0.5, 0.0, 1.0)
@@ -1679,7 +1690,7 @@ func _zeichne_spanten(k: Vector2, quer: Vector2, r: float,
             # einem runden Rumpf und ist deshalb im Bild gekruemmt.
             bogen.append(mitte + quer * t * breit * seit
                 + k * (1.0 - t * t) * r * 0.09)
-        _vorn.draw_polyline(bogen, Color(HAUT.r, HAUT.g, HAUT.b, 0.17),
+        _vorn.draw_polyline(bogen, Color(_haut.r, _haut.g, _haut.b, 0.17),
             1.0, true)
 
 
@@ -1748,8 +1759,8 @@ func _zeichne_flossen(k: Vector2, quer: Vector2, r: float,
 
         _vorn.draw_colored_polygon(kante, Color(0.016, 0.042, 0.058))
         var zu := kante + PackedVector2Array([kante[0]])
-        _vorn.draw_polyline(zu, Color(HAUT.r, HAUT.g, HAUT.b, 0.07), 3.2, true)
-        _vorn.draw_polyline(zu, Color(HAUT.r, HAUT.g, HAUT.b, 0.34), 1.1, true)
+        _vorn.draw_polyline(zu, Color(_haut.r, _haut.g, _haut.b, 0.07), 3.2, true)
+        _vorn.draw_polyline(zu, Color(_haut.r, _haut.g, _haut.b, 0.34), 1.1, true)
         _vorn.draw_circle(spitze_vorn, 1.6, Color(0.52, 0.96, 0.86, 0.75))
 
 
@@ -1802,15 +1813,15 @@ func _zeichne_turm(k: Vector2, quer: Vector2, r: float) -> void:
             + quer * sin(w) * breit * voll)
     _vorn.draw_colored_polygon(umriss, Color(0.030, 0.078, 0.098))
     var zu := umriss + PackedVector2Array([umriss[0]])
-    _vorn.draw_polyline(zu, Color(HAUT.r, HAUT.g, HAUT.b, 0.10), 4.0, true)
-    _vorn.draw_polyline(zu, Color(HAUT.r, HAUT.g, HAUT.b, 0.62), 1.4, true)
+    _vorn.draw_polyline(zu, Color(_haut.r, _haut.g, _haut.b, 0.10), 4.0, true)
+    _vorn.draw_polyline(zu, Color(_haut.r, _haut.g, _haut.b, 0.62), 1.4, true)
 
     # Zwei Vorflossen am Turm - die Ruder, mit denen ein Boot steigt und
     # sinkt. Zwei kurze Striche, mehr braucht es bei dieser Groesse nicht.
     for seite: float in SEITEN:
         var wurzel := mitte + quer * seite * breit * 0.9
         _vorn.draw_line(wurzel, wurzel + quer * seite * r * 0.40
-            - k * r * 0.06, Color(HAUT.r, HAUT.g, HAUT.b, 0.38), 2.2, true)
+            - k * r * 0.06, Color(_haut.r, _haut.g, _haut.b, 0.38), 2.2, true)
 
     # **Das Positionslicht.** Ein Boot im Dunkeln blinkt - nicht fuer sich,
     # sondern damit andere es sehen. Hier sieht es niemand ausser dem
@@ -1835,15 +1846,15 @@ func _zeichne_turm(k: Vector2, quer: Vector2, r: float) -> void:
 func _zeichne_kanzel(k: Vector2, quer: Vector2, r: float) -> void:
     var mitte := _ort + k * r * 0.54
     _vorn.draw_circle(mitte, r * 0.17, Color(0.014, 0.040, 0.056))
-    _vorn.draw_circle(mitte, r * 0.105, Color(GLUT.r, GLUT.g, GLUT.b, 0.42))
+    _vorn.draw_circle(mitte, r * 0.105, Color(_glut.r, _glut.g, _glut.b, 0.42))
     _vorn.draw_arc(mitte, r * 0.17, 0.0, TAU, 20,
-        Color(HAUT.r, HAUT.g, HAUT.b, 0.55), 1.1, true)
+        Color(_haut.r, _haut.g, _haut.b, 0.55), 1.1, true)
     # Zwei Streben ueber die Kuppel: das ist der Unterschied zwischen einem
     # Fenster und einem Fleck.
     for versatz: float in SEITEN:
         var m := (k * 0.4 + quer * versatz).normalized()
         _vorn.draw_line(mitte - m * r * 0.16, mitte + m * r * 0.16,
-            Color(HAUT.r, HAUT.g, HAUT.b, 0.26), 0.9, true)
+            Color(_haut.r, _haut.g, _haut.b, 0.26), 0.9, true)
     _vorn.draw_circle(mitte + (k + quer).normalized() * r * 0.08, r * 0.035,
         Color(1.0, 0.98, 0.92, 0.55))
 
@@ -1857,8 +1868,8 @@ func _zeichne_scheinwerfer(k: Vector2, quer: Vector2, r: float) -> void:
     for j in 11:
         var t := lerpf(-1.0, 1.0, float(j) / 10.0)
         buegel.append(nase + quer * t * r * 0.30 - k * (t * t) * r * 0.26)
-    _vorn.draw_polyline(buegel, Color(HAUT.r, HAUT.g, HAUT.b, 0.10), 3.0, true)
-    _vorn.draw_polyline(buegel, Color(HAUT.r, HAUT.g, HAUT.b, 0.62), 1.3, true)
+    _vorn.draw_polyline(buegel, Color(_haut.r, _haut.g, _haut.b, 0.10), 3.0, true)
+    _vorn.draw_polyline(buegel, Color(_haut.r, _haut.g, _haut.b, 0.62), 1.3, true)
     _vorn.draw_circle(nase, r * 0.17, Color(0.80, 1.0, 0.96, 0.14))
     _vorn.draw_circle(nase, r * 0.075, Color(1.0, 1.0, 0.96, 0.92))
 

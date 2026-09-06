@@ -120,7 +120,7 @@ static func ziel(schritt: int) -> int:
 ## es gibt - sonst zeigt ein Schritt auf einen Reiter, den es nicht gibt, und
 ## das faellt erst auf, wenn ihn jemand erreicht. Der Testlauf haelt die Zahl
 ## gegen das `enum Sicht` in `kolonie_schirm.gd`.
-const REITER_ANZAHL := 5
+const REITER_ANZAHL := 6
 
 
 ## Auf welchem Reiter dieser Schritt faellig ist. Ein Satz ueber die

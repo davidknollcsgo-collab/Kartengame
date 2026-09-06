@@ -43,6 +43,11 @@ const LUECKE := 10.0
 ## vor dem der Kommentar unten in `_tagesfuss()` warnt.
 const TAGESFUSS_HOCH := 224.0
 
+## Hoehe einer Einstellungszeile und eines Anstrichfeldes. Beide ueber
+## vierzig Pixel, damit ein Daumen sie trifft - 34 waren zu knapp.
+const ZEILE := 52.0
+const SKINHOCH := 66.0
+
 const GRUND := Color(0.020, 0.052, 0.070)
 const BAND_FARBE := Color(0.055, 0.115, 0.140)
 const BAND_KANTE := Color(0.16, 0.38, 0.44)
@@ -122,7 +127,13 @@ var _reiter: Array[Rect2] = []
 ## Vier Ansichten statt einer langen Liste: fuenf Kammern, drei Linien, acht
 ## Arten und der Tag nebeneinander waeren auf einem Telefon zwanzig gedraengte
 ## Zeilen.
-enum Sicht { KAMMERN, LINIEN, ARTEN, ZUEGE, TAG }
+## **Der Bootsreiter ist entstanden, weil der Tagesreiter eine Rumpelkammer
+## war.** Dort standen Tagesziele, Zuchtkalender, Rangliste **und** saemtliche
+## Einstellungen samt Lizenzzeile und Loeschknopf untereinander - und als eine
+## Einstellung dazukam, fiel der Loeschknopf unter den Bildrand. Was nichts
+## miteinander zu tun hat, gehoert nicht in dieselbe Liste, und ein Reiter,
+## der nach unten ueberlaeuft, sagt das nur nicht.
+enum Sicht { KAMMERN, LINIEN, ARTEN, ZUEGE, TAG, BOOT }
 var _sicht := Sicht.KAMMERN
 
 ## Tippziele der Tagesansicht, in Bildschirmkoordinaten.
@@ -131,6 +142,7 @@ var _lauter := Rect2()
 var _beben := Rect2()
 var _bildrate := Rect2()
 var _autobau := Rect2()
+var _skinfelder: Array[Rect2] = []
 var _leiser := Rect2()
 var _loeschen := Rect2()
 var _loeschen_sicher := false
@@ -225,9 +237,24 @@ func _eingabe(ereignis: InputEvent) -> void:
             _meldung_leben = 0.0
             return
 
-    if _sicht == Sicht.TAG:
-        if _kalender.has_point(ort):
-            _hole_kalender()
+    if _sicht == Sicht.TAG and _kalender.has_point(ort):
+        _hole_kalender()
+        return
+
+    if _sicht == Sicht.BOOT:
+        for i in _skinfelder.size():
+            if not _skinfelder[i].has_point(ort):
+                continue
+            var st2 := Fortschritt.stand
+            if st2.waehle_skin(i):
+                Klang.spiele(Klang.Ton.TIPP, 1.0, 1.15)
+                _zeige("%s on the hull" % Skins.name_von(i))
+                Fortschritt.sichere()
+            else:
+                # **Sagen, was fehlt, statt nichts zu tun.** Ein Tipp, auf
+                # den gar nichts folgt, sieht aus wie ein kaputter Knopf.
+                Klang.spiele(Klang.Ton.TIPP, 0.5, 0.7)
+                _zeige("Reach wave %d to earn this" % Skins.ab_welle(i))
             return
         if _lauter.has_point(ort):
             Klang.laut = Klang.laut + 0.2
@@ -415,6 +442,17 @@ func _zeichne() -> void:
         anzahl = Mutationen.Mutation.size()
     elif _sicht == Sicht.TAG:
         anzahl = Tagesziel.zahl()
+    elif _sicht == Sicht.BOOT:
+        # Der Bootsreiter hat keine Bandliste - er zeichnet sich selbst.
+        # `_fusszeile` muss trotzdem kommen: ohne sie faehrt niemand zurueck.
+        _kalender = Rect2()
+        _bootreiter(breite, hoehe, stand)
+        _fusszeile(breite, hoehe)
+        if _meldung_leben > 0.0:
+            var mf := clampf(_meldung_leben / 0.6, 0.0, 1.0)
+            _text(Vector2(breite * 0.5, hoehe - FUSS - 16.0), _meldung, 16,
+                Color(0.88, 0.96, 1.0, mf), true)
+        return
     var oben := KOPF + _rand_oben + 58.0
     # **Eine Erklaerung, nicht sechs.** Auf dem Zuegereiter stand vor der
     # ersten Begegnung sechsmal dasselbe Band: "Not yet encountered / Waves
@@ -483,12 +521,18 @@ func _zeichne() -> void:
         _tagesfuss(breite, hoehe - FUSS - TAGESFUSS_HOCH, stand)
     else:
         _kalender = Rect2()
+
+    # Die Einstellungen liegen auf dem Bootsreiter. Ausserhalb davon gibt es
+    # sie nicht - ein Tippziel, das an einer Stelle liegenbleibt, an der
+    # nichts gezeichnet ist, ist ein unsichtbarer Knopf.
+    if _sicht != Sicht.BOOT:
         _lauter = Rect2()
         _beben = Rect2()
         _bildrate = Rect2()
         _autobau = Rect2()
         _leiser = Rect2()
         _loeschen = Rect2()
+        _skinfelder.clear()
 
     # **Nur auf dem Reiter, um den es geht.** Auf dem Tagesreiter reicht der
     # Inhalt bis an den Fuss hinunter, und die Tafel lag dort ueber dem Knopf,
@@ -615,15 +659,18 @@ func _kopfzeile(breite: float, stand: KolonieStand) -> void:
 
 ## Die Umschaltzeile: drei Reiter, der aktive hell.
 func _umschalterzeile(breite: float) -> void:
-    const BESCHRIFTUNG: PackedStringArray = ["CHAMBERS", "LINES", "SPECIES",
-        "TRAITS", "DAY"]
+    # **Kurz genug fuer sechs Spalten.** Bei 720 Pixeln Breite bleiben je
+    # Reiter knapp hundert; "CHAMBERS" passte dort nicht mehr und wurde
+    # abgeschnitten. Ein Wort, das man raten muss, ist keine Beschriftung.
+    const BESCHRIFTUNG: PackedStringArray = ["BUILD", "LINES", "BEASTS",
+        "TRAITS", "DAY", "BOAT"]
     var y := KOPF + _rand_oben + 12.0
     var anzahl := BESCHRIFTUNG.size()
-    var breit := (breite - (RAND + _rand_seite) * 2.0 - 8.0 * float(anzahl - 1)) / float(anzahl)
+    var breit := (breite - (RAND + _rand_seite) * 2.0 - 5.0 * float(anzahl - 1)) / float(anzahl)
     _reiter.clear()
 
     for i in anzahl:
-        var kasten := Rect2(RAND + _rand_seite + (breit + 8.0) * float(i), y,
+        var kasten := Rect2(RAND + _rand_seite + (breit + 5.0) * float(i), y,
             breit, 36.0)
         _reiter.append(kasten)
         # **Der aktive Reiter braucht mehr als eine Nuance.** Er unterschied
@@ -634,7 +681,7 @@ func _umschalterzeile(breite: float) -> void:
         _flaeche.draw_rect(kasten, Color(0.06, 0.16, 0.20, 0.92 if aktiv else 0.35))
         _flaeche.draw_rect(kasten, Color(0.42, 0.86, 0.92, 0.45 if aktiv else 0.12),
             false, 1.4)
-        _text(kasten.get_center() + Vector2(0.0, 5.0), BESCHRIFTUNG[i], 13,
+        _text(kasten.get_center() + Vector2(0.0, 5.0), BESCHRIFTUNG[i], 12,
             SCHRIFT if aktiv else LEISE, true)
         if aktiv:
             _flaeche.draw_rect(Rect2(kasten.position.x + 6.0,
@@ -1578,7 +1625,9 @@ func _zuchtkalender(breite: float, y: float, stand: KolonieStand) -> float:
     return reihe_y + hoch
 
 
-## Unter den Zielen: Anwesenheit, Lautstaerke, Lizenzen, Neuanfang.
+## Unter den Zielen: Anwesenheit und Bestmarken. Mehr nicht - die
+## Einstellungen sind auf den Bootsreiter gezogen, weil sie mit dem Tag
+## nichts zu tun haben und ihn nach unten aus dem Bild schoben.
 func _tagesfuss(breite: float, y: float, stand: KolonieStand) -> void:
     var tage := "1 day" if stand.strecke == 1 else "%d days" % stand.strecke
     _text(Vector2(RAND, y + 22.0), "%s in the trench in a row" % tage,
@@ -1594,86 +1643,259 @@ func _tagesfuss(breite: float, y: float, stand: KolonieStand) -> void:
             "best %s  ·  chain %d" % [Zahl.kurz(stand.bestpunkte),
                 stand.beste_kette], 13, NAEHR, false, true)
 
-    # **Eine Ueberschrift, damit der Reiter kein Sammelfach ist.** Was
-    # darunter steht - Lautstaerke, Lizenzen, Neuanfang - hat mit dem Tag
-    # nichts zu tun, und ohne Trennstrich las sich der Neuanfang wie der
-    # letzte Eintrag einer Tagesliste. Ein Knopf, der alles loescht, darf
-    # nicht aussehen, als gehoere er zu den Zielen darueber.
-    var trenn := y + 36.0
-    _flaeche.draw_line(Vector2(RAND, trenn), Vector2(breite - RAND, trenn),
+
+## Der Bootsreiter: wie es aussieht, und wie es sich bedienen laesst.
+##
+## **Zwei Dinge, die zusammengehoeren, weil beide das Boot betreffen** - der
+## Anstrich und die Regler. Getrennt haette jeder von beiden einen halbleeren
+## Reiter, und der Anstrich allein waere ein Schaufenster.
+func _bootreiter(breite: float, hoehe: float, stand: KolonieStand) -> void:
+    var oben := KOPF + _rand_oben + 58.0
+    _text(Vector2(RAND, oben + 12.0), "HULL PAINT", 13, LEISE)
+    var gesperrt := Skins.naechster_gesperrt(stand.hoechste_welle)
+    if gesperrt >= 0:
+        _text(Vector2(breite - RAND, oben + 12.0),
+            "next at wave %d" % Skins.ab_welle(gesperrt), 12,
+            Color(0.40, 0.52, 0.58), false, true)
+
+    # **Zwei Spalten, nicht sechs Zeilen.** Ein Anstrich ist eine Farbe; man
+    # waehlt ihn mit dem Auge und nicht durch Lesen. Nebeneinander sieht man
+    # den Unterschied, untereinander liest man Namen.
+    var y := oben + 26.0
+    _skinfelder.clear()
+    var spalten := 2
+    var breit := (breite - RAND * 2.0 - 10.0) / float(spalten)
+    for i in Skins.zahl():
+        var kasten := Rect2(RAND + (breit + 10.0) * float(i % spalten),
+            y + (SKINHOCH + 10.0) * float(i / spalten), breit, SKINHOCH)
+        _skinfelder.append(kasten)
+        _skinfeld(kasten, i, stand)
+    y += float((Skins.zahl() + spalten - 1) / spalten) * (SKINHOCH + 10.0) + 14.0
+
+    _flaeche.draw_line(Vector2(RAND, y), Vector2(breite - RAND, y),
         Color(0.24, 0.44, 0.50, 0.30), 1.0)
-    _text(Vector2(RAND, trenn + 17.0), "SETTINGS", 13, LEISE)
+    _text(Vector2(RAND, y + 20.0), "SETTINGS", 13, LEISE)
+    y += 34.0
 
-    # Lautstaerke in Schritten statt als Schieber: einen Schieber trifft man
-    # mit dem Daumen schlecht, zwei Knoepfe immer.
-    var zeile := y + 58.0
-    _text(Vector2(RAND, zeile + 24.0), "Sound  %d%%" % int(round(Klang.laut * 100.0)),
-        15, LEISE)
-    _leiser = Rect2(breite - RAND - 96.0, zeile, 44.0, 34.0)
-    _lauter = Rect2(breite - RAND - 44.0, zeile, 44.0, 34.0)
+    # **Ganze Zeilen mit einer Trennlinie dazwischen.** Vorher standen die
+    # Regler als Kaesten am rechten Rand einer Liste, die eigentlich von
+    # Tageszielen handelte; welche Beschriftung zu welchem Knopf gehoerte,
+    # musste man sich zusammenreimen. Eine Zeile, die ueber die ganze Breite
+    # geht, beantwortet das von selbst.
+    y = _reglerzeile(breite, y, "Sound", "%d%%" % int(round(Klang.laut * 100.0)))
+    _leiser = Rect2(breite - RAND - 104.0, y - ZEILE + 7.0, 48.0, 38.0)
+    _lauter = Rect2(breite - RAND - 52.0, y - ZEILE + 7.0, 48.0, 38.0)
     for paar in [[_leiser, "-"], [_lauter, "+"]]:
-        var kasten: Rect2 = paar[0]
-        _flaeche.draw_rect(kasten, Color(0.06, 0.16, 0.20, 0.8))
-        _flaeche.draw_rect(kasten, Color(0.42, 0.86, 0.92, 0.28), false, 1.3)
-        _text(kasten.get_center() + Vector2(0.0, 6.0), paar[1], 18, SCHRIFT, true)
+        _knopffeld(paar[0], paar[1], SCHRIFT, Color(0.42, 0.86, 0.92))
 
-    # Beben daneben, als Schalter statt als Regler - es ist an oder aus.
-    # Wer tippt, spuert die Antwort sofort, und genau das ist die Anzeige:
-    # ein Schalter fuer etwas Fuehlbares muss sich beim Umlegen melden.
-    var b_zeile := zeile + 38.0
-    _beben = Rect2(breite - RAND - 96.0, b_zeile, 96.0, 34.0)
-    _text(Vector2(RAND, b_zeile + 24.0), "Rumble", 15, LEISE)
-    var b_farbe := NAEHR if Tastsinn.an else Color(0.40, 0.52, 0.58)
-    _flaeche.draw_rect(_beben, Color(0.06, 0.16, 0.20, 0.8))
-    _flaeche.draw_rect(_beben, Color(b_farbe.r, b_farbe.g, b_farbe.b, 0.34),
-        false, 1.3)
-    _text(_beben.get_center() + Vector2(0.0, 5.0),
-        "ON" if Tastsinn.an else "OFF", 14, b_farbe, true)
+    y = _reglerzeile(breite, y, "Rumble", "")
+    _beben = Rect2(breite - RAND - 104.0, y - ZEILE + 7.0, 100.0, 38.0)
+    _schalterfeld(_beben, Tastsinn.an)
 
-    # Die Bildrate. **Der Wert steht auf dem Knopf, nicht daneben** - ein
-    # Schalter, der nur "an" sagt, zwingt zum Ausprobieren.
-    var f_zeile := b_zeile + 38.0
-    _bildrate = Rect2(breite - RAND - 96.0, f_zeile, 96.0, 34.0)
-    _text(Vector2(RAND, f_zeile + 24.0), "Frame rate", 15, LEISE)
-    var fr: int = Fortschritt.stand.bildrate
-    _flaeche.draw_rect(_bildrate, Color(0.06, 0.16, 0.20, 0.8))
-    _flaeche.draw_rect(_bildrate, Color(0.42, 0.86, 0.92, 0.28), false, 1.3)
-    _text(_bildrate.get_center() + Vector2(0.0, 5.0),
-        "SCREEN" if fr == 0 else "%d FPS" % fr, 14, SCHRIFT, true)
+    y = _reglerzeile(breite, y, "Frame rate", "")
+    _bildrate = Rect2(breite - RAND - 104.0, y - ZEILE + 7.0, 100.0, 38.0)
+    var fr: int = stand.bildrate
+    _knopffeld(_bildrate, "SCREEN" if fr == 0 else "%d FPS" % fr, SCHRIFT,
+        Color(0.42, 0.86, 0.92))
 
     # **Der Halt beim Ausbau, abschaltbar.** Er ist standardmaessig an, weil
     # ein Spieler, der ihn nicht kennt, sonst mit dem gestrigen Boot
     # weiterfaehrt - aber er greift in die Fahrt ein, und was in die Fahrt
     # eingreift, muss man ausschalten koennen.
-    var a_zeile := f_zeile + 38.0
-    _autobau = Rect2(breite - RAND - 96.0, a_zeile, 96.0, 34.0)
-    _text(Vector2(RAND, a_zeile + 24.0), "Stop to build", 15, LEISE)
-    var a_an: bool = Fortschritt.stand.auto_ausbau
-    var a_farbe := NAEHR if a_an else Color(0.40, 0.52, 0.58)
-    _flaeche.draw_rect(_autobau, Color(0.06, 0.16, 0.20, 0.8))
-    _flaeche.draw_rect(_autobau, Color(a_farbe.r, a_farbe.g, a_farbe.b, 0.34),
-        false, 1.3)
-    _text(_autobau.get_center() + Vector2(0.0, 5.0),
-        "ON" if a_an else "OFF", 14, a_farbe, true)
+    y = _reglerzeile(breite, y, "Stop to build", "")
+    _autobau = Rect2(breite - RAND - 104.0, y - ZEILE + 7.0, 100.0, 38.0)
+    _schalterfeld(_autobau, stand.auto_ausbau)
+
+    # **Was man anmalt, soll man sehen.** Unter den Einstellungen blieb sonst
+    # eine halbe Bildschirmhoehe leer, und die Auswahl bestand aus sechs
+    # Daumennagelbooten - man waehlte eine Farbe, ohne sie je gross zu sehen.
+    _bootvorschau(breite, y + 34.0, hoehe - FUSS - 96.0, stand)
 
     # Lizenzen sind Pflicht, nicht Kuer: Godot steht unter MIT, die Schriften
     # unter SIL OFL, und beide verlangen, dass der Text mit ausgeliefert wird.
-    # **Eine Zeile, nicht zwei.** Die Pflichtangabe muss stehen, aber sie
-    # muss nicht zwei Zeilen breit stehen - und der Platz fehlte unten am
-    # Loeschknopf, der dadurch unter den Bildrand fiel.
-    var lz := a_zeile + 40.0
-    _text(Vector2(RAND, lz + 14.0),
+    _text(Vector2(RAND, y + 16.0),
         "Godot Engine (MIT)  -  fonts SIL OFL 1.1  -  all art and sound "
         + "generated by this game itself", 12, Color(0.40, 0.52, 0.58))
 
-    _loeschen = Rect2(RAND, lz + 24.0, breite - RAND * 2.0, 34.0)
-    var warnfarbe := Color(1.0, 0.52, 0.44) if _loeschen_sicher else Color(0.44, 0.36, 0.36)
+    # **Ganz unten, mit Abstand.** Ein Knopf, der alles loescht, gehoert nicht
+    # neben einen, den man oft tippt.
+    var unten := hoehe - FUSS - 24.0 - 40.0
+    _loeschen = Rect2(RAND, maxf(y + 30.0, unten), breite - RAND * 2.0, 38.0)
+    var warnfarbe := Color(1.0, 0.52, 0.44) if _loeschen_sicher \
+        else Color(0.44, 0.36, 0.36)
     _flaeche.draw_rect(_loeschen, Color(0.10, 0.05, 0.05, 0.7))
     _flaeche.draw_rect(_loeschen, Color(warnfarbe.r, warnfarbe.g, warnfarbe.b, 0.4),
         false, 1.3)
     _text(_loeschen.get_center() + Vector2(0.0, 5.0),
         "REALLY DELETE?" if _loeschen_sicher else "Found the colony anew",
         14, warnfarbe, true)
+
+
+## Das Boot in Lebensgroesse, im gewaehlten Anstrich.
+##
+## **Dieselben Proportionen wie in der Fahrt**, nur ohne die Rechnung
+## dahinter: Rumpf, Turm, Scheinwerfer, Kegel, Begleiter. Ein Vorschaubild,
+## das anders aussieht als das Boot, waere eine zweite Wahrheit ueber den
+## Anstrich - man waehlte eine Farbe und bekaeme eine andere.
+##
+## Der Kegel ist hier **Zierde und darf es sein**: er trifft nichts. Was in
+## der Fahrt gilt, gilt weiter - dort kommt seine Deckung aus
+## `Schlund.beleuchtung()` und der Anstrich faerbt nur (Zusage 2).
+func _bootvorschau(breite: float, oben: float, unten: float,
+        stand: KolonieStand) -> void:
+    var hoch := unten - oben
+    if hoch < 160.0:
+        return
+    var haut := Skins.haut(stand.skin)
+    var strahl := Skins.strahl(stand.skin)
+    var kern := Skins.kern(stand.skin)
+    var glut := Skins.glut(stand.skin)
+
+    # **Es zeigt nach oben, nicht nach rechts.** Nach rechts lief der Kegel
+    # ueber den Bildrand hinaus und nahm die halbe Flaeche ein; das Bild war
+    # dann ein Scheinwerfer mit einem Boot daran. Hochkant ist auch die Form
+    # des Bildschirms - der Kegel hat Platz, ohne dass er breiter wird.
+    var k := Vector2.UP
+    var quer := k.orthogonal()
+    var r := clampf(hoch * 0.10, 24.0, 54.0)
+    # **Der Abstand nach unten kommt aus dem Boot, nicht aus dem Kasten.**
+    # Ein Drittel der Hoehe reichte bei 720x1600 und nicht bei 720x1280 -
+    # dort standen die Begleiter im Beschreibungstext. Sie haengen 2,7
+    # Rumpfradien hinter dem Boot, also braucht es genau so viel Luft.
+    var mitte := Vector2(breite * 0.5,
+        unten - maxf(hoch * 0.34, r * 4.0 + 26.0))
+
+    # Der Kegel: vier Lagen, die nach aussen blasser werden. **Nicht als
+    # Verlaufspolygon** - `draw_polygon` mit Farbe je Ecke zeichnet auf einer
+    # HUD-Ebene nichts, derselbe Fund wie beim Trefferaum in `rund_hud.gd`.
+    var weite := minf(r * 6.0, mitte.y - oben - 8.0)
+    for lage in 4:
+        var t := float(lage + 1) / 4.0
+        var oeffnung := 0.13 + 0.20 * t
+        var keil := PackedVector2Array([mitte])
+        for i in 9:
+            var w := lerpf(-oeffnung, oeffnung, float(i) / 8.0)
+            keil.append(mitte + k.rotated(w) * weite * (1.0 - 0.08 * t))
+        _flaeche.draw_colored_polygon(keil,
+            Color(strahl.r, strahl.g, strahl.b, 0.030 / t))
+
+    # Rumpf: dieselben Proportionen wie in der Fahrt, nur gross gezogen.
+    var rumpf := PackedVector2Array()
+    for punkt: Vector2 in [Vector2(1.85, 0.0), Vector2(1.10, -0.34),
+            Vector2(0.20, -0.50), Vector2(-0.90, -0.42),
+            Vector2(-1.40, -0.20), Vector2(-1.48, 0.0),
+            Vector2(-1.40, 0.20), Vector2(-0.90, 0.42),
+            Vector2(0.20, 0.50), Vector2(1.10, 0.34)]:
+        rumpf.append(mitte + k * punkt.x * r + quer * punkt.y * r)
+    _flaeche.draw_colored_polygon(rumpf, Color(0.020, 0.052, 0.068))
+    var ring := rumpf + PackedVector2Array([rumpf[0]])
+    _flaeche.draw_polyline(ring, Color(haut.r, haut.g, haut.b, 0.10), 6.0, true)
+    _flaeche.draw_polyline(ring, Color(haut.r, haut.g, haut.b, 0.60), 1.8, true)
+
+    # Kiellinie und zwei Spanten - das, was aus einem Umriss einen Koerper
+    # macht.
+    _flaeche.draw_line(mitte - k * r * 1.30, mitte + k * r * 1.55,
+        Color(haut.r, haut.g, haut.b, 0.18), 1.0, true)
+    for anteil: float in [-0.55, 0.30]:
+        var br := r * (0.50 - absf(anteil) * 0.16)
+        _flaeche.draw_line(mitte + k * r * anteil - quer * br,
+            mitte + k * r * anteil + quer * br,
+            Color(haut.r, haut.g, haut.b, 0.18), 1.0, true)
+
+    # Turm mittschiffs, Scheinwerfer an der Spitze - dort setzt der Kegel an.
+    _flaeche.draw_circle(mitte - k * r * 0.28, r * 0.28,
+        Color(0.030, 0.075, 0.095))
+    _flaeche.draw_arc(mitte - k * r * 0.28, r * 0.28, 0.0, TAU, 22,
+        Color(haut.r, haut.g, haut.b, 0.50), 1.6, true)
+    _flaeche.draw_circle(mitte + k * r * 1.62, r * 0.30,
+        Color(strahl.r, strahl.g, strahl.b, 0.16))
+    _flaeche.draw_circle(mitte + k * r * 1.62, r * 0.13,
+        Color(kern.r, kern.g, kern.b, 0.80))
+
+    # Der Antrieb glueht am Heck, drei Duesen nebeneinander.
+    for i in 3:
+        var p := mitte - k * r * 1.46 + quer * (float(i) - 1.0) * r * 0.26
+        _flaeche.draw_circle(p, r * 0.16, Color(glut.r, glut.g, glut.b, 0.26))
+        _flaeche.draw_circle(p, r * 0.06, Color(glut.r, glut.g, glut.b, 0.85))
+
+    # Drei Begleiter im Kielwasser, in einer Reihe dahinter.
+    for i in 3:
+        var p2 := mitte - k * r * 2.7 + quer * (float(i) - 1.0) * r * 0.85
+        _flaeche.draw_circle(p2, r * 0.20, Color(haut.r, haut.g, haut.b, 0.10))
+        _flaeche.draw_circle(p2, r * 0.08, Color(haut.r, haut.g, haut.b, 0.65))
+
+    _text(Vector2(breite * 0.5, unten - 10.0), Skins.regel(stand.skin), 12,
+        LEISE, true)
+
+
+## Eine Einstellungszeile: Beschriftung links, Wert daneben, Trennlinie unten.
+## Gibt die naechste Zeilenoberkante zurueck.
+func _reglerzeile(breite: float, y: float, was: String, wert: String) -> float:
+    _text(Vector2(RAND, y + 28.0), was, 15, Color(0.72, 0.88, 0.92))
+    if not wert.is_empty():
+        _text(Vector2(RAND + 150.0, y + 28.0), wert, 15, LEISE)
+    _flaeche.draw_line(Vector2(RAND, y + ZEILE - 1.0),
+        Vector2(breite - RAND, y + ZEILE - 1.0), Color(0.20, 0.36, 0.42, 0.28), 1.0)
+    return y + ZEILE
+
+
+func _knopffeld(kasten: Rect2, text: String, farbe: Color, kante: Color) -> void:
+    _flaeche.draw_rect(kasten, Color(0.06, 0.16, 0.20, 0.85))
+    _flaeche.draw_rect(kasten, Color(kante.r, kante.g, kante.b, 0.30), false, 1.3)
+    _text(kasten.get_center() + Vector2(0.0, 5.0), text, 14, farbe, true)
+
+
+## Ein Schalter. **Der Zustand steht im Knopf und in seiner Farbe** - ein
+## Knopf, der nur "ON" sagt, ohne dass man sieht, ob das der Zustand oder die
+## Handlung ist, zwingt zum Ausprobieren.
+func _schalterfeld(kasten: Rect2, an: bool) -> void:
+    var farbe := NAEHR if an else Color(0.40, 0.52, 0.58)
+    _knopffeld(kasten, "ON" if an else "OFF", farbe, farbe)
+
+
+## Ein Anstrich zur Auswahl: der Rumpf in seinen eigenen Farben, daneben der
+## Name. Gesperrte stehen blass da und sagen, ab welcher Welle sie aufgehen -
+## ein gesperrtes Feld ohne Ziel daneben ist nur eine Absage.
+func _skinfeld(kasten: Rect2, index: int, stand: KolonieStand) -> void:
+    var frei := Skins.frei(index, stand.hoechste_welle)
+    var gewaehlt := stand.skin == index
+    var haut := Skins.haut(index)
+    var strahl := Skins.strahl(index)
+
+    _flaeche.draw_rect(kasten, Color(BAND_FARBE.r, BAND_FARBE.g, BAND_FARBE.b,
+        0.92 if frei else 0.55))
+    _flaeche.draw_rect(kasten, Color(haut.r, haut.g, haut.b,
+        0.75 if gewaehlt else (0.22 if frei else 0.08)),
+        false, 2.2 if gewaehlt else 1.3)
+
+    # Ein Boot im Kleinen, in den Farben dieses Anstrichs. **Gezeichnet und
+    # nicht beschrieben**: was man waehlt, ist ein Aussehen, und ein
+    # Farbklecks daneben zeigt es genauer als jeder Name.
+    var mitte := Vector2(kasten.position.x + 38.0, kasten.get_center().y)
+    var deckung := 1.0 if frei else 0.32
+    if frei:
+        _flaeche.draw_circle(mitte + Vector2(26.0, 0.0), 17.0,
+            Color(strahl.r, strahl.g, strahl.b, 0.10))
+    var rumpf := PackedVector2Array([
+        mitte + Vector2(24.0, 0.0), mitte + Vector2(4.0, -9.0),
+        mitte + Vector2(-16.0, -7.0), mitte + Vector2(-20.0, 0.0),
+        mitte + Vector2(-16.0, 7.0), mitte + Vector2(4.0, 9.0)])
+    _flaeche.draw_colored_polygon(rumpf, Color(0.020, 0.052, 0.068, deckung))
+    _flaeche.draw_polyline(rumpf + PackedVector2Array([rumpf[0]]),
+        Color(haut.r, haut.g, haut.b, 0.85 * deckung), 1.6, true)
+    _flaeche.draw_circle(mitte + Vector2(14.0, 0.0), 3.4,
+        Color(strahl.r, strahl.g, strahl.b, 0.9 * deckung))
+
+    var links := kasten.position.x + 68.0
+    _text(Vector2(links, kasten.position.y + 26.0), Skins.name_von(index), 15,
+        SCHRIFT if frei else Color(0.40, 0.50, 0.56))
+    if frei:
+        _text(Vector2(links, kasten.position.y + 46.0),
+            "IN USE" if gewaehlt else "tap to wear", 12,
+            NAEHR if gewaehlt else LEISE)
+    else:
+        _text(Vector2(links, kasten.position.y + 46.0),
+            "wave %d" % Skins.ab_welle(index), 12, Color(0.40, 0.50, 0.56))
 
 
 ## Eine Brutlinie. Anders als eine Kammer hat sie keine Stufen - sie ist da

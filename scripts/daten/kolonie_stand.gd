@@ -122,6 +122,9 @@ var beben := true
 ## schaltet ihn aus - dann bleibt der Punkt am Knopf, und sonst nichts.
 var auto_ausbau := true
 
+## Welcher Skin das Boot traegt. Rein aussen - siehe `Skins`.
+var skin := 0
+
 
 func _init() -> void:
     stufen.resize(Kammern.zahl())
@@ -210,6 +213,14 @@ func hindernis(kammer: int) -> String:
 
 func kann_bauen(kammer: int) -> bool:
     return hindernis(kammer).is_empty()
+
+
+## Den Skin wechseln - nur auf einen, der offen steht.
+func waehle_skin(index: int) -> bool:
+    if not Skins.frei(index, hoechste_welle):
+        return false
+    skin = clampi(index, 0, Skins.zahl() - 1)
+    return true
 
 
 ## Ob gerade wenigstens eine Kammer bezahlbar und frei ist.
@@ -628,6 +639,7 @@ func zu_wort() -> Dictionary:
         &"laut": laut,
         &"beben": beben,
         &"auto_ausbau": auto_ausbau,
+        &"skin": skin,
     }
 
 
@@ -693,6 +705,13 @@ static func aus_wort(wort: Dictionary) -> KolonieStand:
     s.laut = clampf(float(wort.get(&"laut", 0.7)), 0.0, 1.0)
     s.beben = bool(wort.get(&"beben", true))
     s.auto_ausbau = bool(wort.get(&"auto_ausbau", true))
+    # **Gegen die Tiefe geprueft, nicht blind uebernommen.** Ein Spielstand
+    # von Hand oder aus einer aelteren Fassung koennte einen Skin nennen, den
+    # es nicht gibt oder der noch gar nicht offen steht; dann faehrt man in
+    # einer Farbe herum, die man nicht verdient hat.
+    s.skin = clampi(int(wort.get(&"skin", 0)), 0, Skins.zahl() - 1)
+    if not Skins.frei(s.skin, s.hoechste_welle):
+        s.skin = 0
     var roh_f: Array = wort.get(&"ziel_fortschritt", [])
     for i in mini(roh_f.size(), s.ziel_fortschritt.size()):
         s.ziel_fortschritt[i] = clampi(int(roh_f[i]), 0, Tagesziel.menge(i))
