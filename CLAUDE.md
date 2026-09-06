@@ -47,7 +47,7 @@ godot --headless --path . --script tests/run_tests.gd         # ~3 s, Exitcode 1
 godot --headless --path . --script tools/wellenpruefer.gd     # 4 Umdrehungen, ~6 min
 godot --headless --path . --script tools/wellenpruefer.gd -- --spielraum
 godot --headless --path . --script tools/kolonielauf.gd       # 120 Tage Kolonie, ~4 min
-godot --headless --path . --script tools/artenkosten.gd       # was eine Art wirklich kostet
+godot --headless --path . --script tools/artenkosten.gd       # was eine Art und jedes Leitwesen wirklich kostet
 godot --headless --path . --script tools/mutationskosten.gd   # was ein Zug wirklich kostet, ~30 min
 godot --headless --path . --script tools/mutationskosten.gd -- --zug Plated
 ```
@@ -98,6 +98,32 @@ godot --headless --path . --script tools/mutationskosten.gd -- --zug Plated
 > `Wellen.umgebung()` fällt in späten Abschnitten weit ab, und ein Budget
 > kann zwar Lebenspunkte kürzen, aber **kein Zeitfenster verlängern**. Wer
 > das anfasst, fasst `Wellen.fenster()` an und nicht die Schranke.
+
+> **Und der Kolonielauf sagt es auch.** Er meldet, von welcher Welle bis
+> welcher seine Sitzungen fallen, wieviele Stufen der Spieler dabei hinter
+> der Sollkurve lag und welche Arten die Hülle gekostet haben. Genau das hat
+> die beiden Leitwesen-Fehler gefunden, an denen der Wellenprüfer
+> vorbeisah: „Chalk Ray 86, Shellback 68" bei einem Rückstand von im Schnitt
+> **1,0 Stufen** — die naheliegende Erklärung („der Spieler hängt hinterher")
+> war damit in einem Lauf widerlegt.
+>
+> **Zwei Lehren über Leitwesen, beide gemessen.**
+>
+> *Erstens: die Anmarschzeit zählt nicht als Kegelzeit.* `LEIT_SEKUNDEN`
+> heißt „so lange soll es dauern", und die Rechnung nahm an, der Kegel liege
+> vom ersten Augenblick an voll darauf. Ein Leitwesen tritt aber am Feldrand
+> ein, und solange es weiter weg ist als die Reichweite, passiert nichts.
+> Diese Totzeit ist eine **feste** Zahl Sekunden und fällt dort am stärksten
+> ins Gewicht, wo die geplante Dauer am kürzesten ist — bei Welle 6 waren 5,7
+> geplante Sekunden 21,5 gemessene. `Wellen.leben_in()` zieht sie jetzt ab.
+>
+> *Zweitens: ein Messstand, der Anmarsch als Kegelzeit zählt, misst sich
+> selbst.* `tools/artenkosten.gd` hält den Kegel unbedingt auf das Tier, auch
+> außerhalb der Reichweite; im Spiel wählt `Schlund.brennende()` nach
+> Wirkung, und was nichts abbekommt, wird nicht gewählt. Deshalb steht dort
+> jetzt **brennende Zeit** neben der Zeit im Feld. Die erste gehört zur
+> Rechnung, die zweite zum Spielgefühl — sie zu verwechseln hat hier schon
+> eine Änderung gerechtfertigt, die nichts half.
 
 Der Kolonielauf ist das Werkzeug, das die meisten Fehler gefunden hat. Er
 **spielt die Wellen wirklich durch** — mit dem Koloniestand, den ein normaler

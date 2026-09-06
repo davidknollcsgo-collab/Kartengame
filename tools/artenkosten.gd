@@ -42,6 +42,18 @@ const HOECHSTDAUER := 400.0
 ## Wer ankommt, wird zurueckgeworfen statt gezaehlt - genau wie im Spiel.
 ## Der erste Anlauf brach hier ab, und dann mass er bei allen ausser dem
 ## Kreiser die Anmarschzeit statt der Zeit bis zum Tod.
+## Wieviele Sekunden der Kegel wirklich auf diesem Tier brennt, bis es faellt.
+##
+## **Nicht dasselbe wie die Zeit bis zum Tod.** Ein langsames Tier, das am
+## Feldrand eintritt, schwimmt erst einmal ausserhalb der Reichweite heran -
+## dort steht die Uhr, aber der Kegel richtet nichts aus. Fuer die Frage "ist
+## sein Leben richtig gerechnet" zaehlt nur die brennende Zeit; fuer die
+## Frage "wie lange steht es im Feld" die ganze. Die erste Zahl gehoert zur
+## Rechnung, die zweite zum Spielgefuehl, und sie zu verwechseln hat hier
+## schon eine Aenderung gerechtfertigt, die nichts half.
+static var _brennzeit := 0.0
+
+
 static func zeit_bis_tot(art: int, welle: int) -> float:
     var z := Simulation.Zustand.new()
     Simulation.stelle_ein(z, welle)
@@ -51,6 +63,7 @@ static func zeit_bis_tot(art: int, welle: int) -> float:
     var zeit := 0.0
     var alter := 0.0
     var a := Arten.art(art)
+    _brennzeit = 0.0
     while rest > 0.0 and zeit < HOECHSTDAUER:
         zeit += TAKT
         alter += TAKT
@@ -71,14 +84,58 @@ static func zeit_bis_tot(art: int, welle: int) -> float:
         # `Regeln.wirkungsgrad()` und gehoert nicht in den Artenvergleich.
         var hell := Schlund.beleuchtung(Vector2.ZERO, blick, z.halbwinkel(),
             z.reichweite(), ort)
-        rest -= Schlund.schaden_an(z.leistung(), hell,
+        var weh := Schlund.schaden_an(z.leistung(), hell,
             Wellen.panzer_in(art, welle),
             Wellen.mindest_licht_in(art, welle),
-            Wellen.hoechst_licht_in(art, welle)) * TAKT
+            Wellen.hoechst_licht_in(art, welle))
+        if weh > 0.0:
+            _brennzeit += TAKT
+        rest -= weh * TAKT
         if ort.length() < Rundum.BOOT_RADIUS + Wellen.radius_in(art, welle):
             ort = ort.normalized() * (Rundum.BOOT_RADIUS + 190.0)
             alter = 0.0
     return zeit
+
+
+## Sekunden, bis dieses Leitwesen faellt - und wie lange es dauern sollte.
+##
+## **Ein Leitwesen wird nicht bepreist, sondern terminiert.**
+## `Wellen.leben_in()` rechnet sein Leben aus `LEIT_SEKUNDEN`: "so lange soll
+## es dauern", mal dem, was in dieser Sekunde wirklich ankommt. Die Rechnung
+## nimmt dabei an, der Kegel liege die ganze Zeit voll darauf - und das
+## stimmt am wenigsten dort, wo die geplante Dauer am kuerzesten ist. Bis das
+## Tier ueberhaupt in Reichweite ist, vergeht eine feste Zeit, und die faellt
+## bei sechs geplanten Sekunden staerker ins Gewicht als bei sechzehn.
+##
+## Gemessen wird hier gegen dieselbe Zahl, aus der das Leben faellt. Ueber
+## eins heisst: es steht laenger, als es soll.
+static func leit_faktor(art: int, welle: int) -> float:
+    var t := clampf(float(maxi(1, welle) - 1) / float(Graben.ZYKLUS - 1),
+        0.0, 1.0)
+    var soll := lerpf(Wellen.LEIT_SEKUNDEN_ANFANG, Wellen.LEIT_SEKUNDEN_ENDE, t)
+    var _egal := zeit_bis_tot(art, welle)
+    return _brennzeit / maxf(0.01, soll)
+
+
+## Das Leitwesen, das am weitesten ueber seiner geplanten Dauer steht -
+## gemessen an der Welle, auf der es wirklich auftritt.
+static func schlimmstes_leitwesen() -> Array:
+    var schlimmster := 0.0
+    var wer := -1
+    var wo := 0
+    for abschnitt in Arten.LEITFOLGE.size():
+        var art := Arten.leitwesen_fuer(abschnitt)
+        if art < 0:
+            continue
+        # Die Mitte des Abschnitts: dort steht das Leitwesen am haeufigsten,
+        # und die Raender sind Sonderfaelle.
+        var welle := int(Graben.WELLEN_JE_ABSCHNITT * (float(abschnitt) + 0.5)) + 1
+        var f := leit_faktor(art, welle)
+        if f > schlimmster:
+            schlimmster = f
+            wer = art
+            wo = welle
+    return [schlimmster, wer, wo]
 
 
 ## Wie weit die eingetragene Zahl danebenliegt, ueber alle Arten.
@@ -128,6 +185,24 @@ func _init() -> void:
     print("")
     print("Am weitesten daneben: %s mit dem %.2ffachen."
         % [schlimmste_art, schlimmster])
+    print("")
+    print("Leitwesen - gemessen gegen die geplante Dauer")
+    print("%-16s %6s %10s %10s %10s %8s"
+        % ["Leitwesen", "Welle", "geplant", "brennt", "im Feld", "Faktor"])
+    for abschnitt in Arten.LEITFOLGE.size():
+        var leit := Arten.leitwesen_fuer(abschnitt)
+        if leit < 0:
+            continue
+        var welle := int(Graben.WELLEN_JE_ABSCHNITT * (float(abschnitt) + 0.5)) + 1
+        var lt := clampf(float(maxi(1, welle) - 1) / float(Graben.ZYKLUS - 1),
+            0.0, 1.0)
+        var soll := lerpf(Wellen.LEIT_SEKUNDEN_ANFANG,
+            Wellen.LEIT_SEKUNDEN_ENDE, lt)
+        var ist := zeit_bis_tot(leit, welle)
+        var brennt := _brennzeit
+        print("%-16s %6d %10.1f %10.1f %10.1f %8.2f"
+            % [Arten.name_von(leit), welle, soll, brennt, ist,
+                brennt / maxf(0.01, soll)])
     print("Ein Faktor ueber 1 heisst: die Art kostet mehr, als sie bezahlt -")
     print("das Wellenbudget kauft mehr davon, als es sich leisten kann.")
     quit()

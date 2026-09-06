@@ -88,6 +88,11 @@ const LEIT_SEKUNDEN_ENDE := 16.0
 ## Umgebung zusammen einmal alles wegnehmen.
 const LEIT_MINDEST_ANTEIL := 0.25
 
+## Und dieselbe Untergrenze fuer die Dauer: die Anmarschzeit kann die geplante
+## Dauer in den ersten Wellen vollstaendig aufzehren, und ein Leitwesen, das
+## beim ersten Streifen faellt, ist kein Hoehepunkt, sondern ein Missverstaendnis.
+const LEIT_MINDEST_DAUER := 0.34
+
 
 ## --- Was ein Raeuber in **dieser** Welle mitbringt ---
 ##
@@ -121,7 +126,33 @@ static func leben_in(art: int, nummer: int) -> float:
         var kegel := Graben.LEISTUNG * Ausbau.leistung_faktor(nummer)
         var wirksam := maxf(kegel * LEIT_MINDEST_ANTEIL,
             kegel * umgebung(nummer) - panzer_in(art, nummer))
-        return wirksam * sekunden
+
+        # **Und die Sekunden, in denen der Kegel gar nicht hinreicht, zaehlen
+        # nicht mit.** Die Rechnung nahm an, er liege vom ersten Augenblick
+        # an voll darauf. Ein Leitwesen tritt aber wie alle anderen am Rand
+        # des Feldes ein, und solange es weiter weg ist als die Reichweite,
+        # passiert nichts - es schwimmt nur heran. Diese Totzeit ist eine
+        # **feste** Zahl Sekunden, und sie faellt dort am staerksten ins
+        # Gewicht, wo die geplante Dauer am kuerzesten ist.
+        #
+        # Gemessen mit `tools/artenkosten.gd`, geplant gegen wirklich:
+        #
+        #     Maw Mother   Welle  6    5,7 s geplant   21,5 s gemessen
+        #     Chalk Ray    Welle 16    7,1 s           17,9 s
+        #     Maw Mother   Welle 56   12,7 s           12,7 s
+        #     Chalk Ray    Welle 66   14,1 s           14,5 s
+        #
+        # Die Differenz ist genau die Anmarschzeit: 15,8 s, 10,8 s, 0, 0,4 -
+        # sie schrumpft, weil die Reichweite mit der Kolonie waechst. Ein
+        # Anfaenger stand damit ein Drittel seiner Runde vor einem einzigen
+        # Tier, waehrend der Rest der Welle durchlief.
+        #
+        # Also wird sie abgezogen. Der Rest bleibt gedeckelt: ein Leitwesen,
+        # das gar nichts mehr aushaelt, ist kein Hoehepunkt.
+        var weite := Graben.REICHWEITE * Ausbau.reichweite_faktor(nummer)
+        var tot := maxf(0.0, (Rundum.EINTRITT_RADIUS - weite)
+            / maxf(1.0, tempo_in(art, nummer)))
+        return wirksam * maxf(sekunden * LEIT_MINDEST_DAUER, sekunden - tot)
     var roh := Arten.leben(art) * zaehigkeit(nummer)
     if Mutationen.hat(nummer, Mutationen.Mutation.AUFGEDUNSEN):
         roh *= Mutationen.AUFGEDUNSEN_LEBEN

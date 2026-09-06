@@ -131,8 +131,25 @@ static func schritt(ort: Vector2, ziel: Vector2, tempo: float,
         var innen := clampf((eng - weite) / maxf(1.0, umlauf * 0.5),
             -1.0, 1.0)
         var herum := quer * (1.0 if sin(phase) >= 0.0 else -1.0)
-        k = (k * (1.0 - absf(innen)) + herum * absf(innen)
-            - k * maxf(0.0, innen) * 0.55).normalized()
+
+        # **Quer auf dem Ring, laengs daneben - und das stand hier
+        # verkehrt.** Der Anteil `absf(innen)` gewichtete das Kreisen, also
+        # gerade dann am staerksten, wenn das Tier **weit weg** vom Ring war.
+        # Ein Ringmaul, dessen Ring sich zusammenzieht, entfernte sich damit
+        # immer weiter von ihm und kreiste dafuer immer entschlossener: der
+        # Ring schrumpfte auf null, `innen` blieb bei -1, und das Tier flog
+        # bis in alle Ewigkeit dieselbe Bahn.
+        #
+        # Gemessen mit `tools/artenkosten.gd`: bei Welle 26 brannte der Kegel
+        # **null Sekunden** auf ihm, in vierhundert Sekunden Laufzeit. Nicht
+        # zaeh - unerreichbar. Der Kommentar zwei Zeilen darueber sagte seit
+        # jeher, wie es gemeint war ("ausserhalb kommt das Tier weiter
+        # heran"); nur tat der Code das Gegenteil.
+        #
+        # Richtig ist: auf dem Ring (`innen` nahe 0) quer, weit davon laengs.
+        var ring := 1.0 - absf(innen)
+        k = (k * absf(innen) + herum * ring
+            - k * maxf(0.0, innen) * 1.2).normalized()
         quer = k.orthogonal()
     # **Zurueckweichen, solange es brennt.** `weichen` kommt aus der
     # Helligkeit, in der das Tier gerade steht - wer es anleuchtet, schiebt

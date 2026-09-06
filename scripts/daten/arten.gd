@@ -274,13 +274,22 @@ const TABELLE: Array[Dictionary] = [
         &"takt": 1.1,
         &"farbe": Color(1.00, 0.74, 0.38),
         &"ab_welle": 66,
-        # **Gemessen, nicht geschaetzt.** Hier stand 1,24, und
-        # `tools/artenkosten.gd` mass das 3,3fache: er kreist, der Kegel
-        # laeuft ihm nach, und er braucht siebenundzwanzig Sekunden statt
-        # vier. Das Wellenbudget kaufte damit dreimal soviel Kreiser, wie es
-        # bezahlte - und der Wellenpruefer meldete eine Wand, deren Ursache
-        # nirgends stand.
-        &"aufwand": 3.2,
+        # **Gemessen, nicht geschaetzt - und zweimal gemessen.** Hier stand
+        # zuerst 1,24, und `tools/artenkosten.gd` mass das 3,3fache: er
+        # kreise, der Kegel laufe ihm nach, er brauche siebenundzwanzig
+        # Sekunden statt vier. Also 3,2.
+        #
+        # Das war die richtige Zahl fuer ein kaputtes Verhalten. In
+        # `Rundum.schritt()` gewichtete der Umlauf das Kreisen umso staerker,
+        # je **weiter** das Tier vom Ring entfernt war - ein Kreiser kam
+        # damit nie an und lief dem Kegel bis ans Feldende davon. Seit das
+        # Vorzeichen stimmt, misst er 0,78 statt 3,3: er kommt heran wie
+        # jedes andere Tier, nur eben im Bogen.
+        #
+        # Bei 3,2 kaufte das Budget danach **viermal zu wenig** von ihm.
+        # Eine Zahl, die ein Verhalten bepreist, wird falsch, sobald man das
+        # Verhalten repariert - und sie meldet sich nicht von selbst.
+        &"aufwand": 1.0,
         # **Sein ganzer Entwurf.** Er haelt diesen Abstand und laeuft
         # seitlich weiter, statt geradeaus zu kommen. Im Schlund waere das
         # sinnlos gewesen - dort sank alles dieselbe Bahn nach unten. Hier
