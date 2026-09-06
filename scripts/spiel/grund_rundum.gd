@@ -160,6 +160,16 @@ func _fuehre_glut(delta: float) -> void:
 ## das Feld eine schwarze Scheibe, und ob man faehrt oder steht, sieht man
 ## nur am Boot. Mit ihnen hat der Grund eine Richtung, und die Fahrt einen
 ## Bezug.
+## Halbe Breite eines Rippelbandes. Schmal, weil die Flaeche zaehlt: ein
+## Band ueber die ganze Feldbreite ist bei jedem Pixel mehr Fuellung, und
+## davon gibt es sechsundneunzig.
+const RIPPEL_BREIT := 5.0
+
+var _rippel_ecken := PackedVector2Array()
+var _rippel_farben := PackedColorArray()
+var _rippel_netz := PackedInt32Array()
+
+
 func _baue_rippel(rng: RandomNumberGenerator) -> void:
     var weite := Rundum.FELD_RADIUS + UEBERSTAND
     var richtung := rng.randf_range(0.0, PI)
@@ -180,6 +190,53 @@ func _baue_rippel(rng: RandomNumberGenerator) -> void:
             zug.append(p)
         if zug.size() > 3:
             _rippel.append(zug)
+    _baue_rippelnetz()
+
+
+## Die Rippel als **Baender**, nicht als Striche.
+##
+## Sechsundneunzig Haarlinien mit dreizehn Prozent Deckung quer ueber das
+## ganze Feld sahen aus, als haette jemand mit dem Lineal ins Wasser
+## gekratzt - dieselbe Beobachtung wie seinerzeit bei den Schlieren, und
+## dieselbe Ursache: eine Linie hat zwei Kanten und keinen Uebergang.
+##
+## Eine Sandrippel von oben ist kein Strich, sondern ein Ruecken: in der
+## Mitte am hellsten, zu beiden Seiten auf null auslaufend. Das sind drei
+## Punktreihen statt einer, und der Verlauf dazwischen macht die Arbeit.
+##
+## **Einmal gebaut, in einem Aufruf gezeichnet.** Die Form aendert sich nie;
+## sie kam trotzdem in jedem Bild als sechsundneunzig geglaettete Linienzuege
+## heraus. Ein Dreiecksnetz kostet dagegen nichts als das Fuellen - und
+## gemessen ist es billiger als die Linien, weil eine geglaettete Polylinie
+## in Godot selbst schon Geometrie erzeugt.
+func _baue_rippelnetz() -> void:
+    _rippel_ecken = PackedVector2Array()
+    _rippel_farben = PackedColorArray()
+    _rippel_netz = PackedInt32Array()
+    var mitte := Color(0.22, 0.44, 0.50, 0.15)
+    var aus := Color(0.22, 0.44, 0.50, 0.0)
+    for zug: PackedVector2Array in _rippel:
+        var n := zug.size()
+        var erste := _rippel_ecken.size()
+        for i in n:
+            # Die Normale aus den Nachbarn, damit das Band der Kurve folgt
+            # statt an jeder Biegung zu knicken.
+            var vor: Vector2 = zug[maxi(0, i - 1)]
+            var nach: Vector2 = zug[mini(n - 1, i + 1)]
+            var quer := (nach - vor)
+            quer = quer.orthogonal().normalized() if quer.length() > 0.001 \
+                else Vector2.UP
+            _rippel_ecken.append(zug[i] - quer * RIPPEL_BREIT)
+            _rippel_farben.append(aus)
+            _rippel_ecken.append(zug[i])
+            _rippel_farben.append(mitte)
+            _rippel_ecken.append(zug[i] + quer * RIPPEL_BREIT)
+            _rippel_farben.append(aus)
+        for i in n - 1:
+            var a := erste + i * 3
+            var b := a + 3
+            _rippel_netz.append_array([a, b, b + 1, a, b + 1, a + 1])
+            _rippel_netz.append_array([a + 1, b + 1, b + 2, a + 1, b + 2, a + 2])
 
 
 ## Felsen.
@@ -239,6 +296,9 @@ func _baue_felsen(rng: RandomNumberGenerator) -> void:
         fels[&"weit"] = Riff.hoechster_radius(fels)
         fels[&"umriss"] = _felskante(fels)
         fels[&"schulter"] = _felskante(fels, 0.58)
+        # Der Saum liegt **ausserhalb** der Kante. Er traegt keine Form,
+        # sondern nur den Uebergang ins Wasser - siehe `_zeichne_felsen()`.
+        fels[&"saum"] = _felskante(fels, 1.12)
         _felsen.append(fels)
 
 
@@ -652,8 +712,10 @@ func _draw() -> void:
 
 
 func _zeichne_rippel() -> void:
-    for zug in _rippel:
-        draw_polyline(zug, Color(0.22, 0.44, 0.50, 0.13), 1.0, true)
+    if _rippel_netz.is_empty():
+        return
+    RenderingServer.canvas_item_add_triangle_array(
+        get_canvas_item(), _rippel_netz, _rippel_ecken, _rippel_farben)
 
 
 func _zeichne_felsen(lage: int) -> void:
@@ -665,53 +727,141 @@ func _zeichne_felsen(lage: int) -> void:
         if int(f[&"lage"]) != lage \
                 or not _im_blick(f[&"ort"], float(f[&"weit"]) + 40.0):
             continue
-        var umriss: PackedVector2Array = f[&"umriss"]
-        # Die Flaeche deckt nur ab, was dahinter liegt - dunkler als das
-        # Wasser davor, wie das Sediment im Schlund. Die Form traegt die
-        # Kante.
-        draw_colored_polygon(umriss, Color(0.016, 0.030, 0.038, 1.0))
-        var zu := umriss + PackedVector2Array([umriss[0]])
-        draw_polyline(zu, Color(0.32, 0.56, 0.60, 0.10 * kraft), 4.0, true)
-        draw_polyline(zu, Color(0.32, 0.56, 0.60, 0.44 * kraft), 1.3, true)
+        _kuppel(f, kraft)
 
-        # **Der Fels hat eine Lichtseite.** Der Rand lief rundum mit
-        # derselben Deckung, und damit war ein Massiv eine schwarze Flaeche
-        # mit einem Kringel darum - flach, egal wie gross. Ein Koerper
-        # entsteht daraus erst, wenn eine Seite heller ist als die andere,
-        # und welche Seite das ist, sagt `licht_spitze`.
-        #
-        # Gerechnet wird das je Eckpunkt und nicht als Bogen: der Umriss ist
-        # unrund, und ein Bogen ueber eine unrunde Form legt den Glanz
-        # daneben. Die Punktdichte ist ohnehin da - es kostet eine Schleife
-        # ueber achtundvierzig Punkte, keinen zweiten Umriss.
-        var mitte: Vector2 = f[&"ort"]
-        var zum_licht := Vector2.UP
-        if licht_reichweite > 0.0:
-            var d := licht_spitze - mitte
-            if d.length_squared() > 1.0:
-                zum_licht = d.normalized()
-        var hell := 0.25 + 0.75 * _angeleuchtet(mitte)
-        var saum := PackedVector2Array()
-        for i in umriss.size():
-            var punkt := umriss[i]
-            if (punkt - mitte).normalized().dot(zum_licht) > 0.28:
-                saum.append(punkt)
-            elif saum.size() > 1:
-                draw_polyline(saum, Color(0.62, 0.82, 0.86,
-                    0.30 * kraft * hell), 1.6, true)
-                saum = PackedVector2Array()
-            else:
-                saum = PackedVector2Array()
-        if saum.size() > 1:
-            draw_polyline(saum, Color(0.62, 0.82, 0.86,
-                0.30 * kraft * hell), 1.6, true)
 
-        var sch: PackedVector2Array = f[&"schulter"]
-        draw_polyline(sch + PackedVector2Array([sch[0]]),
-            Color(0.32, 0.56, 0.60, 0.15 * kraft), 1.0, true)
+## Ein Fels als **Kuppel**, nicht als Loch mit einem Kringel darum.
+##
+## **Der Grund, warum das umgebaut wurde.** Ein Fels war eine fast schwarze
+## Flaeche, eine helle Umrisslinie, eine zweite Linie weiter innen (die
+## Schulter) und ein paar Risse. Vier Linien je Stein, vierzig Steine im
+## Bild - und die Welt sah aus wie eine Zeichnung mit dem Lineal. Was fehlte,
+## waren nicht Einzelheiten, sondern **Uebergaenge**: zwischen Stein und
+## Wasser, zwischen Kuppe und Flanke lag jedes Mal eine Kante.
+##
+## Jetzt ist es ein Netz aus drei Ringen, in **einem** Aufruf:
+##
+## * die **Schulter** (0,58) — die Kuppe, die dem Licht zugewandt ist,
+## * die **Kante** (1,0) — die Flanke, die ins Dunkle abfaellt,
+## * der **Saum** (1,12) — ausserhalb der Kante, auf Deckung null.
+##
+## Der Saum ist der Trick: er macht aus der Silhouette einen Verlauf. Ein
+## dunkler Koerper in truebem Wasser hat keine Schnittkante, sondern einen
+## Hof, in dem er verschwindet - und ohne ihn sitzt der Stein wie
+## ausgeschnitten auf dem Wasser, ganz gleich wie schoen seine Flaeche ist.
+##
+## Die Schulterlinie ist damit **weg**, und das ist kein Verlust: sie war die
+## Kante zwischen Kuppe und Flanke, und jetzt ist da ein Verlauf. Wer eine
+## Kante zeichnet, wo ein Uebergang hingehoert, verdoppelt den Umriss.
+func _kuppel(f: Dictionary, kraft: float) -> void:
+    var umriss: PackedVector2Array = f[&"umriss"]
+    var schulter: PackedVector2Array = f[&"schulter"]
+    var saum: PackedVector2Array = f[&"saum"]
+    var n := umriss.size()
+    if n < 3 or schulter.size() != n or saum.size() != n:
+        return
+
+    var mitte: Vector2 = f[&"ort"]
+    var zum_licht := Vector2.UP
+    if licht_reichweite > 0.0:
+        var d := licht_spitze - mitte
+        if d.length_squared() > 1.0:
+            zum_licht = d.normalized()
+    var hell := _angeleuchtet(mitte)
+
+    # Der Grundton des Steins. Er deckt ab, was hinter ihm liegt - dunkler
+    # als das Wasser davor, wie das Sediment im Schlund.
+    var dunkel := Color(0.016, 0.030, 0.038, 1.0)
+    # Wieviel Licht die Kuppe hoechstens annimmt. Quadriert angewandt, weil
+    # ein linearer Verlauf ueber eine ganze Flaeche wie ein Farbverlauf
+    # aussieht und nicht wie Licht: Licht faellt steil ab, sobald eine
+    # Flaeche sich wegdreht.
+    var gewinn := (0.9 + 3.4 * hell) * kraft
+
+    var ecken := PackedVector2Array()
+    var farben := PackedColorArray()
+
+    # Die Nabe: die Kuppe in ihrer vollen Helligkeit.
+    ecken.append(mitte)
+    farben.append(_steinfarbe(dunkel, gewinn, 1.0))
+
+    for i in n:
+        var zu_ihm: float = maxf(0.0,
+            (umriss[i] - mitte).normalized().dot(zum_licht))
+        ecken.append(schulter[i])
+        farben.append(_steinfarbe(dunkel, gewinn, 0.35 + 0.65 * zu_ihm))
+    for i in n:
+        var zu_ihm: float = maxf(0.0,
+            (umriss[i] - mitte).normalized().dot(zum_licht))
+        ecken.append(umriss[i])
+        farben.append(_steinfarbe(dunkel, gewinn * 0.30, 0.20 * zu_ihm))
+    for i in n:
+        ecken.append(saum[i])
+        farben.append(Color(dunkel.r, dunkel.g, dunkel.b, 0.0))
+
+    var netz := PackedInt32Array()
+    for i in n:
+        var j := (i + 1) % n
+        # Nabe -> Schulter
+        netz.append_array([0, 1 + i, 1 + j])
+        # Schulter -> Kante
+        netz.append_array([1 + i, 1 + n + i, 1 + n + j])
+        netz.append_array([1 + i, 1 + n + j, 1 + j])
+        # Kante -> Saum
+        netz.append_array([1 + n + i, 1 + 2 * n + i, 1 + 2 * n + j])
+        netz.append_array([1 + n + i, 1 + 2 * n + j, 1 + n + j])
+    RenderingServer.canvas_item_add_triangle_array(
+        get_canvas_item(), netz, ecken, farben)
+
+    # **Die Kante bleibt, aber nur wo Licht darauf faellt.**
+    #
+    # Sie stand rundum auf vierundvierzig Prozent, und damit war sie das
+    # Erste, was man von einem Stein sah - im Bild vierzig helle Kringel auf
+    # schwarzem Wasser. Ein Fels im Dunkeln hat keinen leuchtenden Rand; was
+    # ihn im Dunkeln zeigt, ist der Saum. Der Rand ist die Antwort auf das
+    # Licht und sonst nichts.
+    #
+    # Gerechnet je Eckpunkt und nicht als Bogen: der Umriss ist unrund, und
+    # ein Bogen ueber eine unrunde Form legt den Glanz daneben.
+    # **Was aufhaelt, bleibt sichtbar.** Nur die vorderste Lage stoesst das
+    # Boot ab; ein Hindernis, das man erst sieht, wenn man es anleuchtet,
+    # ist keine Entscheidung, sondern ein Hinterhalt aus Stein. Die Kulisse
+    # dahinter darf dagegen im Dunkeln verschwinden - dorthin faehrt
+    # niemand.
+    var grundrand := 0.19 if bool(f.get(&"fest", false)) else 0.05
+    var rand := grundrand + 0.52 * hell
+    var glanz := PackedVector2Array()
+    for i in n:
+        if (umriss[i] - mitte).normalized().dot(zum_licht) > 0.10:
+            glanz.append(umriss[i])
+        else:
+            if glanz.size() > 1:
+                _kantenzug(glanz, rand * kraft)
+            glanz = PackedVector2Array()
+    if glanz.size() > 1:
+        _kantenzug(glanz, rand * kraft)
+
+    # Risse nur, wo das Licht sie findet. Ein Riss, den man auch im Dunkeln
+    # sieht, ist aufgemalt.
+    if hell > 0.05:
         for riss in f[&"risse"]:
-            draw_polyline(riss, Color(0.32, 0.56, 0.60, 0.12 * kraft),
-                1.0, true)
+            draw_polyline(riss, Color(0.32, 0.56, 0.60,
+                0.30 * hell * kraft), 1.0, true)
+
+
+## Ein Stueck Lichtkante: ein weiter blasser Hof und ein schmaler Kern
+## darauf. Dieselbe Machart wie bei den Leuchtroehren - eine Linie mit einem
+## Hof hat einen Uebergang, eine ohne hat eine Kante.
+func _kantenzug(punkte: PackedVector2Array, staerke: float) -> void:
+    draw_polyline(punkte, Color(0.42, 0.68, 0.74,
+        staerke * 0.22), 5.0, true)
+    draw_polyline(punkte, Color(0.72, 0.90, 0.94, staerke), 1.4, true)
+
+
+## Der Ton eines Steins bei gegebener Zuwendung zum Licht.
+func _steinfarbe(dunkel: Color, gewinn: float, zu: float) -> Color:
+    var st := 1.0 + gewinn * zu * zu
+    return Color(dunkel.r * st, dunkel.g * st, dunkel.b * st, 1.0)
 
 
 func _zeichne_bewuchs(lage: int) -> void:
