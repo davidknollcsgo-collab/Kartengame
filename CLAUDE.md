@@ -95,8 +95,9 @@ godot --headless --path . --script tools/mutationskosten.gd -- --zug Plated
 >
 > **Was offen bleibt:** die zwei Sitzungen (Wellen 161–165 und 176). Oben in
 > ihrer Trefferliste stehen **Shellback** und **Spawncloud** — beide mit
-> Aufwand 1,0 und beide gemessen darüber (0,80 und 1,52 in
-> `tools/artenkosten.gd`). Und ein zweiter Verdacht, unverändert:
+> Aufwand 1,0. Der naheliegende Schluss, ihnen einen Preis zu geben, ist
+> inzwischen gemessen und **widerlegt**; die Begründung steht weiter unten
+> beim Kolonielauf, und sie gilt hier genauso. Und ein zweiter Verdacht, unverändert:
 > `Wellen.umgebung()` fällt in späten Abschnitten weit ab, und ein Budget
 > kann zwar Lebenspunkte kürzen, aber **kein Zeitfenster verlängern**. Wer
 > das anfasst, fasst `Wellen.fenster()` an und nicht die Schranke.
@@ -115,14 +116,59 @@ godot --headless --path . --script tools/mutationskosten.gd -- --zug Plated
 > Summe unverändert 38). Eine Reparatur, die stimmt und nichts bewirkt, ist
 > ein Zwischenergebnis und kein Erfolg.
 >
-> **Was die Zahlen jetzt nahelegen:** oben stehen durchweg Arten mit hoher
-> `wucht` — Chalk Ray 4, Shellback 3, Shieldcoral 3, Spiegler 3. `aufwand`
-> bepreist aber **Kegelzeit je Lebenspunkt** und nicht, was ein
-> Durchkommen kostet. Zwei Arten mit gleicher Kegelzeit und Wucht 1 gegen 4
-> zahlen denselben Preis und kosten das Vierfache an Hülle. Wer das anfasst,
-> braucht dafür erst ein Werkzeug, das eine **ganze Welle** misst — so wie
-> `tools/mutationskosten.gd` es für die Züge tut; die Ein-Tier-Messung sieht
-> genau das nicht.
+> **Das Werkzeug, das hier gefordert war, gibt es jetzt — und es hat die
+> Vermutung widerlegt, die an dieser Stelle stand.** Hier hieß es: oben
+> stehen durchweg Arten mit hoher `wucht`, `aufwand` bepreise nur Kegelzeit,
+> also fehle ein Wucht-Zuschlag. `tools/artenlast.gd` sperrt jede Art
+> einzeln aus achtzig Wellen aus und vergleicht den Hüllenverlust:
+>
+> | Art | Wucht | tritt auf | Anteil an der Hülle | Preis |
+> |---|---|---|---|---|
+> | Ringrunner | 2 | 130 | −46,9 % | 3,20 |
+> | Fangjaw | 1 | 152 | −15,5 % | 1,00 |
+> | Shieldcoral | 3 | 130 | −14,4 % | 1,60 |
+> | Emberjelly | 2 | 148 | −12,4 % | 1,45 |
+> | **Driftanchor** | 2 | 145 | **0,0 %** | 1,30 |
+> | Lunge Eel | 2 | 153 | +5,1 % | 1,22 |
+> | Spawncloud | 1 | 1750 | +11,3 % | 1,00 |
+> | **Shellback** | 3 | 136 | **+18,6 %** | 1,00 |
+> | **Mirrorshell** | 3 | 135 | **+19,5 %** | 1,72 |
+>
+> **Die Wucht ist nicht der Hebel.** Shieldcoral, Mirrorshell und Shellback
+> haben alle drei Wucht 3 und liegen bei −14 %, +20 % und +19 %. Ein
+> pauschaler Zuschlag hätte die Falschen getroffen.
+>
+> **Und der Preis ist es auch nicht — das ist der teuer bezahlte Teil.**
+> Shellback war die einzige Art mit Wucht 3 ohne eigenen Preis (1,0 als
+> Vorgabewert, während die Artgenossen 1,60 und 1,72 zahlen) und die einzige,
+> bei der Artenlast und Kolonielauf übereinstimmten. Von 1,00 auf 1,45
+> gesetzt sprang der Kolonielauf von **38 auf 118 gefallene Sitzungen** — und
+> Shellbacks eigener Hüllenposten von 58 auf **229**, obwohl es nach der
+> Erhöhung seltener auftritt. Am Koloniestand lag es nicht: der Rückstand zur
+> Sollkurve sank dabei von 1,0 auf 0,2 Stufen.
+>
+> **Warum das so ausgeht, ist die eigentliche Lehre, und sie ist jetzt
+> dreimal bestätigt.** `Wellen.auftritte()` kauft, bis das Budget leer ist,
+> und füllt den Rest mit der **billigsten** Art auf. Wer eine Art teurer
+> macht, nimmt nicht Gefahr aus der Welle — er gibt ihr Budget dem Füller.
+> Spawncloud stellt schon jetzt 1750 von 3822 Tieren (46 %) bei fünf
+> Lebenspunkten; mehr davon heißt mehr Körper gleichzeitig im Feld, und ein
+> Kegel deckt davon einen kleineren Bruchteil. Beim Kreiser lief dasselbe in
+> die andere Richtung: billiger gemacht, Welle von 24 auf 41 Tiere, 38 → 121
+> Fälle.
+>
+> **`aufwand` ist damit kein Schwierigkeitsregler, sondern ein
+> Zusammensetzungsregler** — und die Zusammensetzung, die er erzeugt, wird
+> von der billigsten Art bestimmt und nicht von der, an der man dreht. Jede
+> Einzelpreis-Änderung übergibt die Welle dem Füller, und die Trefferliste
+> des Kolonielaufs nennt danach den, der übrig war.
+>
+> **Was daraus folgt und noch offen ist:** der Hebel ist nicht ein Preis,
+> sondern der **Abstand** zwischen dem billigsten Tier und dem Rest — oder
+> der Füller selbst. Wer das anfasst, fasst `Wellen.billigste()` und
+> Spawncloud an, nicht eine einzelne Zeile in der Artentabelle. Und er misst
+> es mit dem Kolonielauf, nicht mit dem Wellenprüfer: der spielt auf der
+> Sollkurve und hat bei beiden Fehlschlägen nichts gemeldet.
 >
 > **Drei Lehren, zwei über Leitwesen und eine über das Messen selbst.**
 >
