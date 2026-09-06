@@ -984,12 +984,38 @@ func _schnitt(breite: float, oben: float, unten: float, stand: KolonieStand,
 ## auseinander und nur wenige. Vier reichen; bei zwanzig waere es ein
 ## Notenblatt.
 func _fels(breite: float, kopf: float, fuss: float) -> void:
-    var ecken := PackedVector2Array([
-        Vector2(0.0, kopf), Vector2(breite, kopf),
-        Vector2(breite, fuss), Vector2(0.0, fuss),
-    ])
-    _flaeche.draw_polygon(ecken, PackedColorArray([
-        FELS_OBEN, FELS_OBEN, FELS_UNTEN, FELS_UNTEN]))
+    # **Die Oberkante ist gezackt, nicht gerade.** Sie war eine waagerechte
+    # Linie ueber die volle Breite, und genau daran sah der halbe Bildschirm
+    # aus wie ein aufgesetztes Feld: Fels hat keine Wasserwaage. Der Verlauf
+    # daran zu heften genuegt nicht - man sieht die Kante trotzdem, weil
+    # links und rechts derselbe Ton auf derselben Hoehe steht.
+    #
+    # Gerechnet, nicht gewuerfelt: drei Sinus mit teilerfremden Perioden. Ein
+    # Wurf sähe bei jedem Bild anders aus, und ein Fels, der flackert, ist
+    # kein Fels.
+    const ZACKEN := 26
+    var tief := minf(22.0, (fuss - kopf) * 0.06)
+    var ecken := PackedVector2Array()
+    var farben := PackedColorArray()
+    for i in ZACKEN + 1:
+        var t := float(i) / float(ZACKEN)
+        var x := t * breite
+        var wellig := 0.55 * sin(t * 7.1) + 0.30 * sin(t * 17.3 + 1.7) \
+            + 0.15 * sin(t * 31.7 + 0.4)
+        ecken.append(Vector2(x, kopf + tief * (0.5 + 0.5 * wellig)))
+        farben.append(FELS_OBEN)
+    ecken.append(Vector2(breite, fuss))
+    farben.append(FELS_UNTEN)
+    ecken.append(Vector2(0.0, fuss))
+    farben.append(FELS_UNTEN)
+    _flaeche.draw_polygon(ecken, farben)
+
+    # Ein heller Saum auf der Kante - Streulicht von oben faellt auf den
+    # Grat und nicht in die Kerbe.
+    var saum := PackedVector2Array()
+    for i in ZACKEN + 1:
+        saum.append(ecken[i])
+    _flaeche.draw_polyline(saum, Color(0.46, 0.66, 0.70, 0.16), 1.4, true)
 
     var spanne := fuss - kopf
     for i in 5:
