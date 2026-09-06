@@ -88,13 +88,33 @@ func _hexweg(kasten: Rect2, schraege := 12.0) -> PackedVector2Array:
     ])
 
 
+## **Grund und Rand als Verlauf, nicht als Flaeche mit Rahmen.**
+##
+## Das Sechseck bleibt - es ist die Handschrift dieses Bedienbildes und
+## unterscheidet es vom runden Graben dahinter. Was sich aendert, ist alles
+## darin: der Grund war eine Farbe, der Rand eine Linie mit ueberall
+## derselben Deckung. Ein Koerper unter Licht ist oben heller als unten, und
+## seine Unterkante leuchtet nicht.
+##
+## Dieselbe Regel wie im Ausbau (`kolonie_schirm.gd::_tafelgrund`) und
+## draussen im Graben. Sie ist hier nur ueber ein Sechseck gelegt statt ueber
+## eine gerundete Karte.
 func _tafel(kasten: Rect2, farbe := RAHMEN, deckung := 0.42,
         schraege := 12.0) -> void:
     var weg := _hexweg(kasten, schraege)
-    _flaeche.draw_colored_polygon(weg, Color(0.020, 0.052, 0.066, 0.72))
-    var zu := weg + PackedVector2Array([weg[0]])
-    _flaeche.draw_polyline(zu, Color(farbe.r, farbe.g, farbe.b, deckung),
-        1.3, true)
+    var grund := PackedColorArray()
+    var rand := PackedColorArray()
+    for punkt in weg:
+        var t := clampf((punkt.y - kasten.position.y)
+            / maxf(1.0, kasten.size.y), 0.0, 1.0)
+        var st := lerpf(1.85, 0.50, t * t)
+        grund.append(Color(0.020 * st, 0.052 * st, 0.066 * st, 0.78))
+        rand.append(Color(farbe.r, farbe.g, farbe.b,
+            deckung * lerpf(1.0, 0.22, t * t)))
+    _flaeche.draw_polygon(weg, grund)
+    rand.append(rand[0])
+    _flaeche.draw_polyline_colors(weg + PackedVector2Array([weg[0]]),
+        rand, 1.3, true)
 
 
 ## Ein segmentierter Balken. **Segmente, nicht ein glatter Streifen**: bei
@@ -329,10 +349,19 @@ func _karte(hoehe: float) -> void:
         b + blick * 5.5, b - blick * 3.0 + quer * 3.4,
         b - blick * 3.0 - quer * 3.4]), HELL)
 
+    # **Die Zeile braucht einen Grund.** Sie stand blank ueber der Welt, und
+    # wenn dort gerade ein Tier im Strahl leuchtete, war sie nicht mehr zu
+    # lesen - heller Text auf hellem Grund. Ein Sechseck darunter ist
+    # dieselbe Form wie bei jeder anderen Angabe im Bedienbild, nur schmal.
     var anteil: float = karte.anteil() if karte != null else 0.0
-    _text(Vector2(mitte.x, mitte.y + r + 14.0),
-        "%d%% SCANNED  ·  %d SITES" % [int(round(anteil * 100.0)),
-        int(lauf.funde)], 10, LEISE, true)
+    var zeile := "%d%% SCANNED  ·  %d SITES" % [
+        int(round(anteil * 100.0)), int(lauf.funde)]
+    var zeilenbreit := _schrift.get_string_size(zeile,
+        HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
+    var unten := mitte.y + r + 9.0
+    _tafel(Rect2(mitte.x - zeilenbreit * 0.5 - 10.0, unten - 12.0,
+        zeilenbreit + 20.0, 20.0), RAHMEN, 0.22, 6.0)
+    _text(Vector2(mitte.x, unten + 2.0), zeile, 10, LEISE, true)
 
 
 ## Das aufgedeckte Feld, zeilenweise zusammengefasst.
@@ -342,6 +371,15 @@ func _karte(hoehe: float) -> void:
 ## waeren teurer als der ganze Meeresgrund. Zusammenhaengende Felder einer
 ## Zeile werden deshalb zu einem Rechteck - der aufgedeckte Teil ist ein
 ## Fleck, also bleiben ein paar Dutzend uebrig.
+## **Ein Saum um jeden Lauf geht hier nicht.** Der Versuch lag nahe - jeden
+## Lauf zweimal zeichnen, einmal breit und blass darunter -, und im Bild kam
+## eine Schraffur heraus: die Saeume zweier uebereinanderliegender Zeilen
+## ueberdecken sich, und wo sich zwei Deckungen addieren, steht ein heller
+## Streifen. Weich wird eine Flaeche aus Rechtecken nur, wenn die weiche
+## Kante **einmal** um das Ganze laeuft und nicht um jedes Stueck - und dafuer
+## muesste man den Rand des Flecks kennen, nicht seine Zeilen. Fuer eine
+## Anzeige von 128 Punkten ist das den Aufwand nicht wert; die Treppe darin
+## liest sich als Raster, die Schraffur las sich als Fehler.
 func _karte_aufgedeckt(karte: Karte, mitte: Vector2, faktor: float) -> void:
     var farbe := Color(HELL.r, HELL.g, HELL.b, 0.16)
     var kante := Karte.ZELLE * faktor
@@ -355,10 +393,9 @@ func _karte_aufgedeckt(karte: Karte, mitte: Vector2, faktor: float) -> void:
             elif not offen and lauf_von >= 0:
                 var a := karte.mitte_von(Vector2i(lauf_von, zy))
                 var breit := float(zx - lauf_von) * kante
-                _flaeche.draw_rect(Rect2(
-                    Vector2(a.x, a.y) * faktor + mitte
-                        - Vector2.ONE * (kante * 0.5),
-                    Vector2(breit, kante)), farbe)
+                var ecke := Vector2(a.x, a.y) * faktor + mitte \
+                    - Vector2.ONE * (kante * 0.5)
+                _flaeche.draw_rect(Rect2(ecke, Vector2(breit, kante)), farbe)
                 lauf_von = -1
 
 
