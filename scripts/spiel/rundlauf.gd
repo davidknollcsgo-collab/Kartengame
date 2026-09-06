@@ -181,6 +181,20 @@ var _zieht := false
 var _tiere: Array[Raeuber] = []
 var _wellenzeit := 0.0
 var _offen := 0
+
+## Ob beim letzten Wellenende schon etwas zu bauen war.
+##
+## **Die Flanke, nicht der Zustand.** Wer das Angebot ausschlaegt und
+## weiterfaehrt, hat weiter Naehrstoff auf dem Konto - eine Abfrage auf den
+## blossen Zustand haette die Tafel nach jeder Welle wieder aufgeschlagen.
+## Ein Bau macht die Bedingung falsch (`baut()`), also spannt sie sich von
+## selbst wieder, wenn er fertig ist.
+var _bau_bereit := false
+
+## Ob der Koloniebildschirm aus der Fahrt heraus aufging. Dann fuehrt
+## Schliessen zurueck in die Fahrt und nicht ins Pausenmenue - sonst waere
+## der automatische Halt ein zusaetzlicher Tipp und keine Erleichterung.
+var _ausbau_halt := false
 var _schuetteln := 0.0
 
 ## Woher der letzte Treffer kam, und wie frisch er ist.
@@ -716,6 +730,11 @@ func starte() -> void:
     atem = 0.0
     gehalten = false
     bestmarke = false
+    # **Mit dem Stand von jetzt gespannt.** Wer mit vollem Konto losfaehrt,
+    # soll nicht nach der ersten Welle angehalten werden - er hatte den
+    # Ausbau eben vor der Nase und ist absichtlich daran vorbeigefahren.
+    _bau_bereit = Fortschritt.stand.kann_irgendwas_bauen()
+    _ausbau_halt = false
     _blasen.clear()
     _spur.clear()
     # Die naechste Welle sagt der Koloniestand. `--welle` sticht das aus -
@@ -819,6 +838,15 @@ func _bau_fertig(_kammer: int) -> void:
 
 
 func _kolonie_zu() -> void:
+    # Aus dem Halt heraus geht es unmittelbar weiter - das Angebot soll die
+    # Fahrt nicht verlaengern, sondern nur unterbrechen. Nach dem Bau ist
+    # ohnehin nichts mehr zu bauen, und die Flanke ist entspannt.
+    if _ausbau_halt:
+        _ausbau_halt = false
+        _bau_bereit = Fortschritt.stand.kann_irgendwas_bauen()
+        if lage == Lage.PAUSE:
+            weiter()
+            return
     _menue.visible = true
 
 
@@ -856,6 +884,32 @@ func _welle_geschafft() -> void:
     welle_nummer += 1
     atem = ATEM
     Klang.spiele(Klang.Ton.WELLE, 0.5, 1.25)
+    _biete_ausbau_an()
+
+
+## Der Halt zwischen zwei Wellen, wenn etwas zu bauen ist.
+##
+## **Warum hier und nicht sofort.** Der Naehrstoff faellt je erlegtem Tier,
+## also wird mitten in einer Welle staendig etwas bezahlbar. Ein Halt in
+## diesem Augenblick nimmt dem Spieler den Finger vom Boot, waehrend zwanzig
+## Raeuber im Wasser stehen. Das Ende einer Welle ist die Stelle, an der
+## ohnehin durchgeatmet wird (`ATEM`), und der Ausbau gehoert genau dorthin.
+##
+## **Und warum nur auf der steigenden Flanke** steht bei `_bau_bereit`.
+func _biete_ausbau_an() -> void:
+    var stand: KolonieStand = Fortschritt.stand
+    var bereit := stand.kann_irgendwas_bauen()
+    var neu_bereit := bereit and not _bau_bereit
+    _bau_bereit = bereit
+    if not neu_bereit or not stand.auto_ausbau or lage != Lage.SPIEL:
+        return
+    lage = Lage.PAUSE
+    _zieht = false
+    _ausbau_halt = true
+    _menue.visible = false
+    _koloniebild.oeffne()
+    _koloniebild.zeige_reiter(0)
+    Klang.spiele(Klang.Ton.TIPP, 0.8, 1.35)
 
 
 ## Die Fahrt ist vorbei - gehalten oder gebrochen.

@@ -109,6 +109,19 @@ var bildrate := 0
 var laut := 0.7
 var beben := true
 
+## Ob die Fahrt von selbst anhaelt, sobald etwas gebaut werden kann.
+##
+## **Der Ausbau war eine Sache, an die man denken musste.** Nach der Fahrt
+## stand ein Punkt am Knopf COLONY, und wer ihn uebersah, fuhr mit dem
+## gestrigen Boot weiter - der zweite Halbkreis der Schleife lief leer. Ein
+## Halt am Ende einer Welle bringt den Ausbau dorthin, wo er hingehoert:
+## zwischen zwei Wellen, wenn der Naehrstoff frisch ist.
+##
+## Er bleibt ein **Angebot**. Die Tafel geht auf, man baut oder auch nicht,
+## und zu geht sie in die Fahrt zurueck. Und wer lieber selbst entscheidet,
+## schaltet ihn aus - dann bleibt der Punkt am Knopf, und sonst nichts.
+var auto_ausbau := true
+
 
 func _init() -> void:
     stufen.resize(Kammern.zahl())
@@ -197,6 +210,21 @@ func hindernis(kammer: int) -> String:
 
 func kann_bauen(kammer: int) -> bool:
     return hindernis(kammer).is_empty()
+
+
+## Ob gerade wenigstens eine Kammer bezahlbar und frei ist.
+##
+## **Eine Wahrheit, drei Leser.** Der Punkt am Knopf COLONY, der Halt
+## zwischen zwei Wellen und der Bericht fragen dasselbe; stuenden dafuer drei
+## Schleifen an drei Stellen, blinkte irgendwann der Punkt, ohne dass die
+## Fahrt anhaelt, oder umgekehrt.
+func kann_irgendwas_bauen() -> bool:
+    if baut():
+        return false
+    for k in Kammern.zahl():
+        if kann_bauen(k):
+            return true
+    return false
 
 
 func starte_bau(kammer: int, jetzt: float) -> bool:
@@ -599,6 +627,7 @@ func zu_wort() -> Dictionary:
         &"bildrate": bildrate,
         &"laut": laut,
         &"beben": beben,
+        &"auto_ausbau": auto_ausbau,
     }
 
 
@@ -663,6 +692,7 @@ static func aus_wort(wort: Dictionary) -> KolonieStand:
     s.bildrate = b if b in [0, 60, 120] else 0
     s.laut = clampf(float(wort.get(&"laut", 0.7)), 0.0, 1.0)
     s.beben = bool(wort.get(&"beben", true))
+    s.auto_ausbau = bool(wort.get(&"auto_ausbau", true))
     var roh_f: Array = wort.get(&"ziel_fortschritt", [])
     for i in mini(roh_f.size(), s.ziel_fortschritt.size()):
         s.ziel_fortschritt[i] = clampi(int(roh_f[i]), 0, Tagesziel.menge(i))

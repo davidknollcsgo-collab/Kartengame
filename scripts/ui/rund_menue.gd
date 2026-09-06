@@ -258,13 +258,7 @@ func _zeichne_ende(breite: float, hoehe: float) -> void:
 ## nach jeder Fahrt auf Verdacht an, liest fuenf Preise und faehrt wieder -
 ## das ist der Umweg, den ein Punkt am Knopf erspart.
 func _kolonie_lohnt() -> bool:
-    var stand: KolonieStand = Fortschritt.stand
-    if stand.baut():
-        return false
-    for k in Kammern.Kammer.size():
-        if stand.kann_bauen(k):
-            return true
-    return false
+    return Fortschritt.stand.kann_irgendwas_bauen()
 
 
 ## Ob heute noch etwas abzuholen ist: ein erfuelltes Tagesziel oder der
