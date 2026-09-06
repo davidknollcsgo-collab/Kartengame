@@ -42,6 +42,21 @@ extends SceneTree
 ## eine Art aussperrt, aendert die Zusammensetzung, und die Ersatztiere sind
 ## nicht ihresgleichen. Der Wert dieser Tabelle liegt deshalb in der
 ## **Rangfolge** und im Vergleich zweier Laeufe, nicht in der einzelnen Zahl.
+##
+## **Und fuer Leitwesen misst er gar nichts.** Das steht hier, weil die
+## Tabelle es nicht von selbst sagt: ein Leitwesen steht auf der letzten
+## Welle eines Abschnitts, und in achtzig Wellen sind das **ein bis zwei**
+## Auftritte. Der erste Lauf gab ihnen darauf Werte zwischen minus 62 und
+## plus 45 - reines Rauschen, und weil die Spalte `waere` durch einen
+## winzigen Budgetanteil teilt, sieht das Rauschen aus wie ein Befund. Die
+## Spalte `kommt` steht genau dafuer da; wer sie uebersieht, schreibt einer
+## Zufallszahl einen Preis zu.
+##
+## Was ein Leitwesen kostet, sagt deshalb weiterhin nur der Kolonielauf -
+## und der sagt es aus einem anderen Grund, der wichtiger ist als die
+## Stichprobe: **er spielt unter der Sollkurve.** Ein fester Panzerabzug ist
+## auf der Kurve eingerechnet und darunter eine Wand; der Wellenpruefer und
+## dieser Messstand fahren beide auf der Kurve und sehen davon nichts.
 
 ## Ueber welche Wellen gemessen wird. Zyklus 2 und 3 - dort steht die
 ## Kolonielauf-Trefferliste, und breit genug, dass ein Wurf nichts
