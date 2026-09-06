@@ -125,16 +125,20 @@ func _gewaehlt_in_pause(i: int) -> void:
 func _zeichne_pause(breite: float, hoehe: float) -> void:
     _flaeche.draw_rect(Rect2(0.0, 0.0, breite, hoehe),
         Color(0.010, 0.030, 0.042, 0.70))
-    var oben := hoehe * 0.24
+    var oben := hoehe * 0.18
     _text(Vector2(breite * 0.5, oben), "PAUSED", 30, HELL, true, 6.0)
     _text(Vector2(breite * 0.5, oben + 26.0),
         "WAVE %d  ·  %s NUTRIENT  ·  %d KILLS"
         % [int(lauf.welle_nummer), Zahl.kurz(int(lauf.verdient)),
         int(lauf.erlegt)], 12, LEISE, true, 1.6)
 
+    # **Auch hier haengen die Knoepfe unten.** Dieselbe Sprache wie im
+    # Titelbild und im Bericht: gelesen wird oben, gedrueckt unten. Drei
+    # Bildschirme mit drei verschiedenen Antworten auf dieselbe Frage sind
+    # zwei zu viel.
     _felder.clear()
     var texte: PackedStringArray = ["RESUME", "COLONY", "END DIVE"]
-    var y := oben + 64.0
+    var y := maxf(oben + 64.0, hoehe - 84.0 - 58.0 * float(texte.size()))
     for i in texte.size():
         var kasten := Rect2(RAND, y, breite - RAND * 2.0, 48.0)
         _felder.append(kasten)
@@ -151,7 +155,7 @@ func _zeichne_pause(breite: float, hoehe: float) -> void:
         if texte[i] == "COLONY" and _kolonie_lohnt():
             _punkt(kasten, Color(0.52, 0.94, 0.80))
         y += 58.0
-    _text(Vector2(breite * 0.5, hoehe - 56.0),
+    _text(Vector2(breite * 0.5, hoehe - 34.0),
         "THE COLONY KEEPS WHAT YOU ALREADY BROUGHT BACK", 11, LEISE, true,
         1.4)
 
@@ -185,7 +189,7 @@ func _gewaehlt_am_ende(i: int) -> void:
 func _zeichne_ende(breite: float, hoehe: float) -> void:
     _flaeche.draw_rect(Rect2(0.0, 0.0, breite, hoehe),
         Color(0.010, 0.030, 0.042, 0.72))
-    var oben := hoehe * 0.20
+    var oben := hoehe * 0.14
     # **Dasselbe Blatt in zwei Farben.** Gehalten und gebrochen zeigen
     # dieselben Zahlen - was sich unterscheidet, ist eine Zeile und ein
     # Farbton. Zwei getrennte Bildschirme dafuer waeren zwei Stellen, an
@@ -229,11 +233,17 @@ func _zeichne_ende(breite: float, hoehe: float) -> void:
             HELL if i == 0 else SCHRIFT, false, 1.0, true)
         y += 35.0
 
+    # **Die Knoepfe haengen unten, nicht unter der Liste.** Sie standen
+    # direkt hinter der letzten Zeile, und darunter blieb die halbe
+    # Bildschirmhoehe leer - auf einem Telefon liegt der Daumen genau dort.
+    # Der Bericht liest sich von oben, gedrueckt wird von unten; dazwischen
+    # bleibt der Graben zu sehen, aus dem man gerade zurueckkommt.
     _felder.clear()
     var texte: PackedStringArray = ["DIVE AGAIN", "COLONY", "SURFACE"]
     if lauf.gehalten:
         texte[0] = "DIVE DEEPER"
-    y += 14.0
+    y = maxf(y + 14.0,
+        hoehe - 34.0 - 58.0 * float(texte.size()))
     for i in texte.size():
         var kasten := Rect2(RAND, y, breite - RAND * 2.0, 48.0)
         _felder.append(kasten)
