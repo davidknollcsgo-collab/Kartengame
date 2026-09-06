@@ -107,7 +107,22 @@ godot --headless --path . --script tools/mutationskosten.gd -- --zug Plated
 > **1,0 Stufen** — die naheliegende Erklärung („der Spieler hängt hinterher")
 > war damit in einem Lauf widerlegt.
 >
-> **Zwei Lehren über Leitwesen, beide gemessen.**
+> **Er meldet trotzdem achtunddreißig gefallene Sitzungen, tragbar sind
+> zwölf.** Die beiden Leitwesen-Fehler waren echt und sind behoben; die
+> Fallzahl haben sie **nicht** bewegt (Chalk Ray 86 → 69, Shellback 68 → 58,
+> Summe unverändert 38). Eine Reparatur, die stimmt und nichts bewirkt, ist
+> ein Zwischenergebnis und kein Erfolg.
+>
+> **Was die Zahlen jetzt nahelegen:** oben stehen durchweg Arten mit hoher
+> `wucht` — Chalk Ray 4, Shellback 3, Shieldcoral 3, Spiegler 3. `aufwand`
+> bepreist aber **Kegelzeit je Lebenspunkt** und nicht, was ein
+> Durchkommen kostet. Zwei Arten mit gleicher Kegelzeit und Wucht 1 gegen 4
+> zahlen denselben Preis und kosten das Vierfache an Hülle. Wer das anfasst,
+> braucht dafür erst ein Werkzeug, das eine **ganze Welle** misst — so wie
+> `tools/mutationskosten.gd` es für die Züge tut; die Ein-Tier-Messung sieht
+> genau das nicht.
+>
+> **Drei Lehren, zwei über Leitwesen und eine über das Messen selbst.**
 >
 > *Erstens: die Anmarschzeit zählt nicht als Kegelzeit.* `LEIT_SEKUNDEN`
 > heißt „so lange soll es dauern", und die Rechnung nahm an, der Kegel liege
@@ -124,6 +139,25 @@ godot --headless --path . --script tools/mutationskosten.gd -- --zug Plated
 > jetzt **brennende Zeit** neben der Zeit im Feld. Die erste gehört zur
 > Rechnung, die zweite zum Spielgefühl — sie zu verwechseln hat hier schon
 > eine Änderung gerechtfertigt, die nichts half.
+>
+> *Und drittens, teuer bezahlt: eine Messung, die man nicht gegenprüft, ist
+> keine.* Nach der Umlauf-Reparatur maß derselbe Messstand den Kreiser mit
+> 0,78 statt 3,3, und der Preis wurde entsprechend gesenkt. `aufwand` ist
+> aber der Preis **je Lebenspunkt**: bei Welle 80 wuchs die Welle dadurch
+> von 24 Tieren mit 6548 Leben auf 41 mit 9236, und der Kolonielauf sprang
+> von 38 gefallenen Sitzungen auf 121. Der Wellenprüfer merkte nichts davon,
+> weil er auf der Sollkurve spielt.
+>
+> Die Ein-Tier-Messung gilt für ein kreisendes Tier nicht — man kann den
+> Kegel nicht auf ihm halten, und was es kostet, entsteht aus der Auswahl.
+> Der Preis steht deshalb wieder auf 3,2, mit der Begründung daneben.
+>
+> Beim Suchen kamen zwei eigene Fehler dazu, beide beim Messen: eine
+> Erklärung, die plausibel klang und nichts bewegte (119 → 121), und ein
+> Vergleich zweier Stände, bei dem die Ersetzung ihre Marke verfehlt hatte —
+> beide Läufe lasen dieselbe Datei, und „identisch" war die Antwort auf eine
+> Frage, die nie gestellt wurde. **Wer zwei Stände vergleicht, prüft, dass
+> es zwei sind.**
 
 Der Kolonielauf ist das Werkzeug, das die meisten Fehler gefunden hat. Er
 **spielt die Wellen wirklich durch** — mit dem Koloniestand, den ein normaler
