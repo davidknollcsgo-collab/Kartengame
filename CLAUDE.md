@@ -48,6 +48,8 @@ godot --headless --path . --script tools/wellenpruefer.gd     # 4 Umdrehungen, ~
 godot --headless --path . --script tools/wellenpruefer.gd -- --spielraum
 godot --headless --path . --script tools/kolonielauf.gd       # 120 Tage Kolonie, ~4 min
 godot --headless --path . --script tools/artenkosten.gd       # was eine Art und jedes Leitwesen wirklich kostet
+godot --headless --path . --script tools/artenlast.gd         # was eine Art in einer ganzen Welle kostet, ~20 min
+godot --headless --path . --script tools/artenlast.gd -- --art Shellback
 godot --headless --path . --script tools/mutationskosten.gd   # was ein Zug wirklich kostet, ~30 min
 godot --headless --path . --script tools/mutationskosten.gd -- --zug Plated
 ```

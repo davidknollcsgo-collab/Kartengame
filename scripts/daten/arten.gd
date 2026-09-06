@@ -604,10 +604,37 @@ static func ist_leitwesen(index: int) -> bool:
 
 
 ## Welche Arten in Welle `nummer` ueberhaupt gewuerfelt werden duerfen.
+## Welche Arten ein Messstand gerade aussperrt.
+##
+## **Nur fuer `tools/artenlast.gd`, und das ist keine Bitte.** Eine Art
+## auszusperren aendert, was `Wellen.auftritte()` einkauft; im Spiel waere das
+## eine zweite Wahrheit ueber den Graben. `_test_artensperre_bleibt_im_werkzeug`
+## liest den Quelltext daraufhin, genau wie beim Mutationszwang: ausserhalb
+## von `tools/` darf `sperre()` nirgends stehen.
+##
+## Warum es das trotzdem gibt: `aufwand` behauptet, was eine Art kostet, und
+## bis hierher gab es keinen Weg, die Behauptung zu pruefen. Ein einzelnes
+## Tier gegen einen Kegel zu halten misst nur Kegelzeit je Lebenspunkt - was
+## eine Art wirklich kostet, entsteht daraus, dass der Kegel bei jemand
+## anderem ist, und das gibt es nur in einer ganzen Welle. Dieselbe Lehre wie
+## bei den Mutationen, und dort hat sie drei falsch bepreiste Zuege gefunden.
+static var _gesperrt := PackedInt32Array()
+
+
+## Sperrt Arten aus. Die leere Liste hebt die Sperre auf.
+static func sperre(liste: PackedInt32Array) -> void:
+    _gesperrt = liste
+
+
+## Ob eine Art gerade ausgesperrt ist.
+static func ist_gesperrt(index: int) -> bool:
+    return _gesperrt.has(index)
+
+
 static func verfuegbar(nummer: int) -> PackedInt32Array:
     var liste := PackedInt32Array()
     for i in TABELLE.size():
-        if ist_leitwesen(i):
+        if ist_leitwesen(i) or ist_gesperrt(i):
             continue
         if nummer >= int(TABELLE[i][&"ab_welle"]):
             liste.append(i)
@@ -663,4 +690,9 @@ static func leitwesen_fuer(abschnitt: int) -> int:
     if liste.is_empty():
         return -1
     var wahl := LEITFOLGE[clampi(abschnitt, 0, LEITFOLGE.size() - 1)]
-    return liste[clampi(wahl, 0, liste.size() - 1)]
+    var index: int = liste[clampi(wahl, 0, liste.size() - 1)]
+    # Ein ausgesperrtes Leitwesen laesst die Welle ohne eines. Das ist im
+    # Messstand gewollt: gefragt ist, was dieses Tier kostet **gegenueber
+    # dem, was sein Budget sonst kauft** - und ohne es kauft die Welle
+    # gewoehnliche Raeuber. Im Spiel kommt der Fall nicht vor.
+    return -1 if ist_gesperrt(index) else index

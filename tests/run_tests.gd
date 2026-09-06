@@ -57,6 +57,7 @@ const TESTS: PackedStringArray = [
     "_test_bluete_bleibt_ausserhalb_der_wirtschaft",
     "_test_stroemung_wird_nur_einmal_gerechnet",
     "_test_mutationszwang_bleibt_im_werkzeug",
+    "_test_artensperre_bleibt_im_werkzeug",
     "_test_anstrich_faerbt_und_leuchtet_nicht",
     "_test_keine_art_kostet_ein_vielfaches",
     "_test_kein_leitwesen_steht_zu_lange",
@@ -2628,6 +2629,55 @@ func _test_mutationszwang_bleibt_im_werkzeug() -> bool:
     # Und die Datei, in der er steht, muss ihn leer lassen.
     if not _melde(Mutationen.in_welle(1).is_empty(),
             "Welle 1 traegt Mutationen - steht der Zwang noch?"):
+        return false
+    return true
+
+
+## Die Artensperre gehoert in den Messstand, nicht ins Spiel.
+##
+## **Dieselbe Schraube und derselbe Grund wie beim Mutationszwang.**
+## `Arten.sperre()` nimmt Arten aus `verfuegbar()` heraus, und
+## `Wellen.auftritte()` kauft dann etwas anderes ein. Einmal gesetzt und
+## vergessen, fehlt eine Art im ganzen Graben - und **kein** anderer Waechter
+## meldet das: der Wellenpruefer und der Kolonielauf spielen dieselbe Luege
+## und finden sie stimmig. Ein Fehler, der sich selbst bestaetigt, ist die
+## teuerste Sorte.
+##
+## Also liest dieser Test den Quelltext: ausserhalb von `tools/` darf der
+## Name nirgends stehen - nicht im Spiel, nicht im Kern, nicht in den Daten.
+func _test_artensperre_bleibt_im_werkzeug() -> bool:
+    var dateien := PackedStringArray()
+    _skripte("res://scripts", dateien)
+    if not _melde(dateien.size() > 10, "keine Skripte gefunden"):
+        return false
+    for datei in dateien:
+        var quelle := FileAccess.get_file_as_string(datei)
+        var nummer := 0
+        for zeile in quelle.split("\n"):
+            nummer += 1
+            var rein := zeile.strip_edges()
+            if rein.begins_with("#"):
+                continue
+            if rein.begins_with("static func sperre("):
+                continue
+            if not _melde(not rein.contains("sperre("),
+                    "%s:%d dreht an der Artensperre - die gehoert in tools/"
+                    % [datei, nummer]):
+                return false
+
+    # Und im Ruhezustand sperrt sie nichts: jede Art, deren Welle erreicht
+    # ist, muss auftreten koennen.
+    var offen := Arten.verfuegbar(240)
+    for i in Arten.zahl():
+        if Arten.ist_leitwesen(i):
+            continue
+        if not _melde(offen.has(i),
+                "%s fehlt in Welle 240 - steht die Sperre noch?"
+                % Arten.name_von(i)):
+            return false
+    # Und das Leitwesen des Abschnitts steht ebenfalls bereit.
+    if not _melde(Arten.leitwesen_fuer(1) >= 0,
+            "Abschnitt 1 hat kein Leitwesen - steht die Sperre noch?"):
         return false
     return true
 
