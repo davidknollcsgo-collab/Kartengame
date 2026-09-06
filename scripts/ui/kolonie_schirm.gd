@@ -34,14 +34,19 @@ const BAND_TAG := 68.0
 const BAND_ZUG := 88.0
 const LUECKE := 10.0
 
-## Wie hoch der Fuss des Tagesreiters ist - Ueberschrift, drei Einstellungen,
-## Lizenzzeile, Loeschknopf.
+## Wie hoch der Fuss des Tagesreiters ist: eine Zeile Anwesenheit und
+## Bestmarken, mehr nicht.
 ##
-## **Als Zahl an einer Stelle, nicht zweimal als 186.** Die Bildratenzeile kam
-## dazu, und weil die Hoehe an zwei Stellen als Literal stand, wanderte der
-## Loeschknopf unter den Bildrand statt der Rest nach oben - derselbe Fehler,
-## vor dem der Kommentar unten in `_tagesfuss()` warnt.
-const TAGESFUSS_HOCH := 224.0
+## **Er stand auf 224, und das war der Platz fuer die Einstellungen.** Seit
+## die auf dem Bootsreiter liegen, blieben dreihundert Pixel Nichts zwischen
+## der Rangliste und einer Zeile, die ganz unten allein herumstand - der
+## Reiter sah aus, als fehle etwas. Eine Zahl, die einmal richtig war, wird
+## falsch, sobald das weg ist, wofuer sie stand.
+##
+## **Als Zahl an einer Stelle, nicht zweimal als Literal.** Die Bildratenzeile
+## kam einmal dazu, und weil die Hoehe an zwei Stellen stand, wanderte der
+## Loeschknopf unter den Bildrand statt der Rest nach oben.
+const TAGESFUSS_HOCH := 54.0
 
 ## Hoehe einer Einstellungszeile und eines Anstrichfeldes. Beide ueber
 ## vierzig Pixel, damit ein Daumen sie trifft - 34 waren zu knapp.
@@ -513,8 +518,9 @@ func _zeichne() -> void:
         y = _zuchtkalender(breite, y + 8.0, stand)
         # Der Fuss haengt am unteren Rand; was dazwischen frei bleibt,
         # bekommt die Wertung.
-        _grabenwertung(breite, y + 18.0, stand,
+        var wertung_unten := _grabenwertung(breite, y + 18.0, stand,
             (hoehe - FUSS - TAGESFUSS_HOCH) - (y + 18.0) - 8.0)
+        _tagesstroemung(breite, wertung_unten + 22.0, stand)
         # Der Fuss haengt unten, nicht hinter dem Kalender. Sonst stand die
         # untere Haelfte des Tagesreiters leer und der Loeschknopf mitten im
         # Bild - genau dort, wo der Daumen ohnehin liegt.
@@ -1551,6 +1557,16 @@ func _grabenwertung(breite: float, y: float, stand: KolonieStand,
     if raum > 0.0:
         zeigen = clampi(int((raum - 24.0) / 34.0), 3, Geister.zahl() + 1)
     var liste := Geister.rangliste(stand.hoechste_welle)
+    # **Wenn alle hineinpassen, fuellen sie den Platz aus.** Seit die
+    # Einstellungen auf dem Bootsreiter liegen, ist unter der Rangliste
+    # Platz frei geworden - elf Zeilen zu 34 Punkten liessen darunter eine
+    # halbe Bildschirmhoehe Nichts stehen, und der Reiter sah aus, als fehle
+    # etwas. Gedeckelt bleibt es trotzdem: eine Zeile von achtzig Punkten
+    # waere kein Eintrag mehr, sondern eine Karte.
+    var zeilenhoch := 34.0
+    var passt := mini(zeigen, liste.size())
+    if raum > 0.0 and passt > 0:
+        zeilenhoch = clampf((raum - 30.0) / float(passt), 34.0, 46.0)
     var eigen := Geister.platz(stand.hoechste_welle) - 1
     var erste := clampi(eigen - 2, 0, maxi(0, liste.size() - zeigen))
 
@@ -1569,7 +1585,8 @@ func _grabenwertung(breite: float, y: float, stand: KolonieStand,
     for i in range(erste, mini(erste + zeigen, liste.size())):
         var eintrag := liste[i]
         var selbst: bool = eintrag[&"selbst"]
-        var kasten := Rect2(RAND, zeile_y, breite - RAND * 2.0, 32.0)
+        var kasten := Rect2(RAND, zeile_y, breite - RAND * 2.0,
+            zeilenhoch - 2.0)
         if selbst:
             _flaeche.draw_rect(kasten, Color(BAND_FARBE.r, BAND_FARBE.g,
                 BAND_FARBE.b, 0.9))
@@ -1577,12 +1594,13 @@ func _grabenwertung(breite: float, y: float, stand: KolonieStand,
                 NAEHR)
 
         var farbe := NAEHR if selbst else LEISE
-        _text(Vector2(RAND + 14.0, zeile_y + 21.0), "%d." % (i + 1), 13, farbe)
-        _text(Vector2(RAND + 46.0, zeile_y + 21.0), String(eintrag[&"name"]), 15,
+        var text_y := zeile_y + zeilenhoch * 0.5 + 5.0
+        _text(Vector2(RAND + 14.0, text_y), "%d." % (i + 1), 13, farbe)
+        _text(Vector2(RAND + 46.0, text_y), String(eintrag[&"name"]), 15,
             SCHRIFT if selbst else LEISE)
-        _text(Vector2(breite - RAND - 10.0, zeile_y + 21.0),
+        _text(Vector2(breite - RAND - 10.0, text_y),
             "Wave %d" % int(eintrag[&"tiefe"]), 14, farbe, false, true)
-        zeile_y += 34.0
+        zeile_y += zeilenhoch
 
     return zeile_y
 
@@ -1649,6 +1667,30 @@ func _zuchtkalender(breite: float, y: float, stand: KolonieStand) -> float:
 
     _kalender = Rect2(RAND, y, breite - RAND * 2.0, hoch + 28.0) if offen else Rect2()
     return reihe_y + hoch
+
+
+## Wieviele Bonuswellen der Tag noch hergibt.
+##
+## **Sie stand nur im Kopf der Fahrt, und dort ist es zu spaet.** Die Frage
+## lautet "lohnt sich heute noch eine Fahrt", und die stellt man hier, vor
+## dem Tauchen - nicht in der dritten Welle. Drei Marken sagen es ohne
+## Rechnung: was gefuellt ist, liegt noch bereit.
+func _tagesstroemung(breite: float, y: float, stand: KolonieStand) -> void:
+    var offen: int = stand.stroemung_offen
+    _text(Vector2(RAND, y + 14.0), "DAY CURRENT", 13, LEISE)
+    _text(Vector2(RAND + 130.0, y + 14.0),
+        "double yield on the next %d dive%s" % [offen, "" if offen == 1 else "s"]
+        if offen > 0 else "spent for today - it returns tomorrow", 12,
+        NAEHR if offen > 0 else Color(0.40, 0.52, 0.58))
+    for i in Tagesstroemung.JE_TAG:
+        var p := Vector2(breite - RAND - 14.0 - float(
+            Tagesstroemung.JE_TAG - 1 - i) * 26.0, y + 9.0)
+        if i < offen:
+            _flaeche.draw_circle(p, 9.0, Color(NAEHR.r, NAEHR.g, NAEHR.b, 0.16))
+            _flaeche.draw_circle(p, 5.0, NAEHR)
+        else:
+            _flaeche.draw_arc(p, 5.0, 0.0, TAU, 14,
+                Color(0.36, 0.48, 0.54, 0.7), 1.2, true)
 
 
 ## Unter den Zielen: Anwesenheit und Bestmarken. Mehr nicht - die
