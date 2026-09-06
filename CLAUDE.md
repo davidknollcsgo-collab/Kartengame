@@ -257,9 +257,37 @@ xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 720x1600 \
 | `--stufen <n>` | setzt alle Kammern auf Stufe n |
 | `--lehre <n>` | setzt den Einstieg auf Schritt n; 9 schaltet ihn ab |
 | `--marke` | nur Schriftzug über der Szene — für das Feature-Bild |
+| `--tierschau [h]` | alle Arten im Raster, still; `1` zeigt sie brennend |
 | `--messen <s>` | Bildrate, s Sekunden lang |
 | `--flach` | ohne Glühen — nur zum Messen |
 | `--fahrprobe <n>` | der Autopilot bis Welle n, headless |
+
+**Ein Tier ist kein Umriss.** Die Nachbearbeitung stand auf `glow_bloom =
+0,55` bei `glow_hdr_threshold = 0,30` — damit blühte **alles**, nicht nur die
+hellen Kerne, und ein Tier im Strahl war eine weiße Scheibe. Auf 0,16 bei
+0,62 blüht nur noch, was wirklich hell ist; die Farben der zwölf Arten sind
+wieder zu unterscheiden. Sichtbar wurde beides erst mit `--tierschau`: aus
+einer laufenden Welle sieht man drei Arten von siebzehn, und die übrigen
+vierzehn erst nach zwanzig Fahrten.
+
+Darunter kam dann das eigentliche Problem zum Vorschein: der Leib war ein
+heller Ring um ein schwarzes Loch. Zwei richtige Entscheidungen ergaben
+zusammen zuviel — die Füllung ist bewusst fast weg (eine helle Fläche wird
+von der Nachbearbeitung milchig statt zur Röhre), und beim Brennen geht sie
+noch weiter zurück, damit die Kante die Form trägt. Übrig blieb eine
+Drahtfigur. **Die Lösung ist keine Füllung**, sondern dieselbe Sprache wie
+überall hier: `schwarm.gd::_inneres()` zeichnet Mittellinie und Querrippen
+aus **dünnen Linien**, aus einem Breitenprofil des Umrisses gelesen (ein
+Durchgang über die Ecken, acht Fächer — ein Schnitt von Rippen gegen Kanten
+wären hundertzwölf Streckentests je Tier). Beim Brennen werden sie *heller*:
+ein getroffenes Tier zeigt sein Inneres, statt es zu verlieren.
+
+Zwei Anläufe, die im Bild danebenlagen. Gleich lange, gleich helle Rippen bis
+an den Umriss heran ergaben einen **Drahtkorb** — eine Rippe, die den Umriss
+berührt, schließt eine Masche; eine, die vorher aufhört, liegt *in* einem
+Körper. Und die Mittellinie kreuzt auf einem runden Leib jede Rippe in deren
+Mitte: aus Rippen mit einer Nabe wird ein Rad. Sie läuft deshalb nur, wo die
+Längsachse diesen Namen verdient.
 
 **`--kolonie` hält vorher an.** `oeffne_kolonie()` weist eine laufende Fahrt
 ab — im Spiel führt der Weg zum Ausbau über die Pause, und der Schuss geht

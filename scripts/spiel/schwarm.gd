@@ -106,12 +106,28 @@ func _fuellung(punkte: PackedVector2Array, farbe: Color) -> void:
 ## Ein Linienzug. Bei Leuchtroehren zweimal: ein weiter blasser Hof und ein
 ## schmaler heller Kern darauf. Das ist dieselbe Machart wie beim Boot und
 ## bei den Ranken.
+## Wie breit der Hof um einen Zug hoechstens werden darf, in Pixeln.
+##
+## **Er war unbegrenzt, und das war der Grund, warum kleine Tiere Kleckse
+## waren.** `_koerper()` uebergibt eine Dicke von 3,4; mal 3,4 sind das eLF
+## Komma sechs Pixel Hof - auf einem Zahnkiefer mit siebzehn Pixeln Radius
+## ist das breiter als sein halber Leib. Kiefer, Zaehne und Flossen lagen
+## darunter und waren nicht mehr zu sehen; im Bild blieb ein weisser Fleck
+## mit einer Flosse daran.
+##
+## Der Hof gehoert zur Leuchtroehre und bleibt - aber er ist eine
+## **Eigenschaft der Linie**, nicht des Tieres, und eine Linie auf einem
+## kleinen Tier ist kurz. Sechs Pixel sind auf dem Krebs immer noch ein Hof
+## und auf dem Schleier kein Nebel.
+const HOF_HOECHSTENS := 6.0
+
+
 func _zug(punkte: PackedVector2Array, farbe: Color, dicke: float) -> void:
     if punkte.size() < 2:
         return
     farbe = _gedeckt(farbe)
     draw_polyline(punkte, Color(farbe.r, farbe.g, farbe.b,
-        farbe.a * 0.22), dicke * 3.4, true)
+        farbe.a * 0.22), minf(dicke * 3.4, HOF_HOECHSTENS), true)
     draw_polyline(punkte, Color(minf(1.0, farbe.r * 1.5),
         minf(1.0, farbe.g * 1.5), minf(1.0, farbe.b * 1.5),
         minf(1.0, farbe.a * 1.7)), maxf(1.0, dicke * 0.9), true)
@@ -121,7 +137,7 @@ func _zug(punkte: PackedVector2Array, farbe: Color, dicke: float) -> void:
 func _strich(a: Vector2, b: Vector2, farbe: Color, dicke: float) -> void:
     farbe = _gedeckt(farbe)
     draw_line(a, b, Color(farbe.r, farbe.g, farbe.b, farbe.a * 0.22),
-        dicke * 3.4, true)
+        minf(dicke * 3.4, HOF_HOECHSTENS), true)
     draw_line(a, b, Color(minf(1.0, farbe.r * 1.5),
         minf(1.0, farbe.g * 1.5), minf(1.0, farbe.b * 1.5),
         minf(1.0, farbe.a * 1.7)), maxf(1.0, dicke * 0.9), true)
@@ -495,7 +511,8 @@ func _gluehen(p: Vector2, radius: float, farbe: Color, staerke: float) -> void:
 ## ineinanderliegende Fassungen mit steigender Deckung geben demselben Umriss
 ## eine Mitte - das ist der billigste Weg zu einem Koerper, der eine
 ## Vorderseite hat.
-func _koerper(punkte: PackedVector2Array, farbe: Color, hitze: float) -> void:
+func _koerper(punkte: PackedVector2Array, farbe: Color, hitze: float,
+        achse := Vector2.ZERO) -> void:
     var rund := _rund(_rund(punkte))
     var mitte := _mitte(rund)
 
@@ -525,8 +542,149 @@ func _koerper(punkte: PackedVector2Array, farbe: Color, hitze: float) -> void:
     var geschlossen := rund + PackedVector2Array([rund[0]])
     _zug(geschlossen, Color(farbe.r, farbe.g, farbe.b,
         0.26 + 0.34 * hitze), 3.4)
+    # **Der Umriss traegt die Farbe der Art, nicht Weiss.**
+    #
+    # Er stand im Ruhezustand schon auf 45 % Weiss, und darueber liegt die
+    # Nachbearbeitung: aus einer fast weissen Linie von 1,3 Pixeln wird ein
+    # weisser Ring, und die Art dahinter ist verschwunden. Zwoelf Arten mit
+    # zwoelf Farben sahen aus wie zwoelfmal dasselbe Leuchten.
+    #
+    # Vierzehn Prozent reichen fuer den hellen Kern der Leuchtroehre. Weiss
+    # wird sie erst beim Brennen - dann ist es kein Verlust, sondern die
+    # Ansage.
     _zug(geschlossen, farbe.lerp(Color(1.0, 0.98, 0.94),
-        0.45 + 0.45 * hitze), 1.3 + 0.9 * hitze)
+        0.14 + 0.62 * hitze), 1.3 + 0.9 * hitze)
+
+    _inneres(rund, mitte, achse, farbe, hitze)
+
+
+## Wieviele Faecher das Breitenprofil eines Umrisses hat.
+const PROFIL_FAECHER := 8
+
+## Wieviele Querrippen ein Leib bekommt.
+const RIPPEN := 3
+
+## Ab welchem halben Laengsmass ueberhaupt etwas Inneres gezeichnet wird.
+## Darunter liegen die Rippen dichter beieinander als die Linie breit ist.
+const INNEN_AB := 9.0
+
+
+## Das Innere eines Leibes: eine Mittellinie und ein paar Querrippen.
+##
+## **Warum ueberhaupt.** Der Leib war ein heller Ring um ein schwarzes Loch.
+## Das ist die Folge zweier richtiger Entscheidungen, die zusammen zuviel
+## waren: die Fuellung ist bewusst fast weg (eine helle Flaeche wird von der
+## Nachbearbeitung milchig statt zur Roehre), und beim Brennen geht sie noch
+## weiter zurueck, damit die Kante die Form traegt. Uebrig blieb ein Umriss -
+## eine Drahtfigur, kein Tier.
+##
+## **Warum es keine Fuellung ist.** Die Loesung ist nicht, das Loch mit Farbe
+## zuzustreichen; damit waere die ganze Leuchtroehren-Sprache hin. Ein
+## Tiefseetier ist innen auch nicht flaechig - man sieht Darm, Kiemenbogen,
+## Segmente. Also besteht das Innere aus **denselben duennen Linien** wie
+## alles andere hier, und die Nachbearbeitung macht auch aus ihnen Roehren.
+##
+## **Warum es beim Brennen heller wird.** Das dreht die alte Rueckmeldung um,
+## ohne sie zu verlieren: aussen bleibt die Kante die Ansage, innen kommt
+## etwas dazu. Ein getroffenes Tier zeigt sein Inneres, statt es zu verlieren.
+##
+## Die Rippen werden nicht geschnitten, sondern aus einem **Breitenprofil**
+## des Umrisses gelesen: ein Durchgang ueber die Ecken, acht Faecher laengs
+## der Achse, je Fach die groesste Auslenkung zur Seite. Ein Schnitt von vier
+## Rippen gegen achtundzwanzig Kanten waere hundertzwoelf Streckentests je
+## Tier; das hier ist einer.
+func _inneres(rund: PackedVector2Array, mitte: Vector2, achse: Vector2,
+        farbe: Color, hitze: float) -> void:
+    if rund.size() < 6:
+        return
+    if achse == Vector2.ZERO:
+        achse = _laengsachse(rund, mitte)
+    var quer := achse.orthogonal()
+
+    var laenge := 0.0
+    for v in rund:
+        laenge = maxf(laenge, absf((v - mitte).dot(achse)))
+    if laenge < INNEN_AB:
+        return
+
+    var profil := PackedFloat32Array()
+    profil.resize(PROFIL_FAECHER)
+    for v in rund:
+        var d := v - mitte
+        var u := clampf((d.dot(achse) / laenge) * 0.5 + 0.5, 0.0, 0.999)
+        var i := int(u * PROFIL_FAECHER)
+        profil[i] = maxf(profil[i], absf(d.dot(quer)))
+    # Ein leeres Fach nimmt seinen Nachbarn. Bei einer spitzen Nase trifft
+    # keine Ecke das aeusserste Fach, und eine Rippe der Breite null ist ein
+    # Loch in der Reihe.
+    for i in PROFIL_FAECHER:
+        if profil[i] <= 0.0:
+            profil[i] = profil[maxi(0, i - 1)]
+    for i in range(PROFIL_FAECHER - 2, -1, -1):
+        if profil[i] <= 0.0:
+            profil[i] = profil[i + 1]
+
+    var haut := farbe.lerp(Color(1.0, 0.98, 0.94), 0.10 + 0.30 * hitze)
+    var deck := 0.30 + 0.42 * hitze
+
+    # **Die Mittellinie nur bei laenglichen Leibern.** Auf einem runden Leib
+    # kreuzt sie jede Rippe in deren Mitte, und aus Rippen mit einer Nabe
+    # wird ein Rad. Ein Darm laeuft ohnehin nur dort, wo es eine Laengsachse
+    # gibt, die diesen Namen verdient.
+    var breiteste := 0.0
+    for w: float in profil:
+        breiteste = maxf(breiteste, w)
+    if laenge > breiteste * 1.25:
+        var mittelweg := PackedVector2Array()
+        for i in 7:
+            var u := lerpf(-0.74, 0.74, float(i) / 6.0)
+            mittelweg.append(mitte + achse * (u * laenge))
+        _zug(mittelweg, Color(haut.r, haut.g, haut.b, deck * 0.55), 1.0)
+
+    # Die Rippen sind leicht zur Nase gewoelbt. Ein gerader Strich quer durch
+    # den Leib liest sich als Balken, ein gebogener als Schnitt durch einen
+    # Koerper.
+    #
+    # **Und sie werden nach aussen kuerzer und blasser.** Der erste Anlauf gab
+    # allen dieselbe Laenge und dieselbe Deckung, bis an den Umriss heran -
+    # damit war jede Rippe eine Sprosse, und der Leib ein Drahtkorb. Eine
+    # Rippe, die den Umriss beruehrt, schliesst eine Masche; eine, die vorher
+    # aufhoert, liegt **in** einem Koerper. Die mittlere ist die staerkste:
+    # was innen am hellsten ist, liest sich als Organ und nicht als Gitter.
+    for i in RIPPEN:
+        var u := lerpf(-0.46, 0.44, float(i) / float(RIPPEN - 1))
+        var aussen := absf(u) / 0.46
+        var fach := clampi(int((u * 0.5 + 0.5) * PROFIL_FAECHER),
+            0, PROFIL_FAECHER - 1)
+        var breit: float = profil[fach] * (0.78 - 0.30 * aussen)
+        if breit < 2.0:
+            continue
+        var ort := mitte + achse * (u * laenge)
+        var rippe := PackedVector2Array()
+        for j in 5:
+            var s := lerpf(-1.0, 1.0, float(j) / 4.0)
+            rippe.append(ort + quer * (s * breit)
+                + achse * ((1.0 - s * s) * breit * 0.26))
+        _zug(rippe, Color(haut.r, haut.g, haut.b,
+            deck * (1.0 - 0.42 * aussen)), 1.0)
+
+
+## Die Laengsachse eines Umrisses: die Richtung zur weitesten Ecke.
+##
+## Fuer die Leiber hier reicht das - sie sind aus Richtung und Querachse des
+## Tieres gebaut, also laenglich, und die weiteste Ecke ist die Nase oder das
+## Schwanzende. Welches von beiden, ist gleichgueltig: das Innere ist
+## spiegelbar.
+func _laengsachse(rund: PackedVector2Array, mitte: Vector2) -> Vector2:
+    var weit := 0.0
+    var achse := Vector2.RIGHT
+    for v in rund:
+        var d := v - mitte
+        var l := d.length_squared()
+        if l > weit:
+            weit = l
+            achse = d
+    return achse.normalized() if achse.length() > 0.001 else Vector2.RIGHT
 
 
 ## Eckenschneiden nach Chaikin: jede Kante gibt zwei Punkte auf einem Viertel
@@ -593,7 +751,7 @@ func _zahnkiefer(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -
         p - k * r * 0.30 - quer * r * 0.58,
         p + k * r * 0.45 - quer * r * 0.66,
     ])
-    _koerper(leib, farbe, hitze)
+    _koerper(leib, farbe, hitze, t.richtung)
 
     # Rueckenflosse als Kamm. Drei bis fuenf Zacken - der Zaehler kommt aus
     # der Eigenart des Tieres, nicht aus einer festen Zahl.
@@ -690,7 +848,7 @@ func _panzerkrebs(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) 
         p + k * r * 0.34 - quer * r * 0.94,
         p + k * r * 0.62 - quer * r * 0.42,
     ])
-    _koerper(panzer, farbe, hitze)
+    _koerper(panzer, farbe, hitze, t.richtung)
 
     # Plattenfugen quer ueber den Ruecken.
     for i in 3:
@@ -746,7 +904,7 @@ func _grabnatter(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -
         p - k * r * 0.55,
         p - quer * r * 0.72,
     ])
-    _koerper(kopf, farbe, hitze)
+    _koerper(kopf, farbe, hitze, t.richtung)
     _auge(p + k * r * 0.35 + quer * r * 0.30, r * 0.19, hitze)
     _auge(p + k * r * 0.35 - quer * r * 0.30, r * 0.19, hitze)
 
@@ -768,7 +926,7 @@ func _schildkoralle(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float
     for i in 7:
         var w := TAU * float(i) / 7.0 + t.phase * 0.2
         saum.append(p + (k * cos(w) + quer * sin(w)) * r * (0.92 + 0.16 * float(i % 2)))
-    _koerper(saum, farbe, hitze)
+    _koerper(saum, farbe, hitze, t.richtung)
 
     for i in 3:
         var t_i := float(i) / 2.0
@@ -844,7 +1002,7 @@ func _treibanker(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -
         p - k * r * 0.86 + zug * r * 0.12,
         p - quer * r * 0.70,
     ])
-    _koerper(leib, farbe, hitze)
+    _koerper(leib, farbe, hitze, t.richtung)
 
     # Zwei kurze Fluegel quer zur Wanderrichtung - das Segel, das ihn treibt.
     for s: float in SEITEN:
@@ -881,7 +1039,7 @@ func _sprungaal(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) ->
         p - k * r * 0.30,
         p - quer * r * 0.46 * dicke,
     ])
-    _koerper(kopf, farbe, hitze)
+    _koerper(kopf, farbe, hitze, t.richtung)
 
     # Ein heller Blitz entlang des Leibes, wenn er gerade schiesst.
     if schub > 0.45:
@@ -914,7 +1072,7 @@ func _schlundmutter(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float
         mantel.append(p + (k * cos(w) * 0.96 + quer * sin(w) * 1.22)
             * r * atem * buchtung)
     mantel.append(p - k * r * 0.72)
-    _koerper(mantel, farbe, hitze)
+    _koerper(mantel, farbe, hitze, t.richtung)
 
     # Panzerrippen ueber dem Mantel - dieselbe Sprache wie bei der
     # Schildkoralle, weil beide dieselbe Eigenschaft haben.
@@ -964,7 +1122,7 @@ func _kalkrochen(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -
         var flatter := 0.08 * sin(u * 5.4 + t.alter * 2.2)
         schild.append(p + k * r * laengs + quer * r * u * (1.36 + flatter))
     schild.append(p - k * r * 0.62)
-    _koerper(schild, farbe, hitze)
+    _koerper(schild, farbe, hitze, t.richtung)
 
     # **Die Platten sind seine Regel.** Dieselbe Bildsprache wie bei der
     # Schildkoralle: wer die kennt, liest hier ohne einen Satz Text, dass der
@@ -1015,7 +1173,7 @@ func _schwarmherz(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) 
         var w := TAU * float(i) / 15.0
         var zerre := 1.0 + 0.16 * sin(float(i) * 2.1 + t.alter * 2.6)
         kern.append(p + Vector2(cos(w), sin(w) * 0.82) * r * 0.62 * zerre)
-    _koerper(kern, farbe, hitze)
+    _koerper(kern, farbe, hitze, t.richtung)
 
     _auge(p, r * 0.17, hitze)
 
@@ -1098,7 +1256,7 @@ func _laichwolke(p: Vector2, r: float, farbe: Color, t: Raeuber,
         p - k * r * 0.85,
         p - quer * r * (0.52 - 0.12 * schlag),
     ])
-    _koerper(leib, farbe, hitze)
+    _koerper(leib, farbe, hitze, t.richtung)
     # Zwei Wimpernkraenze, die gegeneinander schlagen.
     for seite: float in SEITEN:
         for i in 3:
@@ -1126,7 +1284,7 @@ func _kreiser(p: Vector2, r: float, farbe: Color, t: Raeuber,
         p + k * r * 0.30 - quer * r * 0.86,
         p + k * r * 0.72 - quer * r * 0.30,
     ])
-    _koerper(leib, farbe, hitze)
+    _koerper(leib, farbe, hitze, t.richtung)
     # Der Ruderkranz: sechs kurze Blaetter laengs der Aussenkante, die in
     # einer Welle durchlaufen - so sieht Seitwaertsfahrt aus.
     for i in 6:
@@ -1159,7 +1317,7 @@ func _lichtscheu(p: Vector2, r: float, farbe: Color, t: Raeuber,
         var w := lerpf(-PI * 0.62, PI * 0.62, float(i) / 10.0)
         schirm.append(p + k * cos(w) * r * 0.92 + quer * sin(w) * breit)
     schirm.append(p - k * r * (0.30 + 0.25 * eng))
-    _koerper(schirm, farbe, hitze)
+    _koerper(schirm, farbe, hitze, t.richtung)
     # Faeden, die sich beim Zurueckweichen anlegen.
     var faeden := 3 + int(_eigenart(t, 6.1) * 3.0)
     for i in faeden:
@@ -1254,7 +1412,7 @@ func _spiegler(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> 
         p - k * r * 0.42 - quer * r * 0.80,
         p + k * r * 0.34 - quer * r * 0.92,
     ])
-    _koerper(schale, farbe, hitze)
+    _koerper(schale, farbe, hitze, t.richtung)
 
     # Facetten: Grate vom Rand zur Mitte. Sie tragen den Glanz.
     for i in 5:

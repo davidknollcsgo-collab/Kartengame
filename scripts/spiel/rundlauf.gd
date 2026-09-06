@@ -1973,6 +1973,8 @@ var _schuss := ""
 var _vorlauf := 0.0
 var _finger_fest := false
 var _sofort := false
+var _tierschau := false
+var _tierschau_hitze := 0.0
 
 
 func _lies_argumente() -> void:
@@ -2038,12 +2040,91 @@ func _lies_argumente() -> void:
             "--offen":
                 # Kein Nebel - fuer Schuesse, die den Grund zeigen sollen.
                 _offene_karte = true
+            "--tierschau":
+                # **Alle Arten nebeneinander, still stehend.**
+                #
+                # Eine Grafikarbeit ohne Bild ist Raten, und ein Schuss aus
+                # einer laufenden Welle zeigt drei Arten von siebzehn - die
+                # uebrigen vierzehn sieht man erst nach zwanzig Fahrten.
+                # Hier steht jede genau einmal, im Raster, mit ihrem Namen.
+                #
+                # `--tierschau 1` zeigt sie brennend: das ist der Zustand, in
+                # dem der Spieler sie am genauesten ansieht, und der, in dem
+                # sie frueher zu weissen Scheiben wurden.
+                _tierschau = true
+                if i + 1 < argumente.size() \
+                        and not argumente[i + 1].begins_with("--"):
+                    _tierschau_hitze = clampf(float(argumente[i + 1]),
+                        0.0, 1.0)
             "--spiel":
                 # Nicht im Menue aufnehmen, sondern im Spiel.
                 _sofort = true
 
 
+## Alle Arten im Raster, still stehend - fuer die Grafikarbeit.
+##
+## **Ein Schuss aus einer laufenden Welle zeigt drei Arten von siebzehn.** Die
+## uebrigen vierzehn sieht man erst, wenn man zwanzig Fahrten macht und dabei
+## Glueck hat, und wer eine Zeichnung aendert, weiss dann nicht, ob er sie
+## verbessert oder nur die eine getroffene Art. Hier steht jede genau einmal.
+##
+## Es ist **derselbe Zeichner** wie im Spiel: `schwarm.gd` bekommt eine Liste
+## `Raeuber`, mehr braucht es nicht. Eine eigene Vorschauzeichnung waere eine
+## zweite Wahrheit ueber das Aussehen - genau der Fehler, den `--kolonie`
+## vermeidet, indem es den echten Bildschirm aufschlaegt.
+func _stelle_tierschau_auf() -> void:
+    lage = Lage.SPIEL
+    _tiere.clear()
+    var spalten := 4
+    var abstand := Vector2(190.0, 210.0)
+    var links := -abstand.x * (float(spalten) - 1.0) * 0.5
+    for a in Arten.zahl():
+        var t := Raeuber.new()
+        t.art = a
+        # Die Welle, ab der es die Art gibt - so tragen alle ihre echten
+        # Groessen und Eigenschaften, statt alle die von Welle 1.
+        t.welle = maxi(1, int(Arten.art(a).get(&"ab_welle", 1)))
+        if Arten.ist_leitwesen(a):
+            t.welle = 60
+        t.alter = 3.0
+        t.eintritt = 0.0
+        t.phase = float(a) * 0.7
+        t.leben_voll = 100.0
+        t.leben = 100.0
+        t.lebendig = true
+        t.hitze = _tierschau_hitze
+        t.licht = _tierschau_hitze
+        # Nach rechts blickend: so liest man eine Form am schnellsten, und
+        # alle siebzehn zeigen dieselbe Seite.
+        t.richtung = Vector2.RIGHT
+        var reihe := a / spalten
+        t.ort = Vector2(links + abstand.x * float(a % spalten),
+            -abstand.y * 2.0 + abstand.y * float(reihe))
+        _tiere.append(t)
+    _offen = _tiere.size()
+    _schwarm.tiere = _tiere
+    # Das Boot steht mitten im Raster - so hat man den Massstab daneben,
+    # statt ihn zu schaetzen. Die Kamera haengt daran, also muss es dorthin,
+    # wo die Tiere sind.
+    _ort = Vector2.ZERO
+    _blick = Vector2.UP
+    _wirksam = Vector2.UP
+    # Kein Einstiegstext ueber der Schau: er redet vom Fahren, und hier
+    # faehrt niemand.
+    lehr_schritt = LEHRE.size()
+    _stelle_ausbau_ein()
+    # **Und der Kegel bleibt aus.** Sonst waescht er die Arten aus, die
+    # zufaellig in ihm stehen, und man vergleicht drei beleuchtete mit
+    # vierzehn dunklen. Wie ein Tier im Licht aussieht, zeigt
+    # `--tierschau 1`: dort brennen alle siebzehn gleich stark.
+    _kegel.reichweite = 0.0
+
+
 func _spiele_vor() -> void:
+    if _tierschau:
+        _stelle_tierschau_auf()
+        _process(1.0 / 60.0)
+        return
     if _sofort:
         starte()
     # Fester Takt, damit dasselbe Bild entsteht, egal wie schnell der
