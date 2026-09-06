@@ -399,13 +399,33 @@ func _baue_kleinzeug(rng: RandomNumberGenerator) -> void:
     for _i in KLEINZEUG:
         _kleinzeug.append({
             &"ort": _wuerfel_ort(rng),
-            &"art": rng.randi() % 4,
+            &"art": rng.randi() % 6,
             &"gross": rng.randf_range(2.6, 7.5),
             &"dreh": rng.randf_range(0.0, TAU),
             &"ton": rng.randf_range(0.5, 1.0),
         })
 
 
+## Das Kleinzeug auf dem Grund.
+##
+## **Es waren Striche, und Striche lesen sich als Schrift.** Jedes Stueck war
+## ein Pixel breit und ueberall gleich hell: ein Bogen, drei Rippen, fuenf
+## Arme, ein Strich mit einem Punkt. Vergroessert sah der Grund aus wie ein
+## Schriftsatz - lauter kleine C, Sternchen und Striche, und nichts davon lag
+## auf dem Boden.
+##
+## Was einem Kiesel Koerper gibt, sind drei Dinge, und keines davon ist eine
+## weitere Linie:
+##
+##   * **Eine Flaeche.** Ein Stein ist gefuellt und **dunkler** als das
+##     Sediment, nicht heller. Er nimmt Licht weg, bevor er welches gibt.
+##   * **Ein Saum auf der Lichtseite.** Es gibt eine Lichtquelle, und sie
+##     steht nicht senkrecht ueber dem Grund - `licht_spitze` sagt, wo. Ein
+##     heller Bogen auf der zugewandten Seite macht aus einem Fleck eine
+##     Woelbung.
+##   * **Ein Schatten auf der anderen.** Nur eine Andeutung; der Grund ist
+##     ohnehin dunkel, und ein harter Schlagschatten je Kiesel waere bei
+##     sechsundzwanzighundert Stueck ein Muster.
 func _zeichne_kleinzeug() -> void:
     var grund_farbe := Color(0.40, 0.66, 0.70)
     for k in _kleinzeug:
@@ -422,31 +442,144 @@ func _zeichne_kleinzeug() -> void:
         # sichtbare Kante aus Kleinkram.
         var weg := p.distance_to(_blickmitte) / KLEIN_SICHT
         var saum := clampf((1.0 - weg) * 2.2, 0.0, 1.0)
-        var a := (0.13 + 0.34 * _angeleuchtet(p)) * float(k[&"ton"]) * saum
+        var hell := _angeleuchtet(p)
+        var a := (0.13 + 0.34 * hell) * float(k[&"ton"]) * saum
         var farbe := Color(grund_farbe.r, grund_farbe.g, grund_farbe.b, a)
+
+        # Woher das Licht kommt. Ohne Kegel faellt es von oben ein - dann
+        # gibt es keine Seite, und der Saum liegt gleichmaessig oben.
+        var zum_licht := Vector2.UP
+        if licht_reichweite > 0.0:
+            var d := licht_spitze - p
+            if d.length_squared() > 1.0:
+                zum_licht = d.normalized()
+        var lick := 0.35 + 0.65 * hell
+
         match int(k[&"art"]):
             0:
-                # Kies: ein kurzer Bogen, wie ein Stein von oben.
-                draw_arc(p, gr, w, w + 4.4, 7, farbe, 1.0, true)
+                _kiesel(p, gr, w, farbe, zum_licht, lick, saum)
             1:
-                # Schale: drei Rippen aus einem Punkt.
-                for j in 3:
-                    var s := w + lerpf(-0.5, 0.5, float(j) / 2.0)
-                    draw_line(p, p + Vector2.RIGHT.rotated(s) * gr * 1.4,
-                        farbe, 1.0, true)
+                _schale(p, gr, w, farbe, zum_licht, lick)
             2:
-                # Seestern: fuenf kurze Arme.
-                for j in 5:
-                    var s2 := w + TAU * float(j) / 5.0
-                    draw_line(p + Vector2.RIGHT.rotated(s2) * gr * 0.3,
-                        p + Vector2.RIGHT.rotated(s2) * gr,
-                        farbe, 1.0, true)
+                _seestern(p, gr, w, farbe, zum_licht, lick)
+            3:
+                _roehrchen(p, gr, w, farbe, zum_licht, lick)
+            4:
+                _scherbe(p, gr, w, farbe, zum_licht, lick, saum)
             _:
-                # Roehrchen: ein Strich mit einem Punkt obendrauf.
-                var kopf := p + Vector2.RIGHT.rotated(w) * gr
-                draw_line(p, kopf, farbe, 1.0, true)
-                draw_circle(kopf, 1.0,
-                    Color(farbe.r, farbe.g, farbe.b, a * 1.6))
+                _wurmspur(p, gr, w, farbe)
+
+
+## Ein Kiesel: eine gefuellte, leicht unrunde Scheibe mit hellem Scheitel.
+func _kiesel(p: Vector2, gr: float, w: float, farbe: Color,
+        zum_licht: Vector2, lick: float, saum: float) -> void:
+    var rund := PackedVector2Array()
+    for i in 7:
+        var t := TAU * float(i) / 7.0 + w
+        # Die Unrundheit kommt aus dem Winkel, nicht aus einem Wurf: ein
+        # Stein, der bei jedem Bild anders aussieht, ist kein Stein.
+        var rr := gr * (0.82 + 0.18 * sin(t * 3.0 + w * 5.0))
+        rund.append(p + Vector2.RIGHT.rotated(t) * rr)
+    # **Dunkel, aber nicht schwarz.** Der erste Anlauf fuellte mit 0,55
+    # Deckung in fast Schwarz - im Bild waren das schwarze Punkte auf dem
+    # Sediment, und der Grund wirkte leerer als mit den alten Strichen. Ein
+    # Kiesel nimmt Licht weg, er ist kein Loch.
+    draw_colored_polygon(rund, Color(0.030, 0.062, 0.074, 0.30 * saum))
+    # Im Licht bekommt er zusaetzlich eine eigene Flaeche: ein angestrahlter
+    # Stein ist eine Form, kein Schatten.
+    if lick > 0.5:
+        draw_colored_polygon(rund, Color(farbe.r, farbe.g, farbe.b,
+            farbe.a * 0.55 * (lick - 0.5)))
+    var scheitel := p + zum_licht * gr * 0.30
+    draw_arc(scheitel, gr * 0.66, zum_licht.angle() - 1.6,
+        zum_licht.angle() + 1.6, 8,
+        Color(farbe.r, farbe.g, farbe.b, minf(1.0, farbe.a * 2.4 * lick)),
+        1.3, true)
+
+
+## Eine Schale: ein gefuellter Faecher mit Rippen, wie eine Muschel von oben.
+func _schale(p: Vector2, gr: float, w: float, farbe: Color,
+        zum_licht: Vector2, lick: float) -> void:
+    var oeffnung := 1.0
+    var schale := PackedVector2Array([p])
+    for j in 5:
+        var s := w + lerpf(-oeffnung, oeffnung, float(j) / 4.0)
+        schale.append(p + Vector2.RIGHT.rotated(s) * gr * 1.5)
+    draw_colored_polygon(schale, Color(farbe.r, farbe.g, farbe.b,
+        farbe.a * 0.60))
+    for j in 3:
+        var s2 := w + lerpf(-0.6, 0.6, float(j) / 2.0)
+        draw_line(p, p + Vector2.RIGHT.rotated(s2) * gr * 1.4,
+            Color(farbe.r, farbe.g, farbe.b, farbe.a * 0.9 * lick), 1.0, true)
+    # Der Wirbel, an dem die Schale sass - der Punkt, an dem eine Muschel
+    # als Muschel zu lesen ist.
+    draw_circle(p, gr * 0.22, Color(farbe.r, farbe.g, farbe.b,
+        farbe.a * 1.4 * lick))
+    var _egal := zum_licht
+
+
+## Ein Schlangenstern: fuenf Arme, die sich kruemmen. Sie standen als gerade
+## Speichen - und ein Seestern mit geraden Armen ist ein Stern aus dem
+## Zeichensatz.
+func _seestern(p: Vector2, gr: float, w: float, farbe: Color,
+        zum_licht: Vector2, lick: float) -> void:
+    for j in 5:
+        var s := w + TAU * float(j) / 5.0
+        var arm := PackedVector2Array()
+        for n in 4:
+            var t := float(n) / 3.0
+            # Die Kruemmung haengt am Arm, nicht an der Zeit - er liegt still.
+            var bieg := sin(t * 2.2) * 0.5 * sin(float(j) * 2.7 + w * 3.0)
+            arm.append(p + Vector2.RIGHT.rotated(s + bieg) * gr * (0.25 + t))
+        draw_polyline(arm, Color(farbe.r, farbe.g, farbe.b,
+            minf(1.0, farbe.a * 1.3 * lick)), 1.2, true)
+    draw_circle(p, gr * 0.30, Color(farbe.r, farbe.g, farbe.b, farbe.a * 0.7))
+    var _egal := zum_licht
+
+
+## Ein Roehrenwurm: der Stiel dunkel, die Krone hell - so herum, weil das
+## Lebende leuchtet und die Roehre nur Kalk ist.
+func _roehrchen(p: Vector2, gr: float, w: float, farbe: Color,
+        zum_licht: Vector2, lick: float) -> void:
+    var kopf := p + Vector2.RIGHT.rotated(w) * gr
+    draw_line(p, kopf, Color(farbe.r * 0.7, farbe.g * 0.7, farbe.b * 0.7,
+        farbe.a * 0.8), 1.6, true)
+    for j in 3:
+        var s := w + lerpf(-0.8, 0.8, float(j) / 2.0)
+        draw_line(kopf, kopf + Vector2.RIGHT.rotated(s) * gr * 0.5,
+            Color(farbe.r, farbe.g, farbe.b, farbe.a * 1.1 * lick), 1.0, true)
+    draw_circle(kopf, 1.1, Color(farbe.r, farbe.g, farbe.b,
+        minf(1.0, farbe.a * 1.9 * lick)))
+    var _egal := zum_licht
+
+
+## Eine Scherbe: ein flaches Dreieck, das auf der Lichtseite aufblitzt.
+## Knochen, Schalenbruch, ein Stueck Schlot - was der Graben eben so
+## liegenlaesst.
+func _scherbe(p: Vector2, gr: float, w: float, farbe: Color,
+        zum_licht: Vector2, lick: float, saum: float) -> void:
+    var ecken := PackedVector2Array([
+        p + Vector2.RIGHT.rotated(w) * gr * 1.3,
+        p + Vector2.RIGHT.rotated(w + 2.3) * gr * 0.9,
+        p + Vector2.RIGHT.rotated(w - 2.0) * gr * 1.0])
+    draw_colored_polygon(ecken, Color(0.032, 0.066, 0.076, 0.34 * saum))
+    # Nur die dem Licht zugewandte Kante blitzt - eine Scherbe, die rundum
+    # glaenzt, ist ein Aufkleber.
+    var lichtseite := p + zum_licht * gr * 0.8
+    draw_line(ecken[0], lichtseite,
+        Color(farbe.r, farbe.g, farbe.b, minf(1.0, farbe.a * 2.6 * lick)),
+        1.2, true)
+
+
+## Eine Wurmspur: eine flache Schlangenlinie im Sediment. Kein Koerper,
+## sondern eine Vertiefung - deshalb dunkel und ohne Saum.
+func _wurmspur(p: Vector2, gr: float, w: float, farbe: Color) -> void:
+    var spur := PackedVector2Array()
+    for n in 5:
+        var t := float(n) / 4.0
+        spur.append(p + Vector2.RIGHT.rotated(w) * gr * 3.0 * (t - 0.5)
+            + Vector2.RIGHT.rotated(w + PI * 0.5) * sin(t * 6.0) * gr * 0.6)
+    draw_polyline(spur, Color(0.030, 0.060, 0.070, farbe.a * 1.8), 1.8, true)
 
 
 func _baue_staub(rng: RandomNumberGenerator) -> void:
@@ -540,6 +673,39 @@ func _zeichne_felsen(lage: int) -> void:
         var zu := umriss + PackedVector2Array([umriss[0]])
         draw_polyline(zu, Color(0.32, 0.56, 0.60, 0.10 * kraft), 4.0, true)
         draw_polyline(zu, Color(0.32, 0.56, 0.60, 0.44 * kraft), 1.3, true)
+
+        # **Der Fels hat eine Lichtseite.** Der Rand lief rundum mit
+        # derselben Deckung, und damit war ein Massiv eine schwarze Flaeche
+        # mit einem Kringel darum - flach, egal wie gross. Ein Koerper
+        # entsteht daraus erst, wenn eine Seite heller ist als die andere,
+        # und welche Seite das ist, sagt `licht_spitze`.
+        #
+        # Gerechnet wird das je Eckpunkt und nicht als Bogen: der Umriss ist
+        # unrund, und ein Bogen ueber eine unrunde Form legt den Glanz
+        # daneben. Die Punktdichte ist ohnehin da - es kostet eine Schleife
+        # ueber achtundvierzig Punkte, keinen zweiten Umriss.
+        var mitte: Vector2 = f[&"ort"]
+        var zum_licht := Vector2.UP
+        if licht_reichweite > 0.0:
+            var d := licht_spitze - mitte
+            if d.length_squared() > 1.0:
+                zum_licht = d.normalized()
+        var hell := 0.25 + 0.75 * _angeleuchtet(mitte)
+        var saum := PackedVector2Array()
+        for i in umriss.size():
+            var punkt := umriss[i]
+            if (punkt - mitte).normalized().dot(zum_licht) > 0.28:
+                saum.append(punkt)
+            elif saum.size() > 1:
+                draw_polyline(saum, Color(0.62, 0.82, 0.86,
+                    0.30 * kraft * hell), 1.6, true)
+                saum = PackedVector2Array()
+            else:
+                saum = PackedVector2Array()
+        if saum.size() > 1:
+            draw_polyline(saum, Color(0.62, 0.82, 0.86,
+                0.30 * kraft * hell), 1.6, true)
+
         var sch: PackedVector2Array = f[&"schulter"]
         draw_polyline(sch + PackedVector2Array([sch[0]]),
             Color(0.32, 0.56, 0.60, 0.15 * kraft), 1.0, true)

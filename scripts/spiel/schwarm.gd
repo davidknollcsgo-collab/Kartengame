@@ -358,12 +358,18 @@ func _zeichne(t: Raeuber, stufe := 0) -> void:
     # davon im Strahl waren drei weisse Punkte. Was den Schwarm lesbar macht,
     # ist die Wiederholung derselben Form; eine Form, die man nicht sieht,
     # wiederholt sich nicht.
+    # **Und der Hof waechst mit der Hitze nicht mehr mit.** Er stand auf
+    # 0,07 + 0,13 mal Hitze bei zweikommazwei Radien - zusammen mit dem
+    # weissen Umriss, dem Randlicht und der Nachbearbeitung ergab das den
+    # weissen Klecks. Er zieht sich jetzt beim Brennen sogar leicht
+    # **zusammen**: ein Brand ist ein Punkt, keine Wolke.
     var klein := clampf(r / 18.0, 0.45, 1.0)
+    var hof := r * (2.2 - 0.35 * hitze) * puls
     if stufe == 0:
-        _gluehen(p, r * 2.2 * puls, farbe, (0.07 + 0.13 * hitze) * klein)
+        _gluehen(p, hof, farbe, (0.07 + 0.05 * hitze) * klein)
     elif stufe == 1:
-        draw_circle(p, r * 1.6 * puls, Color(farbe.r, farbe.g, farbe.b,
-            (0.045 + 0.07 * hitze) * klein))
+        draw_circle(p, hof * 0.73, Color(farbe.r, farbe.g, farbe.b,
+            (0.045 + 0.025 * hitze) * klein))
 
     # **Leuchtpunkte.** Eine Reihe kleiner Lichter laengs des Koerpers, die
     # als Welle von vorn nach hinten durchlaeuft.
@@ -493,6 +499,20 @@ func _koerper(punkte: PackedVector2Array, farbe: Color, hitze: float) -> void:
     var rund := _rund(_rund(punkte))
     var mitte := _mitte(rund)
 
+    # **Was brennt, wird dunkel in der Mitte und hell am Rand.**
+    #
+    # Vorher wurde alles zugleich heller: Fuellung, Umriss, Hof, Randlicht -
+    # und darueber liegt noch die Nachbearbeitung. Ein getroffenes Tier war
+    # damit eine **weisse Scheibe**, und zwar genau in dem Augenblick, in dem
+    # man hinsieht: beim Zielen. Man verliert die Art aus dem Blick, sobald
+    # man sie trifft, und das ist die schlechteste denkbare Stelle dafuer.
+    #
+    # Ein durchleuchteter Koerper sieht anders aus. Das Licht kommt von
+    # aussen, der Leib steht davor - er wird zur Silhouette, und was
+    # aufleuchtet, ist seine **Kante**. Die Fuellung geht deshalb mit der
+    # Hitze zurueck statt hoch; die Form bleibt lesbar, weil sie sich vom
+    # eigenen Schein abhebt.
+    var kern := 1.0 - 0.55 * hitze
     for i in 3:
         var t := float(i) / 2.0
         var schrumpf := lerpf(1.0, 0.52, t)
@@ -500,13 +520,13 @@ func _koerper(punkte: PackedVector2Array, farbe: Color, hitze: float) -> void:
         for v in rund:
             lage.append(mitte + (v - mitte) * schrumpf)
         _fuellung(lage, Color(farbe.r, farbe.g, farbe.b,
-            (0.10 + 0.09 * t) + (0.10 + 0.07 * t) * hitze))
+            (0.10 + 0.09 * t) * kern))
 
     var geschlossen := rund + PackedVector2Array([rund[0]])
     _zug(geschlossen, Color(farbe.r, farbe.g, farbe.b,
-        0.26 + 0.28 * hitze), 3.4)
+        0.26 + 0.34 * hitze), 3.4)
     _zug(geschlossen, farbe.lerp(Color(1.0, 0.98, 0.94),
-        0.45 + 0.45 * hitze), 1.3)
+        0.45 + 0.45 * hitze), 1.3 + 0.9 * hitze)
 
 
 ## Eckenschneiden nach Chaikin: jede Kante gibt zwei Punkte auf einem Viertel
