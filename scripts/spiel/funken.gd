@@ -240,5 +240,53 @@ func _draw() -> void:
     for ring in _ringe:
         var f := ring.leben / ring.voll
         var r := ring.weite * (1.0 - f * f)
-        draw_arc(ring.ort, r, 0.0, TAU, 26,
-            Color(1.0, 0.98, 0.92, 0.30 * f * f), 1.8 * f + 0.5, true)
+        _druckwelle(ring.ort, r, 0.30 * f * f, 3.0 + 5.0 * (1.0 - f))
+
+
+## Wieviele Ecken eine Druckwelle hat.
+const WELLENECKEN := 26
+
+
+## Eine Druckwelle als **Bande**, nicht als Kreislinie.
+##
+## `draw_arc` zog hier einen Zirkelschlag von anderthalb Pixeln - und weil
+## ein Ring bis zuletzt gleich duenn blieb, sah ein Tod aus wie ein
+## aufgemalter Kreis, der groesser wird. Im Bild standen davon mehrere
+## gleichzeitig, jeder in einer anderen Groesse, und daraus wurde ein Muster
+## aus Kreisen statt einer Rueckmeldung.
+##
+## Eine Welle im Wasser hat keine Kante: sie ist innen am hellsten und laeuft
+## nach beiden Seiten aus. Drei Punktreihen statt einer, in **einem** Aufruf
+## - und sie wird breiter, waehrend sie blasser wird, wie sich eine
+## Druckwelle im Wasser verlaeuft.
+##
+## Der Radius flattert leicht. Ein Zirkelschlag ist in dieser Welt das
+## Einzige mit mathematisch runder Kante; schon eine Auslenkung von zwei
+## Prozent nimmt ihm das.
+func _druckwelle(ort: Vector2, r: float, deckung: float,
+        breit: float) -> void:
+    if r <= 0.5 or deckung <= 0.004:
+        return
+    var ecken := PackedVector2Array()
+    var farben := PackedColorArray()
+    var hell := Color(1.0, 0.98, 0.92, deckung)
+    var aus := Color(1.0, 0.98, 0.92, 0.0)
+    for i in WELLENECKEN + 1:
+        var w := TAU * float(i) / float(WELLENECKEN)
+        var richtung := Vector2.RIGHT.rotated(w)
+        var flattern := 1.0 + 0.02 * sin(w * 5.0 + ort.x * 0.05)
+        var mitte := r * flattern
+        ecken.append(ort + richtung * maxf(0.0, mitte - breit))
+        farben.append(aus)
+        ecken.append(ort + richtung * mitte)
+        farben.append(hell)
+        ecken.append(ort + richtung * (mitte + breit))
+        farben.append(aus)
+    var netz := PackedInt32Array()
+    for i in WELLENECKEN:
+        var a := i * 3
+        var b := a + 3
+        netz.append_array([a, b, b + 1, a, b + 1, a + 1])
+        netz.append_array([a + 1, b + 1, b + 2, a + 1, b + 2, a + 2])
+    RenderingServer.canvas_item_add_triangle_array(
+        get_canvas_item(), netz, ecken, farben)

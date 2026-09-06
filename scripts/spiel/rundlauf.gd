@@ -1485,22 +1485,44 @@ func _zeichne_stossring() -> void:
     var f := (1.0 - t) * (1.0 - t)
     if f <= 0.002:
         return
+    # **Eine Bande, keine drei Linien uebereinander.**
+    #
+    # Hier lagen ein Nachlauf, ein breiter Hof und ein Kern - drei
+    # geglaettete Kreislinien, und weil jede ihre eigenen zwei Kanten hat,
+    # sah die Druckwelle aus wie ein Zirkelschlag mit einem zweiten daneben.
+    # Ein Netz aus drei Punktreihen gibt denselben Aufbau als **Verlauf**:
+    # innen auf null, in der Mitte hell, aussen auf null.
+    #
+    # Sie wird breiter, waehrend sie blasser wird. Eine Druckwelle, die ihre
+    # Dicke behaelt, ist ein wachsender Ring; eine, die sich verlaeuft, ist
+    # eine Welle.
     var stufen := 56
-    var kern := PackedVector2Array()
-    var nach := PackedVector2Array()
+    var breit := 10.0 + 46.0 * (1.0 - f)
+    var ecken := PackedVector2Array()
+    var farben := PackedColorArray()
+    var hell := Color(1.0, 0.96, 0.86, 0.62 * f)
+    var innen := Color(_glut.r, _glut.g, _glut.b, 0.0)
     for i in stufen + 1:
         var w := TAU * float(i) / float(stufen)
+        var richtung := Vector2.RIGHT.rotated(w)
         # Ein leichtes Flattern auf dem Radius: eine Druckwelle im Wasser
         # ist kein Zirkelschlag.
         var welle := 1.0 + 0.012 * sin(w * 7.0 + _wellenzeit * 3.0)
-        kern.append(_ort + Vector2.RIGHT.rotated(w) * _stoss_weit * welle)
-        nach.append(_ort + Vector2.RIGHT.rotated(w)
-            * maxf(0.0, _stoss_weit - 52.0) * welle)
-    _vorn.draw_polyline(nach, Color(_glut.r, _glut.g, _glut.b, 0.10 * f),
-        3.0, true)
-    _vorn.draw_polyline(kern, Color(_glut.r, _glut.g, _glut.b, 0.16 * f),
-        16.0, true)
-    _vorn.draw_polyline(kern, Color(1.0, 0.96, 0.86, 0.85 * f), 2.2, true)
+        var mitte := _stoss_weit * welle
+        ecken.append(_ort + richtung * maxf(0.0, mitte - breit))
+        farben.append(innen)
+        ecken.append(_ort + richtung * mitte)
+        farben.append(hell)
+        ecken.append(_ort + richtung * (mitte + breit * 0.55))
+        farben.append(innen)
+    var netz := PackedInt32Array()
+    for i in stufen:
+        var a := i * 3
+        var b := a + 3
+        netz.append_array([a, b, b + 1, a, b + 1, a + 1])
+        netz.append_array([a + 1, b + 1, b + 2, a + 1, b + 2, a + 2])
+    RenderingServer.canvas_item_add_triangle_array(
+        _vorn.get_canvas_item(), netz, ecken, farben)
 
 
 func _zeichne_vorn() -> void:
@@ -1652,7 +1674,26 @@ func _boot_umriss(k: Vector2, quer: Vector2, r: float,
 ## Vorn hell und hinten dunkel kommt jetzt daher, dass der helle Zug **nur
 ## ueber die vordere Haelfte** laeuft - zwei Zuege statt hundert Abschnitten.
 func _zeichne_rumpf(umriss: PackedVector2Array, k: Vector2, r: float) -> void:
-    _vorn.draw_colored_polygon(umriss, Color(0.020, 0.052, 0.068))
+    # **Der Rumpf hat eine Lichtseite.**
+    #
+    # Er war eine einzige fast schwarze Farbe mit Linien darauf - dasselbe
+    # Problem wie bei den Felsen, und dasselbe Ergebnis: das Boot war das
+    # dunkelste Ding in seiner eigenen Szene, obwohl es die Lichtquelle
+    # traegt. Was ein Boot beleuchtet, das seinen Strahl nach vorn wirft, ist
+    # der Rueckwurf aus dem Wasser davor; hell ist damit der **Bug**, und
+    # nach achtern faellt es ab.
+    #
+    # Der Verlauf laeuft ueber die Ecken des Umrisses, den es ohnehin schon
+    # gibt. Er ersetzt eine Fuellung, kostet also nichts - und er nimmt dem
+    # Boot nichts von seiner Silhouette, weil auch die hellste Stelle noch
+    # dunkler ist als das Wasser im Strahl.
+    var laengs := PackedColorArray()
+    for punkt in umriss:
+        var vorn := clampf((punkt - _ort).dot(k) / maxf(1.0, r * RUMPF_LANG),
+            0.0, 1.0)
+        var st := 1.0 + 2.4 * vorn * vorn
+        laengs.append(Color(0.020 * st, 0.052 * st, 0.068 * st, 1.0))
+    _vorn.draw_polygon(umriss, laengs)
     var ring := umriss + PackedVector2Array([umriss[0]])
     _vorn.draw_polyline(ring, Color(_haut.r, _haut.g, _haut.b, 0.09), 5.0, true)
     _vorn.draw_polyline(ring, Color(_haut.r, _haut.g, _haut.b, 0.30), 1.5, true)
@@ -1881,9 +1922,25 @@ func _zeichne_scheinwerfer(k: Vector2, quer: Vector2, r: float) -> void:
 ## Bogen sieht man, dass etwas fehlt, aber nicht wieviel, und "wieviele Fehler
 ## habe ich noch" ist die einzige Zahl, die waehrend der Fahrt zaehlt.
 ## Eng am Rumpf und duenn - ein Messgeraet, kein Schmuck.
+## **Und er blendet erst auf, wenn es etwas zu sehen gibt.**
+##
+## Bei voller Huelle war er ein geschlossener gestrichelter Ring um das Boot
+## - zwanzig Striche, die alle dasselbe sagen: dir fehlt nichts. Dieselbe
+## Zahl steht oben links im Bedienbild, und das Spiel hat sich diese Regel
+## bei den Tieren schon einmal selbst gegeben: "Volle Balken ueber jedem
+## Tier waeren Rauschen; ein angeschlagener Gegner ist dagegen eine
+## Entscheidung."
+##
+## Also faengt er bei der ersten Kerbe an zu leuchten und steht erst voll da,
+## wenn es knapp wird. Wer keine Kerbe hat, sieht sein Boot - nicht ein
+## Messgeraet darum.
 func _zeichne_huellring(r: float) -> void:
     if huelle_voll <= 0:
         return
+    var fehlt := 1.0 - float(huelle) / float(huelle_voll)
+    if fehlt <= 0.001:
+        return
+    var zeigen := clampf(fehlt * 2.6, 0.0, 1.0)
     var radius := r * 1.72
     var luecke := TAU / float(huelle_voll)
     for i in huelle_voll:
@@ -1891,8 +1948,8 @@ func _zeichne_huellring(r: float) -> void:
         var bis := von + luecke * 0.52
         var voll := i < huelle
         _vorn.draw_arc(_ort, radius, von, bis, 5,
-            Color(0.50, 0.90, 0.88, 0.26) if voll
-            else Color(0.90, 0.36, 0.28, 0.18), 1.4, true)
+            Color(0.50, 0.90, 0.88, 0.26 * zeigen) if voll
+            else Color(0.90, 0.36, 0.28, 0.18 + 0.30 * zeigen), 1.4, true)
 
 
 ## --- Die Begleiter ---
@@ -1941,14 +1998,44 @@ func _zeichne_begleiter() -> void:
         _vorn.draw_circle(p, gr * (0.17 + 0.05 * atem),
             Color(0.86, 1.0, 0.94, 0.95))
 
-        # Der Strahl auf sein Ziel.
+        # **Der Strahl auf sein Ziel - eine Entladung, kein Draht.**
+        #
+        # Hier standen zwei schnurgerade `draw_line` mit ueber die ganze
+        # Laenge gleicher Deckung. Bei acht Begleitern sind das acht Speichen
+        # vom Boot weg, und im Bild sah das aus wie ein Zahnrad: das Einzige
+        # mit mathematisch geraden Kanten in einer Welt, die sonst aus
+        # unrunden Formen besteht.
+        #
+        # Drei Dinge machen daraus eine Entladung. Er ist **gebogen**, und
+        # der Bauch schwingt - ein Lichtbogen durch Wasser laeuft nicht
+        # gerade. Er **verlaeuft**: hell am Kelch, blass am Ziel, gezeichnet
+        # mit `draw_polyline_colors`, damit das ein Verlauf bleibt und nicht
+        # drei aneinandergesetzte Stuecke wird. Und wo er ankommt, sitzt ein
+        # **Fleck** - ohne ihn zeigt der Strahl auf etwas, statt es zu
+        # treffen.
         var n: int = _begleiter_ziel[i]
         if n >= 0 and n < _tiere.size() and _tiere[n].lebendig:
             var ziel: Vector2 = _tiere[n].ort
-            _vorn.draw_line(p, ziel, Color(grund.r, grund.g, grund.b, 0.12),
-                4.0, true)
-            _vorn.draw_line(p, ziel, Color(0.80, 1.0, 0.92,
-                0.42 + 0.18 * atem), 1.3, true)
+            var lang := ziel - p
+            var seit := lang.orthogonal().normalized()
+            var bauch := lang.length() * 0.055 \
+                * sin(_wellenzeit * 3.7 + float(i) * 1.7)
+            var bahn := PackedVector2Array()
+            var hof := PackedColorArray()
+            var kern := PackedColorArray()
+            for j in 7:
+                var u := float(j) / 6.0
+                bahn.append(p + lang * u + seit * (sin(u * PI) * bauch))
+                # Am Kelch am hellsten, zum Ziel hin auslaufend.
+                var ab := 1.0 - 0.62 * u
+                hof.append(Color(grund.r, grund.g, grund.b, 0.13 * ab))
+                kern.append(Color(0.80, 1.0, 0.92,
+                    (0.46 + 0.18 * atem) * ab))
+            _vorn.draw_polyline_colors(bahn, hof, 4.2, true)
+            _vorn.draw_polyline_colors(bahn, kern, 1.3, true)
+            var glut := 0.6 + 0.4 * sin(_wellenzeit * 9.0 + float(i) * 2.3)
+            _vorn.draw_circle(ziel, 2.0 + 1.6 * glut,
+                Color(0.86, 1.0, 0.94, 0.30 + 0.28 * glut))
 
 
 ## Ein Leuchtzug: weiter blasser Hof, schmaler heller Kern.

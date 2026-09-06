@@ -861,6 +861,39 @@ werden musste (nur `zurueck_beschriftung` blieb: „BACK TO THE TRENCH").
 Erreichbar über `COLONY` im Titelbild **und** im Bericht — nach der Fahrt liegt der Nährstoff frisch in der Kolonie, und
 das ist der Moment, in dem man ihn ausgeben will.
 
+**Ein Ring ist kein Kreis, und ein Fels ist kein Umriss.** Die Rückmeldung
+lautete: *zu viele einzelne Linien.* Sie war richtig, und zwar überall aus
+demselben Grund — fast alles im Bild war eine **Linie**, und eine Linie hat
+zwei Kanten und keinen Übergang. Ein Fels: dunkle Fläche, helle Kontur,
+Schulterlinie, Risse. Eine Sandrippel: eine Haarlinie über das ganze Feld.
+Eine Druckwelle, ein Fund, ein Begleiterstrahl, die Hüllenanzeige: Kreis,
+Kreis, Gerade, zwanzig Striche.
+
+Die Regel, die daraus folgt und für jede neue Zeichnung gilt: **wo ein
+Übergang hingehört, wird keine Kante gezeichnet.** Drei Punktreihen statt
+einer, die Deckung an den Rändern auf null, und das Ganze als
+Dreiecksnetz in *einem* `canvas_item_add_triangle_array`. So sind gebaut:
+der Fels (Schulter → Kante → Saum außerhalb der Kante), die Rippel, die
+Druckwelle eines Todes (`funken.gd::_druckwelle`) und der Stoßlichtring.
+
+Drei Dinge, die dabei zu lernen waren.
+
+*Erstens: es ist billiger.* Gemessen 6,3 Bilder/s gegen 5,5 vorher — eine
+geglättete Polylinie erzeugt in Godot selbst schon Geometrie, und vier davon
+je Fels mal vierzig Felsen sind teurer als ein Netz.
+
+*Zweitens: was Übergänge bekommt, verschwindet — und manches darf das
+nicht.* Ein Fels ohne helle Kontur ist im Dunkeln unsichtbar, und die
+vorderste Lage ist die, an der das Boot anstößt. Sie behält deshalb einen
+Grundrand; die Kulisse dahinter darf verschwinden, dorthin fährt niemand.
+
+*Drittens: manche Linie gehört ganz weg.* Die Hüllenanzeige am Boot war bei
+voller Hülle ein geschlossener gestrichelter Ring aus zwanzig Strichen, die
+alle dasselbe sagen — und dieselbe Zahl steht oben links. Das Spiel hatte
+sich die Regel bei den Tieren längst selbst gegeben: *volle Balken wären
+Rauschen, ein angeschlagener Gegner ist eine Entscheidung.* Sie blendet
+jetzt mit der ersten Kerbe auf.
+
 **Und die Werte des Bootes kommen aus der Kolonie**, nicht aus der Sollkurve.
 Das stand zuerst falsch: der Kegel rechnete mit
 `Ausbau.leistung_faktor(welle)`, also mit dem Stand, den ein Spieler auf

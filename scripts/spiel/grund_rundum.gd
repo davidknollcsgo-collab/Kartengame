@@ -1332,5 +1332,18 @@ func _zeichne_funde() -> void:
                 Color(farbe.r, farbe.g, farbe.b, a * 0.7), 1.2, true)
         draw_circle(p, 4.0 + 1.6 * puls,
             Color(farbe.r, farbe.g, farbe.b, 0.30 + 0.30 * puls))
-        draw_arc(p, r * 1.9, 0.0, TAU, 30,
-            Color(farbe.r, farbe.g, farbe.b, 0.06 + 0.06 * puls), 1.0, true)
+        # **Ein Lichtsee, kein Ring.**
+        #
+        # Hier stand ein duenner Kreisbogen vom 1,9fachen Radius. Zwei Dinge
+        # stimmten daran nicht: eine mathematisch runde Linie in einer Welt
+        # aus unrunden Formen faellt als Bedienoberflaeche auf, und sie sagt
+        # das Falsche - ein Fund ist ein Keim, der glimmt, und ein Glimmen
+        # hat einen Rand, an dem es aufhoert, aber keine Kante.
+        #
+        # Gestapelte Kreise mit nach aussen fallender Deckung, dieselbe
+        # Machart wie der Hof um ein Tier. Weiter als der Ring war, damit
+        # der Schein aus dem Dunkeln lockt statt den Fund zu umranden.
+        for i in 4:
+            var t := float(i + 1) / 4.0
+            draw_circle(p, r * (0.9 + 1.6 * t), Color(farbe.r, farbe.g,
+                farbe.b, (0.055 + 0.030 * puls) * (1.0 - t) * 0.8))
