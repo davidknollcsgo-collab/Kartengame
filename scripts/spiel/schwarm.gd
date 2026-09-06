@@ -165,12 +165,27 @@ func _leuchtpunkte(p: Vector2, r: float, farbe: Color, t: Raeuber,
             minf(1.0, farbe.b * 1.5), 1.0)
         for seite: float in SEITEN:
             var wo := p + k * r * laengs + quer * seite * r * 0.34
-            # Erst der Hof, dann der Punkt: ein Photophor ist ein Licht im
-            # Wasser und kein Fleck auf der Haut - ohne den Hof sieht er aus
-            # wie eine Scheckung, und die leuchtet nicht.
-            draw_circle(wo, gr * 2.8, Color(hell.r, hell.g, hell.b,
-                minf(1.0, a) * 0.22))
-            draw_circle(wo, gr, Color(hell.r, hell.g, hell.b, minf(1.0, a)))
+            # **Drei Lagen, und die Farbe liegt aussen.**
+            #
+            # Vorher waren es zwei: ein Hof vom 2,8fachen Radius und ein
+            # gleich grosser Kern, beide in derselben aufgehellten Farbe.
+            # Auf einem grossen Tier - der Kalkrochen hat sechzig Einheiten
+            # Radius - sind das vierzehn blasse Scheiben von je vierzehn
+            # Pixeln, und im Bild sahen sie aus wie Plastikperlen, die
+            # jemand auf den Leib geklebt hat.
+            #
+            # Ein Photophor ist ein **winziger heller Punkt in einem
+            # farbigen See**. Der Kern schrumpft deshalb auf gut die Haelfte
+            # und wird das Einzige, was fast weiss ist; die beiden Hoefe
+            # tragen die Farbe der Art nach aussen und laufen aus. Das ist
+            # dieselbe Machart wie bei jeder anderen Leuchtstelle hier -
+            # aussen die Art, innen das Licht.
+            draw_circle(wo, gr * 3.2, Color(farbe.r, farbe.g, farbe.b,
+                minf(1.0, a) * 0.13))
+            draw_circle(wo, gr * 1.45, Color(farbe.r, farbe.g, farbe.b,
+                minf(1.0, a) * 0.34))
+            draw_circle(wo, gr * 0.55,
+                Color(hell.r, hell.g, hell.b, minf(1.0, a)))
 
 
 ## Die Schleppe eines Tieres: sein Weg, verblassend.
@@ -716,8 +731,15 @@ func _mitte(punkte: PackedVector2Array) -> Vector2:
 
 
 ## Das Auge ist ein Leuchtpunkt mit Hof. Kein dunkler Kern - siehe `_ready()`.
-func _auge(p: Vector2, r: float, hitze: float) -> void:
-    draw_circle(p, r * 1.8, Color(0.30, 0.52, 0.60, 0.30))
+##
+## **Der Hof traegt die Farbe der Art.** Er stand fest auf einem Graublau,
+## und auf einem rosa oder gelben Leib war das ein grauer Fleck - im Bild
+## eine Perle, kein Auge. Der Kern bleibt warmweiss: was leuchtet, leuchtet
+## ueberall gleich, und was es umgibt, gehoert dem Tier.
+func _auge(p: Vector2, r: float, hitze: float,
+        farbe := Color(0.30, 0.52, 0.60)) -> void:
+    draw_circle(p, r * 2.4, Color(farbe.r, farbe.g, farbe.b, 0.16))
+    draw_circle(p, r * 1.5, Color(farbe.r, farbe.g, farbe.b, 0.30))
     draw_circle(p, r, Color(1.0, 0.94, 0.78, 0.75 + 0.25 * hitze))
 
 
@@ -775,8 +797,8 @@ func _zahnkiefer(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -
         draw_line(o, o.lerp(u, 0.30), Color(0.94, 0.99, 1.0, 0.65), 1.2)
         draw_line(u, u.lerp(o, 0.30), Color(0.94, 0.99, 1.0, 0.65), 1.2)
 
-    _auge(p + k * r * 0.30 + quer * r * 0.30, r * 0.20, hitze)
-    _auge(p + k * r * 0.30 - quer * r * 0.30, r * 0.20, hitze)
+    _auge(p + k * r * 0.30 + quer * r * 0.30, r * 0.20, hitze, farbe)
+    _auge(p + k * r * 0.30 - quer * r * 0.30, r * 0.20, hitze, farbe)
 
     # Leuchtangel, von der Stirn nach vorn gebogen.
     var wurzel_angel := p - k * r * 0.10 + quer * r * 0.50
@@ -875,7 +897,7 @@ func _panzerkrebs(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) 
         var stiel := p + k * r * 0.55 + quer * r * 0.26 * seite
         var kopf := stiel + k * r * 0.34
         draw_line(stiel, kopf, Color(farbe.r, farbe.g, farbe.b, 0.5), 1.6)
-        _auge(kopf, r * 0.17, hitze)
+        _auge(kopf, r * 0.17, hitze, farbe)
 
 
 func _grabnatter(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> void:
@@ -905,8 +927,8 @@ func _grabnatter(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -
         p - quer * r * 0.72,
     ])
     _koerper(kopf, farbe, hitze, t.richtung)
-    _auge(p + k * r * 0.35 + quer * r * 0.30, r * 0.19, hitze)
-    _auge(p + k * r * 0.35 - quer * r * 0.30, r * 0.19, hitze)
+    _auge(p + k * r * 0.35 + quer * r * 0.30, r * 0.19, hitze, farbe)
+    _auge(p + k * r * 0.35 - quer * r * 0.30, r * 0.19, hitze, farbe)
 
 
 # --- Die vier spaeten Arten -----------------------------------------------
@@ -943,8 +965,8 @@ func _schildkoralle(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float
         draw_line(vorn + quer * halb, vorn - quer * halb,
             Color(1.0, 0.98, 0.90, 0.30 + 0.55 * hitze), 1.5)
 
-    _auge(p + k * r * 0.66 + quer * r * 0.26, r * 0.15, hitze)
-    _auge(p + k * r * 0.66 - quer * r * 0.26, r * 0.15, hitze)
+    _auge(p + k * r * 0.66 + quer * r * 0.26, r * 0.15, hitze, farbe)
+    _auge(p + k * r * 0.66 - quer * r * 0.26, r * 0.15, hitze, farbe)
 
 
 func _glutqualle(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> void:
@@ -1010,7 +1032,7 @@ func _treibanker(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -
         draw_line(wurzel, wurzel + zug * r * 1.15 + quer * r * 0.2 * s,
             Color(farbe.r, farbe.g, farbe.b, 0.46 + 0.3 * hitze), 2.0)
 
-    _auge(p + k * r * 0.42 + zug * r * 0.22, r * 0.19, hitze)
+    _auge(p + k * r * 0.42 + zug * r * 0.22, r * 0.19, hitze, farbe)
 
 
 func _sprungaal(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> void:
@@ -1046,7 +1068,7 @@ func _sprungaal(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) ->
         draw_line(p - k * r * 1.2, p + k * r * 1.1 * laenge,
             Color(1.0, 0.98, 0.92, 0.28 * (schub - 0.45) / 0.55), 2.4)
 
-    _auge(p + k * r * 0.48 * laenge, r * 0.17, hitze)
+    _auge(p + k * r * 0.48 * laenge, r * 0.17, hitze, farbe)
 
 
 func _schlundmutter(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> void:
@@ -1087,7 +1109,7 @@ func _schlundmutter(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float
     # einem Telefon groesser als eines, das man fuer einen Reflex haelt.
     for i in 7:
         var w := lerpf(-PI * 0.42, PI * 0.42, float(i) / 6.0)
-        _auge(p + (k * cos(w) * 0.62 + quer * sin(w) * 0.86) * r, r * 0.10, hitze)
+        _auge(p + (k * cos(w) * 0.62 + quer * sin(w) * 0.86) * r, r * 0.10, hitze, farbe)
 
 
 ## Der Kalkrochen. Ein flacher, breiter Schild mit einem Schleppschwanz -
@@ -1147,7 +1169,7 @@ func _kalkrochen(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -
             Color(1.0, 0.98, 0.92, 0.30 + 0.40 * hitze), 1.8)
 
     for seite: float in SEITEN:
-        _auge(p + k * r * 0.44 + quer * r * seite * 0.30, r * 0.11, hitze)
+        _auge(p + k * r * 0.44 + quer * r * seite * 0.30, r * 0.11, hitze, farbe)
 
 
 ## Das Schwarmherz. Ein Kern, um den ein Ring aus Trabanten kreist - kein
@@ -1175,7 +1197,7 @@ func _schwarmherz(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) 
         kern.append(p + Vector2(cos(w), sin(w) * 0.82) * r * 0.62 * zerre)
     _koerper(kern, farbe, hitze, t.richtung)
 
-    _auge(p, r * 0.17, hitze)
+    _auge(p, r * 0.17, hitze, farbe)
 
 
 ## Randlicht: die dem Waechter zugewandte Kante wird hell.
@@ -1298,7 +1320,7 @@ func _kreiser(p: Vector2, r: float, farbe: Color, t: Raeuber,
                 Color(farbe.r, farbe.g, farbe.b, 0.55), 1.4)
     _zug(PackedVector2Array([p - k * r * 0.8, p + k * r * 0.7]),
         farbe.lightened(0.3), 1.2)
-    _auge(p + k * r * 0.34, r * 0.15, hitze)
+    _auge(p + k * r * 0.34, r * 0.15, hitze, farbe)
 
 
 ## Lichtscheue: ein Koerper, der sich zusammenzieht, wenn er brennt.
@@ -1327,7 +1349,7 @@ func _lichtscheu(p: Vector2, r: float, farbe: Color, t: Raeuber,
         _strich(wurzel, wurzel - k * r * (1.5 - 0.7 * eng)
             + quer * wehen * (1.0 - eng),
             Color(farbe.r, farbe.g, farbe.b, 0.4), 1.1)
-    _auge(p + k * r * 0.44, r * 0.14, hitze)
+    _auge(p + k * r * 0.44, r * 0.14, hitze, farbe)
 
 
 ## Ringmaul: ein offener Ring mit Zaehnen nach innen.
@@ -1358,7 +1380,7 @@ func _ringmaul(p: Vector2, r: float, farbe: Color, t: Raeuber,
         _strich(aussen, innen, Color(1.0, 0.94, 0.88, 0.6 + 0.3 * hitze), 1.6)
     draw_circle(p, r * (0.20 + 0.05 * atem),
         Color(farbe.r, farbe.g, farbe.b, 0.55))
-    _auge(p + k * r * 0.1, r * 0.16, hitze)
+    _auge(p + k * r * 0.1, r * 0.16, hitze, farbe)
 
 
 ## Brutstock: ein Stamm mit Knospen, aus denen die Jungen fallen.
@@ -1396,7 +1418,7 @@ func _brutstock(p: Vector2, r: float, farbe: Color, t: Raeuber,
     draw_arc(p + k * r * 0.62, r * 0.34, -PI * 0.5,
         -PI * 0.5 + TAU * reif, 20,
         Color(1.0, 0.92, 0.98, 0.55 + 0.35 * hitze), 2.0, true)
-    _auge(p + k * r * 0.62, r * 0.16, hitze)
+    _auge(p + k * r * 0.62, r * 0.16, hitze, farbe)
 
 
 func _spiegler(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> void:
@@ -1441,4 +1463,4 @@ func _spiegler(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> 
         draw_line(glanz, glanz + heim * r * (0.8 + 1.6 * blenden),
             Color(0.92, 0.98, 1.0, 0.30 * blenden), 1.6)
 
-    _auge(p + k * r * 0.46, r * 0.13, hitze)
+    _auge(p + k * r * 0.46, r * 0.13, hitze, farbe)
