@@ -59,6 +59,7 @@ const TESTS: PackedStringArray = [
     "_test_mutationszwang_bleibt_im_werkzeug",
     "_test_anstrich_faerbt_und_leuchtet_nicht",
     "_test_keine_art_kostet_ein_vielfaches",
+    "_test_kein_leitwesen_steht_zu_lange",
     "_test_toene_sind_hoerbar_und_sauber",
     "_test_grundton_schliesst_die_schleife",
     "_test_mutationen_tabelle_vollstaendig",
@@ -2722,6 +2723,36 @@ func _test_keine_art_kostet_ein_vielfaches() -> bool:
         "%s kostet das %.2ffache seines Aufwands - das Wellenbudget kauft "
         % [Arten.name_von(wer) if wer >= 0 else "?", faktor]
         + "mehr davon, als es sich leisten kann")
+
+
+## Kein Leitwesen steht wesentlich laenger, als es soll.
+##
+## **Der Fund, aus dem dieser Test entstanden ist, waren zwei auf einmal.**
+## `Wellen.leben_in()` rechnet das Leben eines Leitwesens aus `LEIT_SEKUNDEN`
+## - "so lange soll es dauern". Gemessen dauerte es bei Welle 6 das
+## 3,77fache, und beim Ringmaul das **47fache**: es kreiste auf einem Ring,
+## der sich zusammenzog, entfernte sich dabei vom Ring und kreiste dafuer
+## immer entschlossener. Null Sekunden Brennzeit in vierhundert Sekunden.
+##
+## Keiner der beiden Fehler wirft etwas. Der Wellenpruefer sah daran vorbei,
+## weil er ganze Sitzungen misst und ein einzelnes zaehes Tier darin
+## untergeht; gefunden hat es erst der Kolonielauf, der sagt, **woran** eine
+## Sitzung gefallen ist.
+##
+## Die Schranke ist bewusst locker: gemessen wird ein Tier allein, ohne
+## Nachbarn und ohne Zieldeckel, und die Anmarschzeit laesst sich auch mit
+## der besten Rechnung nicht auf null bringen. 1,8 faengt beide alten Fehler
+## und laesst dem Messrauschen Luft.
+func _test_kein_leitwesen_steht_zu_lange() -> bool:
+    var kosten := preload("res://tools/artenkosten.gd")
+    var schlimm: Array = kosten.schlimmstes_leitwesen()
+    var faktor := float(schlimm[0])
+    var wer := int(schlimm[1])
+    var wo := int(schlimm[2])
+    return _melde(faktor <= 1.8,
+        "%s brennt bei Welle %d das %.2ffache seiner geplanten Dauer - "
+        % [Arten.name_von(wer) if wer >= 0 else "?", wo, faktor]
+        + "ein Hoehepunkt, der nicht enden will, ist eine Wand")
 
 
 ## Die gerechneten Toene sind hoerbar, unverzerrt und knacksfrei.
