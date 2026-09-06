@@ -159,6 +159,29 @@ static func leben_in(art: int, nummer: int) -> float:
     return roh
 
 
+## Was ein Leitwesen im Wellenbudget kostet - seine **entworfene** Dauer, nicht
+## seine tatsaechlichen Lebenspunkte.
+##
+## **Sonst macht eine Reparatur die Welle groesser.** `auftritte()` bucht
+## `aufwand_in()` ab, und das rechnete aus `leben_in()`. Als der Abzug fuer die
+## Anmarschzeit dazukam, verlor ein Leitwesen einen guten Teil seines Lebens -
+## und damit seinen Preis. Was frei wurde, kaufte die Welle in gewoehnlichen
+## Raeubern nach: der Kolonielauf sprang von achtunddreissig gefallenen
+## Sitzungen auf hundertneunzehn, und oben in der Trefferliste standen
+## ploetzlich Spiegler und Lichtscheue statt der Leitwesen.
+##
+## Ein Leitwesen ist der Hoehepunkt einer Welle und soll den Platz kosten, den
+## es entworfen hat. Dass es im Anmarsch nicht getroffen werden kann, ist ein
+## Nachteil des Spielers - er darf ihm nicht auch noch die Welle fuellen.
+static func leit_budget(art: int, nummer: int) -> float:
+    var t := clampf(float(maxi(1, nummer) - 1) / float(Graben.ZYKLUS - 1),
+        0.0, 1.0)
+    var kegel := Graben.LEISTUNG * Ausbau.leistung_faktor(nummer)
+    var wirksam := maxf(kegel * LEIT_MINDEST_ANTEIL,
+        kegel * umgebung(nummer) - panzer_in(art, nummer))
+    return wirksam * lerpf(LEIT_SEKUNDEN_ANFANG, LEIT_SEKUNDEN_ENDE, t)
+
+
 ## Panzer: was von jedem Schadensschritt abgezogen wird.
 ##
 ## Der Zuschlag ist ein Anteil der Leistung, die der Kegel auf der Sollstufe
@@ -302,6 +325,8 @@ static func hat_leitwesen(nummer: int) -> bool:
 ## unberuehrt - sonst waere die Lebensanzeige ueber dem Tier falsch. Siehe
 ## `Arten.aufwand()`.
 static func aufwand_in(art: int, nummer: int) -> float:
+    if Arten.ist_leitwesen(art):
+        return leit_budget(art, nummer) * Arten.aufwand(art)
     return leben_in(art, nummer) * Arten.aufwand(art)
 
 
