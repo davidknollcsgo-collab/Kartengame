@@ -966,6 +966,27 @@ Pupille, eine Platte eine Fuge. Drei Dinge kamen damit erst in Reichweite:
   `draw_line` fester Breite — beim Panzerkrebs eine Kinderzeichnung von einer
   Spinne.
 
+Dazu drei Regeln, die sich aus dem Wechsel ergeben und für jede neue
+Zeichnung gelten:
+
+*Eine Fuge ist ein Schatten, keine Linie.* Solange additiv gezeichnet wurde,
+konnte das Innere nur hell sein. Auf gefüllten Leibern sehen dieselben
+Striche aus wie **Kratzer** — vier Linien quer über einen Rochen, die nichts
+beschreiben. `_rille()` zeichnet stattdessen eine dunkle Rille mit einer
+schmalen hellen Lippe auf der Lichtseite.
+
+*Was Ecken haben soll, behält sie.* `_koerper()` schnitt jedem Umriss zweimal
+die Ecken und machte damit aus der Schildkoralle, die eigens als eckiger
+Schild gebaut wurde, wieder ein Oval. Der Parameter `weich` sagt jetzt,
+wieviel: zwei für Weiches, einen für Gepanzerte, null für den, dessen ganze
+Aussage eine gerade Kante ist.
+
+*Und kein Leib wird schwarz.* Die Schattenseite konnte bis auf null fallen;
+bei einer dunklen Art war der Körper dann nicht mehr von Wasser zu
+unterscheiden. Ein Sockel von einem Viertel hält die Fläche lesbar —
+Tiefseewasser ist nicht schwarz, sondern sehr dunkles Blau, und ein Körper
+davor ist es auch.
+
 **Was dabei nicht wackeln darf:** die Lichtseite ist eine Frage der
 Geometrie, nicht der Beleuchtung. Was Schaden nimmt, sagt weiterhin
 `t.licht`, und `_test_rundumlauf_brennt_mit_dem_gezeichneten_kegel` hält das

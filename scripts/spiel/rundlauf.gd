@@ -1687,16 +1687,29 @@ func _zeichne_rumpf(umriss: PackedVector2Array, k: Vector2, r: float) -> void:
     # gibt. Er ersetzt eine Fuellung, kostet also nichts - und er nimmt dem
     # Boot nichts von seiner Silhouette, weil auch die hellste Stelle noch
     # dunkler ist als das Wasser im Strahl.
+    # **Und er traegt die Farbe des Anstrichs, nicht ein festes Dunkelblau.**
+    #
+    # Der Rumpf war (0,020 / 0,052 / 0,068) mal einem Faktor bis 3,4 - also
+    # bestenfalls ein sehr dunkles Blaugrau, und zwar bei jedem Anstrich
+    # dasselbe. Im Bild war das Boot damit das **dunkelste Ding in seiner
+    # eigenen Szene**, obwohl es die Lichtquelle traegt und obwohl der Spieler
+    # sich einen Anstrich dafuer verdient hat: von sechs Farben blieb ein
+    # Rand von anderthalb Pixeln uebrig.
+    #
+    # Jetzt faellt der Grundton aus `_haut` - stark abgedunkelt, damit er
+    # Rumpf bleibt und nicht Leuchtreklame wird -, und der Bug ist heller als
+    # das Heck. Dieselbe Rechnung wie beim Fels und bei den Tieren.
     var laengs := PackedColorArray()
     for punkt in umriss:
         var vorn := clampf((punkt - _ort).dot(k) / maxf(1.0, r * RUMPF_LANG),
             0.0, 1.0)
-        var st := 1.0 + 2.4 * vorn * vorn
-        laengs.append(Color(0.020 * st, 0.052 * st, 0.068 * st, 1.0))
+        var st := 0.10 + 0.30 * vorn * vorn
+        laengs.append(Color(_haut.r * st + 0.020, _haut.g * st + 0.040,
+            _haut.b * st + 0.055, 1.0))
     _vorn.draw_polygon(umriss, laengs)
     var ring := umriss + PackedVector2Array([umriss[0]])
-    _vorn.draw_polyline(ring, Color(_haut.r, _haut.g, _haut.b, 0.09), 5.0, true)
-    _vorn.draw_polyline(ring, Color(_haut.r, _haut.g, _haut.b, 0.30), 1.5, true)
+    _vorn.draw_polyline(ring, Color(_haut.r, _haut.g, _haut.b, 0.12), 5.0, true)
+    _vorn.draw_polyline(ring, Color(_haut.r, _haut.g, _haut.b, 0.52), 1.6, true)
 
     # Der vordere Bogen noch einmal, heller. Wo "vorn" ist, sagt das Profil
     # und nicht eine zweite Zahl.
