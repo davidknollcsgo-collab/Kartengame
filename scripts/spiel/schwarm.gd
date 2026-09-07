@@ -594,8 +594,15 @@ func _glied(von: Vector2, nach: Vector2, dick_von: float, dick_nach: float,
     # Prozent Weiss - im Bild wurde daraus ein weisses Band, und die
     # Verjuengung, um die es ging, verschwand darunter. Eine Kante, die
     # breiter ist als das Glied dick, beschreibt nichts mehr.
+    # **Auch die Lichtkante haelt sich an `deckung`.** Sie tat es nicht, und
+    # damit leuchtete ein Fangarm, der blass sein sollte, heller als der
+    # Leib, an dem er haengt - im Bild vier grelle Striche an einer dunklen
+    # Qualle. Eine Zierde, die heller strahlt als der Koerper, kehrt die
+    # Rangfolge um.
+    var kante := _gedeckt(farbe.lerp(Color(1.0, 0.98, 0.94), 0.16))
     draw_line(von + quer * dick_von, nach + quer * dick_nach,
-        farbe.lerp(Color(1.0, 0.98, 0.94), 0.16), 1.0, true)
+        Color(kante.r, kante.g, kante.b, kante.a * minf(1.0, deckung * 1.3)),
+        1.0, true)
     draw_line(von - quer * dick_von, nach - quer * dick_nach,
         Color(farbe.r, farbe.g, farbe.b, deckung * 0.40), 0.8, true)
     draw_circle(von, dick_von * 0.9,
@@ -615,15 +622,20 @@ func _glied(von: Vector2, nach: Vector2, dick_von: float, dick_nach: float,
 ## eine schwingende Rute wirklich annimmt.
 func _fangarm(wurzel: Vector2, richtung: Vector2, laenge: float,
         dick: float, wehen: float, farbe: Color, deckung: float) -> void:
+    # **Vier Glieder statt drei, und die Spitze rollt sich ein.** Mit drei
+    # geraden Stuecken und quadratisch wachsender Auslenkung blieb ein Arm
+    # im Bild fast gerade - er stand steif nach hinten wie ein Draht. Ein
+    # Fangarm im Wasser wird zur Spitze hin nicht nur weiter ausgelenkt, er
+    # **kruemmt** sich staerker.
     var quer := richtung.orthogonal()
     var wo := wurzel
-    for i in 3:
-        var u0 := float(i) / 3.0
-        var u1 := float(i + 1) / 3.0
+    for i in 4:
+        var u0 := float(i) / 4.0
+        var u1 := float(i + 1) / 4.0
         var ziel := wurzel + richtung * laenge * u1 \
-            + quer * wehen * u1 * u1
-        _glied(wo, ziel, dick * (1.0 - 0.72 * u0), dick * (1.0 - 0.72 * u1),
-            farbe, deckung * (1.0 - 0.30 * u0))
+            + quer * wehen * u1 * u1 * (0.6 + 0.9 * u1)
+        _glied(wo, ziel, dick * (1.0 - 0.76 * u0), dick * (1.0 - 0.76 * u1),
+            farbe, deckung * (1.0 - 0.34 * u0))
         wo = ziel
 
 
@@ -643,9 +655,21 @@ func _fangarm(wurzel: Vector2, richtung: Vector2, laenge: float,
 ## ineinanderliegende Fassungen mit steigender Deckung geben demselben Umriss
 ## eine Mitte - das ist der billigste Weg zu einem Koerper, der eine
 ## Vorderseite hat.
+## Wieviel Eckenschneiden ein Leib bekommt.
+##
+## **Zwei Durchgaenge machen aus jedem Vieleck einen Kreis** - und damit aus
+## der Schildkoralle, die eigens als eckiger Schild gebaut wurde, wieder ein
+## Oval. Die Arbeit, ihr eine Kante zu geben, war umsonst, weil sie hier
+## anschliessend weggeglaettet wurde.
+##
+## `weich` sagt jetzt, wieviel: zwei fuer alles Weiche (Quallen, Fische,
+## Wolken), einen fuer die Gepanzerten, null fuer den, dessen ganze Aussage
+## eine gerade Kante ist.
 func _koerper(punkte: PackedVector2Array, farbe: Color, hitze: float,
-        achse := Vector2.ZERO) -> void:
-    var rund := _rund(_rund(punkte))
+        achse := Vector2.ZERO, weich := 2) -> void:
+    var rund := punkte
+    for _i in weich:
+        rund = _rund(rund)
     var mitte := _mitte(rund)
 
     # **Was brennt, wird dunkel in der Mitte und hell am Rand.**
@@ -700,9 +724,18 @@ func _koerper(punkte: PackedVector2Array, farbe: Color, hitze: float,
         # sieht aus wie schmutziges Rot; ein ins Blau gezogenes sieht aus
         # wie Rot unter Wasser.
         var tief := Color(farbe.r, farbe.g, farbe.b).lerp(
-            Color(0.10, 0.26, 0.40), 0.62 * (1.0 - zu))
-        toene.append(Color(tief.r * st * 0.92, tief.g * st * 0.92,
-            tief.b * st * 0.98, (0.80 + 0.18 * zu) * kern))
+            Color(0.14, 0.34, 0.48), 0.55 * (1.0 - zu))
+        # **Kein Leib wird schwarz.** Der erste Anlauf multiplizierte die
+        # Farbe mit `st`, und `st` faellt auf 0,30 - zusammen mit der
+        # Daempfung war die Schattenseite einer dunklen Art nicht mehr von
+        # Wasser zu unterscheiden. Im Bild war die Glutqualle innen ein Loch
+        # mit einem Rand darum. Ein Sockel von einem Viertel haelt die
+        # Flaeche lesbar, auch wo kein Licht hinfaellt: Tiefseewasser ist
+        # nicht schwarz, sondern sehr dunkles Blau, und ein Koerper davor
+        # ist es auch.
+        var hell := 0.25 + 0.75 * st
+        toene.append(Color(tief.r * hell, tief.g * hell, tief.b * hell,
+            (0.86 + 0.12 * zu) * kern))
     draw_polygon(rund, toene)
 
     # **Der Umriss hat eine Lichtseite.**
@@ -835,8 +868,24 @@ func _inneres(rund: PackedVector2Array, mitte: Vector2, achse: Vector2,
         if profil[i] <= 0.0:
             profil[i] = profil[i + 1]
 
+    # **Eine Fuge ist ein Schatten, keine Linie.**
+    #
+    # Solange additiv gezeichnet wurde, konnte das Innere nur hell sein - es
+    # gab kein Dunkel. Auf den gefuellten Leibern sehen dieselben hellen
+    # Striche aus wie **Kratzer**: vier Linien quer ueber einen Rochen, die
+    # nichts beschreiben.
+    #
+    # Wie eine Fuge in einem Material wirklich aussieht: eine dunkle Rille,
+    # und daneben - auf der dem Licht zugewandten Seite - eine schmale helle
+    # Lippe, wo die Kante das Licht fasst. Zwei Zuege statt einem, und aus
+    # dem Kratzer wird eine Naht.
     var haut := farbe.lerp(Color(1.0, 0.98, 0.94), 0.10 + 0.30 * hitze)
     var deck := 0.30 + 0.42 * hitze
+    var rille := Color(0.04, 0.09, 0.14, 0.44 + 0.14 * hitze)
+    var lippe := Vector2.ZERO
+    var licht_hin := lichtquelle - mitte
+    if licht_hin.length_squared() > 1.0:
+        lippe = licht_hin.normalized() * 1.5
 
     # **Die Mittellinie nur bei laenglichen Leibern.** Auf einem runden Leib
     # kreuzt sie jede Rippe in deren Mitte, und aus Rippen mit einer Nabe
@@ -850,7 +899,8 @@ func _inneres(rund: PackedVector2Array, mitte: Vector2, achse: Vector2,
         for i in 7:
             var u := lerpf(-0.74, 0.74, float(i) / 6.0)
             mittelweg.append(mitte + achse * (u * laenge))
-        _zug(mittelweg, Color(haut.r, haut.g, haut.b, deck * 0.55), 1.0)
+        _rille(mittelweg, rille,
+            Color(haut.r, haut.g, haut.b, deck * 0.55), lippe)
 
     # Die Rippen sind leicht zur Nase gewoelbt. Ein gerader Strich quer durch
     # den Leib liest sich als Balken, ein gebogener als Schnitt durch einen
@@ -876,8 +926,22 @@ func _inneres(rund: PackedVector2Array, mitte: Vector2, achse: Vector2,
             var s := lerpf(-1.0, 1.0, float(j) / 4.0)
             rippe.append(ort + quer * (s * breit)
                 + achse * ((1.0 - s * s) * breit * 0.26))
-        _zug(rippe, Color(haut.r, haut.g, haut.b,
-            deck * (1.0 - 0.42 * aussen)), 1.0)
+        _rille(rippe, rille, Color(haut.r, haut.g, haut.b,
+            deck * (1.0 - 0.42 * aussen)), lippe)
+
+
+## Eine **Fuge**: dunkle Rille, helle Lippe auf der Lichtseite.
+func _rille(weg: PackedVector2Array, dunkel: Color, hell: Color,
+        lippe: Vector2) -> void:
+    if weg.size() < 2:
+        return
+    draw_polyline(weg, _gedeckt(dunkel), 2.2, true)
+    if lippe == Vector2.ZERO:
+        return
+    var oben := PackedVector2Array()
+    for v in weg:
+        oben.append(v + lippe)
+    draw_polyline(oben, _gedeckt(hell), 1.0, true)
 
 
 ## Die Laengsachse eines Umrisses: die Richtung zur weitesten Ecke.
@@ -1231,7 +1295,7 @@ func _panzerkrebs(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) 
         var u := lerpf(0.78, -0.86, float(i) / 4.0)
         var halb: float = r * (0.72 + 0.42 * sin(float(i) * 0.9 + 0.5))
         panzer.append(p + k * r * u - quer * halb)
-    _koerper(panzer, farbe, hitze, t.richtung)
+    _koerper(panzer, farbe, hitze, t.richtung, 1)
     # Die Fugen zwischen den Platten, quer.
     for i in 4:
         var u := lerpf(0.52, -0.62, float(i) / 3.0)
@@ -1333,7 +1397,7 @@ func _schildkoralle(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float
         p - k * r * 0.30 - quer * r * 1.18,
         p + k * r * 0.40 - quer * r * 1.06,
     ])
-    _koerper(saum, farbe, hitze, t.richtung)
+    _koerper(saum, farbe, hitze, t.richtung, 0)
     # Drei Plattenkanten quer ueber den Schild - der Panzer, den man sieht.
     for i in 3:
         var u := lerpf(0.34, -0.56, float(i) / 2.0)
@@ -1905,7 +1969,7 @@ func _spiegler(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> 
         p - k * r * 0.34 - quer * r * 0.66,
         p + k * r * 0.52 - quer * r * 0.58,
     ])
-    _koerper(schale, farbe, hitze, t.richtung)
+    _koerper(schale, farbe, hitze, t.richtung, 1)
     # Zwei Facettenkanten laengs - sie fangen das Licht und sagen, dass die
     # Oberflaeche aus Flaechen besteht und nicht aus Haut.
     for seite: float in SEITEN:
