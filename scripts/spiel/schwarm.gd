@@ -98,9 +98,22 @@ const LAUER_DECKUNG := 0.42
 func _fuellung(punkte: PackedVector2Array, farbe: Color) -> void:
     if punkte.size() < 3:
         return
+    # **Die Daempfung war fuer eine andere Nachbearbeitung gemacht.**
+    #
+    # Zweiundzwanzig Prozent Farbe mal fuenfundvierzig Prozent Deckung sind
+    # zusammen ein Zehntel - ein Leib war damit praktisch nur sein Umriss,
+    # und siebzehn Umrisse nebeneinander sind ein Drahtgitter, kein Bestand
+    # von Tieren. Die Zahl stammt aus der Zeit, als `glow_bloom` auf 0,55
+    # bei einer Schwelle von 0,30 stand: da blueht jede Flaeche, und jede
+    # Fuellung wurde milchig.
+    #
+    # Seit der Bloom auf 0,16 bei 0,62 steht, blueht nur noch, was wirklich
+    # hell ist. Eine gedaempfte Fuellung darf deshalb wieder eine Flaeche
+    # sein - sie bleibt weit unter der Schwelle und gibt dem Tier trotzdem
+    # einen Koerper, vor dem seine hellen Kanten stehen.
     farbe = _gedeckt(farbe)
-    draw_colored_polygon(punkte, Color(farbe.r * 0.22, farbe.g * 0.22,
-        farbe.b * 0.22, farbe.a * 0.45))
+    draw_colored_polygon(punkte, Color(farbe.r * 0.46, farbe.g * 0.46,
+        farbe.b * 0.46, farbe.a * 0.80))
 
 
 ## Ein Linienzug. Bei Leuchtroehren zweimal: ein weiter blasser Hof und ein
@@ -510,6 +523,71 @@ func _gluehen(p: Vector2, radius: float, farbe: Color, staerke: float) -> void:
 ## Leib: gedaempfte Fuellung, heller Umriss. Bei additivem Zeichnen macht der
 ## Umriss die Form, nicht die Flaeche - eine hell gefuellte Flaeche waere ein
 ## Klecks ohne Kontur.
+## Ein **Gliedmass**: verjuengt, mit Gelenk und Lichtkante.
+##
+## **Warum es das gibt.** Beine, Fangarme und Scheren waren `draw_line` mit
+## fester Breite - ein Zickzack aus Haarlinien, gleich dick von der Wurzel
+## bis zur Spitze und auf beiden Seiten gleich hell. Beim Panzerkrebs sah
+## das aus wie eine Kinderzeichnung von einer Spinne, und der Fehler ist
+## nicht der Umriss des Tieres, sondern die **Strichqualitaet**.
+##
+## Drei Dinge machen aus einem Strich ein Glied, und alle drei kosten fast
+## nichts:
+##
+## * **Verjuengung.** Ein Bein ist an der Wurzel dick und an der Spitze
+##   duenn. Das heisst: eine Flaeche, kein Strich.
+## * **Eine Lichtkante.** Eine Seite ist hell, die andere nicht - erst
+##   dadurch ist es ein Koerper und nicht ein Band.
+## * **Ein Gelenk.** Wo zwei Glieder aneinanderstossen, sitzt ein Knoten;
+##   ohne ihn knickt eine Linie, statt dass ein Bein sich beugt.
+func _glied(von: Vector2, nach: Vector2, dick_von: float, dick_nach: float,
+        farbe: Color, deckung: float) -> void:
+    var achse := nach - von
+    if achse.length_squared() < 0.01:
+        return
+    var quer := achse.orthogonal().normalized()
+    var haut := PackedVector2Array([
+        von + quer * dick_von, nach + quer * dick_nach,
+        nach - quer * dick_nach, von - quer * dick_von])
+    _fuellung(haut, Color(farbe.r, farbe.g, farbe.b, deckung * 1.5))
+    # **Die Lichtkante ist schmal und liegt auf einer Seite.** Der erste
+    # Anlauf gab ihr die anderthalbfache Deckung als Breite und dreissig
+    # Prozent Weiss - im Bild wurde daraus ein weisses Band, und die
+    # Verjuengung, um die es ging, verschwand darunter. Eine Kante, die
+    # breiter ist als das Glied dick, beschreibt nichts mehr.
+    draw_line(von + quer * dick_von, nach + quer * dick_nach,
+        farbe.lerp(Color(1.0, 0.98, 0.94), 0.16), 1.0, true)
+    draw_line(von - quer * dick_von, nach - quer * dick_nach,
+        Color(farbe.r, farbe.g, farbe.b, deckung * 0.40), 0.8, true)
+    draw_circle(von, dick_von * 0.9,
+        Color(farbe.r, farbe.g, farbe.b, deckung * 0.55))
+
+
+## Ein **Fangarm**: mehrgliedrig, verjuengt, nachschwingend.
+##
+## Fangarme und Faeden waren ueberall `draw_line` von der Wurzel zu einem
+## Punkt - eine gerade Linie mit fester Breite. Sie schwang zwar, aber als
+## **Ganzes**: das Ende ging mit, die Mitte nicht. So bewegt sich kein Arm
+## im Wasser; eine Welle laeuft von der Wurzel zur Spitze und wird dabei
+## groesser, weil das duenne Ende der Traegheit weniger entgegensetzt.
+##
+## Drei Glieder reichen dafuer. Jedes ist verjuengt (`_glied`), und die
+## Auslenkung waechst mit dem Quadrat der Laenge - das ist die Form, die
+## eine schwingende Rute wirklich annimmt.
+func _fangarm(wurzel: Vector2, richtung: Vector2, laenge: float,
+        dick: float, wehen: float, farbe: Color, deckung: float) -> void:
+    var quer := richtung.orthogonal()
+    var wo := wurzel
+    for i in 3:
+        var u0 := float(i) / 3.0
+        var u1 := float(i + 1) / 3.0
+        var ziel := wurzel + richtung * laenge * u1 \
+            + quer * wehen * u1 * u1
+        _glied(wo, ziel, dick * (1.0 - 0.72 * u0), dick * (1.0 - 0.72 * u1),
+            farbe, deckung * (1.0 - 0.30 * u0))
+        wo = ziel
+
+
 ## Ein Leib.
 ##
 ## **Zwei Dinge, und sie gelten fuer alle neun Arten**, weil fast jede diese
@@ -984,8 +1062,7 @@ func _schleier(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> 
         var s := (float(i) - float(faeden - 1) * 0.5) * 0.42
         var wurzel := p - k * r * 0.2 + quer * r * s
         var wehen := sin(t.alter * 6.0 + float(i) + t.phase) * r * 0.3
-        draw_line(wurzel, wurzel - k * r * laenge + quer * wehen,
-            Color(farbe.r, farbe.g, farbe.b, 0.35), 1.1)
+        _fangarm(wurzel, -k, r * laenge, r * 0.075, wehen, farbe, 0.30)
 
 
 func _panzerkrebs(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> void:
@@ -997,18 +1074,55 @@ func _panzerkrebs(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) 
     var quer := k.orthogonal()
     var rudern := sin(t.alter * 3.4 + t.phase)
 
-    # Laufbeine zuerst, damit der Panzer darueber liegt.
+    # **Die Beine faechern, und sie gehen nicht im Gleichschritt.**
+    #
+    # Sie standen zu dritt je Seite in gleichem Abstand, alle mit demselben
+    # Winkel nach hinten und alle im selben Takt - im Bild ein Kamm, der
+    # sich als Ganzes hebt und senkt. Ein Tier bewegt sich so nicht.
+    #
+    # Drei Dinge dagegen, und alle drei kosten eine Zeile: das vorderste
+    # Beinpaar zeigt nach **vorn**, das hinterste nach hinten (Faecher); die
+    # Beine werden nach hinten **kuerzer**; und jedes hat seine eigene
+    # Phase, so dass eine Welle durch sie laeuft, statt dass sie zusammen
+    # zucken.
     for seite: float in SEITEN:
         for i in 3:
-            var laengs := lerpf(0.35, -0.60, float(i) / 2.0)
-            var wurzel := p + k * r * laengs + quer * r * 0.72 * seite
-            var knie := wurzel + quer * r * (0.72 + 0.12 * rudern) * seite \
-                - k * r * 0.30
-            var fuss := knie + quer * r * 0.46 * seite + k * r * (0.34 + 0.14 * rudern)
-            draw_line(wurzel, knie, Color(farbe.r, farbe.g, farbe.b, 0.55), 2.4)
-            draw_line(knie, fuss, Color(farbe.r, farbe.g, farbe.b, 0.42), 1.8)
+            var f := float(i) / 2.0
+            var takt := sin(t.alter * 3.4 + t.phase + float(i) * 1.9)
+            var laengs := lerpf(0.42, -0.66, f)
+            var wurzel := p + k * r * laengs + quer * r * 0.62 * seite
+            # Winkel: vorn nach vorn, hinten nach hinten.
+            var aus := lerpf(0.46, -0.62, f)
+            var lang := lerpf(1.00, 0.74, f)
+            var knie := wurzel + (quer * seite * 0.86 + k * aus).normalized() \
+                * r * lang * (0.72 + 0.08 * takt)
+            var fuss := knie + (quer * seite * 0.52
+                + k * (aus - 0.55)).normalized() * r * lang \
+                * (0.66 + 0.12 * takt)
+            # Hintere Beine dunkler: von oben liegen sie im eigenen Schatten.
+            var tiefe := 0.62 - 0.13 * float(i)
+            _glied(wurzel, knie, r * 0.20, r * 0.11, farbe, tiefe)
+            _glied(knie, fuss, r * 0.11, r * 0.028, farbe, tiefe * 0.8)
 
-    # Panzer: vorn breit und gerundet, hinten verjuengt.
+    # **Die Scheren.** Sie sind das, was einen Krebs von einer Assel
+    # unterscheidet, und sie waren zwei Haarlinien mit einem Haken.
+    # Jetzt: ein kraeftiger Oberarm, ein Unterarm und eine **zweiteilige
+    # Klaue**, die sich oeffnet und schliesst.
+    for seite: float in SEITEN:
+        var klapp := 0.5 + 0.5 * sin(t.alter * 2.1 + t.phase + seite)
+        var schulter := p + k * r * 0.52 + quer * r * 0.44 * seite
+        var ellbogen := schulter + (k * 0.72 + quer * seite * 0.62).normalized() \
+            * r * 0.60
+        var hand := ellbogen + (k * 0.94 - quer * seite * 0.24).normalized() \
+            * r * 0.46
+        _glied(schulter, ellbogen, r * 0.22, r * 0.17, farbe, 0.72)
+        _glied(ellbogen, hand, r * 0.17, r * 0.13, farbe, 0.68)
+        for finger: float in SEITEN:
+            var oeffnung := (0.16 + 0.30 * klapp) * finger
+            var spitze := hand + (k * (0.92 - absf(oeffnung) * 0.5)
+                + quer * (oeffnung - 0.10 * seite)).normalized() * r * 0.40
+            _glied(hand, spitze, r * 0.10, r * 0.022, farbe, 0.66)
+
     # **Ein Krebs ist gegliedert, und das ist seine Silhouette.**
     #
     # Der Panzer war 1,56 lang und 2,04 breit - fast rund, und im Bild ein
@@ -1180,8 +1294,7 @@ func _glutqualle(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -
         var s := (float(i) - 2.0) * 0.34
         var wurzel := p - k * r * 0.30 + quer * r * s
         var wehen := sin(t.alter * 4.4 + float(i) * 1.3) * r * 0.26
-        draw_line(wurzel, wurzel - k * r * 1.5 + quer * wehen,
-            Color(farbe.r, farbe.g, farbe.b, 0.24), 1.2)
+        _fangarm(wurzel, -k, r * 1.5, r * 0.085, wehen, farbe, 0.26)
 
     var glut := 0.5 + 0.5 * sin(t.alter * 3.0 + t.phase)
     draw_circle(p, r * (0.40 + 0.06 * glut), Color(1.0, 0.86, 0.72,
@@ -1289,8 +1402,8 @@ func _schlundmutter(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float
         var s := (float(i) - 4.0) * 0.24
         var wurzel := p - k * r * 0.2 + quer * r * s * 1.15
         var wehen := sin(t.alter * 1.7 + float(i) * 0.8) * r * 0.5
-        draw_line(wurzel, wurzel - k * r * 2.4 + quer * wehen,
-            Color(farbe.r, farbe.g, farbe.b, 0.16 + 0.10 * hitze), 1.6)
+        _fangarm(wurzel, -k, r * 2.4, r * 0.075, wehen, farbe,
+            0.18 + 0.10 * hitze)
 
     var mantel := PackedVector2Array()
     for i in 17:
