@@ -1147,6 +1147,23 @@ Er war zudem die einzige Art **ohne Schein**, weil `_schein()` in
 `_koerper()` sitzt und er das nicht ruft. Der Schein gehört zum Tier und
 nicht zur Füllmethode.
 
+**Und das Boot war das letzte Drahtgitter.** Drei Stellen, alle dieselbe
+Falle. Die Flossen waren einfarbig (0,016 / 0,042 / 0,058) gefüllt —
+dunkler als das Wasser daneben, und im Bild klaffte hinter dem Boot eine
+schwarze Fläche. Der Rumpf hatte am Heck einen Sockel von 0,10 und lag
+damit bei (21 / 44 / 53) gegen ein Wasser von rund (20 / 55 / 65): die
+hintere Hälfte verschwand, übrig blieb ein Umriss. Ein Rumpf, durch den man
+den Grund zu sehen glaubt, ist ein Drahtgitter — genau das, was die Tiere
+waren, bevor sie gefüllte Leiber wurden, und man sieht es erst, wenn man
+das Boot allein groß anschaut.
+
+Dazu der **Hüllring**: zwanzig gleich lange Striche auf einer mathematisch
+runden Linie, das Einzige im ganzen Bild, das so gebaut ist — und die
+Farben lagen verkehrt herum, das Fehlende auf 0,48 Deckung gegen 0,10 für
+das Vorhandene. Der Schaden schrie, die Hülle flüsterte. Eine ruhige
+Anzeige zeigt, was **da** ist; wo nichts ist, ist eine Lücke, und eine
+Lücke braucht keine Farbe.
+
 **Ein Fels ist dunkler als das Wasser, aber er ist kein Loch.** Der
 Grundton des Steins lag bei dreissig Prozent des Wassers daneben (gemessen
 im Schuss: Fels (3, 13, 19), Wasser (9, 43, 52)) — im Bild waren das

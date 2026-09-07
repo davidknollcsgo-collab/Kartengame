@@ -1769,7 +1769,13 @@ func _zeichne_rumpf(umriss: PackedVector2Array, k: Vector2, r: float) -> void:
     for punkt in umriss:
         var vorn := clampf((punkt - _ort).dot(k) / maxf(1.0, r * RUMPF_LANG),
             0.0, 1.0)
-        var st := 0.10 + 0.30 * vorn * vorn
+        # **Und das Heck war dunkler als das Wasser.** Mit 0,10 als Sockel
+        # lag es bei (21 / 44 / 53) gegen ein Wasser von rund (20 / 55 /
+        # 65): die hintere Haelfte des Bootes verschwand, und uebrig blieb
+        # ein Umriss. Ein Rumpf, durch den man den Grund zu sehen glaubt,
+        # ist ein Drahtgitter - dasselbe, was die Tiere waren, bevor sie
+        # gefuellte Leiber wurden. Der Sockel traegt jetzt bis achtern.
+        var st := 0.24 + 0.30 * vorn * vorn
         laengs.append(Color(_haut.r * st + 0.020, _haut.g * st + 0.040,
             _haut.b * st + 0.055, 1.0))
     _vorn.draw_polygon(umriss, laengs)
@@ -1877,7 +1883,24 @@ func _zeichne_flossen(k: Vector2, quer: Vector2, r: float,
         kante.append(spitze_hinten)
         kante.append(wurzel_hinten)
 
-        _vorn.draw_colored_polygon(kante, Color(0.016, 0.042, 0.058))
+        # **Eine Flosse ist kein Loch.** Sie war einfarbig (0,016 / 0,042 /
+        # 0,058) gefuellt - gemessen dunkler als das Wasser daneben, und im
+        # Bild klaffte hinter dem Boot eine schwarze Flaeche, die man als
+        # Loch las und nicht als Blatt. Dieselbe Falle wie bei den Felsen
+        # und bei den abgewandten Facetten des Spieglers: in trueber Tiefe
+        # wird nichts schwarz, es wird verschleiert.
+        #
+        # Der Verlauf laeuft von der Wurzel am Rumpf zur Spitze - eine
+        # Flosse ist am Ansatz dick und laeuft aus, und genau das sagt ein
+        # Verlauf, den eine einzelne Farbe nicht sagen kann.
+        var toene := PackedColorArray()
+        for punkt in kante:
+            var weg := clampf((_ort - punkt).dot(k) / maxf(1.0, r * 1.6),
+                0.0, 1.0)
+            var st := 0.34 - 0.14 * weg
+            toene.append(Color(_haut.r * st + 0.030, _haut.g * st + 0.060,
+                _haut.b * st + 0.075, 1.0))
+        _vorn.draw_polygon(kante, toene)
         var zu := kante + PackedVector2Array([kante[0]])
         _vorn.draw_polyline(zu, Color(_haut.r, _haut.g, _haut.b, 0.07), 3.2, true)
         _vorn.draw_polyline(zu, Color(_haut.r, _haut.g, _haut.b, 0.34), 1.1, true)
@@ -2022,13 +2045,55 @@ func _zeichne_huellring(r: float) -> void:
     var zeigen := clampf(fehlt * 2.6, 0.0, 1.0)
     var radius := r * 1.72
     var luecke := TAU / float(huelle_voll)
+
+    # **Der letzte Zirkelschlag im Spiel.** Zwanzig gleich lange Striche auf
+    # einer mathematisch runden Linie - das Einzige im ganzen Bild, das so
+    # gebaut ist, und deshalb las es sich als Bedienoberflaeche, die jemand
+    # ueber den Graben gelegt hat. Dieselbe Beobachtung wie seinerzeit bei
+    # den Fundstellen, der Druckwelle und den Ladebalken, und dieselbe
+    # Antwort: ein Netz aus drei Punktreihen, innen und aussen auf Deckung
+    # null, und ein Radius, der leicht flattert.
+    #
+    # **Und die Farben lagen verkehrt herum.** Das Fehlende stand auf 0,48
+    # Deckung, das Vorhandene auf 0,10 - der Schaden schrie, und die Huelle
+    # fluesterte. Eine ruhige Anzeige zeigt, was **da** ist; wo nichts ist,
+    # ist eine Luecke, und eine Luecke braucht keine Farbe.
+    var stufen := 5
+    var breit := 1.9
+    var ecken := PackedVector2Array()
+    var farben := PackedColorArray()
+    var netz := PackedInt32Array()
     for i in huelle_voll:
         var von := -PI * 0.5 + luecke * float(i) + luecke * 0.24
         var bis := von + luecke * 0.52
         var voll := i < huelle
-        _vorn.draw_arc(_ort, radius, von, bis, 5,
-            Color(0.50, 0.90, 0.88, 0.26 * zeigen) if voll
-            else Color(0.90, 0.36, 0.28, 0.18 + 0.30 * zeigen), 1.4, true)
+        var ton := Color(0.56, 0.94, 0.90, 0.42 * zeigen) if voll \
+            else Color(0.86, 0.40, 0.32, 0.16 * zeigen)
+        var leer := Color(ton.r, ton.g, ton.b, 0.0)
+        var erste := ecken.size()
+        for j in stufen + 1:
+            var u := float(j) / float(stufen)
+            var w := lerpf(von, bis, u)
+            # Beide Enden eines Strichs laufen aus - ein Strich mit Kappen
+            # ist wieder eine Kante.
+            var laengs := sin(PI * u)
+            var mitte := radius * (1.0 + 0.010 * sin(w * 6.0 + _wellenzeit))
+            var richtung := Vector2.RIGHT.rotated(w)
+            ecken.append(_ort + richtung * (mitte - breit))
+            farben.append(leer)
+            ecken.append(_ort + richtung * mitte)
+            farben.append(Color(ton.r, ton.g, ton.b, ton.a * laengs))
+            ecken.append(_ort + richtung * (mitte + breit))
+            farben.append(leer)
+        for j in stufen:
+            var a := erste + j * 3
+            var b := a + 3
+            netz.append_array([a, b, b + 1, a, b + 1, a + 1])
+            netz.append_array([a + 1, b + 1, b + 2, a + 1, b + 2, a + 2])
+    if netz.is_empty():
+        return
+    RenderingServer.canvas_item_add_triangle_array(
+        _vorn.get_canvas_item(), netz, ecken, farben)
 
 
 ## --- Die Begleiter ---
