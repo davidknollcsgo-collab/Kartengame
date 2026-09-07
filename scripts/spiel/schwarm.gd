@@ -523,6 +523,28 @@ func _gluehen(p: Vector2, radius: float, farbe: Color, staerke: float) -> void:
 ## Leib: gedaempfte Fuellung, heller Umriss. Bei additivem Zeichnen macht der
 ## Umriss die Form, nicht die Flaeche - eine hell gefuellte Flaeche waere ein
 ## Klecks ohne Kontur.
+## Ein Linienzug mit **Farbe je Punkt** - sonst wie `_zug`.
+##
+## Er wird gebraucht, wo eine Kante ueber ihre Laenge heller und dunkler
+## wird: eine Lichtseite an einem Leib. `draw_polyline` kann das nicht, und
+## den Zug in Stuecke zu zerlegen ginge auch nicht - jedes Stueck bekaeme
+## an seinen Enden eine runde Kappe, und aus einem Umriss wuerde eine
+## Perlenkette. Dieselbe Falle steckt im Rumpf des Bootes.
+func _zug_farben(punkte: PackedVector2Array, farben: PackedColorArray,
+        dicke: float) -> void:
+    if punkte.size() < 2 or farben.size() != punkte.size():
+        return
+    var hof := PackedColorArray()
+    for c in farben:
+        hof.append(Color(c.r, c.g, c.b, _gedeckt(c).a * 0.30))
+    var kern := PackedColorArray()
+    for c in farben:
+        kern.append(_gedeckt(c))
+    draw_polyline_colors(punkte, hof,
+        minf(dicke * 3.4, HOF_HOECHSTENS), true)
+    draw_polyline_colors(punkte, kern, dicke, true)
+
+
 ## Ein **Gliedmass**: verjuengt, mit Gelenk und Lichtkante.
 ##
 ## **Warum es das gibt.** Beine, Fangarme und Scheren waren `draw_line` mit
@@ -650,9 +672,33 @@ func _koerper(punkte: PackedVector2Array, farbe: Color, hitze: float,
             (0.16 + 0.30 * u * u) * kern))
     draw_polygon(rund, toene)
 
+    # **Der Umriss hat eine Lichtseite.**
+    #
+    # Er lief rundum mit derselben Deckung, und damit war jedes Tier ein
+    # gleichmaessig heller Neonring - eine Roehre, kein Koerper. Volumen
+    # entsteht erst, wenn eine Seite heller ist als die andere, und welche
+    # Seite das ist, sagt `lichtquelle`: der Ort des Bootes, derselbe, den
+    # auch der Meeresgrund fuer seine Felsen bekommt.
+    #
+    # Gerechnet je Eckpunkt aus der **Aussennormalen** und nicht als Bogen.
+    # Genau das war der Fehler des alten `_randlicht()`: es zog einen
+    # Kreisbogen bei 1,04 Radien um den Mittelpunkt, und auf einem langen
+    # Fisch schwebte der neben dem Tier statt auf seiner Kante.
+    var zum_licht := lichtquelle - mitte
+    zum_licht = zum_licht.normalized() if zum_licht.length_squared() > 1.0 \
+        else Vector2.UP
+    var seite := PackedFloat32Array()
+    for v in rund:
+        var aussen := (v - mitte).normalized()
+        seite.append(0.34 + 0.66 * maxf(0.0, aussen.dot(zum_licht)))
+
     var geschlossen := rund + PackedVector2Array([rund[0]])
-    _zug(geschlossen, Color(farbe.r, farbe.g, farbe.b,
-        0.26 + 0.34 * hitze), 3.4)
+    var hof := PackedColorArray()
+    for i in geschlossen.size():
+        var f: float = seite[i % seite.size()]
+        hof.append(Color(farbe.r, farbe.g, farbe.b,
+            (0.26 + 0.34 * hitze) * f))
+    _zug_farben(geschlossen, hof, 3.4)
     # **Der Umriss traegt die Farbe der Art, nicht Weiss.**
     #
     # Er stand im Ruhezustand schon auf 45 % Weiss, und darueber liegt die
@@ -663,8 +709,12 @@ func _koerper(punkte: PackedVector2Array, farbe: Color, hitze: float,
     # Vierzehn Prozent reichen fuer den hellen Kern der Leuchtroehre. Weiss
     # wird sie erst beim Brennen - dann ist es kein Verlust, sondern die
     # Ansage.
-    _zug(geschlossen, farbe.lerp(Color(1.0, 0.98, 0.94),
-        0.14 + 0.62 * hitze), 1.3 + 0.9 * hitze)
+    var kante := farbe.lerp(Color(1.0, 0.98, 0.94), 0.14 + 0.62 * hitze)
+    var kern_farben := PackedColorArray()
+    for i in geschlossen.size():
+        var f: float = seite[i % seite.size()]
+        kern_farben.append(Color(kante.r, kante.g, kante.b, f))
+    _zug_farben(geschlossen, kern_farben, 1.3 + 0.9 * hitze)
 
     _inneres(rund, mitte, achse, farbe, hitze)
 
@@ -1540,10 +1590,17 @@ func _randlicht(p: Vector2, r: float, farbe: Color, t: Raeuber) -> void:
 
     # Zwei Bogen: ein breiter, weicher Saum und darin eine schmale, harte
     # Kante. Der Saum macht die Rundung, die Kante den Glanzpunkt.
-    draw_arc(p, r * 1.04, w - bogen, w + bogen, 16,
-        Color(farbe.r, farbe.g, farbe.b, 0.26 * staerke), 2.6)
-    draw_arc(p, r * 0.96, w - bogen * 0.48, w + bogen * 0.48, 12,
-        Color(1.0, 0.99, 0.94, 0.24 * staerke * staerke), 1.5)
+    # **Nur noch der Kern, kein Bogen mehr.**
+    #
+    # Hier lagen zwei Kreisboegen bei 1,04 und 0,96 Radien um den
+    # Mittelpunkt. Auf einem runden Tier sass das ungefaehr auf der Kante,
+    # auf einem langen Fisch schwebte es daneben - ein heller Strich im
+    # Wasser, der zu nichts gehoert. Die Lichtseite macht jetzt `_koerper()`
+    # auf dem echten Umriss; was hier bleibt, ist ein Schein im Wasser
+    # davor, und der darf rund sein, weil er keine Kante behauptet.
+    draw_circle(p + (lichtquelle - p).normalized() * r * 0.55,
+        r * 0.75, Color(farbe.r, farbe.g, farbe.b, 0.10 * staerke))
+    var _b := bogen
 
 
 ## Kielwasser: eine kurze, sich verjuengende Spur hinter schnellen Tieren.
