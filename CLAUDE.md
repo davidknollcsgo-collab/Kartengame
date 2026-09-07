@@ -1088,6 +1088,19 @@ Schleierqualle, falsch herum angehängt, kreuzte den eigenen Umriss — weitere
 Parse-Fehler (`spitze` zweimal deklariert). Gefunden hat beides nur der
 Startlauf.
 
+**Ein Facettenkranz um zwei Grate deckt die Flaeche nicht.** Der Spiegler
+zeichnet seine Facetten selbst: je Aussenkante ein Dreieck zum *näheren*
+der beiden Gratpunkte. Der Streifen zwischen den beiden Graten gehört
+damit zu keinem — im Bild ein schwarzer Keil längs mitten durch das Tier,
+gelesen als Loch in einem Ring. Ein Grundton unter allem schließt ihn.
+Dieselbe Art Fehler wie die verlorene Füllung bei einer Kerbe im Umriss:
+**wer eine Fläche aus Stücken zusammensetzt, prüft, dass die Stücke sie
+auch bedecken** — und man sieht es nicht im Code, sondern nur im Bild.
+
+Er war zudem die einzige Art **ohne Schein**, weil `_schein()` in
+`_koerper()` sitzt und er das nicht ruft. Der Schein gehört zum Tier und
+nicht zur Füllmethode.
+
 **Ein Fels ist dunkler als das Wasser, aber er ist kein Loch.** Der
 Grundton des Steins lag bei dreissig Prozent des Wassers daneben (gemessen
 im Schuss: Fels (3, 13, 19), Wasser (9, 43, 52)) — im Bild waren das

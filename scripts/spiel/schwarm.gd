@@ -2168,6 +2168,27 @@ func _spiegler(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> 
     zum_licht = zum_licht.normalized() if zum_licht.length_squared() > 1.0 \
         else Vector2.UP
 
+    # **Er war die einzige Art ohne Schein.** Weil er `_koerper()` nicht
+    # ruft - er zeichnet seine Facetten selbst -, fiel fuer ihn auch
+    # `_schein()` aus, und ohne den steht ein dunkles Vieleck ohne Anschluss
+    # im Wasser. Im Schuss war er ein grauer Umriss mit einem Auge darin,
+    # waehrend nebenan alles leuchtete. Der Schein gehoert zum Tier und
+    # nicht zur Fuellmethode.
+    _schein(ecken, farbe, 8.0 + 16.0 * hitze, 0.10 + 0.12 * hitze)
+
+    # **Die Facetten allein decken den Leib nicht.** Jedes Dreieck laeuft
+    # von einer Aussenkante zum *naeheren* der beiden Gratpunkte - der
+    # Streifen zwischen den beiden Graten gehoert damit zu keinem von
+    # ihnen. Im Bild war das ein schwarzer Keil laengs mitten durch das
+    # Tier, und weil der Umriss aussenherum hell steht, las man ihn als
+    # Loch in einem Ring. Ein Grundton unter allem schliesst ihn: die
+    # Facetten liegen darauf und bleiben, was sie sind, und wo keine liegt,
+    # steht die abgewandte Seite des Schliffs.
+    var grundton := Color(farbe.r, farbe.g, farbe.b).lerp(
+        Color(0.12, 0.30, 0.44), 0.34)
+    draw_colored_polygon(ecken, _gedeckt(Color(grundton.r * 0.45,
+        grundton.g * 0.45, grundton.b * 0.45, 0.94)))
+
     var n := ecken.size()
     for i in n:
         var a1: Vector2 = ecken[i]
@@ -2182,9 +2203,17 @@ func _spiegler(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> 
         # 0,24 bis 1,24 lagen alle sieben Facetten dicht beieinander und das
         # Tier war wieder eine glatte Flaeche - nur mit Kanten darauf. Eine
         # abgewandte Facette ist fast dunkel, eine zugewandte fast weiss.
-        var st := 0.12 + 1.75 * zu * zu
+        #
+        # **Aber auch hier wird nichts schwarz.** Mit 0,12 als Sockel und
+        # der Blaustichigkeit darueber fiel eine abgewandte Facette auf
+        # praktisch null, und weil bei sieben Facetten meist vier abgewandt
+        # sind, war der halbe Leib ein Loch - dieselbe Falle wie bei den
+        # Felsen und in `_koerper()`. Ein Viertel als Sockel laesst den
+        # Sprung immer noch das Sechsfache betragen; das ist Schliff, und
+        # nicht einmal knapp.
+        var st := 0.45 + 1.45 * zu * zu
         var ton := Color(farbe.r, farbe.g, farbe.b).lerp(
-            Color(0.12, 0.30, 0.44), 0.50 * (1.0 - zu))
+            Color(0.12, 0.30, 0.44), 0.34 * (1.0 - zu))
         draw_colored_polygon(PackedVector2Array([grat, a1, b1]),
             _gedeckt(Color(minf(1.0, ton.r * st), minf(1.0, ton.g * st),
                 minf(1.0, ton.b * st), 0.94)))
