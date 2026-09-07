@@ -124,13 +124,27 @@ func _fuellung(punkte: PackedVector2Array, farbe: Color) -> void:
     # hell ist. Eine gedaempfte Fuellung darf deshalb wieder eine Flaeche
     # sein - sie bleibt weit unter der Schwelle und gibt dem Tier trotzdem
     # einen Koerper, vor dem seine hellen Kanten stehen.
-    # Mit Mischblendung ist eine Fuellung eine Flaeche und keine Aufhellung
-    # mehr. Sie darf deshalb deckend sein - dunkel genug, dass die hellen
-    # Kanten darauf stehen, und hell genug, dass das Tier vor dem Wasser
-    # nicht verschwindet.
+    # **Auch eine Fuellung bekommt die Lichtseite.**
+    #
+    # `_koerper()` schattiert seinen Umriss zum Licht hin, `_fuellung()` legte
+    # eine **flache** dunkle Flaeche - und weil jede Flosse, jeder Schwanz,
+    # jede Schere und jeder Kiefer hier durchgeht, sass an einem schattierten
+    # Leib lauter unschattiertes Beiwerk. Im Bild sah der Zahnkiefer aus wie
+    # ein Fisch mit einem aufgeklebten Papierdrachen.
+    #
+    # Es ist dieselbe Rechnung wie im Leib, nur ohne dessen Verlaufsumfang -
+    # ein Anbauteil ist klein, und ein voller Verlauf darauf waere Unruhe.
     farbe = _gedeckt(farbe)
-    draw_colored_polygon(punkte, Color(farbe.r * 0.30, farbe.g * 0.30,
-        farbe.b * 0.32, minf(1.0, farbe.a * 1.9)))
+    var mitte := _mitte(punkte)
+    var hin := lichtquelle - mitte
+    hin = hin.normalized() if hin.length_squared() > 1.0 else Vector2.UP
+    var toene := PackedColorArray()
+    for v in punkte:
+        var zu := maxf(0.0, (v - mitte).normalized().dot(hin))
+        var st := 0.62 + 0.60 * zu * zu
+        toene.append(Color(farbe.r * 0.30 * st, farbe.g * 0.30 * st,
+            farbe.b * 0.32 * st, minf(1.0, farbe.a * 1.9)))
+    draw_polygon(punkte, toene)
 
 
 ## Ein Linienzug. Bei Leuchtroehren zweimal: ein weiter blasser Hof und ein
@@ -1061,17 +1075,21 @@ func _zahnkiefer(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -
 
     var stiel := p - k * r * 1.10
     var fahnenende := p - k * r * 1.90 + quer * r * 0.34 * wedel
-    var flosse := PackedVector2Array([
-        stiel + quer * r * 0.10,
-        fahnenende + quer * r * 0.44,
-        fahnenende + quer * r * 0.10,
-        fahnenende - quer * r * 0.10,
-        fahnenende - quer * r * 0.44,
-        stiel - quer * r * 0.10,
-    ])
-    _fuellung(flosse, Color(farbe.r, farbe.g, farbe.b, 0.26 + 0.20 * hitze))
+    # **Ein Lappen, keine Gabel.** Der Anlauf davor hatte zwischen den beiden
+    # Flossenspitzen eine Einbuchtung - anatomisch richtig, im Bild aber ein
+    # spitzer Winkel, und ein spitzer Winkel mit hellem Rand auf einem Tier
+    # von fuenfunddreissig Pixeln liest sich als **Papierdrachen**. Eine
+    # gerundete Fahne sagt "Flosse" auf dieser Groesse besser als eine
+    # korrekte Gabel.
+    var flosse := PackedVector2Array()
+    for i in 7:
+        var u := lerpf(-1.0, 1.0, float(i) / 6.0)
+        flosse.append(fahnenende + quer * r * 0.46 * u
+            + k * r * 0.22 * (1.0 - u * u))
+    flosse.append(stiel)
+    _fuellung(flosse, Color(farbe.r, farbe.g, farbe.b, 0.30 + 0.20 * hitze))
     _zug(flosse + PackedVector2Array([flosse[0]]),
-        Color(farbe.r, farbe.g, farbe.b, 0.30 + 0.32 * hitze), 1.1)
+        Color(farbe.r, farbe.g, farbe.b, 0.20 + 0.24 * hitze), 1.0)
 
     var leib := PackedVector2Array([
         p + k * r * 1.42,
@@ -1087,15 +1105,11 @@ func _zahnkiefer(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -
     ])
     _koerper(leib, farbe, hitze, t.richtung)
 
-    # Die Rueckenflosse als niedriger Saum ueber dem hinteren Rumpf - sie
-    # macht aus einem Schlauch einen Fisch, und sie kostet vier Punkte.
-    var saum := PackedVector2Array([
-        p + k * r * 0.20 + quer * r * 0.50,
-        p - k * r * 0.10 + quer * r * 0.86,
-        p - k * r * 0.62 + quer * r * 0.62,
-        p - k * r * 0.66 + quer * r * 0.26,
-    ])
-    _zug(saum, Color(farbe.r, farbe.g, farbe.b, 0.24 + 0.28 * hitze), 1.1)
+    # **Der Rueckensaum ist weg.** Er stand als offener Linienzug ueber dem
+    # Rumpf und sollte "Flosse" sagen; auf fuenfunddreissig Pixeln sagte er
+    # "Strich neben dem Tier". Wer auf dieser Groesse zaehlt, wieviele Teile
+    # ein Sprite hat, kommt schnell auf zu viele: Leib, Flosse, Saum, Maul,
+    # Zaehne, Auge, Angel waren sieben. Vier davon sind sichtbar.
 
     # **Das Maul liegt auf dem Leib und schneidet ihn nicht.** Additiv
     # gezeichnet gibt es kein Dunkel; eine Kerbe im Umriss hat den Leib beim
@@ -1216,7 +1230,9 @@ func _schleier(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> 
     for i in faeden:
         var s := (float(i) - float(faeden - 1) * 0.5) * 0.42
         var wurzel := p - k * r * 0.2 + quer * r * s
-        var wehen := sin(t.alter * 6.0 + float(i) + t.phase) * r * 0.3
+        # Deutlicher ausschwingend und je Faden versetzt: vier Faeden mit
+        # derselben Auslenkung sind ein Kamm.
+        var wehen := sin(t.alter * 4.4 + float(i) * 1.7 + t.phase) * r * 0.85
         _fangarm(wurzel, -k, r * laenge, r * 0.075, wehen, farbe, 0.30)
 
 
@@ -1471,9 +1487,23 @@ func _treibanker(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -
         schleppe.append(p - zug * r * (0.6 + 2.3 * f)
             - k * r * 0.5 * f
             + quer * sin(t.alter * 3.0 + f * 3.4) * r * 0.22 * f)
-    _zug(schleppe, Color(farbe.r, farbe.g, farbe.b, 0.34), 1.6)
-    draw_circle(schleppe[schleppe.size() - 1], r * 0.16,
-        Color(farbe.r, farbe.g, farbe.b, 0.42))
+    # **Ein Seil wird zur Last hin duenner, nicht dicker.** Die Schleppe war
+    # ein Zug von gleicher Breite mit einem Punkt am Ende - ein Stock mit
+    # einer Perle. Sie laeuft jetzt aus und traegt am Ende einen Anker aus
+    # drei Armen: das ist die Form, die dieser Art ihren Namen gibt, und man
+    # sieht sie auch dann, wenn sie nur acht Pixel gross ist.
+    for i in range(schleppe.size() - 1):
+        var f := float(i) / float(schleppe.size() - 1)
+        _glied(schleppe[i], schleppe[i + 1], r * (0.075 - 0.045 * f),
+            r * (0.075 - 0.045 * (f + 0.2)), farbe, 0.46 - 0.14 * f)
+    var ende: Vector2 = schleppe[schleppe.size() - 1]
+    var davor: Vector2 = schleppe[schleppe.size() - 2]
+    var laengs := (ende - davor).normalized()
+    var seit := laengs.orthogonal()
+    for arm: float in SEITEN:
+        _glied(ende, ende + (laengs * 0.5 + seit * arm).normalized() * r * 0.34,
+            r * 0.055, r * 0.02, farbe, 0.50)
+    _glied(ende, ende + laengs * r * 0.22, r * 0.05, r * 0.02, farbe, 0.50)
 
     var leib := PackedVector2Array([
         p + k * r * 0.92 + zug * r * 0.28,
@@ -1556,7 +1586,9 @@ func _schlundmutter(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float
     for i in 9:
         var s := (float(i) - 4.0) * 0.24
         var wurzel := p - k * r * 0.2 + quer * r * s * 1.15
-        var wehen := sin(t.alter * 1.7 + float(i) * 0.8) * r * 0.5
+        # Weiter ausschwingend und je Faden versetzt - neun Faeden im
+        # Gleichtakt sind ein Kamm, nicht ein Schleier.
+        var wehen := sin(t.alter * 1.7 + float(i) * 1.35) * r * 0.95
         _fangarm(wurzel, -k, r * 2.4, r * 0.075, wehen, farbe,
             0.18 + 0.10 * hitze)
 
@@ -1603,10 +1635,27 @@ func _kalkrochen(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -
         var u := float(i) / 6.0
         schwanz.append(p - k * r * (0.5 + 2.0 * u)
             + quer * schlag * r * 0.34 * u * u)
-    draw_polyline(schwanz, Color(farbe.r, farbe.g, farbe.b, 0.30 + 0.24 * hitze),
-        3.4)
-    draw_circle(schwanz[schwanz.size() - 1], r * 0.09,
-        Color(1.0, 0.96, 0.88, 0.40 + 0.40 * hitze))
+    # **Der Schwanz eines Rochens laeuft aus.** Er war eine Polylinie von
+    # dreikommavier Pixeln ueber ihre ganze Laenge - eine Peitsche hat aber
+    # an der Wurzel den Durchmesser des Tieres und an der Spitze keinen.
+    for i in range(schwanz.size() - 1):
+        var f := float(i) / float(schwanz.size() - 1)
+        # **Duenn.** Der erste Anlauf nahm 0,115 Radien als Wurzelbreite -
+        # bei einem Leitwesen mit sechzig Einheiten Radius sind das sieben
+        # Pixel, und im Bild wurde daraus ein Keil statt einer Peitsche. Der
+        # Schwanz eines Rochens ist duenner als sein Auge.
+        _glied(schwanz[i], schwanz[i + 1], r * (0.055 - 0.044 * f),
+            r * (0.055 - 0.044 * (f + 0.17)), farbe,
+            (0.56 + 0.24 * hitze) * (1.0 - 0.30 * f))
+    # Der Giftstachel: ein schmales Dreieck laengs der Spitze.
+    var spitz: Vector2 = schwanz[schwanz.size() - 1]
+    var vor: Vector2 = schwanz[schwanz.size() - 2]
+    var richt := (spitz - vor).normalized()
+    draw_colored_polygon(PackedVector2Array([
+        spitz - richt * r * 0.34 + richt.orthogonal() * r * 0.045,
+        spitz - richt * r * 0.34 - richt.orthogonal() * r * 0.045,
+        spitz + richt * r * 0.20]),
+        _gedeckt(Color(1.0, 0.96, 0.88, 0.52 + 0.36 * hitze)))
 
     # Der Schild: breit quer zur Bahn, vorn stumpf, hinten spitz. Die
     # Wellenkante an den Flanken ist das, woran ein Rochen erkannt wird.
@@ -1899,12 +1948,29 @@ func _ringmaul(p: Vector2, r: float, farbe: Color, t: Raeuber,
     _fuellung(bogen, Color(farbe.r, farbe.g, farbe.b, 0.30))
     _zug(bogen, farbe.lightened(0.28), 2.2)
     # Zaehne nach innen - das Maul liegt auf der Innenseite des Rings.
+    # **Zaehne sind Dreiecke, keine Balken.**
+    #
+    # Hier standen elf gerade weisse Striche von gleicher Breite vom Ring
+    # nach innen - im Bild ein Zahnrad, kein Maul. Ein Zahn ist an der Wurzel
+    # breit und laeuft spitz zu; das ist der ganze Unterschied zwischen einem
+    # Gebiss und einer Speiche.
+    #
+    # Und sie sind **verschieden lang**. Gleich lange Zaehne in gleichem
+    # Abstand sind ein Kamm; ein Rachen hat Luecken und Ueberlaenge.
     for i in 11:
         var w := lerpf(-PI * 0.76, PI * 0.76, float(i) / 10.0)
-        var aussen := p + k * sin(w) * r * 0.74 + quer * cos(w) * r * 0.74
-        var innen := p + k * sin(w) * r * (0.40 - 0.06 * atem) \
-            + quer * cos(w) * r * (0.40 - 0.06 * atem)
-        _strich(aussen, innen, Color(1.0, 0.94, 0.88, 0.6 + 0.3 * hitze), 1.6)
+        var strahl := Vector2(k.x * sin(w) + quer.x * cos(w),
+            k.y * sin(w) + quer.y * cos(w))
+        var lang := 0.40 - 0.06 * atem + 0.10 * sin(float(i) * 2.3)
+        var aussen := p + strahl * r * 0.76
+        var spitze := p + strahl * r * lang
+        var breit := strahl.orthogonal() * r * 0.075
+        draw_colored_polygon(PackedVector2Array([
+            aussen + breit, aussen - breit, spitze]),
+            _gedeckt(Color(1.0, 0.96, 0.90, 0.62 + 0.28 * hitze)))
+        # Eine Kante am Zahn, damit er nicht flach auf dem Ring liegt.
+        draw_line(aussen + breit, spitze,
+            _gedeckt(Color(1.0, 1.0, 0.98, 0.34 + 0.30 * hitze)), 1.0, true)
     draw_circle(p, r * (0.20 + 0.05 * atem),
         Color(farbe.r, farbe.g, farbe.b, 0.55))
     _auge(p + k * r * 0.1, r * 0.16, hitze, farbe)
@@ -1929,14 +1995,20 @@ func _brutstock(p: Vector2, r: float, farbe: Color, t: Raeuber,
         var u := float(i) / 8.0
         stamm.append(p + k * r * lerpf(0.9, -0.95, u)
             + quer * r * 0.16 * sin(u * 2.4 + t.alter * 0.7))
-    _zug(stamm, farbe.lightened(0.25), 4.0)
+    # **Der Stamm verjuengt sich.** Er war ein Zug von vier Pixeln gleicher
+    # Breite ueber die ganze Laenge - ein Stab. Ein Stock waechst von unten
+    # dick nach oben duenn, und genau daran erkennt man, wo bei ihm oben ist.
+    for i in range(stamm.size() - 1):
+        var u := float(i) / float(stamm.size() - 1)
+        _glied(stamm[i], stamm[i + 1], r * (0.15 - 0.09 * u),
+            r * (0.15 - 0.09 * (u + 0.13)), farbe, 0.70 - 0.16 * u)
     # Knospen an Seitenaesten. Die reifste sitzt vorn und wird groesser.
     for i in 5:
         var u := float(i) / 4.0
         var seite := 1.0 if i % 2 == 0 else -1.0
         var wurzel := p + k * r * lerpf(0.6, -0.7, u)
         var spitze := wurzel + quer * seite * r * 0.62 - k * r * 0.1
-        _strich(wurzel, spitze, Color(farbe.r, farbe.g, farbe.b, 0.5), 1.6)
+        _glied(wurzel, spitze, r * 0.075, r * 0.035, farbe, 0.60)
         var gross := r * (0.13 + 0.10 * reif * (1.0 - u))
         draw_circle(spitze, gross,
             Color(minf(1.0, farbe.r * 1.3), minf(1.0, farbe.g * 1.3),
