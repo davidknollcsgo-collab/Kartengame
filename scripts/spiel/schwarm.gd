@@ -2147,21 +2147,75 @@ func _brutstock(p: Vector2, r: float, farbe: Color, t: Raeuber,
     # **Der Stamm verjuengt sich.** Er war ein Zug von vier Pixeln gleicher
     # Breite ueber die ganze Laenge - ein Stab. Ein Stock waechst von unten
     # dick nach oben duenn, und genau daran erkennt man, wo bei ihm oben ist.
+    # **Auch er hatte keinen Schein.** Wie der Spiegler zeichnet er seinen
+    # Leib selbst und ruft `_koerper()` nicht - damit fiel `_schein()` fuer
+    # ihn aus, und ein Leitwesen ohne Schein steht ohne Anschluss im Wasser.
+    # Der Umriss dafuer ist der Stamm, nach beiden Seiten auf seine eigene
+    # Dicke aufgezogen.
+    var huelle := PackedVector2Array()
+    var gegen := PackedVector2Array()
+    for i in stamm.size():
+        var u := float(i) / float(stamm.size() - 1)
+        var vor: Vector2 = stamm[maxi(0, i - 1)]
+        var nach: Vector2 = stamm[mini(stamm.size() - 1, i + 1)]
+        var q := (nach - vor)
+        q = q.orthogonal().normalized() if q.length() > 0.001 else quer
+        var d := r * (0.28 - 0.17 * u)
+        huelle.append(stamm[i] + q * d)
+        gegen.append(stamm[i] - q * d)
+    gegen.reverse()
+    _schein(huelle + gegen, farbe, 10.0 + 16.0 * hitze,
+        0.10 + 0.12 * hitze)
+
     for i in range(stamm.size() - 1):
         var u := float(i) / float(stamm.size() - 1)
-        _glied(stamm[i], stamm[i + 1], r * (0.15 - 0.09 * u),
-            r * (0.15 - 0.09 * (u + 0.13)), farbe, 0.70 - 0.16 * u)
+        # **Der Stamm war duenner als seine Knospen.** Neun Einheiten unten
+        # gegen Beeren von vierzehn - und daraus wird eine Strukturformel:
+        # Kugeln, verbunden durch Staebe. Ein Stock traegt seine Knospen,
+        # also ist er dicker als sie.
+        _glied(stamm[i], stamm[i + 1], r * (0.27 - 0.17 * u),
+            r * (0.27 - 0.17 * (u + 0.13)), farbe, 0.70 - 0.16 * u)
+
+    var zum_licht := lichtquelle - p
+    zum_licht = zum_licht.normalized() if zum_licht.length_squared() > 1.0 \
+        else Vector2.UP
+
     # Knospen an Seitenaesten. Die reifste sitzt vorn und wird groesser.
+    #
+    # **Sie sassen auf einem Raster.** Fuenf Aeste, streng abwechselnd links
+    # und rechts, alle genau quer und alle gleich lang - im Bild ein
+    # Strukturformel-Modell aus Kugeln und Staeben. Ein Stock, an dem alles
+    # im selben Winkel steht, ist gewachsen wie ein Zaun. Winkel und Laenge
+    # kommen deshalb aus `_eigenart()`, und der Ast ist geknickt statt
+    # gerade: zwei Glieder mit einem Knoten dazwischen.
     for i in 5:
         var u := float(i) / 4.0
         var seite := 1.0 if i % 2 == 0 else -1.0
         var wurzel := p + k * r * lerpf(0.6, -0.7, u)
-        var spitze := wurzel + quer * seite * r * 0.62 - k * r * 0.1
-        _glied(wurzel, spitze, r * 0.075, r * 0.035, farbe, 0.60)
-        var gross := r * (0.13 + 0.10 * reif * (1.0 - u))
-        draw_circle(spitze, gross,
-            Color(minf(1.0, farbe.r * 1.3), minf(1.0, farbe.g * 1.3),
-                minf(1.0, farbe.b * 1.3), 0.55 + 0.35 * reif))
+        # Nach hinten geneigt und je Ast anders - ein Seitenzweig zeigt vom
+        # Wachstum weg, nicht rechtwinklig ins Wasser.
+        var neigung := lerpf(0.34, 0.86, _eigenart(t, 2.1 + float(i)))
+        var richt := (quer * seite - k * neigung).normalized()
+        var weit := r * lerpf(0.48, 0.78, _eigenart(t, 5.7 + float(i)))
+        var knie := wurzel + richt * weit * 0.55
+        var spitze := knie + richt.rotated(seite * 0.42) * weit * 0.5
+        _glied(wurzel, knie, r * 0.075, r * 0.055, farbe, 0.60)
+        _glied(knie, spitze, r * 0.055, r * 0.032, farbe, 0.60)
+
+        # **Eine Knospe ist keine Scheibe.** Sie war eine gefuellte
+        # `draw_circle` mit harter Kante - dieselbe Kante, die ueberall
+        # sonst in diesem Spiel durch einen Uebergang ersetzt ist. Drei
+        # Lagen machen daraus einen Koerper: ein weicher Hof, die Beere
+        # selbst, und ein heller Fleck dort, wo das Boot steht.
+        var gross := r * (0.10 + 0.08 * reif * (1.0 - u))
+        var beere := Color(minf(1.0, farbe.r * 1.3), minf(1.0, farbe.g * 1.3),
+            minf(1.0, farbe.b * 1.3))
+        draw_circle(spitze, gross * 1.6, _gedeckt(Color(beere.r, beere.g,
+            beere.b, 0.07 + 0.07 * reif)))
+        draw_circle(spitze, gross, _gedeckt(Color(beere.r * 0.62,
+            beere.g * 0.62, beere.b * 0.62, 0.62 + 0.30 * reif)))
+        draw_circle(spitze + zum_licht * gross * 0.34, gross * 0.55,
+            _gedeckt(Color(beere.r, beere.g, beere.b, 0.55 + 0.35 * reif)))
     # Der Ring am Kopf schliesst sich, bis das naechste Junge faellt.
     draw_arc(p + k * r * 0.62, r * 0.34, -PI * 0.5,
         -PI * 0.5 + TAU * reif, 20,
