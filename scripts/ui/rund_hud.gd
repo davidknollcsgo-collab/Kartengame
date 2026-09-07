@@ -517,13 +517,44 @@ func _atem(breite: float, hoehe: float) -> void:
     var t: float = 1.0 - absf(rest / lauf.ATEM - 0.5) * 2.0
     var a := clampf(t * 2.2, 0.0, 1.0)
     var y := hoehe * 0.32
-    _text(Vector2(breite * 0.5, y),
-        "WAVE %d CLEARED" % (int(lauf.welle_nummer) - 1), 22,
-        Color(HELL.r, HELL.g, HELL.b, a), true)
-    _text(Vector2(breite * 0.5, y + 22.0),
+    _meldung(breite, y, "WAVE %d CLEARED" % (int(lauf.welle_nummer) - 1),
         "%d OF %d THIS DIVE" % [int(lauf.welle_in_sitzung),
-        Graben.WELLEN_JE_SITZUNG], 12,
-        Color(LEISE.r, LEISE.g, LEISE.b, a * 0.9), true)
+        Graben.WELLEN_JE_SITZUNG], HELL, a)
+
+
+## Eine **Meldung**: zwei Zeilen auf einer Tafel, mittig.
+##
+## **Warum sie eine Tafel braucht.** Die Wellenmeldung und der Abschnittsname
+## standen als blanker Text ueber der Welt, waehrend jede andere Angabe im
+## Bedienbild auf einem Sechseck sitzt - zwei Sprachen auf einem Schirm. Und
+## sie waren stellenweise nicht zu lesen: heller Text ueber einem hellen Tier
+## ist heller Text auf hellem Grund. Dieselbe Falle wie bei der Zeile unter
+## der Uebersichtskarte, und dieselbe Loesung.
+##
+## **Der Einstieg bekommt bewusst keine.** Er soll wie eine Beschriftung
+## wirken und nicht wie ein Fenster, das man wegtippen muss - das steht bei
+## `_lehre()` und gilt weiter.
+##
+## Die Tafel richtet sich nach der breiteren der beiden Zeilen. Eine feste
+## Breite waere entweder fuer "STROM" zu gross oder fuer "TRENCH STORM" zu
+## klein, und beides sieht man sofort.
+func _meldung(breite: float, y: float, gross: String, klein: String,
+        farbe: Color, deckung: float) -> void:
+    if deckung <= 0.01:
+        return
+    var b_gross := _schrift.get_string_size(gross,
+        HORIZONTAL_ALIGNMENT_LEFT, -1, 22).x
+    var b_klein := _schrift.get_string_size(klein,
+        HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+    var b := maxf(b_gross, b_klein) + 46.0
+    _tafel(Rect2(breite * 0.5 - b * 0.5, y - 26.0, b,
+        (54.0 if klein != "" else 34.0)),
+        farbe, 0.30 * deckung, 12.0)
+    _text(Vector2(breite * 0.5, y), gross, 22,
+        Color(farbe.r, farbe.g, farbe.b, deckung), true)
+    if klein != "":
+        _text(Vector2(breite * 0.5, y + 22.0), klein, 12,
+            Color(LEISE.r, LEISE.g, LEISE.b, deckung * 0.9), true)
 
 
 ## Der Name eines neuen Abschnitts, wenn einer beginnt.
@@ -539,11 +570,8 @@ func _abschnitt(breite: float, hoehe: float) -> void:
     var a: int = lauf.abschnitt_nummer
     var t: float = 1.0 - absf(rest / lauf.ABSCHNITT_ZEIT - 0.5) * 2.0
     var deckung := clampf(t * 3.0, 0.0, 1.0)
-    var y := hoehe * 0.30
-    _text(Vector2(breite * 0.5, y), Regeln.name_von(a).to_upper(), 22,
-        Color(WARM.r, WARM.g, WARM.b, deckung), true)
-    _text(Vector2(breite * 0.5, y + 24.0), Regeln.hinweis(a), 12,
-        Color(LEISE.r, LEISE.g, LEISE.b, deckung * 0.9), true)
+    _meldung(breite, hoehe * 0.30, Regeln.name_von(a).to_upper(),
+        Regeln.hinweis(a), WARM, deckung)
 
 
 ## Der Einstieg: zwei Zeilen ueber der unteren Kante.

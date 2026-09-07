@@ -1123,6 +1123,16 @@ Titelbild steht und einen Lohn verspricht. Ein Ziel, das man in der Schleife,
 die man spielt, nicht erreichen kann, ist kein Ziel, sondern ein Vorwurf.
 Nachgemessen an sechs Wellen: Wellen 3/3, Räuber 60/60, Kette 12/12.
 
+**Eine Meldung sitzt auf einer Tafel — der Einstieg nicht.** Wellenmeldung
+und Abschnittsname standen als blanker Text über der Welt, während jede
+andere Angabe im Bedienbild auf einem Sechseck sitzt: zwei Sprachen auf einem
+Schirm. Und sie waren stellenweise nicht zu lesen — heller Text über einem
+hellen Tier ist heller Text auf hellem Grund, dieselbe Falle wie bei der
+Zeile unter der Übersichtskarte. Die Tafel richtet sich nach der breiteren
+der beiden Zeilen; eine feste Breite wäre entweder für „STROM" zu groß oder
+für „TRENCH STORM" zu klein. Der Lehrpfad bleibt bewusst ohne: er soll wie
+eine Beschriftung wirken und nicht wie ein Fenster, das man wegtippen muss.
+
 **Ein Treffer sagt, woher er kam.** Im Schlund kommt alles von oben, also
 genügt ein Ruckeln; hier kommt es aus dreihundertsechzig Grad, und wer
 getroffen wird, ohne zu wissen woher, dreht sich einmal im Kreis und wird
