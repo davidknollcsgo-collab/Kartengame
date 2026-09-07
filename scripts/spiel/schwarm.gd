@@ -10,7 +10,6 @@ extends Node2D
 ## Jede Art wird aus Grundformen gezeichnet. Es gibt keine Bilddatei im
 ## Projekt - siehe `ASSETS.md`.
 
-const GLUEHRINGE := 3
 
 ## Ab wievielen Tieren im Bild die Feinheiten wegfallen.
 ##
@@ -438,12 +437,15 @@ func _zeichne(t: Raeuber, stufe := 0) -> void:
     # weissen Umriss, dem Randlicht und der Nachbearbeitung ergab das den
     # weissen Klecks. Er zieht sich jetzt beim Brennen sogar leicht
     # **zusammen**: ein Brand ist ein Punkt, keine Wolke.
+    # **Der Kreis-Hof ist weg.** Hier standen drei Kreise um den Mittelpunkt
+    # mit dem 2,2fachen Koerperradius - ein Fleck neben der Form statt einer
+    # leuchtenden Form. Was ihn ersetzt, zeichnet `_koerper()` als Schale
+    # entlang des Umrisses. Nur die Sparfassung behaelt einen Kreis: bei
+    # achtzig Tieren im Bild sieht niemand mehr die Form eines Hofs, wohl
+    # aber, dass es ruckelt.
     var klein := clampf(r / 18.0, 0.45, 1.0)
-    var hof := r * (2.2 - 0.35 * hitze) * puls
-    if stufe == 0:
-        _gluehen(p, hof, farbe, (0.07 + 0.05 * hitze) * klein)
-    elif stufe == 1:
-        draw_circle(p, hof * 0.73, Color(farbe.r, farbe.g, farbe.b,
+    if stufe >= 2:
+        draw_circle(p, r * 1.6, Color(farbe.r, farbe.g, farbe.b,
             (0.045 + 0.025 * hitze) * klein))
 
     # **Leuchtpunkte.** Eine Reihe kleiner Lichter laengs des Koerpers, die
@@ -555,13 +557,59 @@ func _knapp(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> voi
         farbe.lerp(Color(1.0, 0.98, 0.94), 0.4 + 0.4 * hitze), 1.4)
 
 
-## Weicher Schein aus gestapelten Kreisen. Billiger als ein Shader je Tier und
-## auf gl_compatibility zuverlaessig.
-func _gluehen(p: Vector2, radius: float, farbe: Color, staerke: float) -> void:
-    for i in GLUEHRINGE:
-        var t := float(i + 1) / float(GLUEHRINGE)
-        draw_circle(p, radius * t, Color(farbe.r, farbe.g, farbe.b,
-            staerke * (1.0 - t) * 0.7))
+## Der **Schein um eine Form** - kein Kreis um einen Mittelpunkt.
+##
+## **Der Unterschied, um den es geht.** Bisher bekam jedes Tier seinen Hof
+## von `_gluehen()`: drei Kreise um seinen Mittelpunkt, Radius 2,2 mal
+## Koerperradius. Ein Kreis weiss nichts von der Form, die in ihm steht -
+## bei einem langen Fisch leuchtete das Wasser links und rechts von ihm
+## genauso hell wie an seiner Schnauze, und bei einem Ring leuchtete sein
+## Loch. Das ist der Unterschied zwischen "Punktlichter an eine Form
+## haengen" und "die Form leuchtet": im ersten Fall sieht man die Kreise, im
+## zweiten die Form.
+##
+## **Wie es richtig geht.** Das Verfahren stammt aus den 2D-Lichtsystemen:
+## fuer jedes Leuchtsegment wird ein Koerper aufgespannt, der die Strecke
+## **plus ihren Leuchtradius** umschliesst, und die Helligkeit faellt vom
+## Segment weg ab - nicht von einem Mittelpunkt. Gezeichnet wird nur diese
+## Flaeche, nicht der halbe Schirm; deshalb ist es billig.
+##
+## Hier ist die "Strecke" der geschlossene Umriss des Tieres. Der Schein ist
+## damit eine **Schale**, die den Umriss nach aussen fortsetzt: an der Kante
+## voll, am aeusseren Rand auf null. Ein Aal leuchtet dadurch laenglich, ein
+## Ring leuchtet als Ring, und keiner leuchtet in sein eigenes Loch.
+##
+## Die Aussennormale kommt aus den **beiden Nachbarkanten** und nicht aus der
+## Richtung zum Schwerpunkt: bei einer Einbuchtung zeigt die Schwerpunkt-
+## richtung nach innen, und die Schale stuelpt sich dort um.
+func _schein(rund: PackedVector2Array, farbe: Color, weite: float,
+        staerke: float) -> void:
+    var n := rund.size()
+    if n < 3 or staerke <= 0.004 or weite <= 0.5:
+        return
+    var innen := _gedeckt(Color(farbe.r, farbe.g, farbe.b, staerke))
+    var aussen := Color(farbe.r, farbe.g, farbe.b, 0.0)
+    var ecken := PackedVector2Array()
+    var farben := PackedColorArray()
+    for i in n:
+        var vor: Vector2 = rund[(i - 1 + n) % n]
+        var hier: Vector2 = rund[i]
+        var nach: Vector2 = rund[(i + 1) % n]
+        var norm := ((hier - vor).orthogonal().normalized()
+            + (nach - hier).orthogonal().normalized())
+        norm = norm.normalized() if norm.length_squared() > 0.001 \
+            else (nach - vor).orthogonal().normalized()
+        ecken.append(hier)
+        farben.append(innen)
+        ecken.append(hier + norm * weite)
+        farben.append(aussen)
+    var netz := PackedInt32Array()
+    for i in n:
+        var a := i * 2
+        var b := ((i + 1) % n) * 2
+        netz.append_array([a, b, b + 1, a, b + 1, a + 1])
+    RenderingServer.canvas_item_add_triangle_array(
+        get_canvas_item(), netz, ecken, farben)
 
 
 ## Leib: gedaempfte Fuellung, heller Umriss. Bei additivem Zeichnen macht der
@@ -697,6 +745,10 @@ func _koerper(punkte: PackedVector2Array, farbe: Color, hitze: float,
     var rund := punkte
     for _i in weich:
         rund = _rund(rund)
+
+    # **Der Schein zuerst**, damit der Leib darauf liegt. Er folgt dem
+    # Umriss und nicht einem Kreis - siehe `_schein()`.
+    _schein(rund, farbe, 8.0 + 16.0 * hitze, 0.10 + 0.12 * hitze)
     var mitte := _mitte(rund)
 
     # **Was brennt, wird dunkel in der Mitte und hell am Rand.**
@@ -1977,7 +2029,10 @@ func _ringmaul(p: Vector2, r: float, farbe: Color, t: Raeuber,
     var quer := k.orthogonal()
     var atem := 0.5 + 0.5 * sin(t.alter * 1.2 + t.phase)
 
-    _gluehen(p, r * 1.5, farbe, 0.10 + 0.14 * hitze)
+    # **Kein Kreis-Hof mehr.** Er stand hier zusaetzlich zu dem, den
+    # `_koerper()` als Schale entlang des Umrisses zeichnet - ein
+    # runder Fleck ueber einer Form, die nicht rund ist, und bei einem
+    # Leitwesen von sechzig Einheiten Radius der auffaelligste im Bild.
     # Der Leib als offener Bogen quer zur Bahn.
     var bogen := PackedVector2Array()
     for i in 15:
@@ -2027,7 +2082,10 @@ func _brutstock(p: Vector2, r: float, farbe: Color, t: Raeuber,
     var takt := maxf(0.001, Arten.brut_takt(t.art))
     var reif := clampf(t.brut_uhr / takt, 0.0, 1.0)
 
-    _gluehen(p, r * 1.5, farbe, 0.10 + 0.14 * hitze)
+    # **Kein Kreis-Hof mehr.** Er stand hier zusaetzlich zu dem, den
+    # `_koerper()` als Schale entlang des Umrisses zeichnet - ein
+    # runder Fleck ueber einer Form, die nicht rund ist, und bei einem
+    # Leitwesen von sechzig Einheiten Radius der auffaelligste im Bild.
     # Der Stamm, leicht gebogen.
     var stamm := PackedVector2Array()
     for i in 9:
