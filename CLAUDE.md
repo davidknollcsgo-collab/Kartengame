@@ -933,6 +933,48 @@ werden musste (nur `zurueck_beschriftung` blieb: „BACK TO THE TRENCH").
 Erreichbar über `COLONY` im Titelbild **und** im Bericht — nach der Fahrt liegt der Nährstoff frisch in der Kolonie, und
 das ist der Moment, in dem man ihn ausgeben will.
 
+**Das Seitenverhältnis ist der Sprite.** Die Rückmeldung lautete, die Tiere
+seien nicht gut genug — und sie war richtig, aber die Ursache lag nicht dort,
+wo ich zuerst gesucht habe. Ich habe drei Anläufe lang an Zierde gearbeitet
+(Zähne, Angel, Flossenstrahlen) und dabei übersehen, was man nachrechnen
+kann: der Zahnkiefer war **1,62 Radien lang und 1,68 breit**, die
+Schildkoralle ein Siebeneck mit abwechselnd 0,92 und 1,08 Radien. Beide sind
+rund, und **der Umriss eines runden Dings ist ein Ring** — egal wieviele
+Zähne man daran hängt. Acht von siebzehn Arten lagen so.
+
+Die Schleierqualle las sich dagegen vom ersten Versuch an, und ihr einziger
+Vorteil war die Form: eine Sichel, deutlich breiter als hoch, mit einer
+Aushöhlung. Daraus die Regel für jede neue Art: **Länge und Breite müssen
+sich um mehr als das Doppelte unterscheiden, oder der Umriss muss Ecken
+haben.** Ein Verhältnis nahe eins hat keine Richtung, und Richtung ist das
+Einzige, was auf zwanzig Pixeln überlebt.
+
+Danach: der Zahnkiefer ist ein Drachenfisch (3,3 lang zu 1,1 breit), der
+Sprungaal wirklich lang, die Schildkoralle ein eckiger Schild, der Spiegler
+facettiert, der Panzerkrebs quergegliedert mit Kerben im Umriss. Die
+Laichwolke — mit Abstand die häufigste Art im Bild — ist keine Raute mehr,
+sondern eine **Traube**: vier bis sechs verschieden große Blasen, deren
+beuliger Umriss auch dann noch lesbar ist, wenn jede einzelne fünf Pixel
+groß ist.
+
+Drei Fallen dabei, alle drei im Bild oder im Log sichtbar geworden:
+
+*Eine Kerbe im Umriss zerstört die Füllung.* `_koerper()` schrumpfte drei
+Fassungen zum Schwerpunkt, und eine tiefe Kerbe schneidet sich dabei mit der
+Gegenseite: **1159 Mal `triangulation failed` je Lauf**, stumm im Bild. Die
+Füllung ist deshalb jetzt ein Verlauf über die Eckpunkte — eine Fläche, kein
+zweiter Umriss. Ein Maul wird nicht als Kerbe gebaut, sondern als *heller
+Keil obendrauf*: additiv gezeichnet gibt es kein Dunkel, mit dem man ein Loch
+malen könnte.
+
+*Die Reihenfolge angehängter Punkte ist nicht beliebig.* Der Glockensaum der
+Schleierqualle, falsch herum angehängt, kreuzte den eigenen Umriss — weitere
+399 Meldungen.
+
+*Und der Testlauf blieb bei alledem 96/96 grün*, auch bei einem
+Parse-Fehler (`spitze` zweimal deklariert). Gefunden hat beides nur der
+Startlauf.
+
 **Ein Ring ist kein Kreis, und ein Fels ist kein Umriss.** Die Rückmeldung
 lautete: *zu viele einzelne Linien.* Sie war richtig, und zwar überall aus
 demselben Grund — fast alles im Bild war eine **Linie**, und eine Linie hat

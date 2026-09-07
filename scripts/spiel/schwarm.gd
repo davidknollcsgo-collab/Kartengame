@@ -544,15 +544,33 @@ func _koerper(punkte: PackedVector2Array, farbe: Color, hitze: float,
     # aufleuchtet, ist seine **Kante**. Die Fuellung geht deshalb mit der
     # Hitze zurueck statt hoch; die Form bleibt lesbar, weil sie sich vom
     # eigenen Schein abhebt.
-    var kern := 1.0 - 0.55 * hitze
-    for i in 3:
-        var t := float(i) / 2.0
-        var schrumpf := lerpf(1.0, 0.52, t)
-        var lage := PackedVector2Array()
-        for v in rund:
-            lage.append(mitte + (v - mitte) * schrumpf)
-        _fuellung(lage, Color(farbe.r, farbe.g, farbe.b,
-            (0.10 + 0.09 * t) * kern))
+    #
+    # **Und sie ist ein Verlauf, keine drei gestapelten Fassungen.**
+    #
+    # Hier lagen drei zum Schwerpunkt geschrumpfte Kopien uebereinander. Zwei
+    # Dinge stimmten daran nicht. Erstens sah man sie nicht: `_fuellung()`
+    # daempft die Farbe auf 22 Prozent und die Deckung auf 45, und drei mal
+    # zehn Prozent davon sind zusammen ein Achtel Deckung - der Leib war
+    # praktisch nur sein Umriss, und auf einem kleinen Tier heisst das
+    # **Donut**. Zweitens schrumpft eine Kopie eines unrunden Umrisses in
+    # sich selbst hinein, sobald er eine Kerbe hat; Godot meldete dazu
+    # tausend Mal je Lauf `triangulation failed`.
+    #
+    # Ein Verlauf ueber die Eckpunkte kann beides nicht: er zeichnet genau
+    # eine Flaeche, und er braucht dafuer keinen zweiten Umriss. Hell liegt
+    # er dort, wo das Tier hinschaut - ein Koerper, der sich bewegt, ist
+    # vorn dichter als hinten.
+    var kern := 1.0 - 0.45 * hitze
+    var laengs := achse if achse != Vector2.ZERO else _laengsachse(rund, mitte)
+    var weit := 0.001
+    for v in rund:
+        weit = maxf(weit, absf((v - mitte).dot(laengs)))
+    var toene := PackedColorArray()
+    for v in rund:
+        var u := clampf((v - mitte).dot(laengs) / weit * 0.5 + 0.5, 0.0, 1.0)
+        toene.append(Color(farbe.r * 0.34, farbe.g * 0.34, farbe.b * 0.34,
+            (0.16 + 0.30 * u * u) * kern))
+    draw_polygon(rund, toene)
 
     var geschlossen := rund + PackedVector2Array([rund[0]])
     _zug(geschlossen, Color(farbe.r, farbe.g, farbe.b,
@@ -580,8 +598,17 @@ const PROFIL_FAECHER := 8
 const RIPPEN := 3
 
 ## Ab welchem halben Laengsmass ueberhaupt etwas Inneres gezeichnet wird.
-## Darunter liegen die Rippen dichter beieinander als die Linie breit ist.
-const INNEN_AB := 9.0
+##
+## **Neun war zu wenig.** Ein Zahnkiefer hat siebzehn Einheiten Radius; drei
+## Rippen und eine Mittellinie darin liegen zwei Pixel auseinander, und im
+## Bild war das keine Anatomie, sondern Kreuzschraffur - ausgerechnet auf den
+## kleinen Arten, von denen die meisten gleichzeitig im Bild stehen.
+##
+## Achtzehn laesst das Innere dort, wo es etwas zeigt: auf den grossen
+## Leibern ab Schildkoralle aufwaerts. Was kleiner ist, traegt seine Form im
+## Umriss - und das ist keine Sparmassnahme, sondern dieselbe Regel wie
+## ueberall: was man nicht aufloesen kann, ist kein Detail, sondern Rauschen.
+const INNEN_AB := 18.0
 
 
 ## Das Innere eines Leibes: eine Mittellinie und ein paar Querrippen.
@@ -743,87 +770,210 @@ func _auge(p: Vector2, r: float, hitze: float,
     draw_circle(p, r, Color(1.0, 0.94, 0.78, 0.75 + 0.25 * hitze))
 
 
+## Der Zahnkiefer: **Kopf, Maul, Angel** - in dieser Reihenfolge.
+##
+## Der Entwurf davor hatte alles, was ein Fisch hat: Schwanzflosse mit
+## Einbuchtung, Ruempfumriss, Rueckenkamm aus fuenf Zacken, Kiefer mit vier
+## Zaehnen, zwei Augen, Angel. Auf siebzehn Einheiten Radius ist das
+## zusammen ein Klecks mit einem Dorn - im Bild sah man eine helle Ellipse,
+## einen Stachel und einen Punkt daneben, sonst nichts.
+##
+## **Was auf dieser Groesse traegt, sind drei Formen, nicht neun.** Die
+## Regel dahinter ist nicht speziell: eine lesbare Figur hat eine grosse
+## Form, ein bis zwei mittlere und einen hellen Punkt. Alles darueber ist
+## Rauschen, sobald die Form kleiner ist als das Auge auffloesen kann.
+##
+## Hier heisst das:
+##
+## **Gross:** der Kopf. Er nimmt zwei Drittel des Tieres ein und laeuft nach
+## hinten in einen duennen Schwanz aus - das ist die Silhouette eines
+## Tiefsee-Anglers, und sie ist auch als schwarzer Umriss noch eindeutig.
+## Vorher war der Rumpf gleichmaessig hoch und der Schwanz ein gegabelter
+## Dorn von 1,75 Radien; die Gabel las sich als Stachel und nicht als Flosse.
+##
+## **Mittel:** das Maul. Es ist ein *Keil, der in die Silhouette hineinbeisst*
+## und nicht eine Linie darauf - eine offene Kerbe im Umriss sieht man auf
+## zwanzig Pixeln, zwei duenne Striche mit vier Zaehnchen nicht. Drei Zaehne
+## reichen, und sie sind dreieckige Flaechen, keine Striche.
+##
+## **Hell:** die Angel. Ein einziger heller Punkt vor dem Kopf, an einem
+## duennen Bogen. Er ist der Ort, an dem das Auge landet, und er sagt
+## zugleich, wohin das Tier schaut.
 func _zahnkiefer(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> void:
-    # Tiefseefisch: hoher, kurzer Leib, riesiger Kiefer, gegabelte Schwanzflosse.
-    # Der erste Entwurf war eine glatte Kapsel mit einer Spitze hinten - im
-    # Bild sah das aus wie eine Rakete. Was einen Fisch zum Fisch macht, sind
-    # die Flossen und das Maul, nicht der Umriss des Rumpfes.
     var k := t.richtung
     var quer := k.orthogonal()
-    var flossen := sin(t.alter * 7.0 + t.phase) * 0.22
+    var schlag := sin(t.alter * 5.0 + t.phase)
+    # Das Maul oeffnet und schliesst sich. Ein Angler mit stehendem Maul ist
+    # ein Ornament; einer, der zubeisst, ist eine Drohung.
+    var beiss := 0.5 + 0.5 * sin(t.alter * 2.3 + t.phase * 3.0)
 
-    # Schwanzflosse, zwei Lappen mit Einbuchtung.
-    var schwanz := PackedVector2Array([
-        p - k * r * 0.85,
-        p - k * r * 1.75 + quer * r * (0.72 + flossen),
-        p - k * r * 1.25,
-        p - k * r * 1.75 - quer * r * (0.72 - flossen),
+    # **Lang und schmal, nicht rund.**
+    #
+    # Drei Anlaeufe sind hier gescheitert, und der Fehler war jedes Mal
+    # derselbe - ich habe an der Zierde gearbeitet statt am Umriss. Der
+    # letzte Leib war 1,62 Radien lang und 1,68 breit: **rund**. Der Umriss
+    # eines runden Dings ist ein Ring, und ein Ring ist kein Tier, egal wie
+    # viele Zaehne und Angeln man daran haengt.
+    #
+    # Die Schleierqualle nebenan las sich vom ersten Versuch an, und der
+    # Grund ist nur ihr Seitenverhaeltnis: sie ist eine Sichel, also breiter
+    # als hoch, mit einer Aushoehlung. Ein Umriss, dessen Laenge und Breite
+    # sich um mehr als das Doppelte unterscheiden, hat eine Richtung - und
+    # eine Richtung ist das, was man auf zwanzig Pixeln noch erkennt.
+    #
+    # Also: dreieinhalb Radien lang, einen breit. Kopf vorn mit dem Maul,
+    # Rumpf schmal, Schwanzstiel duenn, Flosse hinten. Das ist ein
+    # Drachenfisch und keine Kugel mit Anhaengen.
+    var wedel := sin(t.alter * 5.0 + t.phase)
+
+    var stiel := p - k * r * 1.10
+    var fahnenende := p - k * r * 1.90 + quer * r * 0.34 * wedel
+    var flosse := PackedVector2Array([
+        stiel + quer * r * 0.10,
+        fahnenende + quer * r * 0.44,
+        fahnenende + quer * r * 0.10,
+        fahnenende - quer * r * 0.10,
+        fahnenende - quer * r * 0.44,
+        stiel - quer * r * 0.10,
     ])
-    _fuellung(schwanz, Color(farbe.r, farbe.g, farbe.b, 0.28))
-    _zug(schwanz + PackedVector2Array([schwanz[0]]),
-        farbe.lightened(0.25), 1.2)
+    _fuellung(flosse, Color(farbe.r, farbe.g, farbe.b, 0.26 + 0.20 * hitze))
+    _zug(flosse + PackedVector2Array([flosse[0]]),
+        Color(farbe.r, farbe.g, farbe.b, 0.30 + 0.32 * hitze), 1.1)
 
-    # Rumpf: vorn hoch, hinten schmal.
     var leib := PackedVector2Array([
-        p + k * r * 1.05,
-        p + k * r * 0.45 + quer * r * 0.66,
-        p - k * r * 0.30 + quer * r * 0.58,
-        p - k * r * 0.90 + quer * r * 0.20,
-        p - k * r * 0.90 - quer * r * 0.20,
-        p - k * r * 0.30 - quer * r * 0.58,
-        p + k * r * 0.45 - quer * r * 0.66,
+        p + k * r * 1.42,
+        p + k * r * 1.00 + quer * r * 0.44,
+        p + k * r * 0.30 + quer * r * 0.54,
+        p - k * r * 0.40 + quer * r * 0.34,
+        p - k * r * 1.06 + quer * r * 0.13,
+        p - k * r * 1.16,
+        p - k * r * 1.06 - quer * r * 0.13,
+        p - k * r * 0.40 - quer * r * 0.34,
+        p + k * r * 0.30 - quer * r * 0.54,
+        p + k * r * 1.00 - quer * r * 0.44,
     ])
     _koerper(leib, farbe, hitze, t.richtung)
 
-    # Rueckenflosse als Kamm. Drei bis fuenf Zacken - der Zaehler kommt aus
-    # der Eigenart des Tieres, nicht aus einer festen Zahl.
-    var zacken := 3 + int(_eigenart(t, 5.3) * 3.0)
-    for i in zacken:
-        var s := lerpf(0.35, -0.75, float(i) / float(zacken - 1))
-        var wurzel := p + k * r * s + quer * r * 0.55
-        draw_line(wurzel, wurzel + quer * r * 0.34 - k * r * 0.12,
-            Color(farbe.r, farbe.g, farbe.b, 0.45), 1.2)
+    # Die Rueckenflosse als niedriger Saum ueber dem hinteren Rumpf - sie
+    # macht aus einem Schlauch einen Fisch, und sie kostet vier Punkte.
+    var saum := PackedVector2Array([
+        p + k * r * 0.20 + quer * r * 0.50,
+        p - k * r * 0.10 + quer * r * 0.86,
+        p - k * r * 0.62 + quer * r * 0.62,
+        p - k * r * 0.66 + quer * r * 0.26,
+    ])
+    _zug(saum, Color(farbe.r, farbe.g, farbe.b, 0.24 + 0.28 * hitze), 1.1)
 
-    # Der Kiefer - offen stehend, mit Zaehnen nach innen. Das
-    # Erkennungsmerkmal der Art.
-    var oben := p + k * r * 1.05 + quer * r * 0.30
-    var unten := p + k * r * 1.15 - quer * r * 0.34
-    draw_line(p + k * r * 0.35 + quer * r * 0.50, oben, farbe.lightened(0.45), 1.8)
-    draw_line(p + k * r * 0.35 - quer * r * 0.50, unten, farbe.lightened(0.45), 1.8)
-    for i in 4:
-        var f := float(i) / 3.0
-        var o := (p + k * r * 0.40 + quer * r * 0.48).lerp(oben, f)
-        var u := (p + k * r * 0.40 - quer * r * 0.48).lerp(unten, f)
-        draw_line(o, o.lerp(u, 0.30), Color(0.94, 0.99, 1.0, 0.65), 1.2)
-        draw_line(u, u.lerp(o, 0.30), Color(0.94, 0.99, 1.0, 0.65), 1.2)
+    # **Das Maul liegt auf dem Leib und schneidet ihn nicht.** Additiv
+    # gezeichnet gibt es kein Dunkel; eine Kerbe im Umriss hat den Leib beim
+    # Fuellen mit sich selbst schneiden lassen. Zwei kraeftige helle Zuege
+    # vom Gelenk zur Schnauze sagen dasselbe - das Auge liest die Flaeche
+    # dazwischen als offenes Maul.
+    var gelenk := p + k * r * 0.62
+    var weit := 0.30 + 0.26 * beiss
+    var hell := farbe.lerp(Color(1.0, 0.98, 0.94), 0.34 + 0.46 * hitze)
+    for seite: float in SEITEN:
+        var ecke := p + k * r * 1.40 + quer * r * weit * seite
+        _zug(PackedVector2Array([gelenk, ecke]), hell, 1.7)
+        for i in 3:
+            var u := lerpf(0.30, 0.88, float(i) / 2.0)
+            var wo := gelenk.lerp(ecke, u)
+            var tief: float = r * (0.20 - 0.05 * float(i)) * seite
+            draw_colored_polygon(PackedVector2Array([
+                wo - k * r * 0.09, wo + k * r * 0.09, wo - quer * tief]),
+                Color(0.96, 1.0, 1.0, 0.60 + 0.30 * hitze))
 
-    _auge(p + k * r * 0.30 + quer * r * 0.30, r * 0.20, hitze, farbe)
-    _auge(p + k * r * 0.30 - quer * r * 0.30, r * 0.20, hitze, farbe)
+    # Ein Auge, nicht zwei. Von oben sieht man ohnehin nur eines, und zwei
+    # helle Punkte nebeneinander auf einem zwanzig Pixel grossen Kopf sind
+    # ein Gesicht aus einem Comic.
+    _auge(p + k * r * 0.48 + quer * r * 0.26, r * 0.17, hitze, farbe)
 
-    # Leuchtangel, von der Stirn nach vorn gebogen.
-    var wurzel_angel := p - k * r * 0.10 + quer * r * 0.50
-    var angel := p + k * r * 1.30 + quer * r * (0.62 + flossen * 0.5)
-    draw_line(wurzel_angel, wurzel_angel.lerp(angel, 0.55),
-        Color(farbe.r, farbe.g, farbe.b, 0.55), 1.2)
-    draw_line(wurzel_angel.lerp(angel, 0.55), angel,
-        Color(farbe.r, farbe.g, farbe.b, 0.40), 1.0)
-    draw_circle(angel, r * 0.30, Color(0.60, 0.92, 0.90, 0.25))
-    draw_circle(angel, r * 0.15, Color(0.92, 1.0, 0.98, 0.9))
+    # **Die Angel.** Von der Stirn nach vorn ueber das Maul gebogen, mit dem
+    # hellsten Punkt des ganzen Tieres am Ende.
+    var wurzel := p + k * r * 0.30 + quer * r * 0.40
+    var mitte := p + k * r * 1.30 + quer * r * (0.80 + 0.10 * schlag)
+    var spitze := p + k * r * 1.86 + quer * r * (0.20 + 0.16 * schlag)
+    var bogen := PackedVector2Array()
+    for i in 7:
+        var u := float(i) / 6.0
+        bogen.append(wurzel.lerp(mitte, u).lerp(mitte.lerp(spitze, u), u))
+    _zug(bogen, Color(farbe.r, farbe.g, farbe.b, 0.34 + 0.22 * hitze), 1.0)
+    draw_circle(spitze, r * 0.34, Color(farbe.r, farbe.g, farbe.b, 0.16))
+    draw_circle(spitze, r * 0.17,
+        Color(0.94, 1.0, 0.98, 0.75 + 0.25 * hitze))
 
 
+## Der Schleier: eine **Glocke mit gebogenem Saum**, die pumpt.
+##
+## Sie war ein halber Kreis aus neun Punkten mit einem Strich hinten quer
+## darueber - im Bild ein Halbmond, und weil sie mit sechshundert Auftritten
+## die zweithaeufigste Art ist, war dieser Halbmond ein grosser Teil des
+## ganzen Spiels.
+##
+## Drei Dinge machen daraus eine Qualle, und alle drei sind Silhouette und
+## nicht Zierat:
+##
+## **Der Saum ist gewellt.** Der Rand einer Glocke ist nie glatt; er hat
+## Lappen. Vier davon reichen - man sieht sie noch bei zwanzig Pixeln, weil
+## sie den *Umriss* aendern und nicht die Fuellung.
+##
+## **Sie pumpt.** Eine Glocke schiebt sich durchs Wasser, indem sie sich
+## zusammenzieht und wieder oeffnet - schmaler und laenger, dann breiter und
+## kuerzer. Das ist eine Bewegung der Form selbst, und sie kostet zwei
+## Faktoren.
+##
+## **Der Schirm ist hohl.** Die Fuellung stand auf 0,42 und stieg beim
+## Brennen auf 0,84 - eine helle Flaeche, die von der Nachbearbeitung
+## milchig wird. Eine Qualle sieht man *durch*; was sie zeigt, ist ihr Rand
+## und die vier Radialkanaele darin.
 func _schleier(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> void:
-    # Glockenschirm mit nachziehenden Faeden. Fast durchsichtig - der Schwarm
-    # soll als Wolke lesbar sein, nicht als Reihe einzelner Tiere.
     var k := t.richtung
     var quer := k.orthogonal()
+    # Pumpen: eng und lang, dann breit und kurz. Gegenlaeufig, damit die
+    # Flaeche ungefaehr gleich bleibt - eine Glocke, die nur groesser wird,
+    # atmet nicht, sie waechst.
+    var stoss := sin(t.alter * 3.4 + t.phase)
+    var breit := 1.24 + 0.16 * stoss
+    var lang := 1.02 - 0.14 * stoss
+
     var schirm := PackedVector2Array()
-    for i in 9:
-        var w := lerpf(-PI * 0.5, PI * 0.5, float(i) / 8.0)
-        schirm.append(p + (k * cos(w) * 1.05 + quer * sin(w) * 1.25) * r)
-    schirm.append(p - k * r * 0.35)
-    _fuellung(schirm, Color(farbe.r, farbe.g, farbe.b,
-        0.42 + 0.42 * hitze))
-    _zug(schirm, farbe.lightened(0.45), 1.2)
+    for i in 15:
+        var w := lerpf(-PI * 0.52, PI * 0.52, float(i) / 14.0)
+        # Vier Lappen auf dem Saum. Der Faktor greift nur aussen an, damit
+        # die Kuppe glatt bleibt - eine Glocke ist oben rund und unten
+        # gefranst.
+        var lappen := 1.0 + 0.10 * cos(w * 4.0) * absf(sin(w))
+        schirm.append(p + (k * cos(w) * lang + quer * sin(w) * breit)
+            * r * lappen)
+    # Der Glockenrand hinten leicht eingezogen, statt gerade abgeschnitten.
+    #
+    # **Die Reihenfolge ist nicht beliebig.** Der Bogen laeuft von der einen
+    # Seite zur anderen; die drei Punkte muessen von *dort* zurueck. Falsch
+    # herum angehaengt kreuzt der Umriss sich selbst, und Godot meldet
+    # dreihundertneunundneunzig Mal je Lauf `triangulation failed` - stumm
+    # im Bild, laut im Log.
+    schirm.append(p - k * r * 0.30 + quer * r * 0.30)
+    schirm.append(p - k * r * 0.46)
+    schirm.append(p - k * r * 0.30 - quer * r * 0.30)
+
+    var zu := schirm + PackedVector2Array([schirm[0]])
+    # Nur ein Hauch Fuellung: gerade genug, dass sie vor einem Felsen nicht
+    # verschwindet.
+    _fuellung(schirm, Color(farbe.r, farbe.g, farbe.b, 0.16 + 0.10 * hitze))
+    _zug(zu, Color(farbe.r, farbe.g, farbe.b, 0.30 + 0.30 * hitze), 3.0)
+    _zug(zu, farbe.lerp(Color(1.0, 0.98, 0.94), 0.18 + 0.55 * hitze), 1.3)
+
+    # Vier Radialkanaele von der Kuppe zum Saum - das Innere einer Qualle,
+    # und dieselbe Sprache wie die Rippen in `_inneres()`: duenne Linien,
+    # die beim Brennen heller werden.
+    for i in 4:
+        var w := lerpf(-0.86, 0.86, float(i) / 3.0)
+        var aussen := p + (k * cos(w) * lang + quer * sin(w) * breit) * r * 0.92
+        draw_line(p - k * r * 0.12, aussen,
+            Color(farbe.r, farbe.g, farbe.b, 0.22 + 0.34 * hitze), 1.0)
+    # Der Magen als einziger heller Punkt, in der Kuppe.
+    draw_circle(p + k * r * 0.18, r * 0.16,
+        Color(1.0, 0.96, 0.90, 0.30 + 0.40 * hitze))
 
     # Drei bis fuenf Faeden, und jeder Schleier haengt sie ein Stueck weiter
     # oder kuerzer nach hinten. Ein Schwarm aus Wolken, in dem jede Wolke
@@ -859,18 +1009,33 @@ func _panzerkrebs(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) 
             draw_line(knie, fuss, Color(farbe.r, farbe.g, farbe.b, 0.42), 1.8)
 
     # Panzer: vorn breit und gerundet, hinten verjuengt.
-    var panzer := PackedVector2Array([
-        p + k * r * 0.62 + quer * r * 0.42,
-        p + k * r * 0.34 + quer * r * 0.94,
-        p - k * r * 0.22 + quer * r * 1.02,
-        p - k * r * 0.78 + quer * r * 0.62,
-        p - k * r * 0.94,
-        p - k * r * 0.78 - quer * r * 0.62,
-        p - k * r * 0.22 - quer * r * 1.02,
-        p + k * r * 0.34 - quer * r * 0.94,
-        p + k * r * 0.62 - quer * r * 0.42,
-    ])
+    # **Ein Krebs ist gegliedert, und das ist seine Silhouette.**
+    #
+    # Der Panzer war 1,56 lang und 2,04 breit - fast rund, und im Bild ein
+    # Klecks mit Beinen. Eine Assel erkennt man an ihren **Querplatten**:
+    # der Umriss selbst ist gestuft, nicht glatt, und genau diese Stufen
+    # sieht man auch dann noch, wenn das Tier zwanzig Pixel gross ist.
+    var panzer := PackedVector2Array()
+    for i in 5:
+        var u := lerpf(0.78, -0.86, float(i) / 4.0)
+        # Jede Platte etwas breiter als die davor, dann wieder schmaler -
+        # der Umriss bekommt dadurch Kerben statt einer Rundung.
+        var halb: float = r * (0.72 + 0.42 * sin(float(i) * 0.9 + 0.5))
+        panzer.append(p + k * r * u + quer * halb)
+    for i in range(4, -1, -1):
+        var u := lerpf(0.78, -0.86, float(i) / 4.0)
+        var halb: float = r * (0.72 + 0.42 * sin(float(i) * 0.9 + 0.5))
+        panzer.append(p + k * r * u - quer * halb)
     _koerper(panzer, farbe, hitze, t.richtung)
+    # Die Fugen zwischen den Platten, quer.
+    for i in 4:
+        var u := lerpf(0.52, -0.62, float(i) / 3.0)
+        var halb: float = r * (0.70 + 0.38 * sin(float(i) * 0.9 + 0.9))
+        _zug(PackedVector2Array([
+            p + k * r * u + quer * halb * 0.92,
+            p + k * r * (u - 0.06),
+            p + k * r * u - quer * halb * 0.92]),
+            Color(farbe.r, farbe.g, farbe.b, 0.22 + 0.30 * hitze), 1.1)
 
     # Plattenfugen quer ueber den Ruecken.
     for i in 3:
@@ -944,11 +1109,35 @@ func _schildkoralle(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float
     var k := t.richtung
     var quer := k.orthogonal()
 
-    var saum := PackedVector2Array()
-    for i in 7:
-        var w := TAU * float(i) / 7.0 + t.phase * 0.2
-        saum.append(p + (k * cos(w) + quer * sin(w)) * r * (0.92 + 0.16 * float(i % 2)))
+    # **Ein Schild ist eckig.**
+    #
+    # Hier stand ein Siebeneck mit abwechselnd 0,92 und 1,08 Radien - also
+    # ein Kreis mit einer Delle. Seitenverhaeltnis 1,0, und damit im Bild
+    # das, was jeder runde Umriss auf zwanzig Pixeln ist: ein Ring.
+    #
+    # Was diese Art ausmacht, ist ihr Panzer, und Panzer sind **Platten**:
+    # gerade Kanten, harte Ecken, breiter als lang. Das unterscheidet sie
+    # auf einen Blick von allem Weichen ringsum - und es ist dieselbe
+    # Auskunft, die ihre Regel gibt.
+    var saum := PackedVector2Array([
+        p + k * r * 0.74,
+        p + k * r * 0.40 + quer * r * 1.06,
+        p - k * r * 0.30 + quer * r * 1.18,
+        p - k * r * 0.86 + quer * r * 0.60,
+        p - k * r * 0.86 - quer * r * 0.60,
+        p - k * r * 0.30 - quer * r * 1.18,
+        p + k * r * 0.40 - quer * r * 1.06,
+    ])
     _koerper(saum, farbe, hitze, t.richtung)
+    # Drei Plattenkanten quer ueber den Schild - der Panzer, den man sieht.
+    for i in 3:
+        var u := lerpf(0.34, -0.56, float(i) / 2.0)
+        var halb := r * (1.10 - 0.30 * absf(u))
+        _zug(PackedVector2Array([
+            p + k * r * u + quer * halb,
+            p + k * r * (u + 0.10) ,
+            p + k * r * u - quer * halb]),
+            Color(farbe.r, farbe.g, farbe.b, 0.26 + 0.34 * hitze), 1.2)
 
     for i in 3:
         var t_i := float(i) / 2.0
@@ -1055,11 +1244,27 @@ func _sprungaal(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) ->
         draw_circle(wo, r * dicke * (0.52 - 0.30 * f),
             Color(farbe.r, farbe.g, farbe.b, (0.34 + 0.40 * hitze) * (1.0 - 0.5 * f)))
 
+    # **Ein Aal ist lang.**
+    #
+    # Der Kopf war eine Raute von 1,35 Radien Laenge und 0,92 Breite, und
+    # dahinter fuenf einzelne Kreise - im Bild ein Klecks mit einem Faden.
+    # Seitenverhaeltnis eins Komma fuenf ist keine Richtung.
+    #
+    # Der Leib laeuft jetzt in **einem** Umriss vom Maul bis zum Schwanz und
+    # ist beim Zustossen ueber drei Radien lang. Das ist die ganze Aussage
+    # dieser Art - sie schnellt vor -, und sie steht damit im Umriss statt in
+    # einer Bewegung, die man verpassen kann.
     var kopf := PackedVector2Array([
-        p + k * r * 1.05 * laenge,
-        p + quer * r * 0.46 * dicke,
-        p - k * r * 0.30,
-        p - quer * r * 0.46 * dicke,
+        p + k * r * 1.30 * laenge,
+        p + k * r * 0.72 * laenge + quer * r * 0.40 * dicke,
+        p + k * r * 0.10 + quer * r * 0.46 * dicke,
+        p - k * r * 0.90 + quer * r * 0.26 * dicke,
+        p - k * r * 1.70 + quer * r * 0.10 * dicke,
+        p - k * r * 1.86,
+        p - k * r * 1.70 - quer * r * 0.10 * dicke,
+        p - k * r * 0.90 - quer * r * 0.26 * dicke,
+        p + k * r * 0.10 - quer * r * 0.46 * dicke,
+        p + k * r * 0.72 * laenge - quer * r * 0.40 * dicke,
     ])
     _koerper(kopf, farbe, hitze, t.richtung)
 
@@ -1267,26 +1472,73 @@ func _kielwasser(p: Vector2, r: float, farbe: Color, t: Raeuber) -> void:
 ## wenn jedes davon ein Kunstwerk waere, saehe der Schwarm aus wie
 ## Konfetti. Was ihn lesbar macht, ist die Wiederholung derselben einfachen
 ## Form - der Schwarm ist die Figur, nicht das Tier.
+## Die Laichwolke: eine **Traube**, kein Leib.
+##
+## **Sie war eine Raute mit sechs Strichen** - vier Ecken durch `_koerper()`
+## und zwei Wimpernkraenze - und sie stellt bei einem Radius von zwoelf
+## Einheiten fast die Haelfte aller Tiere im Bild. Auf zwanzig Pixeln ist
+## eine glatte Raute nichts: kein Umriss, den man wiedererkennt, keine
+## Stelle, an der das Auge haengenbleibt.
+##
+## **Was auf zwanzig Pixeln traegt, ist nicht Feinheit, sondern Klumpigkeit.**
+## Eine Traube aus vier bis sechs verschieden grossen Blasen hat einen
+## Umriss mit Beulen, und Beulen liest man auch dann noch, wenn jede
+## einzelne Blase nur fuenf Pixel gross ist. Eine Ellipse gleicher Groesse
+## liest man als Fleck.
+##
+## Aufbau in drei Stufen, wie bei jeder lesbaren Figur: die **Haut** um die
+## ganze Traube (grosse Form), die **Blasen** (mittlere Form), die
+## **Keime** darin (kleine Form, und der einzige helle Punkt).
 func _laichwolke(p: Vector2, r: float, farbe: Color, t: Raeuber,
         hitze: float) -> void:
     var k := t.richtung
     var quer := k.orthogonal()
-    var schlag := sin(t.alter * 9.0 + t.phase)
-    var leib := PackedVector2Array([
-        p + k * r * 1.05,
-        p + quer * r * (0.52 + 0.12 * schlag),
-        p - k * r * 0.85,
-        p - quer * r * (0.52 - 0.12 * schlag),
-    ])
-    _koerper(leib, farbe, hitze, t.richtung)
-    # Zwei Wimpernkraenze, die gegeneinander schlagen.
-    for seite: float in SEITEN:
-        for i in 3:
-            var laengs := lerpf(0.35, -0.45, float(i) / 2.0)
-            var wurzel := p + k * r * laengs + quer * seite * r * 0.42
-            _strich(wurzel, wurzel + quer * seite * r * 0.5
-                - k * r * 0.16 * schlag * seite,
-                Color(farbe.r, farbe.g, farbe.b, 0.5), 1.0)
+    var atem := 0.5 + 0.5 * sin(t.alter * 2.6 + t.phase)
+    var zahl := 4 + int(_eigenart(t, 3.7) * 3.0)
+
+    # Die Blasen sitzen auf einer leicht gebogenen Achse, vorn die groesste.
+    # Gleich grosse Blasen auf einer Geraden waeren eine Perlenkette.
+    var orte := PackedVector2Array()
+    var groessen := PackedFloat32Array()
+    for i in zahl:
+        var u := float(i) / float(zahl - 1)
+        var seit := sin(u * 3.1 + t.phase * 4.0) * 0.34
+        orte.append(p + k * r * lerpf(0.62, -0.72, u)
+            + quer * r * seit)
+        groessen.append(r * lerpf(0.46, 0.24, u)
+            * (0.92 + 0.16 * sin(t.alter * 3.4 + float(i) * 1.7)))
+
+    # **Die Haut zuerst**: ein weiter, sehr blasser Schleier um die ganze
+    # Traube. Er ist das, was aus fuenf Blasen *ein* Tier macht - ohne ihn
+    # sieht ein Schwarm aus wie verstreute Punkte.
+    for i in zahl:
+        draw_circle(orte[i], groessen[i] * 2.1,
+            Color(farbe.r, farbe.g, farbe.b, 0.05 + 0.05 * hitze))
+
+    for i in zahl:
+        var g: float = groessen[i]
+        var wo: Vector2 = orte[i]
+        # Blase: nur ein Rand. Eine gefuellte Scheibe wird von der
+        # Nachbearbeitung milchig, ein Ring wird zur Roehre.
+        draw_arc(wo, g, 0.0, TAU, 12,
+            Color(farbe.r, farbe.g, farbe.b, 0.34 + 0.30 * hitze), 2.2, true)
+        draw_arc(wo, g, 0.0, TAU, 12, farbe.lerp(Color(1.0, 0.98, 0.94),
+            0.20 + 0.55 * hitze), 1.0, true)
+        # Der Keim darin, versetzt zur Mitte - eine Blase mit einem Punkt
+        # genau in der Mitte ist ein Ziel, keine Zelle.
+        var keim := wo + quer * g * 0.26 - k * g * 0.18
+        draw_circle(keim, g * 0.30,
+            Color(1.0, 0.96, 0.88, 0.45 + 0.40 * atem))
+
+    # Ein paar Wimpern am vordersten Rand, in einer Welle. Sie sagen, wohin
+    # die Traube treibt; ohne sie steht sie im Wasser.
+    for j in 4:
+        var w := lerpf(-0.9, 0.9, float(j) / 3.0)
+        var wurzel := orte[0] + (k * cos(w) + quer * sin(w)) * groessen[0]
+        var welle := sin(t.alter * 7.0 + float(j) * 1.4 + t.phase) * 0.34
+        draw_line(wurzel, wurzel + (k * cos(w + welle)
+            + quer * sin(w + welle)) * r * 0.42,
+            Color(farbe.r, farbe.g, farbe.b, 0.26 + 0.20 * hitze), 1.0)
 
 
 ## Kreiser: ein flacher Rumpf mit einem Ruderkranz, der zur Seite steht.
@@ -1426,15 +1678,31 @@ func _spiegler(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> 
     var quer := k.orthogonal()
 
     # Die Schale: breit quer zur Bahn, vorn gerundet, hinten offen.
+    # **Ein Spiegel hat Facetten, keine Rundung.**
+    #
+    # Die Schale war 1,58 lang und 1,84 breit - Seitenverhaeltnis 1,16, also
+    # rund. Was diese Art kann, ist Licht zurueckwerfen, und das tut keine
+    # Kugel, sondern eine **Flaeche**: lange gerade Kanten, spitze Ecken,
+    # deutlich laenger als breit. So sieht man ihr an, warum der Kernstrahl
+    # an ihr abprallt.
     var schale := PackedVector2Array([
-        p + k * r * 0.86,
-        p + k * r * 0.34 + quer * r * 0.92,
-        p - k * r * 0.42 + quer * r * 0.80,
-        p - k * r * 0.72,
-        p - k * r * 0.42 - quer * r * 0.80,
-        p + k * r * 0.34 - quer * r * 0.92,
+        p + k * r * 1.34,
+        p + k * r * 0.52 + quer * r * 0.58,
+        p - k * r * 0.34 + quer * r * 0.66,
+        p - k * r * 1.10 + quer * r * 0.24,
+        p - k * r * 1.10 - quer * r * 0.24,
+        p - k * r * 0.34 - quer * r * 0.66,
+        p + k * r * 0.52 - quer * r * 0.58,
     ])
     _koerper(schale, farbe, hitze, t.richtung)
+    # Zwei Facettenkanten laengs - sie fangen das Licht und sagen, dass die
+    # Oberflaeche aus Flaechen besteht und nicht aus Haut.
+    for seite: float in SEITEN:
+        _zug(PackedVector2Array([
+            p + k * r * 1.20,
+            p + k * r * 0.30 + quer * r * 0.30 * seite,
+            p - k * r * 0.92 + quer * r * 0.12 * seite]),
+            farbe.lerp(Color(1.0, 0.98, 0.94), 0.22 + 0.50 * hitze), 1.1)
 
     # Facetten: Grate vom Rand zur Mitte. Sie tragen den Glanz.
     for i in 5:
