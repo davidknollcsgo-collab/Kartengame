@@ -48,17 +48,19 @@ environment = SubResource("Environment_glut")
 [node name="Grund" type="Node2D" parent="."]
 script = ExtResource("6_grund")
 
+[node name="Saum" type="Node2D" parent="."]
+
 [node name="Wild" type="Node2D" parent="."]
 script = ExtResource("9_wild")
 
 [node name="Kegel" type="Node2D" parent="."]
 script = ExtResource("2_kegel")
 
-[node name="Schwarm" type="Node2D" parent="."]
-script = ExtResource("3_schwarm")
-
 [node name="Funken" type="Node2D" parent="."]
 script = ExtResource("4_funken")
+
+[node name="Schwarm" type="Node2D" parent="."]
+script = ExtResource("3_schwarm")
 
 [node name="Vorn" type="Node2D" parent="."]
 

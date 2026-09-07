@@ -310,6 +310,29 @@ xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 720x1600 \
 | `--flach` | ohne Glühen — nur zum Messen |
 | `--fahrprobe <n>` | der Autopilot bis Welle n, headless |
 
+**Der Vorlauf hat vierzig Sekunden Trümmer in ein Bild gepackt.**
+`--zeit` rief `_process()` nur an `rundlauf.gd` auf. `Funken`, `Wild`,
+`Grund` und `Schwarm` bekommen ihres sonst von der Hauptschleife, und die
+läuft während des Vorlaufs nicht — also alterte nichts. Gemessen im Schuss
+bei `--zeit 40`: **24 Druckwellen, 111 Splitter, 356 Glutteilchen
+gleichzeitig**, wo im Spiel ein bis zwei stehen. Im Bild waren das
+fünfzehn blasse Kreise gleicher Größe über den ganzen Schirm, verteilt
+über Stellen, an denen gar nichts war.
+
+Ich habe das **vier Grafikdurchgänge lang für die Optik des Spiels
+gehalten** und den Fehler im Zeichnen gesucht — beim Bewuchs, bei den
+Felsen, bei den Schwärmen, beim Kleinzeug. Gefunden hat es erst das
+Abschalten je eines Knotens: mit stillem `funken.gd` waren alle Kreise
+weg. **Ein Messstand, der die Wirklichkeit nicht abbildet, ist schlimmer
+als keiner** — dieselbe Lehre wie bei `tools/artenkosten.gd`, das
+Anmarsch als Kegelzeit zählte. `_takte_geschwister()` treibt jetzt jeden
+Knoten mit eigenem `_process`.
+
+**Und daraus die Regel für jede Optikfrage:** wenn im Bild etwas steht,
+das nirgends gezeichnet wird, ist der nächste Schritt nicht Nachdenken,
+sondern **einen Knoten stillstellen und noch einmal schießen**. Das
+kostet zwanzig Sekunden je Versuch und beantwortet die Frage endgültig.
+
 **Ein Tier ist kein Umriss.** Die Nachbearbeitung stand auf `glow_bloom =
 0,55` bei `glow_hdr_threshold = 0,30` — damit blühte **alles**, nicht nur die
 hellen Kerne, und ein Tier im Strahl war eine weiße Scheibe. Auf 0,16 bei
@@ -901,6 +924,37 @@ nicht sagt, dass sie dort liegt, holt niemand ab. Im Bericht steht dazu, was
 insgesamt in der Kolonie liegt: der Bericht ist die Stelle, an der man
 zwischen Bauen und noch einer Fahrt entscheidet, und dafür braucht man den
 Kontostand und nicht nur die Beute dieser Fahrt.
+
+**Über einem Tier liegt nur noch der Spieler.** Die Zeichenreihenfolge ist
+jetzt eine Aussage und keine gewachsene Liste: `Grund` (mit dem Nebel
+zuletzt), `Saum`, `Wild`, `Kegel`, `Funken`, `Schwarm`, `Vorn`, dann HUD,
+Menü und Ausbau. Alles vor `Schwarm` ist Welt, alles danach ist der Spieler
+selbst oder seine Bedienoberfläche.
+
+Zwei Dinge lagen vorher falsch. Der **Saum des Feldes** wurde aus `Vorn`
+gezeichnet und lag damit über den Räubern — ein blasser Bogen quer über ein
+Tier, das man gerade im Kegel hält. Er hat jetzt einen eigenen Knoten
+zwischen Grund und Wild: über dem Nebel (eine Grenze, die man erst sieht,
+wenn man sie erkundet hat, ist keine), unter den Tieren. Und die
+**Todeswirkung** — Splitter, Glut, Druckwelle — lag über allem Lebenden.
+Was von einem toten Tier übrig ist, gehört hinter die lebenden; ein Ring,
+der über einen heranziehenden Räuber wandert, nimmt genau die Sekunde
+Lesbarkeit weg, in der es darauf ankommt.
+
+Der Saum zeichnet dabei **nur neu, wenn dort etwas steht**. Ein Knoten, der
+in jedem Bild neu aufgenommen wird, um nichts auszugeben, kostet gemessen
+0,25 Bilder je Sekunde — und nahe am Feldrand fährt man die kleinere Hälfte
+jeder Fahrt.
+
+**Eine Rippel ist ein Rücken, kein Kratzer.** Die Sandbänder liefen mit
+gleichbleibender Deckung von einem Bildrand zum anderen — das Einzige im
+ganzen Feld, das das tut. Im Bild lagen damit lange helle Striche über
+allem, und das Erste, was man ansah, war der Untergrund. Sediment liegt
+aber in Rücken: es häuft sich, läuft aus, und dazwischen ist Sand. Zwei
+Schwingungen über die Länge, multipliziert und angehoben, geben Stücke von
+zwei- bis dreihundert Einheiten mit Nichts dazwischen; beide Enden laufen
+auf null aus, weil eine abgeschnittene Rippel wieder eine Kante wäre. Die
+Deckung steht im gebauten Netz und kostet zur Laufzeit nichts.
 
 **Es gibt in diesem Spiel keine rechten Winkel** — kein Fels, kein Tier, kein
 Riff hat eine gerade Kante. Die Bedienoberfläche hatte nichts *als* rechte

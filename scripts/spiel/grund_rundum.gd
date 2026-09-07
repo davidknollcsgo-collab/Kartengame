@@ -213,11 +213,14 @@ func _baue_rippelnetz() -> void:
     _rippel_ecken = PackedVector2Array()
     _rippel_farben = PackedColorArray()
     _rippel_netz = PackedInt32Array()
-    var mitte := Color(0.22, 0.44, 0.50, 0.15)
-    var aus := Color(0.22, 0.44, 0.50, 0.0)
+    var ton := Color(0.22, 0.44, 0.50)
+    var aus := Color(ton.r, ton.g, ton.b, 0.0)
     for zug: PackedVector2Array in _rippel:
         var n := zug.size()
         var erste := _rippel_ecken.size()
+        # Die Phase aus dem ersten Punkt: derselbe Grund gibt dieselben
+        # Ruecken, und zwei Rippel nebeneinander atmen nicht im Gleichtakt.
+        var ph := zug[0].x * 0.021 + zug[0].y * 0.013
         for i in n:
             # Die Normale aus den Nachbarn, damit das Band der Kurve folgt
             # statt an jeder Biegung zu knicken.
@@ -226,6 +229,25 @@ func _baue_rippelnetz() -> void:
             var quer := (nach - vor)
             quer = quer.orthogonal().normalized() if quer.length() > 0.001 \
                 else Vector2.UP
+            # **Ein Ruecken, kein Kratzer.** Die Bande lief mit
+            # gleichbleibender Deckung von einem Bildrand zum anderen, und
+            # das ist das Einzige im ganzen Feld, was das tut: im Bild lagen
+            # ueber allem - ueber Tieren, ueber Felsen, ueber dem Boot -
+            # lange helle Striche, und das Erste, was man ansah, war der
+            # Untergrund. Sediment liegt aber in Ruecken, nicht in Linien:
+            # es haeuft sich, laeuft aus, und dazwischen ist Sand.
+            #
+            # Zwei Schwingungen ueber die Laenge, multipliziert und
+            # angehoben, geben genau das - Stuecke von zwei- bis
+            # dreihundert Einheiten mit Nichts dazwischen. Und beide Enden
+            # laufen auf null aus: eine Rippel, die abgeschnitten endet,
+            # ist wieder eine Kante.
+            var s_lang := float(i) / float(maxi(1, n - 1))
+            var lang := (0.5 + 0.5 * sin(s_lang * TAU * 1.7 + ph)) \
+                * (0.55 + 0.45 * sin(s_lang * TAU * 4.3 + ph * 1.7))
+            lang = pow(clampf(lang, 0.0, 1.0), 1.5) \
+                * sqrt(sin(PI * s_lang))
+            var mitte := Color(ton.r, ton.g, ton.b, 0.15 * lang)
             _rippel_ecken.append(zug[i] - quer * RIPPEL_BREIT)
             _rippel_farben.append(aus)
             _rippel_ecken.append(zug[i])

@@ -74,6 +74,9 @@ const BEGLEITER_TAKT := 0.9
 ## der Rumpf verschwand hinter einer blassen Scheibe. Dieser leere
 ## Knoten steht in der Szene hinter allen anderen; was auf sein
 ## `draw` haengt, liegt vorn.
+@onready var _saum: Node2D = $Saum
+## Ob im Saum zuletzt etwas stand - siehe `_verarbeite()`.
+var _saum_stand := false
 @onready var _vorn: Node2D = $Vorn
 @onready var _hud: CanvasLayer = $Hud
 @onready var _menue: CanvasLayer = $Menue
@@ -317,6 +320,7 @@ func _ready() -> void:
     var wasser := get_node_or_null("Wasser/Flaeche") as ColorRect
     if wasser != null and wasser.material != null:
         wasser.material.set_shader_parameter("rundum", 1.0)
+    _saum.draw.connect(_zeichne_saum)
     _vorn.draw.connect(_zeichne_vorn)
     _hud.lauf = self
     _menue.lauf = self
@@ -560,6 +564,16 @@ func _process(delta: float) -> void:
         _beende(false)
 
     _schwarm.queue_redraw()
+    # **Nur wenn dort etwas steht.** Der Saum zeigt sich erst nahe am
+    # Feldrand, und das ist die kleinere Haelfte jeder Fahrt. Ein
+    # Zeichenknoten, der in jedem Bild neu aufgenommen wird, um nichts
+    # auszugeben, kostet gemessen 0,25 Bilder je Sekunde - der Knoten
+    # behaelt also seinen letzten Inhalt, solange sich nichts aendert, und
+    # das eine Bild nach dem Abrücken loescht ihn.
+    var saum_nah := Rundum.FELD_RADIUS - _ort.length() <= RAND_NAH
+    if saum_nah or _saum_stand:
+        _saum.queue_redraw()
+        _saum_stand = saum_nah
     _vorn.queue_redraw()
     queue_redraw()
 
@@ -1433,7 +1447,6 @@ func _draw() -> void:
     _zeichne_rand()
 
 
-## Vor allem: Spur, Begleiter, Boot.
 ## Ab welchem Abstand zum Feldrand die Kante sichtbar wird.
 const RAND_NAH := 300.0
 
@@ -1445,8 +1458,9 @@ const RAND_NAH := 300.0
 ## haengen und wusste nicht warum. Eine Grenze, die man erst merkt, wenn man
 ## an ihr klebt, ist keine Grenze, sondern ein Fehler im Spiel.
 ##
-## Sie wird deshalb **ueber** allem gezeichnet und nur dort, wo man ist: ein
+## Sie wird deshalb ueber dem Nebel gezeichnet und nur dort, wo man ist: ein
 ## Bogen um den naechsten Punkt der Kante, der mit dem Abstand aufblendet.
+## Ueber den Tieren liegt sie nicht - sie ist Welt und nicht Spieler.
 ## Den ganzen Kreis zu zeigen waere die Karte verschenkt - man saehe die
 ## Form des Feldes, bevor man es befahren hat.
 func _zeichne_kante() -> void:
@@ -1461,9 +1475,9 @@ func _zeichne_kante() -> void:
         var t := lerpf(w - spanne, w + spanne, float(i) / 32.0)
         punkte.append(Vector2.RIGHT.rotated(t) * Rundum.FELD_RADIUS)
     var puls := 0.75 + 0.25 * sin(_wellenzeit * 3.0)
-    _vorn.draw_polyline(punkte,
+    _saum.draw_polyline(punkte,
         Color(0.42, 0.72, 0.80, 0.10 * naehe), 14.0, true)
-    _vorn.draw_polyline(punkte,
+    _saum.draw_polyline(punkte,
         Color(0.62, 0.90, 0.96, 0.55 * naehe * puls), 2.0, true)
 
 
@@ -1525,8 +1539,23 @@ func _zeichne_stossring() -> void:
         _vorn.get_canvas_item(), netz, ecken, farben)
 
 
-func _zeichne_vorn() -> void:
+## Zwischen Grund und Tieren: was zur Welt gehoert und nicht zum Spieler.
+##
+## **Kein Stueck Kulisse liegt ueber einem Tier.** Der Saum des Feldes wurde
+## aus `_vorn` gezeichnet und lag damit ueber den Raeubern - ein blasser
+## Bogen quer ueber ein Tier, das man gerade im Kegel haelt. Was hinter dem
+## Boot liegt, gehoert hinter die Tiere; ueber ihnen stehen nur noch der
+## Spieler selbst, seine Rueckmeldung und die Bedienoberflaeche.
+##
+## Er hat trotzdem einen eigenen Knoten und liegt nicht im Grund: der Nebel
+## wird dort zuletzt gezeichnet und deckt alles ab, was vor ihm kommt - und
+## eine Grenze, die man erst sieht, wenn man sie schon erkundet hat, ist
+## keine.
+func _zeichne_saum() -> void:
     _zeichne_kante()
+
+
+func _zeichne_vorn() -> void:
     _zeichne_stossring()
     _zeichne_spur()
     _zeichne_blasen()
@@ -2243,6 +2272,29 @@ func _spiele_vor() -> void:
         var w := float(i) * takt * 0.55
         _finger = Vector2.RIGHT.rotated(w) * 240.0
         _process(takt)
+        _takte_geschwister(takt)
+
+
+## Die Geschwisterknoten einen Takt weiterdrehen.
+##
+## **Der Vorlauf hat vierzig Sekunden Trümmer auf einmal gezeigt.** Er rief
+## nur `_process()` an dieser Datei auf; `Funken`, `Wild`, `Grund` und
+## `Schwarm` bekommen ihres sonst von der Hauptschleife, und die läuft
+## während des Vorlaufs nicht. Also alterte nichts: Splitter, Glutteilchen
+## und Druckwellen sammelten sich über die ganze vorgerechnete Fahrt an und
+## standen im Schuss alle gleichzeitig da - vierundzwanzig Druckwellen und
+## hundertelf Splitter, wo im Spiel ein bis zwei stehen. Vier Grafik-
+## durchgänge lang habe ich das für die Optik des Spiels gehalten und den
+## Fehler im Zeichnen gesucht.
+##
+## **Ein Messstand, der die Wirklichkeit nicht abbildet, ist schlimmer als
+## keiner** - dieselbe Lehre wie bei `tools/artenkosten.gd`, das Anmarsch
+## als Kegelzeit zählte. Der Vorlauf treibt jetzt jeden Knoten, der ein
+## eigenes `_process` führt.
+func _takte_geschwister(takt: float) -> void:
+    for knoten in [_grund, _wild, _kegel, _funken, _schwarm]:
+        if knoten != null and knoten.has_method(&"_process"):
+            knoten._process(takt)
 
 
 # --- Die Fahrprobe -----------------------------------------------------------
