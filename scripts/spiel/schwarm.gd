@@ -53,16 +53,29 @@ func _process(delta: float) -> void:
 
 
 func _ready() -> void:
-    # Additiv. In der Tiefsee leuchtet jedes Tier selbst - es wird nicht
-    # angestrahlt. Mit Mischblendung sahen dieselben Formen aus wie grauer
-    # Nebel auf schwarzem Grund; erst durch Addition sind es Lichter.
+    # **Mischblendung, nicht mehr additiv - und das ist die Entscheidung,
+    # an der die ganze Tierdarstellung haengt.**
     #
-    # Folge fuer alles hier unten: es gibt **keine dunklen Stellen**. Eine
-    # schwarze Pupille waere unsichtbar, deshalb wird ein Auge als heller Kern
-    # mit dunklerem Ring gezeichnet, nicht umgekehrt.
-    var stoff := CanvasItemMaterial.new()
-    stoff.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
-    material = stoff
+    # Additiv war lange richtig: in der Tiefsee leuchtet jedes Tier selbst,
+    # und mit Mischblendung sahen die Formen aus wie grauer Nebel auf
+    # schwarzem Grund. Nur hat additiv eine Folge, die sich nicht umgehen
+    # laesst - **es kann nichts decken**. Jede Flaeche addiert sich zu dem,
+    # was dahinter liegt, und zwei uebereinander werden heller statt dass
+    # eine die andere verdeckt. Ein gefuellter Leib wird damit zwangslaeufig
+    # ein weisser Klecks, und der einzige Ausweg war, die Fuellung fast ganz
+    # wegzulassen. Genau das hat die Tiere zu Drahtgittern gemacht: was blieb,
+    # war ihr Umriss.
+    #
+    # Was den Wechsel jetzt traegt, ist die Nachbearbeitung. Die Szene hat
+    # ein Gluehen mit einer HDR-Schwelle von 0,62: **was hell ist, blueht
+    # weiterhin von selbst** - Photophoren, Augen, Kanten -, und was dunkel
+    # ist, deckt endlich. Der Grund, aus dem additiv gewaehlt wurde, ist
+    # damit anderweitig erfuellt.
+    #
+    # Folge fuer alles hier unten, und sie kehrt sich um: es gibt jetzt
+    # **dunkle Stellen**. Ein Leib darf eine Schattenseite haben, ein Auge
+    # eine Pupille, eine Platte eine Fuge.
+    pass
 
 
 ## Die Funkenbluete dieser Welle, oder null. `rundlauf.gd` setzt sie.
@@ -111,9 +124,13 @@ func _fuellung(punkte: PackedVector2Array, farbe: Color) -> void:
     # hell ist. Eine gedaempfte Fuellung darf deshalb wieder eine Flaeche
     # sein - sie bleibt weit unter der Schwelle und gibt dem Tier trotzdem
     # einen Koerper, vor dem seine hellen Kanten stehen.
+    # Mit Mischblendung ist eine Fuellung eine Flaeche und keine Aufhellung
+    # mehr. Sie darf deshalb deckend sein - dunkel genug, dass die hellen
+    # Kanten darauf stehen, und hell genug, dass das Tier vor dem Wasser
+    # nicht verschwindet.
     farbe = _gedeckt(farbe)
-    draw_colored_polygon(punkte, Color(farbe.r * 0.46, farbe.g * 0.46,
-        farbe.b * 0.46, farbe.a * 0.80))
+    draw_colored_polygon(punkte, Color(farbe.r * 0.30, farbe.g * 0.30,
+        farbe.b * 0.32, minf(1.0, farbe.a * 1.9)))
 
 
 ## Ein Linienzug. Bei Leuchtroehren zweimal: ein weiter blasser Hof und ein
@@ -660,16 +677,32 @@ func _koerper(punkte: PackedVector2Array, farbe: Color, hitze: float,
     # eine Flaeche, und er braucht dafuer keinen zweiten Umriss. Hell liegt
     # er dort, wo das Tier hinschaut - ein Koerper, der sich bewegt, ist
     # vorn dichter als hinten.
-    var kern := 1.0 - 0.45 * hitze
-    var laengs := achse if achse != Vector2.ZERO else _laengsachse(rund, mitte)
-    var weit := 0.001
-    for v in rund:
-        weit = maxf(weit, absf((v - mitte).dot(laengs)))
+    #
+    # **Der Verlauf laeuft zum Licht, nicht nach vorn.** Solange additiv
+    # gezeichnet wurde, war die Fuellung ein Hauch und ihre Richtung
+    # gleichgueltig; jetzt ist sie die Flaeche des Tieres, und eine Flaeche
+    # unter Licht ist dort hell, wo sie sich dem Licht zuwendet. Das ist
+    # dieselbe Rechnung wie beim Fels und beim Rumpf des Bootes - eine
+    # Beleuchtung, drei Stellen.
+    var kern := 1.0 - 0.30 * hitze
+    var zum_licht := lichtquelle - mitte
+    zum_licht = zum_licht.normalized() if zum_licht.length_squared() > 1.0 \
+        else Vector2.UP
     var toene := PackedColorArray()
     for v in rund:
-        var u := clampf((v - mitte).dot(laengs) / weit * 0.5 + 0.5, 0.0, 1.0)
-        toene.append(Color(farbe.r * 0.34, farbe.g * 0.34, farbe.b * 0.34,
-            (0.16 + 0.30 * u * u) * kern))
+        var zu := maxf(0.0, (v - mitte).normalized().dot(zum_licht))
+        # Quadriert: Licht faellt steil ab, sobald eine Flaeche sich
+        # wegdreht. Linear sieht es aus wie ein Farbverlauf.
+        var st := 0.30 + 0.70 * zu * zu
+        # **Die Schattenseite kippt ins Blaue, nicht ins Graue.** Was im
+        # Wasser im Schatten liegt, wird nicht nur dunkler - es verliert
+        # zuerst das lange Ende des Spektrums. Ein bloss abgedunkeltes Rot
+        # sieht aus wie schmutziges Rot; ein ins Blau gezogenes sieht aus
+        # wie Rot unter Wasser.
+        var tief := Color(farbe.r, farbe.g, farbe.b).lerp(
+            Color(0.10, 0.26, 0.40), 0.62 * (1.0 - zu))
+        toene.append(Color(tief.r * st * 0.92, tief.g * st * 0.92,
+            tief.b * st * 0.98, (0.80 + 0.18 * zu) * kern))
     draw_polygon(rund, toene)
 
     # **Der Umriss hat eine Lichtseite.**
@@ -684,21 +717,28 @@ func _koerper(punkte: PackedVector2Array, farbe: Color, hitze: float,
     # Genau das war der Fehler des alten `_randlicht()`: es zog einen
     # Kreisbogen bei 1,04 Radien um den Mittelpunkt, und auf einem langen
     # Fisch schwebte der neben dem Tier statt auf seiner Kante.
-    var zum_licht := lichtquelle - mitte
-    zum_licht = zum_licht.normalized() if zum_licht.length_squared() > 1.0 \
-        else Vector2.UP
     var seite := PackedFloat32Array()
     for v in rund:
         var aussen := (v - mitte).normalized()
         seite.append(0.34 + 0.66 * maxf(0.0, aussen.dot(zum_licht)))
 
+    # **Eine Kontur, kein Doppelhof.**
+    #
+    # Hier lagen zwei Zuege uebereinander, und `_zug_farben()` legt unter
+    # jeden einen Hof von bis zu sechs Pixeln - zusammen also zwei weiche
+    # Baender auf derselben Kante. Auf einem gefuellten Leib ist das kein
+    # Umriss mehr, sondern ein Nebel darum.
+    #
+    # Seit der Leib eine Flaeche ist, braucht die Kante auch keinen Hof, um
+    # gesehen zu werden: sie steht zwischen hell und dunkel. Was bleibt, ist
+    # **ein** weiches Band nach aussen und ein schmaler harter Kern darauf.
     var geschlossen := rund + PackedVector2Array([rund[0]])
     var hof := PackedColorArray()
     for i in geschlossen.size():
         var f: float = seite[i % seite.size()]
-        hof.append(Color(farbe.r, farbe.g, farbe.b,
-            (0.26 + 0.34 * hitze) * f))
-    _zug_farben(geschlossen, hof, 3.4)
+        hof.append(_gedeckt(Color(farbe.r, farbe.g, farbe.b,
+            (0.20 + 0.26 * hitze) * f)))
+    draw_polyline_colors(geschlossen, hof, 4.2, true)
     # **Der Umriss traegt die Farbe der Art, nicht Weiss.**
     #
     # Er stand im Ruhezustand schon auf 45 % Weiss, und darueber liegt die
@@ -709,12 +749,13 @@ func _koerper(punkte: PackedVector2Array, farbe: Color, hitze: float,
     # Vierzehn Prozent reichen fuer den hellen Kern der Leuchtroehre. Weiss
     # wird sie erst beim Brennen - dann ist es kein Verlust, sondern die
     # Ansage.
-    var kante := farbe.lerp(Color(1.0, 0.98, 0.94), 0.14 + 0.62 * hitze)
+    var kante := farbe.lerp(Color(1.0, 0.98, 0.94), 0.22 + 0.58 * hitze)
     var kern_farben := PackedColorArray()
     for i in geschlossen.size():
         var f: float = seite[i % seite.size()]
-        kern_farben.append(Color(kante.r, kante.g, kante.b, f))
-    _zug_farben(geschlossen, kern_farben, 1.3 + 0.9 * hitze)
+        kern_farben.append(_gedeckt(Color(kante.r, kante.g, kante.b,
+            0.30 + 0.70 * f)))
+    draw_polyline_colors(geschlossen, kern_farben, 1.5 + 0.7 * hitze, true)
 
     _inneres(rund, mitte, achse, farbe, hitze)
 

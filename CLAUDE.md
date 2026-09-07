@@ -933,6 +933,44 @@ werden musste (nur `zurueck_beschriftung` blieb: „BACK TO THE TRENCH").
 Erreichbar über `COLONY` im Titelbild **und** im Bericht — nach der Fahrt liegt der Nährstoff frisch in der Kolonie, und
 das ist der Moment, in dem man ihn ausgeben will.
 
+**Die Tiere sind gefüllte Körper, nicht Leuchtröhren — und das hängt an
+einer einzigen Zeile.** `schwarm.gd` zeichnete **additiv**, und additiv kann
+nichts decken: jede Fläche addiert sich zu dem, was dahinter liegt, zwei
+übereinander werden heller statt dass eine die andere verdeckt. Ein gefüllter
+Leib wird damit zwangsläufig ein weißer Klecks, und der einzige Ausweg war,
+die Füllung fast wegzulassen (22 % Farbe mal 45 % Deckung = ein Zehntel).
+Genau das machte die Tiere zu **Drahtgittern**: übrig blieb ihr Umriss.
+
+Der Wechsel auf Mischblendung wird von der Nachbearbeitung getragen. Die
+Szene hat ein Glühen mit HDR-Schwelle 0,62 — **was hell ist, blüht weiterhin
+von selbst**: Photophoren, Augen, Kanten. Der Grund, aus dem additiv gewählt
+wurde, ist damit anderweitig erfüllt, und was dunkel ist, deckt endlich.
+
+Die Folge kehrt sich um und gilt für alles in dieser Datei: es gibt jetzt
+**dunkle Stellen**. Ein Leib darf eine Schattenseite haben, ein Auge eine
+Pupille, eine Platte eine Fuge. Drei Dinge kamen damit erst in Reichweite:
+
+* **Die Fläche.** `_koerper()` füllt den Umriss mit einem Verlauf, der zum
+  Licht hin heller wird — dieselbe Rechnung wie beim Fels und beim Rumpf des
+  Bootes. Die Schattenseite kippt dabei **ins Blaue**, nicht ins Graue: was
+  im Wasser im Schatten liegt, verliert zuerst das lange Ende des Spektrums,
+  und ein bloß abgedunkeltes Rot sieht aus wie schmutziges Rot.
+* **Die Kontur.** Ein weiches Band nach außen und ein schmaler harter Kern
+  darauf. Vorher lagen zwei `_zug`-Aufrufe übereinander, jeder mit einem Hof
+  von bis zu sechs Pixeln — auf einem gefüllten Leib ist das kein Umriss,
+  sondern ein Nebel darum.
+* **Gliedmaßen.** `_glied()` zeichnet ein Bein als verjüngte Fläche mit einer
+  Lichtkante auf *einer* Seite und einem Knoten am Gelenk; `_fangarm()` setzt
+  drei davon aneinander, mit quadratisch wachsender Auslenkung, so dass eine
+  Welle von der Wurzel zur Spitze läuft. Vorher war jedes Bein ein
+  `draw_line` fester Breite — beim Panzerkrebs eine Kinderzeichnung von einer
+  Spinne.
+
+**Was dabei nicht wackeln darf:** die Lichtseite ist eine Frage der
+Geometrie, nicht der Beleuchtung. Was Schaden nimmt, sagt weiterhin
+`t.licht`, und `_test_rundumlauf_brennt_mit_dem_gezeichneten_kegel` hält das
+fest.
+
 **Das Seitenverhältnis ist der Sprite.** Die Rückmeldung lautete, die Tiere
 seien nicht gut genug — und sie war richtig, aber die Ursache lag nicht dort,
 wo ich zuerst gesucht habe. Ich habe drei Anläufe lang an Zierde gearbeitet
