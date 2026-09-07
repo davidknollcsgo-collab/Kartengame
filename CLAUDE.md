@@ -1088,6 +1088,25 @@ Schleierqualle, falsch herum angehängt, kreuzte den eigenen Umriss — weitere
 Parse-Fehler (`spitze` zweimal deklariert). Gefunden hat beides nur der
 Startlauf.
 
+**Ein Fels ist dunkler als das Wasser, aber er ist kein Loch.** Der
+Grundton des Steins lag bei dreissig Prozent des Wassers daneben (gemessen
+im Schuss: Fels (3, 13, 19), Wasser (9, 43, 52)) — im Bild waren das
+schwarze Flecken von zweihundert Pixeln, und man las sie als Löcher im
+Grund statt als Steine. In trüber Tiefe wird nichts schwarz: was weit weg
+ist, verschleiert die Wassersäule, es fällt nicht aus. Auf rund zwei
+Dritteln des Wassers bleibt der Stein deutlich dunkler und trotzdem
+derselbe Ort — und die Wölbung trägt ihn dann auch ohne Kegel, weil die
+Kuppe auf dem 1,9fachen dieses Tons steht und die Flanke auf dem
+Einfachen.
+
+**Unerkundetes Wasser ist immer noch Wasser.** `NEBEL_FARBE` lag so nahe
+an Schwarz, dass die Deckung von 0,93 den Rest erledigte: gemessen (0, 0,
+3), und auf 720×1600 war das obere Drittel eine schwarze Fläche. Das liest
+sich nicht als Dunkelheit, sondern als ausgeschaltet — der Graben ist
+nicht leer, er ist unbeleuchtet. Jetzt ein sehr dunkles Blaugrün, dunkler
+als das dunkelste befahrene Wasser und heller als nichts; was der Nebel
+verbirgt, verbirgt er unverändert.
+
 **Ein Ring ist kein Kreis, und ein Fels ist kein Umriss.** Die Rückmeldung
 lautete: *zu viele einzelne Linien.* Sie war richtig, und zwar überall aus
 demselben Grund — fast alles im Bild war eine **Linie**, und eine Linie hat

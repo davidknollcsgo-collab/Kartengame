@@ -791,9 +791,20 @@ func _kuppel(f: Dictionary, kraft: float) -> void:
             zum_licht = d.normalized()
     var hell := _angeleuchtet(mitte)
 
-    # Der Grundton des Steins. Er deckt ab, was hinter ihm liegt - dunkler
-    # als das Wasser davor, wie das Sediment im Schlund.
-    var dunkel := Color(0.016, 0.030, 0.038, 1.0)
+    # Der Grundton des Steins.
+    #
+    # **Ein Fels ist dunkler als das Wasser, aber er ist kein Loch.** Er
+    # stand auf einem Ton, der neben dem Wasser gemessen dessen dreissig
+    # Prozent hatte - im Bild waren das schwarze Flecken von zweihundert
+    # Pixeln, und man las sie als Loecher im Grund statt als Steine. In
+    # trueber Tiefe wird nichts schwarz: was weit weg ist, verschleiert die
+    # Wassersaeule, es faellt nicht aus. Auf rund zwei Dritteln des Wassers
+    # bleibt der Stein deutlich dunkler und trotzdem derselbe Ort.
+    #
+    # Die Woelbung traegt ihn dabei auch ohne Kegel: die Kuppe steht auf dem
+    # 1,9fachen dieses Tons, die Flanke auf dem Einfachen. Das ist der
+    # Unterschied zwischen einer Silhouette und einem Koerper.
+    var dunkel := Color(0.020, 0.052, 0.064, 1.0)
     # Wieviel Licht die Kuppe hoechstens annimmt. Quadriert angewandt, weil
     # ein linearer Verlauf ueber eine ganze Flaeche wie ein Farbverlauf
     # aussieht und nicht wie Licht: Licht faellt steil ab, sobald eine
@@ -1165,7 +1176,19 @@ func _zeichne_staub() -> void:
 ## das ist der Grund hinzufahren.
 const NEBEL_DECKUNG := 0.93
 
-const NEBEL_FARBE := Color(0.004, 0.014, 0.020)
+## Die Farbe des Nebels.
+##
+## **Unerkundetes Wasser ist immer noch Wasser.** Der Ton lag so nahe an
+## Schwarz, dass die Deckung von 0,93 den Rest erledigte: gemessen kam im
+## Bild (0, 0, 3) heraus, und auf einem Schirm von 720 auf 1600 war das obere
+## Drittel eine schwarze Flaeche. Das liest sich nicht als Dunkelheit,
+## sondern als ausgeschaltet - und der Graben ist nicht leer, er ist
+## unbeleuchtet.
+##
+## Jetzt ein sehr dunkles Blaugruen, dunkler als das dunkelste befahrene
+## Wasser und heller als nichts. Was der Nebel verbirgt, verbirgt er
+## unveraendert: die Deckung ist dieselbe.
+const NEBEL_FARBE := Color(0.010, 0.040, 0.055)
 
 
 ## Der Nebel als ein Dreiecksnetz mit Farbe an den Ecken.
