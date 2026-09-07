@@ -2006,23 +2006,69 @@ func _lichtscheu(p: Vector2, r: float, farbe: Color, t: Raeuber,
     var k := t.richtung
     var quer := k.orthogonal()
     var eng := clampf(t.licht, 0.0, 1.0)
-    var breit := r * (0.86 - 0.30 * eng)
-    var schirm := PackedVector2Array()
+
+    # **Sie war eine Scheibe mit vier Stangen dahinter.**
+    #
+    # Der Leib mass 1,22 Radien laengs und 1,72 quer - Verhaeltnis 1,4, also
+    # rund, und ein runder Umriss ist ein Ring (siehe CLAUDE.md, "Das
+    # Seitenverhaeltnis ist der Sprite"). Die Faeden waren `_strich` mit
+    # fester Breite; bei vollem Licht faellt `wehen` auf null, und dann
+    # standen vier gerade, gleich lange, parallele Stangen hinter ihr. Im
+    # Schuss war das ein Kamm auf einem Halbmond.
+    #
+    # Jetzt eine **Kapuze mit Schleppe**: vorn breit und ueberhaengend, nach
+    # hinten auf eine Spitze auslaufend, 2,5 lang zu 1,0 breit. Und die
+    # Kapuze ist ihre Regel als Bild - ein Tier, das vor dem eigenen Licht
+    # zurueckweicht, sieht aus, als duckte es sich unter etwas weg.
+    var lang := 1.05 + 0.20 * (1.0 - eng)
+    var oben := PackedVector2Array()
+    var unten := PackedVector2Array()
     for i in 11:
-        var w := lerpf(-PI * 0.62, PI * 0.62, float(i) / 10.0)
-        schirm.append(p + k * cos(w) * r * 0.92 + quer * sin(w) * breit)
-    schirm.append(p - k * r * (0.30 + 0.25 * eng))
-    _koerper(schirm, farbe, hitze, t.richtung)
-    # Faeden, die sich beim Zurueckweichen anlegen.
-    var faeden := 3 + int(_eigenart(t, 6.1) * 3.0)
+        var u := float(i) / 10.0
+        var x := lerpf(lang, -1.45, u)
+        # Vorn die Kapuze, hinten die Spitze. Der Exponent zieht die groesste
+        # Breite nach vorn - hinten laeuft sie lang aus, statt symmetrisch
+        # zu sein wie ein Blatt.
+        var b := pow(sin(PI * pow(u, 0.58)), 1.15) * 0.52
+        # Beim Zurueckweichen zieht sie sich zusammen: schmaler und kuerzer.
+        b *= 1.0 - 0.26 * eng
+        oben.append(p + k * x * r + quer * b * r)
+        unten.append(p + k * x * r - quer * b * r)
+    unten.reverse()
+    var leib := oben + unten
+    _koerper(leib, farbe, hitze, k, 1)
+
+    # Der Kapuzensaum: eine Rille quer ueber den Vorderleib, dort wo die
+    # Kapuze aufhoert. Sie sagt, dass vorn etwas *ueber* dem Koerper liegt.
+    var saum := PackedVector2Array()
+    for i in 7:
+        var w := lerpf(-1.05, 1.05, float(i) / 6.0)
+        saum.append(p + k * r * (0.34 + 0.16 * cos(w)) + quer * sin(w) * r * 0.44)
+    var zum_licht := lichtquelle - p
+    zum_licht = zum_licht.normalized() if zum_licht.length_squared() > 1.0 \
+        else Vector2.UP
+    _rille(saum, Color(0.04, 0.09, 0.14, 0.44 + 0.14 * hitze),
+        farbe.lerp(Color(1.0, 0.98, 0.94), 0.10 + 0.30 * hitze),
+        zum_licht * 1.4)
+
+    # **Faeden, die faechern.** Jeder bekommt seine eigene Wurzelrichtung
+    # und seine eigene Laenge - vier Faeden in dieselbe Richtung sind ein
+    # Kamm, und daran ist keine Bewegung zu sehen. Beim Zurueckweichen legen
+    # sie sich an: kuerzer und enger gefaechert.
+    var faeden := 4 + int(_eigenart(t, 6.1) * 3.0)
     for i in faeden:
-        var sspur := (float(i) - float(faeden - 1) * 0.5) * 0.36
-        var wurzel := p - k * r * 0.24 + quer * sspur * r
-        var wehen := sin(t.alter * 5.0 + float(i) + t.phase) * r * 0.24
-        _strich(wurzel, wurzel - k * r * (1.5 - 0.7 * eng)
-            + quer * wehen * (1.0 - eng),
-            Color(farbe.r, farbe.g, farbe.b, 0.4), 1.1)
-    _auge(p + k * r * 0.44, r * 0.14, hitze, farbe)
+        var s_seite := (float(i) - float(faeden - 1) * 0.5) \
+            / maxf(1.0, float(faeden - 1) * 0.5)
+        var wurzel := p - k * r * 1.15 + quer * s_seite * r * 0.20
+        var faecher := s_seite * (0.62 - 0.34 * eng)
+        var laenge := r * (1.5 - 0.7 * eng) \
+            * (0.72 + 0.55 * _eigenart(t, 3.3 + float(i)))
+        var wehen := sin(t.alter * 5.0 + float(i) * 1.9 + t.phase) \
+            * r * 0.30 * (1.0 - 0.7 * eng)
+        _fangarm(wurzel, (-k).rotated(faecher), laenge, r * 0.055,
+            wehen, farbe, 0.34)
+
+    _auge(p + k * r * 0.62, r * 0.14, hitze, farbe)
 
 
 ## Ringmaul: ein offener Ring mit Zaehnen nach innen.
