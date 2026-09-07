@@ -1268,24 +1268,28 @@ func _schleier(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> 
     schirm.append(p - k * r * 0.46)
     schirm.append(p - k * r * 0.30 - quer * r * 0.30)
 
-    var zu := schirm + PackedVector2Array([schirm[0]])
-    # Nur ein Hauch Fuellung: gerade genug, dass sie vor einem Felsen nicht
-    # verschwindet.
-    _fuellung(schirm, Color(farbe.r, farbe.g, farbe.b, 0.16 + 0.10 * hitze))
-    _zug(zu, Color(farbe.r, farbe.g, farbe.b, 0.30 + 0.30 * hitze), 3.0)
-    _zug(zu, farbe.lerp(Color(1.0, 0.98, 0.94), 0.18 + 0.55 * hitze), 1.3)
+    # **Sie geht jetzt durch `_koerper()` wie jede andere Art.**
+    #
+    # Hier stand ein Hauch Fuellung (0,16) unter einem Umriss, der auf 18 %
+    # Weiss anfing und beim Brennen auf 73 stieg. Auf einem Tier von zwanzig
+    # Pixeln ist das kein Koerper, sondern eine **weisse Sichel** - und weil
+    # der Schleier mit sechshundert Auftritten die zweithaeufigste Art ist,
+    # war diese Sichel ein grosser Teil des Spiels. Die anderen sechzehn
+    # Arten waren laengst gefuellte Leiber; genau diese eine und die
+    # Glutqualle waren es nicht, und man sah es sofort, sobald sie
+    # nebeneinander standen.
+    #
+    # `weich = 1` statt der ueblichen zwei: zweimal Ecken schneiden macht
+    # aus den vier Lappen wieder einen glatten Bogen, und die Lappen sind
+    # das Einzige, was den Saum vom Halbkreis unterscheidet.
+    _koerper(schirm, farbe, hitze, k, 1)
 
-    # Vier Radialkanaele von der Kuppe zum Saum - das Innere einer Qualle,
-    # und dieselbe Sprache wie die Rippen in `_inneres()`: duenne Linien,
-    # die beim Brennen heller werden.
-    for i in 4:
-        var w := lerpf(-0.86, 0.86, float(i) / 3.0)
-        var aussen := p + (k * cos(w) * lang + quer * sin(w) * breit) * r * 0.92
-        draw_line(p - k * r * 0.12, aussen,
-            Color(farbe.r, farbe.g, farbe.b, 0.22 + 0.34 * hitze), 1.0)
-    # Der Magen als einziger heller Punkt, in der Kuppe.
-    draw_circle(p + k * r * 0.18, r * 0.16,
-        Color(1.0, 0.96, 0.90, 0.30 + 0.40 * hitze))
+    # Der Magen als einziger heller Punkt, in der Kuppe - eine Qualle hat
+    # genau ein undurchsichtiges Organ, und das ist es.
+    draw_circle(p + k * r * 0.18, r * 0.20,
+        Color(farbe.r, farbe.g, farbe.b, 0.30))
+    draw_circle(p + k * r * 0.18, r * 0.12,
+        Color(1.0, 0.96, 0.90, 0.40 + 0.40 * hitze))
 
     # Drei bis fuenf Faeden, und jeder Schleier haengt sie ein Stueck weiter
     # oder kuerzer nach hinten. Ein Schwarm aus Wolken, in dem jede Wolke
@@ -1521,10 +1525,12 @@ func _glutqualle(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -
         var welle := 1.0 + 0.10 * sin(t.alter * 2.2 + float(i) * 0.9 + t.phase)
         schirm.append(p + (k * cos(w) * 1.02 + quer * sin(w) * 1.28) * r * welle)
     schirm.append(p - k * r * 0.52)
-    _fuellung(schirm, Color(farbe.r, farbe.g, farbe.b,
-        0.13 + 0.20 * hitze))
-    _zug(schirm + PackedVector2Array([schirm[0]]),
-        Color(farbe.r, farbe.g, farbe.b, 0.34 + 0.30 * hitze), 1.3)
+    # **Auch sie ist ein Leib und kein Umriss.** Dieselbe Umstellung wie
+    # beim Schleier: eine Fuellung von 0,13 unter einer Kontur ist eine
+    # Roehre. Der Schirm ist bei ihr trotzdem blass gemeint - das ist ihre
+    # Regel als Bild -, und das macht `_koerper()` von selbst: die Fuellung
+    # geht mit der Hitze **zurueck**, der Kern darin bleibt der helle Teil.
+    _koerper(schirm, farbe, hitze, k, 2)
 
     for i in 5:
         var s := (float(i) - 2.0) * 0.34
