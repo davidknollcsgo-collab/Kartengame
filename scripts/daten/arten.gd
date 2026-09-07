@@ -483,6 +483,21 @@ static func radius(index: int) -> float:
     return art(index)[&"radius"]
 
 
+## Wie weit ein Tier seitlich um seine Bahn pendelt, und wie schnell.
+##
+## Beides steckt schon in `Rundum.schritt()` und `Schlund.bahn()` - dort
+## verschiebt es den **Ort**. `schwarm.gd` liest jetzt dieselben zwei Zahlen,
+## um den **Leib** zu drehen: ein Tier weicht seitlich aus, *weil* es
+## schlaegt, und beides aus derselben Quelle zu holen ist der Unterschied
+## zwischen einer Bewegung und zwei.
+static func schlaengel(index: int) -> float:
+    return art(index)[&"schlaengel"]
+
+
+static func takt(index: int) -> float:
+    return art(index)[&"takt"]
+
+
 
 
 static func wucht(index: int) -> int:

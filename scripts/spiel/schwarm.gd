@@ -18,6 +18,22 @@ extends Node2D
 ## Zahl zu erfinden, wird die Zeichenlast begrenzt, wo sie ohnehin nichts
 ## bringt: bei achtzig Tieren im Bild sieht niemand mehr den Hof um ein
 ## einzelnes, aber jeder sieht es ruckeln.
+## Wie weit der Leib beim Schwimmen ausschlaegt, und woran das gemessen wird.
+##
+## Neun Grad beim beweglichsten Tier. Mehr sieht nach Zappeln aus - und ein
+## Schwarm, der zappelt, ist Rauschen ueber dem halben Bild; dieselbe Grenze
+## wie beim Zittern nach einem Treffer.
+## Wie stark sich ein Leib beim Schlagen durchbiegt, in Anteilen seiner
+## eigenen Laenge. Wird je Tier in `_zeichne()` gesetzt und von `_koerper()`
+## gelesen - wie `deckung` und `lichtquelle` auch.
+var _biegung := 0.0
+
+const SCHLAG_WINKEL := 0.16
+const SCHLAG_BEZUG := 60.0
+
+## Wie weit sich der Schwanz dabei ueber die Laenge des Leibes hinausbiegt.
+const SCHLAG_BIEGUNG := 0.20
+
 const DICHT_AB := 80
 const SEHR_DICHT_AB := 140
 
@@ -268,6 +284,9 @@ func _gedeckt(farbe: Color) -> Color:
 
 
 func _draw() -> void:
+    # Kein Rest vom letzten Bild: die Bluete geht durch dieselbe Datei, und
+    # ein liegengebliebener Biegewert waere ein Tier, das sich erinnert.
+    _biegung = 0.0
     var sichtbar := 0
     for t in tiere:
         if t.lebendig and t.alter >= 0.0:
@@ -410,6 +429,51 @@ func _zeichne(t: Raeuber, stufe := 0) -> void:
         p += quer * sin(_zeit * 19.0 + t.phase * 6.0) * hitze * r * 0.04
         r *= 1.0 + 0.04 * hitze
 
+    # **Was schwimmt, schlaegt.**
+    #
+    # Der Weg jedes Tieres pendelt seit jeher seitlich um seine Bahn
+    # (`Rundum.schritt()`, `seitlich = schlaengel * sin(takt * zeit +
+    # phase)`) - der **Leib** aber stand still dabei. Damit war jedes Tier
+    # ein Bild, das durch das Wasser geschoben wird: die Bahn erzaehlte eine
+    # Bewegung, der Koerper keine.
+    #
+    # Das ist der Grund, warum die Sprites lange leblos wirkten, und zwar
+    # unabhaengig davon, wie gut sie gezeichnet waren. Ein Fisch, der sich
+    # nicht biegt, ist ein Aufkleber - und ein sehr sorgfaeltig gezeichneter
+    # Aufkleber ist immer noch einer.
+    #
+    # **Derselbe Sinus, dieselbe Phase, dieselbe Quelle.** Das Tier weicht
+    # seitlich aus, *weil* es den Leib schlaegt; zwei getrennte Rechnungen
+    # dafuer waeren zwei Bewegungen, die auseinanderlaufen - genau die Art
+    # Fehler, gegen die Zusage 1 geschrieben ist. `Arten.schlaengel()` und
+    # `Arten.takt()` sind jetzt Zugriffe wie jeder andere, und Bahn und
+    # Leib lesen beide daraus.
+    #
+    # **Gedreht wird um einen Punkt vor der Mitte**, nicht um die Mitte. Um
+    # die Mitte gedreht wandern Nase und Schwanz gleich weit - das sieht aus
+    # wie ein Zeiger. Ein Fisch haelt den Kopf fast auf Kurs und schlaegt
+    # hinten aus, und der Unterschied zwischen beidem sind diese zwei
+    # Zeilen.
+    #
+    # Der Ausschlag haengt an `schlaengel`: der Panzerkrebs (6) bewegt sich
+    # kaum, das Schwarmherz (82) wirft sich herum. Ein fester Winkel fuer
+    # alle haette den Gepanzerten dasselbe Schlaengeln gegeben wie dem Aal,
+    # und dann sagt die Bewegung nichts mehr ueber die Art.
+    var gier := SCHLAG_WINKEL \
+        * clampf(Arten.schlaengel(t.art) / SCHLAG_BEZUG, 0.05, 1.0) \
+        * sin(Arten.takt(t.art) * t.alter + t.phase)
+    # **Und der Leib biegt sich mit.** Eine Drehung allein ist ein Wedeln;
+    # was ein Tier schwimmen laesst, ist eine Welle, die von vorn nach
+    # hinten durch den Koerper laeuft. `_koerper()` liest das - damit
+    # bekommen es sechzehn Arten auf einmal, ohne dass eine einzelne
+    # Zeichnung davon weiss.
+    _biegung = SCHLAG_BIEGUNG * gier / SCHLAG_WINKEL
+    var alte_richtung := t.richtung
+    if absf(gier) > 0.0005:
+        var achse := p + t.richtung * r * 0.55
+        p = achse + (p - achse).rotated(gier)
+        t.richtung = t.richtung.rotated(gier)
+
     # Der Hof faellt als Erstes weg - er kostet drei Kreise je Tier und traegt
     # am wenigsten, sobald das Bild voll ist.
     #
@@ -479,6 +543,7 @@ func _zeichne(t: Raeuber, stufe := 0) -> void:
     # lesbar, die Zierde geht.
     if stufe >= 2:
         _knapp(p, r, farbe, t, hitze)
+        t.richtung = alte_richtung
         return
 
     match t.art:
@@ -539,6 +604,15 @@ func _zeichne(t: Raeuber, stufe := 0) -> void:
             Color(0.0, 0.0, 0.0, 0.42), 3.0)
         draw_line(Vector2(links, y), Vector2(links + breite * anteil, y),
             farbe.lerp(Color(1.0, 0.46, 0.38), 1.0 - anteil), 2.6)
+
+    # **Der Schlag ist eine Zeichenrichtung, keine Fahrtrichtung.** Er wird
+    # fuer die Dauer einer Zeichnung in `t.richtung` gelegt, weil alle
+    # siebzehn Artfunktionen von dort ihre Achse holen - und danach
+    # zurueckgenommen. Am Weg des Tieres aendert das nichts, und am
+    # Trefferkreis auch nicht: der ist ein **Kreis** um `t.ort`, und ein
+    # Kreis hat keine Richtung. Genau deshalb ist der Schlag hier erlaubt
+    # und eine Aenderung am Radius es nicht.
+    t.richtung = alte_richtung
 
 
 ## Sparfassung: ein Leib, ein Umriss, kein Beiwerk. Wird erst gezeichnet, wenn
@@ -740,11 +814,51 @@ func _fangarm(wurzel: Vector2, richtung: Vector2, laenge: float,
 ## `weich` sagt jetzt, wieviel: zwei fuer alles Weiche (Quallen, Fische,
 ## Wolken), einen fuer die Gepanzerten, null fuer den, dessen ganze Aussage
 ## eine gerade Kante ist.
+## Den Leib durchbiegen, so wie ein Fisch sich beim Schlagen biegt.
+##
+## **Warum das hier steht und nicht in siebzehn Zeichnungen.** Jede Art baut
+## ihren Umriss aus `t.richtung` und deren Senkrechten; wer die Biegung dort
+## einbaut, baut sie siebzehnmal ein und vergisst sie beim achtzehnten Tier.
+## `_koerper()` bekommt den fertigen Umriss - eine Stelle, alle Arten, und
+## eine neue Art hat die Bewegung, ohne dass jemand daran denkt.
+##
+## **Die Welle laeuft nach hinten aus, sie beginnt nicht dort.** Der Ausschlag
+## ist an der Nase null und waechst zum Schwanz - quadratisch, damit das
+## vordere Drittel praktisch stillsteht. Ein Leib, der sich ueber die ganze
+## Laenge gleich weit biegt, ist eine Banane und kein Fisch.
+##
+## Der Trefferkreis bleibt unberuehrt: der Schwanz wandert auf einem Bogen um
+## hoechstens ein Fuenftel der Koerperlaenge, der Kreis um `t.ort` bleibt
+## derselbe. Dasselbe Zugestaendnis wie beim Zittern nach einem Treffer, und
+## aus demselben Grund erlaubt - der Radius selbst wird nicht angefasst.
+func _gebogen(rund: PackedVector2Array,
+        achse: Vector2) -> PackedVector2Array:
+    if absf(_biegung) < 0.002 or rund.size() < 4:
+        return rund
+    var mitte := _mitte(rund)
+    var a := achse if achse != Vector2.ZERO else _laengsachse(rund, mitte)
+    if a == Vector2.ZERO:
+        return rund
+    var quer := a.orthogonal()
+    var laenge := 0.0
+    for v in rund:
+        laenge = maxf(laenge, absf((v - mitte).dot(a)))
+    if laenge < 1.0:
+        return rund
+    var neu := PackedVector2Array()
+    for v in rund:
+        var u := clampf((v - mitte).dot(a) / laenge, -1.0, 1.0)
+        var f: float = pow(clampf(0.5 - 0.5 * u, 0.0, 1.0), 1.7)
+        neu.append(v + quer * (_biegung * laenge * f))
+    return neu
+
+
 func _koerper(punkte: PackedVector2Array, farbe: Color, hitze: float,
         achse := Vector2.ZERO, weich := 2) -> void:
     var rund := punkte
     for _i in weich:
         rund = _rund(rund)
+    rund = _gebogen(rund, achse)
 
     # **Der Schein zuerst**, damit der Leib darauf liegt. Er folgt dem
     # Umriss und nicht einem Kreis - siehe `_schein()`.

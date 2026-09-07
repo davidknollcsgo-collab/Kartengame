@@ -1046,6 +1046,33 @@ Geometrie, nicht der Beleuchtung. Was Schaden nimmt, sagt weiterhin
 `t.licht`, und `_test_rundumlauf_brennt_mit_dem_gezeichneten_kegel` hält das
 fest.
 
+**Was schwimmt, schlägt.** Der Weg jedes Tieres pendelt seit jeher seitlich
+um seine Bahn (`Rundum.schritt()`), der **Leib** stand still dabei — jedes
+Tier war ein Bild, das durch das Wasser geschoben wird. Das ist der Grund,
+warum die Sprites lange leblos wirkten, und zwar *unabhängig davon, wie gut
+sie gezeichnet waren*: ein sehr sorgfältig gezeichneter Aufkleber ist immer
+noch einer.
+
+Zwei Teile, beide an **einer** Stelle für alle Arten:
+
+*Der Ausschlag.* `_zeichne()` dreht die Zeichenrichtung um bis zu neun Grad
+— **um einen Punkt vor der Mitte**, nicht um die Mitte. Um die Mitte gedreht
+wandern Nase und Schwanz gleich weit, und das sieht aus wie ein Zeiger.
+
+*Die Biegung.* `_koerper()` schiebt die Umrisspunkte quer, null an der Nase
+und quadratisch zum Schwanz wachsend. Eine Drehung allein ist ein Wedeln;
+was ein Tier schwimmen lässt, ist eine Welle, die nach hinten ausläuft.
+Weil sie im gemeinsamen Helfer sitzt, hat eine **neue** Art die Bewegung,
+ohne dass jemand daran denkt.
+
+Beides kommt aus `Arten.schlaengel()` und `Arten.takt()` — denselben zwei
+Zahlen, aus denen die Bahn pendelt. Ein Tier weicht seitlich aus, *weil* es
+schlägt; zwei getrennte Rechnungen dafür wären zwei Bewegungen, die
+auseinanderlaufen. Der Panzerkrebs (6) rührt sich kaum, das Schwarmherz
+(82) wirft sich herum — ein fester Winkel für alle hätte dem Gepanzerten
+dasselbe Schlängeln gegeben wie dem Aal, und dann sagt die Bewegung nichts
+mehr über die Art. Gemessen kostet es nichts (6,6 gegen 6,5 Bilder/s).
+
 **Das Seitenverhältnis ist der Sprite.** Die Rückmeldung lautete, die Tiere
 seien nicht gut genug — und sie war richtig, aber die Ursache lag nicht dort,
 wo ich zuerst gesucht habe. Ich habe drei Anläufe lang an Zierde gearbeitet
