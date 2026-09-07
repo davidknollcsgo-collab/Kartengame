@@ -457,7 +457,20 @@ func _zeichne(t: Raeuber, stufe := 0) -> void:
     #
     # Nur in der obersten Stufe. Sie sind Zierde, und Zierde geht als Erstes,
     # wenn das Bild voll wird.
-    if stufe == 0:
+    # **Nicht jede Art traegt die Reihe.**
+    #
+    # `_leuchtpunkte()` setzt die Photophoren laengs der Achse auf ±0,34
+    # Radien - das passt auf einen Leib mit einer Mitte. Der Kreiser ist ein
+    # **offener Ring**, und dort landet die Reihe in seinem Loch: zwei helle
+    # Punkte, die frei im Wasser schweben. Der Spiegler ist eine geschliffene
+    # Flaeche; auf ihr sahen dieselben Punkte aus wie aufgeklebte Knoepfe,
+    # und ein Spiegel leuchtet ohnehin nicht selbst - er wirft zurueck.
+    #
+    # Zwei Ausnahmen von Hand sind hier ehrlicher als ein Feld in der
+    # Artentabelle: es sind genau die zwei Arten, deren Oberflaeche nicht
+    # laengs der Achse liegt, und wer eine dritte baut, sieht es im Bild.
+    if stufe == 0 and t.art != Arten.Art.KREISER \
+            and t.art != Arten.Art.SPIEGLER:
         _leuchtpunkte(p, r, farbe, t, hitze)
 
     # Bei sehr vielen Tieren nur noch Umriss und Farbe: die Form bleibt
@@ -1873,30 +1886,56 @@ func _kreiser(p: Vector2, r: float, farbe: Color, t: Raeuber,
         hitze: float) -> void:
     var k := t.richtung
     var quer := k.orthogonal()
-    var leib := PackedVector2Array([
-        p + k * r * 0.72 + quer * r * 0.30,
-        p + k * r * 0.30 + quer * r * 0.86,
-        p - k * r * 0.55 + quer * r * 0.72,
-        p - k * r * 0.80,
-        p - k * r * 0.55 - quer * r * 0.72,
-        p + k * r * 0.30 - quer * r * 0.86,
-        p + k * r * 0.72 - quer * r * 0.30,
-    ])
-    _koerper(leib, farbe, hitze, t.richtung)
+    # **Er ist ein Ring, und das ist keine Zierde, sondern seine Regel.**
+    #
+    # Der Kreiser haelt Abstand und zieht den Ring langsam enger; er stoesst
+    # nie zu. Gezeichnet war er trotzdem als flacher Leib mit einem
+    # Ruderkranz - im Bild ein blasses Oval, das aussah wie alles andere,
+    # und nichts daran sagte, was es tut.
+    #
+    # Ein **offener Ring** sagt es auf einen Blick: eine Form, die um etwas
+    # herumfuehrt statt darauf zu. Die Luecke zeigt dabei nach vorn - in die
+    # Richtung, in die er zieht -, so dass man ihm die Drehrichtung ansieht.
+    var innen := r * 0.42
+    var aussen := r * 0.92
+    var luecke := 0.55
+    var ring := PackedVector2Array()
+    var stufen := 22
+    for i in stufen + 1:
+        var w := lerpf(luecke, TAU - luecke, float(i) / float(stufen))
+        ring.append(p + (k * cos(w) + quer * sin(w)) * aussen)
+    for i in range(stufen, -1, -1):
+        var w := lerpf(luecke, TAU - luecke, float(i) / float(stufen))
+        ring.append(p + (k * cos(w) + quer * sin(w)) * innen)
+    _koerper(ring, farbe, hitze, t.richtung)
+
+    # Ein zweiter, duennerer Ring innen - er dreht sich schneller als der
+    # aeussere und macht sichtbar, dass das Tier nicht steht, sondern laeuft.
+    var dreh := t.alter * 1.6 + t.phase
+    for i in 3:
+        var w := dreh + TAU * float(i) / 3.0
+        var von := p + (k * cos(w) + quer * sin(w)) * innen
+        var nach := p + (k * cos(w + 0.9) + quer * sin(w + 0.9)) * innen
+        _zug(PackedVector2Array([von, nach]),
+            Color(farbe.r, farbe.g, farbe.b, 0.30 + 0.30 * hitze), 1.2)
     # Der Ruderkranz: sechs kurze Blaetter laengs der Aussenkante, die in
     # einer Welle durchlaufen - so sieht Seitwaertsfahrt aus.
-    for i in 6:
-        var u := float(i) / 5.0
-        var laengs := lerpf(0.55, -0.65, u)
-        var welle := sin(t.alter * 5.0 - u * 3.2 + t.phase)
-        for seite: float in SEITEN:
-            var wurzel := p + k * r * laengs + quer * seite * r * 0.78
-            _strich(wurzel, wurzel + quer * seite * r * (0.34 + 0.16 * welle)
-                + k * r * 0.14 * welle,
-                Color(farbe.r, farbe.g, farbe.b, 0.55), 1.4)
-    _zug(PackedVector2Array([p - k * r * 0.8, p + k * r * 0.7]),
-        farbe.lightened(0.3), 1.2)
-    _auge(p + k * r * 0.34, r * 0.15, hitze, farbe)
+    # Der Ruderkranz sitzt jetzt **aussen auf dem Ring**, nicht an den
+    # Flanken eines Rumpfes - eine Welle laeuft ihn entlang, und daran
+    # erkennt man die Richtung, in die er zieht.
+    for i in 9:
+        var u := float(i) / 8.0
+        var w := lerpf(luecke + 0.2, TAU - luecke - 0.2, u)
+        var welle := sin(t.alter * 5.0 - u * 3.6 + t.phase)
+        var strahl := k * cos(w) + quer * sin(w)
+        var wurzel := p + strahl * aussen
+        _glied(wurzel, wurzel + strahl * r * (0.26 + 0.10 * welle)
+            + strahl.orthogonal() * r * 0.14 * welle,
+            r * 0.055, r * 0.02, farbe, 0.58)
+
+    # Das Auge sitzt an der Luecke - dort, wo er hinsieht.
+    # Auf dem Ring, nicht im Loch: der Kreiser hat keine Mitte.
+    _auge(p + k * (innen + aussen) * 0.5, r * 0.13, hitze, farbe)
 
 
 ## Lichtscheue: ein Koerper, der sich zusammenzieht, wenn er brennt.
@@ -2032,31 +2071,86 @@ func _spiegler(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> 
     # Kugel, sondern eine **Flaeche**: lange gerade Kanten, spitze Ecken,
     # deutlich laenger als breit. So sieht man ihr an, warum der Kernstrahl
     # an ihr abprallt.
-    var schale := PackedVector2Array([
+    # **Ein Spiegel besteht aus Facetten, und Facetten springen.**
+    #
+    # Bisher ging der Spiegler durch `_koerper()` wie alles andere: ein
+    # weicher Verlauf zum Licht hin. Im Bild war das eine blasse weisse
+    # Mandel - hoeflich, aber austauschbar, und von seiner Regel stand nichts
+    # darin.
+    #
+    # Seine Regel ist, dass er den **Kern des Strahls zurueckwirft**
+    # (`Schlund.SPIEGEL_REST`). Genau das sieht man einem geschliffenen Ding
+    # an, und zwar an einer Eigenschaft, die kein anderes Tier hier hat: die
+    # Helligkeit **springt** von Flaeche zu Flaeche, statt weich
+    # ueberzugehen. Ein Verlauf sagt "weiche Haut", eine Stufe sagt "harte
+    # Flaeche" - das ist der ganze Unterschied zwischen einer Qualle und
+    # einem Kristall, und er kostet eine Schleife.
+    #
+    # Der Leib ist deshalb kein Umriss mit Fuellung, sondern ein Kranz von
+    # Facetten um eine Firstlinie. Jede bekommt ihre Helligkeit aus ihrer
+    # eigenen Normalen.
+    var ecken := PackedVector2Array([
         p + k * r * 1.34,
-        p + k * r * 0.52 + quer * r * 0.58,
-        p - k * r * 0.34 + quer * r * 0.66,
-        p - k * r * 1.10 + quer * r * 0.24,
-        p - k * r * 1.10 - quer * r * 0.24,
-        p - k * r * 0.34 - quer * r * 0.66,
-        p + k * r * 0.52 - quer * r * 0.58,
+        p + k * r * 0.52 + quer * r * 0.62,
+        p - k * r * 0.34 + quer * r * 0.70,
+        p - k * r * 1.10 + quer * r * 0.26,
+        p - k * r * 1.10 - quer * r * 0.26,
+        p - k * r * 0.34 - quer * r * 0.70,
+        p + k * r * 0.52 - quer * r * 0.62,
     ])
-    _koerper(schale, farbe, hitze, t.richtung, 1)
+    var first_v := p + k * r * 0.95
+    var first_h := p - k * r * 0.80
+    var zum_licht := lichtquelle - p
+    zum_licht = zum_licht.normalized() if zum_licht.length_squared() > 1.0 \
+        else Vector2.UP
+
+    var n := ecken.size()
+    for i in n:
+        var a1: Vector2 = ecken[i]
+        var b1: Vector2 = ecken[(i + 1) % n]
+        var mitte_f := (a1 + b1) * 0.5
+        # Welcher Punkt des Grats zu dieser Facette gehoert: der naehere.
+        var grat: Vector2 = first_v if (mitte_f - first_v).length() \
+            < (mitte_f - first_h).length() else first_h
+        var norm := (mitte_f - grat).normalized()
+        var zu := maxf(0.0, norm.dot(zum_licht))
+        # **Der Sprung muss gross sein, sonst ist es kein Schliff.** Mit
+        # 0,24 bis 1,24 lagen alle sieben Facetten dicht beieinander und das
+        # Tier war wieder eine glatte Flaeche - nur mit Kanten darauf. Eine
+        # abgewandte Facette ist fast dunkel, eine zugewandte fast weiss.
+        var st := 0.12 + 1.75 * zu * zu
+        var ton := Color(farbe.r, farbe.g, farbe.b).lerp(
+            Color(0.12, 0.30, 0.44), 0.50 * (1.0 - zu))
+        draw_colored_polygon(PackedVector2Array([grat, a1, b1]),
+            _gedeckt(Color(minf(1.0, ton.r * st), minf(1.0, ton.g * st),
+                minf(1.0, ton.b * st), 0.94)))
+        # **Der Glanz** sitzt nur auf der Facette, die dem Licht am naechsten
+        # steht, und ist eine scharfe Flaeche: ein Spiegel hat kein weiches
+        # Glanzlicht, er hat einen Fleck oder keinen.
+        if zu > 0.80:
+            draw_colored_polygon(PackedVector2Array([
+                grat.lerp(mitte_f, 0.34),
+                a1.lerp(mitte_f, 0.46), b1.lerp(mitte_f, 0.46)]),
+                _gedeckt(Color(1.0, 1.0, 0.98, 0.28 + 0.42 * hitze)))
+        # Die Facettenkante macht den Sprung sichtbar.
+        draw_line(grat, a1, _gedeckt(Color(farbe.r, farbe.g, farbe.b,
+            0.22 + 0.34 * zu)), 1.0, true)
+
+    var zu_r := ecken + PackedVector2Array([ecken[0]])
+    var rand := PackedColorArray()
+    for v in zu_r:
+        var f := maxf(0.0, (v - p).normalized().dot(zum_licht))
+        var kante := farbe.lerp(Color(1.0, 0.99, 0.96), 0.30 + 0.50 * hitze)
+        rand.append(_gedeckt(Color(kante.r, kante.g, kante.b,
+            0.30 + 0.70 * f)))
+    draw_polyline_colors(zu_r, rand, 1.6, true)
     # Zwei Facettenkanten laengs - sie fangen das Licht und sagen, dass die
     # Oberflaeche aus Flaechen besteht und nicht aus Haut.
-    for seite: float in SEITEN:
-        _zug(PackedVector2Array([
-            p + k * r * 1.20,
-            p + k * r * 0.30 + quer * r * 0.30 * seite,
-            p - k * r * 0.92 + quer * r * 0.12 * seite]),
-            farbe.lerp(Color(1.0, 0.98, 0.94), 0.22 + 0.50 * hitze), 1.1)
-
-    # Facetten: Grate vom Rand zur Mitte. Sie tragen den Glanz.
-    for i in 5:
-        var u := lerpf(-0.86, 0.86, float(i) / 4.0)
-        var aussen := p + k * r * 0.30 + quer * r * u * 0.95
-        draw_line(p + k * r * 0.05, aussen,
-            Color(farbe.r, farbe.g, farbe.b, 0.20 + 0.22 * hitze), 1.2)
+    # **Die frueheren Facettenzuege sind weg.** Es waren zwei Laengskanten
+    # und fuenf Grate, alle als duenne Linien *auf* einer glatten Flaeche
+    # gezeichnet - eine Facette, die man aufmalt, ist keine. Jetzt sind es
+    # Flaechen mit eigener Helligkeit, und die Kante entsteht dort, wo zwei
+    # verschieden helle aneinanderstossen.
 
     # **Das Glanzlicht haengt an `t.licht`, nicht an `hitze`.**
     #
