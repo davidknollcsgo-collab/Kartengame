@@ -307,6 +307,24 @@ func _ready() -> void:
     if _stufen_ab >= 0:
         for k in Kammern.Kammer.size():
             Fortschritt.stand.stufen[k] = _stufen_ab
+        # **Und der Kontostand gehoert zur Stufe.** Der Schalter setzte nur
+        # die Kammern und liess den Naehrstoff stehen, wie er zufaellig auf
+        # der Platte lag - in diesem Behaelter nach ein paar Werkzeuglaeufen
+        # 18,9 Billiarden. Im Bericht stand damit "IN THE COLONY 18.9Qa"
+        # neben einer Kolonie auf Stufe eins, und `tools/ladenbilder.sh`
+        # faehrt genau ueber diesen Weg.
+        #
+        # Das ist derselbe Fehler wie seinerzeit die Brut auf 1000000: ein
+        # Schalter fuer Schuesse zeigt ein Spiel, das es nicht gibt.
+        # CLAUDE.md sagt dazu "In Ladenbildern darf nichts stehen, was es im
+        # Spiel nicht gibt" - dann muss der Schalter auch den Stand setzen
+        # und nicht nur die Haelfte davon.
+        #
+        # Eine halbe Kammerrunde ist der plausible Betrag: genug, dass der
+        # Punkt am Knopf COLONY leuchtet, zuwenig, dass alles bezahlbar
+        # waere.
+        Fortschritt.stand.naehrstoffe = \
+            Kammern.rundenkosten(_stufen_ab) * 0.5
     karte = Karte.new(Rundum.FELD_RADIUS)
     _grund.karte = null if _offene_karte else karte
     karte.decke_auf(_ort)
@@ -1343,6 +1361,22 @@ func _verbrenne(delta: float) -> void:
 const RUECKWEG_LAENGE := 12
 const RUECKWEG_ABSTAND := 9.0
 
+## Ab welchem Satz ein Punkt kein Schwimmzug mehr sein kann.
+##
+## **Eine Schleppe kann kein Tier ueberholen.** Im Schuss von Welle 1 lief
+## ein kerzengerader violetter Balken ueber den halben Schirm; gemessen war
+## das **ein** Segment von 1058 Einheiten in der Farbe des Schleiers - eine
+## Schleppe von einem Tier mit zwoelf Einheiten Radius, also das
+## Achtzigfache seiner eigenen Groesse.
+##
+## Der Grund: `rueckweg` sammelt Orte, und ein Tier steht vor seinem
+## Auftritt woanders als danach. Der Sprung dazwischen wurde als Strecke
+## aufgeschrieben und als Faden gezeichnet. Das schnellste Tier legt bei
+## sechzig Bildern je Sekunde keine drei Einheiten je Bild zurueck; alles
+## darueber ist ein Versetzen und kein Schwimmen, und dann faengt die
+## Schleppe neu an, statt quer durch das Feld zu ziehen.
+const RUECKWEG_SPRUNG := 60.0
+
 
 ## Den zurueckgelegten Weg eines Tieres mitschreiben.
 ##
@@ -1357,10 +1391,13 @@ const RUECKWEG_ABSTAND := 9.0
 ## Glied zurueck, also auf einen Klumpen statt einer Schlange. Ausserdem
 ## haengt daran jetzt die Schleppe jedes Tieres.
 func _merke_rueckweg(t: Raeuber) -> void:
-    if not t.rueckweg.is_empty() \
-            and t.rueckweg[t.rueckweg.size() - 1].distance_squared_to(t.ort) \
-            < RUECKWEG_ABSTAND * RUECKWEG_ABSTAND:
-        return
+    if not t.rueckweg.is_empty():
+        var satz := t.rueckweg[t.rueckweg.size() - 1].distance_squared_to(t.ort)
+        if satz < RUECKWEG_ABSTAND * RUECKWEG_ABSTAND:
+            return
+        # Versetzt statt geschwommen - siehe `RUECKWEG_SPRUNG`.
+        if satz > RUECKWEG_SPRUNG * RUECKWEG_SPRUNG:
+            t.rueckweg.clear()
     t.rueckweg.append(t.ort)
     if t.rueckweg.size() > RUECKWEG_LAENGE:
         t.rueckweg.remove_at(0)

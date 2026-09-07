@@ -1088,6 +1088,25 @@ Schleierqualle, falsch herum angehängt, kreuzte den eigenen Umriss — weitere
 Parse-Fehler (`spitze` zweimal deklariert). Gefunden hat beides nur der
 Startlauf.
 
+**Eine Schleppe kann kein Tier überholen.** Im Schuss von Welle 1 lief ein
+kerzengerader violetter Balken über den halben Schirm. Gemessen war das
+**ein** Segment von 1058 Einheiten in der Farbe des Schleiers — die
+Schleppe eines Tieres mit zwölf Einheiten Radius, also das Achtzigfache
+seiner eigenen Größe. `rueckweg` sammelt Orte, und ein Tier steht vor
+seinem Auftritt woanders als danach; der Sprung dazwischen wurde als
+Strecke aufgeschrieben. `RUECKWEG_SPRUNG` fängt das ab: alles über sechzig
+Einheiten zwischen zwei Punkten ist ein Versetzen und kein Schwimmen.
+
+**Und der Weg dorthin ist die eigentliche Lehre.** Fünf Knoten
+stillgestellt, zwei Arten stillgestellt, Pixel abgetastet — und die
+Ursache lag in keinem davon, weil sie in einer *gemeinsamen* Funktion
+saß. Was es in einem Lauf beantwortet hat: `draw_line(` in der ganzen
+Datei durch einen eigenen Helfer ersetzen, der meldet, wenn zwei
+Endpunkte weiter als zweihundert Einheiten auseinanderliegen. **Wenn eine
+Form im Bild steht, die keine Zeichnung erklärt, ist die schnellste Frage
+nicht „wer zeichnet sie", sondern „welcher Aufruf hat die falschen
+Zahlen".**
+
 **Ein Facettenkranz um zwei Grate deckt die Flaeche nicht.** Der Spiegler
 zeichnet seine Facetten selbst: je Aussenkante ein Dreieck zum *näheren*
 der beiden Gratpunkte. Der Streifen zwischen den beiden Graten gehört
@@ -1376,6 +1395,14 @@ python3 tools/seite.py docs                          # privacy.html aus PRIVACY.
 neue Apps kein APK mehr an. Er braucht `use_gradle_build=true`, weil `min_sdk`
 und `target_sdk` sonst wirkungslos bleiben, und einen Freigabeschluessel aus
 den Repository-Geheimnissen - im Quelltext hat der nichts zu suchen.
+
+**`--stufen` setzt auch den Kontostand.** Er setzte nur die Kammern und
+ließ den Nährstoff stehen, wie er zufällig auf der Platte lag — in diesem
+Behälter nach ein paar Werkzeugläufen 18,9 Billiarden, und im Bericht
+stand „IN THE COLONY 18.9Qa" neben einer Kolonie auf Stufe eins.
+`tools/ladenbilder.sh` fährt genau über diesen Weg. Ein Schalter, der die
+halbe Wahrheit setzt, zeigt ein Spiel, das es nicht gibt — dieselbe Falle
+wie die Brut auf 1000000.
 
 **In Ladenbildern darf nichts stehen, was es im Spiel nicht gibt.** Ein
 Schalter für Schüsse setzte einmal die Brut auf 1000000, und in der
