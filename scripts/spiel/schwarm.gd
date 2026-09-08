@@ -259,20 +259,53 @@ func _leuchtpunkte(p: Vector2, r: float, farbe: Color, t: Raeuber,
 ## zwoelf Schleppen nebeneinander waeren dort ein Vorhang.
 func _schleppe(t: Raeuber) -> void:
     var weg := t.rueckweg
-    if weg.size() < 2:
+    if weg.size() < 3:
         return
     var farbe: Color = Arten.farbe(t.art)
-    for i in range(1, weg.size()):
-        var f := float(i) / float(weg.size())
-        # Zwei Zuege wie ueberall hier: ein breiter blasser Hof und ein
-        # schmaler hellerer darauf. Ein einzelner Strich verschwindet gegen
-        # das Gluehen der Tiere.
-        draw_line(weg[i - 1], weg[i],
-            Color(farbe.r, farbe.g, farbe.b, 0.10 * f * f),
-            2.0 + 7.0 * f * f, true)
-        draw_line(weg[i - 1], weg[i],
-            Color(farbe.r, farbe.g, farbe.b, 0.30 * f * f),
-            1.0 + 2.0 * f * f, true)
+
+    # **Ein Band, keine Kette aus Scheiben.**
+    #
+    # Sie war je Abschnitt ein Paar `draw_line` von bis zu neun Pixeln
+    # Breite - und die Punkte des Rueckwegs liegen neun Einheiten
+    # auseinander. Ein Strich, der so breit ist wie er lang, ist ein Punkt:
+    # im Bild eine Kette gleich grosser Perlen hinter jedem Tier, und bei
+    # der Laichwolke war diese Kette das Auffaelligste am ganzen Tier.
+    #
+    # **Und sie wusste nichts von der Groesse ihres Tieres.** Eine
+    # Laichwolke hat zwoelf Einheiten Radius und zog denselben Faden wie ein
+    # Leitwesen mit sechzig. Dieselbe Regel wie beim Hof (siehe
+    # `_zeichne()`): was ein Tier hinter sich herzieht, waechst mit ihm.
+    #
+    # Jetzt ein Dreiecksnetz aus drei Punktreihen - aussen auf Deckung null,
+    # in der Mitte voll -, in **einem** Aufruf statt zweiundzwanzig
+    # geglaetteten Linien. Dieselbe Machart wie Rippel, Druckwelle und
+    # Schein, und gemessen billiger als das, was es ersetzt.
+    var mass := clampf(Wellen.radius_in(t.art, t.welle) / 26.0, 0.30, 1.0)
+    var n := weg.size()
+    var ecken := PackedVector2Array()
+    var farben := PackedColorArray()
+    for i in n:
+        var f := float(i) / float(n - 1)
+        var vor: Vector2 = weg[maxi(0, i - 1)]
+        var nach: Vector2 = weg[mini(n - 1, i + 1)]
+        var quer := (nach - vor)
+        quer = quer.orthogonal().normalized() if quer.length() > 0.001 \
+            else Vector2.UP
+        var breit := (1.0 + 4.4 * f * f) * mass
+        var mitte := _gedeckt(Color(farbe.r, farbe.g, farbe.b,
+            0.26 * f * f * mass))
+        var aus := Color(farbe.r, farbe.g, farbe.b, 0.0)
+        ecken.append(weg[i] - quer * breit); farben.append(aus)
+        ecken.append(weg[i]); farben.append(mitte)
+        ecken.append(weg[i] + quer * breit); farben.append(aus)
+    var netz := PackedInt32Array()
+    for i in n - 1:
+        var a := i * 3
+        var b := a + 3
+        netz.append_array([a, b, b + 1, a, b + 1, a + 1])
+        netz.append_array([a + 1, b + 1, b + 2, a + 1, b + 2, a + 2])
+    RenderingServer.canvas_item_add_triangle_array(
+        get_canvas_item(), netz, ecken, farben)
 
 
 ## Nur die Deckung, nicht die Farbe: ein Lauerer soll blasser sein, nicht
@@ -1542,14 +1575,69 @@ func _grabnatter(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -
     if glieder.is_empty():
         glieder = [p]
 
-    for i in range(glieder.size() - 1, -1, -1):
-        var f := 1.0 - float(i) / float(maxi(1, glieder.size()))
-        var dick := r * (0.35 + 0.65 * f)
-        # Gedaempft, weil sich sieben Glieder additiv aufaddieren. Bei voller
-        # Deckung je Glied wurde die Trench Adder im Licht zu einem weissen
-        # Balken, in dem man ihre Form nicht mehr sah.
-        draw_circle(glieder[i], dick,
-            Color(farbe.r, farbe.g, farbe.b, 0.34 + 0.20 * hitze).darkened(0.3 * (1.0 - f)))
+    # **Ein Leib, keine Perlenkette.**
+    #
+    # Er war je Glied ein `draw_circle` - und die Glieder liegen neun
+    # Einheiten auseinander, waehrend der vorderste bei einem Radius von
+    # dreissig fast dreissig Einheiten dick ist. Kreise, die dreimal so
+    # breit sind wie ihr Abstand, ergeben genau das, wonach es im Bild
+    # aussah: eine Kette gleich grosser Scheiben mit sichtbaren Kerben
+    # dazwischen. Eine Schlange hat keine Kerben.
+    #
+    # Stattdessen ein Band aus drei Punktreihen ueber denselben Weg, in
+    # einem Aufruf: aussen auf Deckung null, in der Mitte voll, und die
+    # halbe Breite laeuft vom Kopf zum Schwanz aus. Damit wird aus der Kette
+    # ein Koerper, und die Deckung addiert sich nicht mehr an jeder
+    # Ueberlappung auf.
+    #
+    # Die Ruecken**zeichnung** bleibt: eine hellere Mittellinie, die den
+    # Ruecken vom Bauch trennt - das ist das, was die einzelnen Glieder
+    # vorher unfreiwillig erzaehlt haben.
+    var gn := glieder.size()
+    if gn >= 3:
+        # **Fuenf Punktreihen, nicht drei.** Mit dreien faellt die Deckung
+        # von der Mittellinie aus sofort ab, und dann sieht ein Band von
+        # zwei Radien Breite aus wie ein Faden von einem: der Verlauf
+        # frisst die halbe Breite. Ein Koerper braucht einen vollen Kern
+        # und einen Saum darum - genau wie der Fels (Schulter, Kante,
+        # Saum).
+        var ecken := PackedVector2Array()
+        var farben := PackedColorArray()
+        var seiten := PackedFloat32Array([-1.0, -0.66, 0.0, 0.66, 1.0])
+        for i in gn:
+            var f := 1.0 - float(i) / float(gn)
+            var vor: Vector2 = glieder[maxi(0, i - 1)]
+            var nach: Vector2 = glieder[mini(gn - 1, i + 1)]
+            var q := (nach - vor)
+            q = q.orthogonal().normalized() if q.length() > 0.001 \
+                else Vector2.UP
+            var dick := r * (0.42 + 0.86 * f)
+            var haut := Color(farbe.r, farbe.g, farbe.b,
+                0.66 + 0.24 * hitze).darkened(0.30 * (1.0 - f))
+            for sp in seiten:
+                var rand := absf(sp) >= 0.99
+                ecken.append(glieder[i] + q * dick * sp)
+                farben.append(_gedeckt(Color(haut.r, haut.g, haut.b,
+                    0.0 if rand else haut.a)))
+        var netz := PackedInt32Array()
+        for i in gn - 1:
+            var a := i * 5
+            var b := a + 5
+            for j in 4:
+                netz.append_array([a + j, b + j, b + j + 1,
+                    a + j, b + j + 1, a + j + 1])
+        RenderingServer.canvas_item_add_triangle_array(
+            get_canvas_item(), netz, ecken, farben)
+        # Die Ruecken-Mittellinie, heller und schmaler.
+        var ruecken := PackedColorArray()
+        var linie := PackedVector2Array()
+        for i in gn:
+            var f2 := 1.0 - float(i) / float(gn)
+            linie.append(glieder[i])
+            ruecken.append(_gedeckt(farbe.lerp(Color(1.0, 0.98, 0.94),
+                0.20 + 0.45 * hitze) * Color(1, 1, 1,
+                    (0.10 + 0.24 * hitze) * f2)))
+        draw_polyline_colors(linie, ruecken, maxf(1.0, r * 0.09), true)
 
     var k := t.richtung
     var quer := k.orthogonal()

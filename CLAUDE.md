@@ -1131,6 +1131,29 @@ Schleierqualle, falsch herum angehängt, kreuzte den eigenen Umriss — weitere
 Parse-Fehler (`spitze` zweimal deklariert). Gefunden hat beides nur der
 Startlauf.
 
+**Eine Perlenkette ist kein Leib, und ein Faden ist keine Schleppe.** Zwei
+Stellen, dieselbe Ursache: runde Marken auf einem Weg, deren Durchmesser
+größer ist als ihr Abstand. Der Rückweg setzt alle neun Einheiten einen
+Punkt; die Grabnatter zeichnete dort Kreise vom knapp doppelten Radius und
+die Schleppe Striche von bis zu neun Pixeln Breite. Im Bild waren beides
+Ketten gleich großer Scheiben mit sichtbaren Kerben — und bei der
+Grabnatter war die Kette das Auffälligste am ganzen Tier.
+
+Beide sind jetzt **Bänder** aus Punktreihen in einem
+`canvas_item_add_triangle_array`, wie Rippel, Druckwelle und Schein. Dabei
+zwei Dinge zu lernen:
+
+*Drei Reihen reichen für einen Saum, nicht für einen Körper.* Mit außen
+null und in der Mitte voll fällt die Deckung von der Mittellinie an sofort
+ab — ein Band von zwei Radien Breite sieht dann aus wie ein Faden von
+einem. Der Leib bekommt deshalb fünf Reihen: einen vollen Kern und einen
+Saum darum, dieselbe Gliederung wie der Fels (Schulter, Kante, Saum).
+
+*Und die Schleppe wusste nichts von der Größe ihres Tieres.* Eine
+Laichwolke mit zwölf Einheiten Radius zog denselben Faden wie ein
+Leitwesen mit sechzig. Dieselbe Regel wie beim Hof: was ein Tier hinter
+sich herzieht, wächst mit ihm.
+
 **Eine Schleppe kann kein Tier überholen.** Im Schuss von Welle 1 lief ein
 kerzengerader violetter Balken über den halben Schirm. Gemessen war das
 **ein** Segment von 1058 Einheiten in der Farbe des Schleiers — die
