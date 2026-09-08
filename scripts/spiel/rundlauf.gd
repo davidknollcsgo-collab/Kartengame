@@ -1660,6 +1660,11 @@ func _zeichne_spur() -> void:
 ## Telefon keine Ecke mehr sieht; darueber kostet es nur noch.
 const RUMPF_STUFEN := 64
 
+## Wie weit die Flossen beim Drehen ausschlagen - siehe `_zeichne_flossen()`.
+## Vierzehn Grad bei voller Drehrate: genug, dass man es sieht, wenig genug,
+## dass die Silhouette des Bootes dieselbe bleibt.
+const FLOSSE_AUSSCHLAG := 0.24
+
 ## Die Form: `(1 - u)^NASE * (1 + u)^HECK`, mit `u` von -1 am Heck bis 1 an
 ## der Nase. Der groessere Wert am Heck macht es schlank, der kleinere an der
 ## Nase rund - ein Tauchboot ist vorn stumpf und hinten spitz, nicht
@@ -1870,6 +1875,25 @@ func _zeichne_flossen(k: Vector2, quer: Vector2, r: float,
             + quer * seite * _profil[i_hinten].y * r * RUMPF_BREIT * s
         var spitze_vorn := _ort - k * r * 1.02 + quer * seite * r * 0.76 * s
         var spitze_hinten := _ort - k * r * 1.46 + quer * seite * r * 0.60 * s
+
+        # **Eine Flosse, die sich beim Drehen nicht ruehrt, ist ein Blech.**
+        #
+        # Das Boot legte sich in die Kurve - `eng` staucht die Silhouette -,
+        # aber seine Flossen standen dabei starr wie angeschweisst. Genau an
+        # ihnen sieht man aber, *warum* es dreht: ein Ruder stellt sich
+        # quer, und der Rest folgt. Es ist die einzige bewegliche Stelle am
+        # Boot, und sie war unbeweglich.
+        #
+        # Gedreht wird um die Wurzel und nur die Spitzen - eine Flosse ist
+        # an ihrer Wurzel angewachsen. Der Ausschlag haengt an `_neigung`,
+        # also an der tatsaechlichen Drehrate, und nicht an einer eigenen
+        # Zahl: dieselbe Groesse, die auch die Silhouette staucht und den
+        # Kielwirbel treibt.
+        var ruder := clampf(_neigung, -1.0, 1.0) * FLOSSE_AUSSCHLAG
+        spitze_vorn = wurzel_vorn \
+            + (spitze_vorn - wurzel_vorn).rotated(ruder)
+        spitze_hinten = wurzel_hinten \
+            + (spitze_hinten - wurzel_hinten).rotated(ruder)
 
         var kante := PackedVector2Array()
         # Vorderkante: leicht gewoelbt nach vorn, damit das Blatt nicht wie
