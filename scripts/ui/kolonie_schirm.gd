@@ -976,10 +976,34 @@ func _schnitt(breite: float, oben: float, unten: float, stand: KolonieStand,
     var schachtfarbe: Color = FARBEN[Kammern.Kammer.TIEFENSCHACHT]
 
     var halb := 15.0
-    var offen := PackedVector2Array([
-        Vector2(mitte - halb, kopf), Vector2(mitte + halb, kopf),
-        Vector2(mitte + halb * 0.62, spitze_y), Vector2(mitte - halb * 0.62, spitze_y),
-    ])
+
+    # **Ein gegrabener Schacht hat keine geraden Waende.**
+    #
+    # Er war ein Trapez aus vier Ecken, und seine beiden Waende waren zwei
+    # `draw_line` - im Bild eine kerzengerade magentafarbene Linie durch den
+    # halben Schirm. Das ist genau das, was diese Welt sonst nirgends hat
+    # (CLAUDE.md: "Es gibt in diesem Spiel keine rechten Winkel"), und weil
+    # der Schnitt durch den Graben das Kernbild der Kolonie ist, war die
+    # geradeste Linie im Spiel ausgerechnet sein Mittelpunkt.
+    #
+    # Zwei Schwebungen ueber die Tiefe, je Wand mit eigener Phase. Aus der
+    # Tiefe gerechnet und nicht gewuerfelt: der Schacht sieht in jedem Bild
+    # gleich aus - er wird gegraben, nicht neu gebohrt -, aber nirgends wie
+    # mit dem Lineal.
+    var stufen := 20
+    var wand_links := PackedVector2Array()
+    var wand_rechts := PackedVector2Array()
+    for i in stufen + 1:
+        var t := float(i) / float(stufen)
+        var y := lerpf(kopf, spitze_y, t)
+        var w := halb * lerpf(1.0, 0.62, t)
+        wand_links.append(Vector2(mitte - w * (1.0
+            + 0.17 * sin(t * 11.0) + 0.09 * sin(t * 27.0 + 1.7)), y))
+        wand_rechts.append(Vector2(mitte + w * (1.0
+            + 0.17 * sin(t * 9.0 + 2.3) + 0.09 * sin(t * 31.0)), y))
+    var rueck := wand_rechts.duplicate()
+    rueck.reverse()
+    var offen := wand_links + rueck
     # Der Schacht ist ein Hohlraum: dunkler als der Fels, mit einem hellen
     # Saum an beiden Waenden. Dasselbe Mittel wie am Sockel in der
     # Schlundwache - was einem Loch Tiefe gibt, ist die Kante, nicht die
@@ -1003,24 +1027,28 @@ func _schnitt(breite: float, oben: float, unten: float, stand: KolonieStand,
         schein.append(Color(schachtfarbe.r, schachtfarbe.g, schachtfarbe.b,
             0.11 * (1.0 - t) + 0.02))
     _flaeche.draw_polygon(offen, schein)
-    for seite: float in SEITEN:
-        var a := Vector2(mitte + seite * halb, kopf)
-        var b := Vector2(mitte + seite * halb * 0.62, spitze_y)
-        _flaeche.draw_line(a, b,
-            Color(schachtfarbe.r, schachtfarbe.g, schachtfarbe.b, 0.16), 5.0)
-        _flaeche.draw_line(a, b,
-            Color(schachtfarbe.r, schachtfarbe.g, schachtfarbe.b, 0.85), 2.0)
+    for wand: PackedVector2Array in [wand_links, wand_rechts]:
+        _flaeche.draw_polyline(wand,
+            Color(schachtfarbe.r, schachtfarbe.g, schachtfarbe.b, 0.16),
+            5.0, true)
+        _flaeche.draw_polyline(wand,
+            Color(schachtfarbe.r, schachtfarbe.g, schachtfarbe.b, 0.85),
+            2.0, true)
 
     # Was noch bevorsteht - nur angedeutet, in Strichen.
     if gegraben < 0.995:
         var y := spitze_y
         while y < fuss:
             var bis := minf(y + 9.0, fuss)
-            var b := lerpf(halb * 0.62, halb * 0.24,
-                (y - spitze_y) / maxf(1.0, fuss - spitze_y))
-            _flaeche.draw_line(Vector2(mitte - b, y), Vector2(mitte - b, bis),
+            var u := (y - spitze_y) / maxf(1.0, fuss - spitze_y)
+            var b := lerpf(halb * 0.62, halb * 0.24, u)
+            # Auch das Bevorstehende ist unruhig - sonst haengt unter dem
+            # gegrabenen Schacht ein Lineal.
+            var vl := b * (1.0 + 0.20 * sin(u * 13.0 + 0.6))
+            var vr := b * (1.0 + 0.20 * sin(u * 15.0 + 2.9))
+            _flaeche.draw_line(Vector2(mitte - vl, y), Vector2(mitte - vl, bis),
                 Color(schachtfarbe.r, schachtfarbe.g, schachtfarbe.b, 0.13), 1.2)
-            _flaeche.draw_line(Vector2(mitte + b, y), Vector2(mitte + b, bis),
+            _flaeche.draw_line(Vector2(mitte + vr, y), Vector2(mitte + vr, bis),
                 Color(schachtfarbe.r, schachtfarbe.g, schachtfarbe.b, 0.13), 1.2)
             y += 16.0
 
@@ -1154,16 +1182,41 @@ func _fels(breite: float, kopf: float, fuss: float) -> void:
         saum.append(ecken[i])
     _flaeche.draw_polyline(saum, Color(0.46, 0.66, 0.70, 0.16), 1.4, true)
 
+    # **Eine Schichtfuge ist nicht waagerecht.**
+    #
+    # Fuenf `draw_line` ueber die volle Breite - im Bild fuenf Lineale quer
+    # durch den Fels, und zwar genau in der Flaeche, deren Oberkante
+    # aufwendig gezackt ist. Der Widerspruch stand nebeneinander: oben eine
+    # Kante wie Gestein, darunter ein Notenblatt.
+    #
+    # Sediment legt sich auf die Flaeche, die schon da ist. Die Fugen folgen
+    # deshalb **derselben** Welligkeit wie die Oberkante, nach unten
+    # gedaempft und je Schicht ein Stueck verschoben - so, wie sich eine
+    # Ablagerung mit der Tiefe glaettet.
     var spanne := fuss - kopf
     for i in 5:
         var t := 0.14 + 0.19 * float(i) + 0.03 * sin(float(i) * 2.9)
         var y := kopf + spanne * t
-        _flaeche.draw_line(Vector2(0.0, y), Vector2(breite, y),
-            Color(0.44, 0.58, 0.64, 0.075 + 0.03 * sin(float(i))), 1.0)
+        # Tiefer heisst ruhiger: die unterste Fuge ist fast gerade, die
+        # oberste folgt der Kante darueber noch deutlich.
+        var daempfung := lerpf(1.0, 0.25, t)
+        var hoehe := tief * 0.9 * daempfung
+        var versatz := float(i) * 0.7
+        var hell := PackedVector2Array()
+        var dunkel := PackedVector2Array()
+        for j in ZACKEN + 1:
+            var u := float(j) / float(ZACKEN)
+            var wellig := 0.55 * sin(u * 7.1 + versatz) \
+                + 0.30 * sin(u * 17.3 + 1.7 + versatz) \
+                + 0.15 * sin(u * 31.7 + 0.4)
+            var yy := y + hoehe * wellig
+            hell.append(Vector2(u * breite, yy))
+            dunkel.append(Vector2(u * breite, yy + 1.6))
+        _flaeche.draw_polyline(hell,
+            Color(0.44, 0.58, 0.64, 0.075 + 0.03 * sin(float(i))), 1.0, true)
         # Eine dunkle Linie dicht darunter: eine Schichtfuge hat eine Kante
         # und einen Schatten, sonst ist sie ein Strich auf Papier.
-        _flaeche.draw_line(Vector2(0.0, y + 1.6), Vector2(breite, y + 1.6),
-            Color(0.0, 0.0, 0.0, 0.16), 1.6)
+        _flaeche.draw_polyline(dunkel, Color(0.0, 0.0, 0.0, 0.16), 1.6, true)
 
 
 ## Was die tragende Brutlinie mit dem Kegel macht - als Bild.
