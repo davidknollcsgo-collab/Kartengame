@@ -326,7 +326,8 @@ Abschalten je eines Knotens: mit stillem `funken.gd` waren alle Kreise
 weg. **Ein Messstand, der die Wirklichkeit nicht abbildet, ist schlimmer
 als keiner** — dieselbe Lehre wie bei `tools/artenkosten.gd`, das
 Anmarsch als Kegelzeit zählte. `_takte_geschwister()` treibt jetzt jeden
-Knoten mit eigenem `_process`.
+Knoten mit eigenem `_process` — auch das Bedienbild, denn es führt eigene
+Zustände, die von der Fahrt abhängen (den Geisterbalken der Hülle).
 
 **Und daraus die Regel für jede Optikfrage:** wenn im Bild etwas steht,
 das nirgends gezeichnet wird, ist der nächste Schritt nicht Nachdenken,
@@ -1146,6 +1147,24 @@ auch bedecken** — und man sieht es nicht im Code, sondern nur im Bild.
 Er war zudem die einzige Art **ohne Schein**, weil `_schein()` in
 `_koerper()` sitzt und er das nicht ruft. Der Schein gehört zum Tier und
 nicht zur Füllmethode.
+
+**Ein Treffer war eine Zahl, die sich ändert.** Wer im Augenblick des
+Treffers auf sein Ziel sah — und das tut man immer —, merkte davon nichts;
+er sah später eine kleinere Zahl und wusste nicht, wann sie kleiner
+geworden war. Die Hülle ist der einzige Grund, warum eine Fahrt endet, und
+sie war die leiseste Anzeige im Bild. Der volle Teil des Balkens fällt
+jetzt sofort, ein blasser Rest bleibt 0,22 s stehen und läuft ihm dann in
+0,40 s nach.
+
+**Die Dauer hängt an der Lücke, nicht an der vollen Hülle.** Der erste
+Anlauf ließ den Rest mit 0,85 vollen Hüllen je Sekunde fallen — bei einem
+Punkt von neunzehn sind das sechs Hundertstel, also unsichtbar. Ein
+Treffer kostet meistens genau einen Punkt; wenn ausgerechnet der nicht zu
+sehen ist, zeigt die Anzeige nur die seltenen Fälle. Gemessen: 478 von
+2400 Bildern mit stehendem Rest.
+
+Und die Balken haben **runde Enden** — sie waren das einzige Rechteck im
+Bild.
 
 **Ein Tod fing bei null an.** Splitter, Glut und Druckwelle wachsen alle
 aus dem Nichts heraus — im ersten Bild nach einem Treffer steht ein

@@ -62,8 +62,38 @@ func _ready() -> void:
     _schrift = ThemeDB.fallback_font
 
 
+## Der **Geisterbalken**: wo die Huelle eben noch stand.
+##
+## **Ein Treffer war eine Zahl, die sich aendert.** Wer im Augenblick des
+## Treffers auf sein Ziel sah - und das tut man immer -, merkte davon
+## nichts; er sah spaeter eine kleinere Zahl und wusste nicht, wann sie
+## kleiner geworden war. Die Huelle ist der einzige Grund, warum eine Fahrt
+## endet, und sie war die leiseste Anzeige im Bild.
+##
+## Der volle Teil des Balkens faellt sofort, ein blasser Rest bleibt kurz
+## stehen und laeuft ihm dann nach. Das kostet keinen Platz, keinen Ton und
+## keine Unterbrechung - und es ist auch dann noch zu sehen, wenn man
+## eineinhalb Sekunden spaeter hinsieht.
+var _geist := -1.0
+var _geist_halt := 0.0
+var _huelle_zuletzt := -1
+
+## Wie lange der Rest stehen bleibt, bevor er nachlaeuft, und wie lange er
+## dann braucht.
+##
+## **Die Dauer haengt an der Luecke, nicht an der vollen Huelle.** Der erste
+## Anlauf liess ihn mit 0,85 vollen Huellen je Sekunde fallen - bei einem
+## Punkt von neunzehn sind das sechs Hundertstel, und damit war der Rest
+## unsichtbar, also nutzlos. Ein Treffer kostet meistens genau einen Punkt;
+## wenn ausgerechnet der nicht zu sehen ist, zeigt die Anzeige nur die
+## seltenen Faelle.
+const GEIST_HALT := 0.22
+const GEIST_DAUER := 0.40
+
+
 func _process(delta: float) -> void:
     _zeit += delta
+    _geist_nach(delta)
     # Im Menue nicht: dort steht das Logo, und eine Huellenanzeige daneben
     # sagt nur, dass gerade niemand spielt.
     visible = lauf != null and lauf.lage == lauf.Lage.SPIEL
@@ -135,12 +165,58 @@ func _tafel(kasten: Rect2, farbe := RAHMEN, deckung := 0.42,
 const SEGMENTE_HOECHSTENS := 12
 
 
-func _balken(kasten: Rect2, ist: int, voll: int, farbe: Color) -> void:
+func _geist_nach(delta: float) -> void:
+    if lauf == null or lauf.huelle_voll <= 0:
+        _geist = -1.0
+        _huelle_zuletzt = -1
+        return
+    var ist := float(lauf.huelle)
+    if _geist < 0.0 or ist > _geist:
+        # Aufgefuellt oder neue Fahrt: kein Nachlauf, sondern gleichstehen.
+        _geist = ist
+        _geist_halt = 0.0
+        _huelle_zuletzt = lauf.huelle
+        return
+    # Ein frischer Treffer haelt den Rest an, wo er steht. Der Halt wird bei
+    # jedem weiteren Treffer neu gesetzt: wer dreimal hintereinander
+    # getroffen wird, soll einen Rest sehen und nicht drei.
+    if _huelle_zuletzt >= 0 and lauf.huelle < _huelle_zuletzt:
+        _geist_halt = GEIST_HALT
+    _huelle_zuletzt = lauf.huelle
+    if _geist_halt > 0.0:
+        _geist_halt = maxf(0.0, _geist_halt - delta)
+        return
+    _geist = maxf(ist, _geist
+        - maxf(1.0, _geist - ist) * delta / GEIST_DAUER)
+
+
+## Ein Balken mit runden Enden.
+##
+## **Er war das einzige Rechteck im Bild.** Alles andere in dieser Welt hat
+## keine geraden Kanten; zwei Balken mit vier scharfen Ecken lasen sich als
+## Formular. Zwei Halbkreise an den Enden kosten nichts und nehmen ihm das.
+func _riegel(kasten: Rect2, farbe: Color) -> void:
+    if kasten.size.x <= 0.0 or kasten.size.y <= 0.0:
+        return
+    var r := kasten.size.y * 0.5
+    _flaeche.draw_rect(kasten, farbe)
+    _flaeche.draw_circle(kasten.position + Vector2(0.0, r), r, farbe)
+    _flaeche.draw_circle(Vector2(kasten.end.x, kasten.position.y + r),
+        r, farbe)
+
+
+func _balken(kasten: Rect2, ist: int, voll: int, farbe: Color,
+        geist := -1.0) -> void:
     if voll <= 0:
         return
     if voll > SEGMENTE_HOECHSTENS:
-        _flaeche.draw_rect(kasten, Color(farbe.r, farbe.g, farbe.b, 0.14))
-        _flaeche.draw_rect(Rect2(kasten.position, Vector2(kasten.size.x
+        _riegel(kasten, Color(farbe.r, farbe.g, farbe.b, 0.14))
+        # Der Rest zuerst, damit der volle Teil darauf liegt.
+        if geist > float(ist):
+            _riegel(Rect2(kasten.position, Vector2(kasten.size.x
+                * clampf(geist / float(voll), 0.0, 1.0), kasten.size.y)),
+                Color(WARNUNG.r, WARNUNG.g, WARNUNG.b, 0.62))
+        _riegel(Rect2(kasten.position, Vector2(kasten.size.x
             * clampf(float(ist) / float(voll), 0.0, 1.0), kasten.size.y)),
             farbe)
         return
@@ -149,9 +225,11 @@ func _balken(kasten: Rect2, ist: int, voll: int, farbe: Color) -> void:
         var teil := Rect2(kasten.position + Vector2(breit * float(i), 0.0),
             Vector2(breit - 2.0, kasten.size.y))
         if i < ist:
-            _flaeche.draw_rect(teil, farbe)
+            _riegel(teil, farbe)
+        elif float(i) < geist:
+            _riegel(teil, Color(WARNUNG.r, WARNUNG.g, WARNUNG.b, 0.62))
         else:
-            _flaeche.draw_rect(teil, Color(farbe.r, farbe.g, farbe.b, 0.14))
+            _riegel(teil, Color(farbe.r, farbe.g, farbe.b, 0.14))
 
 
 func _text(wo: Vector2, was: String, groesse: int, farbe: Color,
@@ -226,13 +304,13 @@ func _zustand(_breite: float) -> void:
         SCHRIFT if lauf.huelle > 3 else WARNUNG, false, true)
     _balken(Rect2(kasten.position + Vector2(14.0, 28.0),
         Vector2(158.0, 7.0)), lauf.huelle, lauf.huelle_voll,
-        HELL if lauf.huelle > 3 else WARNUNG)
+        HELL if lauf.huelle > 3 else WARNUNG, _geist)
     _text(kasten.position + Vector2(14.0, 50.0), "BURST", 11, LEISE)
     var ladung: float = lauf.stoss_ladung()
     var leiste := Rect2(kasten.position + Vector2(56.0, 44.0),
         Vector2(116.0, 5.0))
-    _flaeche.draw_rect(leiste, Color(WARM.r, WARM.g, WARM.b, 0.14))
-    _flaeche.draw_rect(Rect2(leiste.position,
+    _riegel(leiste, Color(WARM.r, WARM.g, WARM.b, 0.14))
+    _riegel(Rect2(leiste.position,
         Vector2(leiste.size.x * ladung, leiste.size.y)),
         WARM if ladung >= 1.0 else Color(WARM.r, WARM.g, WARM.b, 0.55))
 

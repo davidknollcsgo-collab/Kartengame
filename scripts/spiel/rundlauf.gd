@@ -2394,7 +2394,11 @@ func _spiele_vor() -> void:
 ## als Kegelzeit zählte. Der Vorlauf treibt jetzt jeden Knoten, der ein
 ## eigenes `_process` führt.
 func _takte_geschwister(takt: float) -> void:
-    for knoten in [_grund, _wild, _kegel, _funken, _schwarm]:
+    # Das Bedienbild gehoert dazu: es fuehrt eigene Zustaende, die von der
+    # Fahrt abhaengen - der Geisterbalken der Huelle zum Beispiel. Ohne
+    # seinen Takt zeigt ein Schuss ein HUD, das die vorgerechnete Fahrt nie
+    # gesehen hat.
+    for knoten in [_grund, _wild, _kegel, _funken, _schwarm, _hud]:
         if knoten != null and knoten.has_method(&"_process"):
             knoten._process(takt)
 
