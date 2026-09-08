@@ -1685,30 +1685,45 @@ func _schildkoralle(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float
         p + k * r * 0.40 - quer * r * 1.06,
     ])
     _koerper(saum, farbe, hitze, t.richtung, 0)
-    # Drei Plattenkanten quer ueber den Schild - der Panzer, den man sieht.
-    for i in 3:
-        var u := lerpf(0.34, -0.56, float(i) / 2.0)
-        var halb := r * (1.10 - 0.30 * absf(u))
-        _zug(PackedVector2Array([
-            p + k * r * u + quer * halb,
-            p + k * r * (u + 0.10) ,
-            p + k * r * u - quer * halb]),
-            Color(farbe.r, farbe.g, farbe.b, 0.26 + 0.34 * hitze), 1.2)
 
+    # **Panzer sind Platten, und Platten sieht man an ihren Fugen.**
+    #
+    # Hier lagen drei duenne `_zug` und drei Fuellungen mit 0,16 Deckung
+    # uebereinander - im Bild ein Sechseck mit zwei Streifen darauf, also
+    # ein Edelstein. Die Regel dieser Art ist ihr Panzer ("ein fester
+    # Betrag wird jede Sekunde abgezogen"), und was einen Panzer im Bild
+    # ausmacht, ist nicht die Platte, sondern die **Kante, an der die
+    # naechste darueberliegt**.
+    #
+    # `_rille()` zeichnet genau das: eine dunkle Fuge und eine schmale helle
+    # Lippe auf der Lichtseite - dieselbe Sprache, in der `_inneres()` alle
+    # anderen Leiber gliedert. Drei davon quer ueber den Schild, jede
+    # gewoelbt wie die Platte, die sie begrenzt.
+    var zum_licht := lichtquelle - p
+    zum_licht = zum_licht.normalized() if zum_licht.length_squared() > 1.0 \
+        else Vector2.UP
+    var fuge := Color(0.03, 0.07, 0.11, 0.52 + 0.16 * hitze)
+    var lippe := farbe.lerp(Color(1.0, 0.98, 0.94), 0.22 + 0.40 * hitze)
     for i in 3:
-        var t_i := float(i) / 2.0
-        var vorn := p + k * r * lerpf(0.62, -0.42, t_i)
-        var halb := r * lerpf(0.42, 0.86, t_i)
-        var platte := PackedVector2Array([
-            vorn + quer * halb, vorn - quer * halb,
-            vorn - k * r * 0.30 - quer * halb * 0.82,
-            vorn - k * r * 0.30 + quer * halb * 0.82,
-        ])
-        _fuellung(platte, Color(farbe.r, farbe.g, farbe.b,
-            0.16 + 0.22 * hitze))
-        # Die Fuge, nicht die Platte, traegt das Licht.
-        draw_line(vorn + quer * halb, vorn - quer * halb,
-            Color(1.0, 0.98, 0.90, 0.30 + 0.55 * hitze), 1.5)
+        var u := lerpf(0.30, -0.54, float(i) / 2.0)
+        var halb := r * (1.14 - 0.34 * absf(u))
+        var bogen := PackedVector2Array()
+        for j2 in 7:
+            var v := lerpf(-1.0, 1.0, float(j2) / 6.0)
+            # Die Fuge woelbt sich nach vorn: eine Platte liegt auf der
+            # naechsten, sie ist kein Schnitt quer durch.
+            bogen.append(p + quer * halb * v
+                + k * r * (u + 0.16 * (1.0 - v * v)))
+        _rille(bogen, fuge, lippe, zum_licht * (r * 0.10))
+
+    # **Der Saum: ein Panzer hat Dicke.** Eine zweite Kontur, ein Stueck
+    # nach innen versetzt, sagt "diese Schale ist dick" - eine einzelne
+    # Linie sagt nur "hier hoert etwas auf".
+    var innen := PackedVector2Array()
+    for v in saum:
+        innen.append(p + (v - p) * 0.80)
+    _zug(innen + PackedVector2Array([innen[0]]),
+        Color(farbe.r, farbe.g, farbe.b, 0.30 + 0.34 * hitze), 1.3)
 
     _auge(p + k * r * 0.66 + quer * r * 0.26, r * 0.15, hitze, farbe)
     _auge(p + k * r * 0.66 - quer * r * 0.26, r * 0.15, hitze, farbe)
@@ -1786,11 +1801,64 @@ func _treibanker(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -
     ])
     _koerper(leib, farbe, hitze, t.richtung)
 
-    # Zwei kurze Fluegel quer zur Wanderrichtung - das Segel, das ihn treibt.
-    for s: float in SEITEN:
-        var wurzel := p + quer * r * 0.5 * s
-        draw_line(wurzel, wurzel + zug * r * 1.15 + quer * r * 0.2 * s,
-            Color(farbe.r, farbe.g, farbe.b, 0.46 + 0.3 * hitze), 2.0)
+    # **Das Segel ist seine Regel, also muss es die Silhouette sein.**
+    #
+    # Hier standen zwei `draw_line` von zwei Pixeln Breite - bei einem Tier
+    # von dreissig Einheiten zwei Striche, die man nicht sieht, und der
+    # Umriss war ein Rhombus mit Seitenverhaeltnis 1,27, also rund. Von
+    # dem, was diese Art ausmacht - "sie rutscht seitlich weg, waehrend sie
+    # naeher kommt" -, stand nichts im Bild.
+    #
+    # Jetzt eine **Flosse** zur Driftseite: eine Flaeche mit Kontur, die am
+    # Leib ansetzt und im Strom flattert. Sie macht das Tier auf einen Blick
+    # unsymmetrisch, und die Richtung, in die sie steht, ist die, in die es
+    # wegrutscht - man sieht die Regel, bevor sie einen kostet.
+    #
+    # **Und die Kontur ist der Teil, der traegt.** Der erste Anlauf war eine
+    # Fuellung mit drei dicken Rippen darauf und ohne Aussenkante: im Bild
+    # drei parallele Balken, die aussahen wie Schnurrhaare, und dazwischen
+    # nichts. Eine Flosse erkennt man an ihrem Rand, nicht an ihren Rippen.
+    var wurzel_a := p + quer * r * 0.80 - zug * r * 0.06
+    var wurzel_b := p - quer * r * 0.72 - zug * r * 0.06
+    var aussen := PackedVector2Array()
+    for i in 9:
+        var u := float(i) / 8.0
+        var basis := wurzel_a.lerp(wurzel_b, u)
+        # Am breitesten kurz vor der Mitte, zu beiden Enden auslaufend -
+        # eine Membran ist an ihrer Wurzel angewachsen und aussen frei.
+        var weite := r * (1.70 - 1.45 * absf(u - 0.44))
+        var flattern := sin(t.alter * 2.6 + u * 4.2 + t.phase) * r * 0.13
+        aussen.append(basis + zug * maxf(0.0, weite + flattern))
+
+    var flosse := PackedVector2Array([wurzel_a])
+    var toene := PackedColorArray([
+        _gedeckt(Color(farbe.r, farbe.g, farbe.b, 0.40 + 0.24 * hitze))])
+    for v in aussen:
+        flosse.append(v)
+        toene.append(_gedeckt(Color(farbe.r, farbe.g, farbe.b,
+            0.13 + 0.10 * hitze)))
+    flosse.append(wurzel_b)
+    toene.append(_gedeckt(Color(farbe.r, farbe.g, farbe.b,
+        0.40 + 0.24 * hitze)))
+    draw_polygon(flosse, toene)
+
+    # Die Aussenkante, an den Enden auslaufend: der Rand macht die Form.
+    var kante := PackedColorArray()
+    for i in aussen.size():
+        var u := float(i) / float(aussen.size() - 1)
+        kante.append(_gedeckt(farbe.lerp(Color(1.0, 0.98, 0.94),
+            0.18 + 0.40 * hitze) * Color(1, 1, 1,
+                (0.30 + 0.30 * hitze) * sin(PI * u))))
+    draw_polyline_colors(aussen, kante, 1.3, true)
+
+    # Zwei duenne Speichen - genug, damit die Flaeche gespannt wirkt.
+    for i in 2:
+        var idx := 2 + i * 4
+        var u := float(idx) / 8.0
+        draw_line(wurzel_a.lerp(wurzel_b, u),
+            wurzel_a.lerp(wurzel_b, u).lerp(aussen[idx], 0.88),
+            _gedeckt(Color(farbe.r, farbe.g, farbe.b, 0.26 + 0.18 * hitze)),
+            1.1, true)
 
     _auge(p + k * r * 0.42 + zug * r * 0.22, r * 0.19, hitze, farbe)
 

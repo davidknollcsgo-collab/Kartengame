@@ -1131,6 +1131,31 @@ Schleierqualle, falsch herum angehängt, kreuzte den eigenen Umriss — weitere
 Parse-Fehler (`spitze` zweimal deklariert). Gefunden hat beides nur der
 Startlauf.
 
+**Eine Art muss ihre Regel im Umriss tragen.** Siebzehn Arten, jede mit
+einer Regel im Bestiarium — und zwei davon sagten im Bild etwas anderes,
+als der Text versprach:
+
+*Die Schildkoralle* („ein fester Betrag wird jede Sekunde abgezogen") war
+ein Sechseck mit zwei blassen Streifen: ein Edelstein, kein Panzer. Was
+einen Panzer ausmacht, ist nicht die Platte, sondern die **Kante, an der
+die nächste darüberliegt** — also `_rille()` wie überall sonst, dunkle
+Fuge und helle Lippe auf der Lichtseite, dazu eine zweite Kontur nach
+innen: ein Panzer hat Dicke, und eine einzelne Linie sagt nur „hier hört
+etwas auf".
+
+*Der Treibanker* („rutscht seitlich weg, während er näher kommt") hatte
+dafür zwei `draw_line` von zwei Pixeln — bei dreißig Einheiten Radius
+unsichtbar — und einen Rhombus mit Verhältnis 1,27, also rund. Jetzt eine
+**Flosse** zur Driftseite, groß genug, dass sie die Silhouette trägt.
+
+Und die Lehre aus drei Anläufen daran: **eine Flosse erkennt man an ihrem
+Rand, nicht an ihren Rippen.** Erst war die Membran zu blass (0,03 außen,
+und sieben von neun Ecken liegen auf dieser Kante — die ganze Fläche
+verschwand), dann zu klein (1,35 Radien = neun Pixel: richtig
+proportioniert und trotzdem wirkungslos), dann trugen drei dicke Rippen
+die Form und sahen aus wie Schnurrhaare. Was es gelöst hat, war eine
+**Außenkante**, die zu den Enden ausläuft.
+
 **Eine Perlenkette ist kein Leib, und ein Faden ist keine Schleppe.** Zwei
 Stellen, dieselbe Ursache: runde Marken auf einem Weg, deren Durchmesser
 größer ist als ihr Abstand. Der Rückweg setzt alle neun Einheiten einen
