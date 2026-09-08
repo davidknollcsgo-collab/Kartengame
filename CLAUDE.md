@@ -1147,6 +1147,28 @@ Er war zudem die einzige Art **ohne Schein**, weil `_schein()` in
 `_koerper()` sitzt und er das nicht ruft. Der Schein gehört zum Tier und
 nicht zur Füllmethode.
 
+**Ein Tod fing bei null an.** Splitter, Glut und Druckwelle wachsen alle
+aus dem Nichts heraus — im ersten Bild nach einem Treffer steht ein
+winziger Ring und ein paar Punkte, und der Schlag selbst fehlt. Was ein
+Ereignis daraus macht, ist die **Blende** (`funken.gd::Blende`): ein
+Blitz, der sofort da ist und nach anderthalb Zehnteln wieder weg — ein
+weicher Kern mit Zacken ungleicher Länge —, und darunter ein
+**Abglühen** in der Farbe der Art, fast eine Sekunde lang. Ein
+biolumineszentes Tier hört nicht auf zu leuchten, wenn es zerfällt; das
+Licht steht noch im Wasser, wenn der Körper schon weg ist.
+
+Beides in **einem** Objekt je Tod, weil beides zum selben Ereignis
+gehört, und beides in Lagen statt als gefüllte Scheibe: der erste Anlauf
+hatte einen weißen Kreis mit harter Kante über einer Blase, und eine
+harte Kante gibt es im ganzen Bild sonst nirgends.
+
+**Und ein Blitz von 0,17 s ist in keinem Standbild zu finden.** Bei 0,67
+Toden je Sekunde steht er in etwa jedem neunten Schuss. Wer ihn ansehen
+will, spannt ihn von Hand — vier Blenden bekannten Alters in `_draw()`
+einsetzen, schießen, wieder herausnehmen; und dabei **getippte**
+Variablen verwenden, sonst lädt `funken.gd` nicht und der ganze Knoten
+fällt stumm auf `Node2D` zurück.
+
 **Und das Boot war das letzte Drahtgitter.** Drei Stellen, alle dieselbe
 Falle. Die Flossen waren einfarbig (0,016 / 0,042 / 0,058) gefüllt —
 dunkler als das Wasser daneben, und im Bild klaffte hinter dem Boot eine

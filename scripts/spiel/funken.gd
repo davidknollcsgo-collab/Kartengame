@@ -51,6 +51,34 @@ class Ring extends RefCounted:
     var weite := 40.0
 
 
+## Der Augenblick eines Todes.
+##
+## **Ein Tod fing bisher bei null an.** Splitter, Glut und Druckwelle wachsen
+## alle aus dem Nichts heraus - im ersten Bild nach einem Treffer steht ein
+## winziger Ring und ein paar Punkte, und der Schlag selbst fehlt. Was ein
+## Ereignis daraus macht, ist die **Blende**: ein Aufblitzen, das sofort da
+## ist und sofort wieder weg.
+##
+## Sie traegt zwei Dinge in einem Objekt, weil beide zum selben Ereignis
+## gehoeren und ein zweites Feld je Tod nichts kostet:
+##
+##   * den **Blitz** - weiss, in den ersten anderthalb Zehnteln, mit Zacken,
+##   * das **Abgluehen** - die Farbe der Art, fast eine Sekunde lang, leicht
+##     aufgehend. Ein biolumineszentes Tier hoert nicht auf zu leuchten,
+##     wenn es zerfaellt; das Licht steht noch im Wasser, wenn der Koerper
+##     schon weg ist. In einem Spiel, dessen ganze Aussage Biolumineszenz
+##     ist, ist das keine Verzierung, sondern der Satz selbst.
+class Blende extends RefCounted:
+    var ort := Vector2.ZERO
+    var farbe := Color.WHITE
+    var leben := 0.0
+    var voll := 0.85
+    var gross := 20.0
+    var dreh := 0.0
+    var zacken := 6
+
+
+var _blenden: Array[Blende] = []
 var _teilchen: Array[Teilchen] = []
 var _strahlen: Array[Strahl] = []
 var _splitter: Array[Splitter] = []
@@ -98,6 +126,11 @@ func _process(delta: float) -> void:
         _ringe[i].leben -= delta
         if _ringe[i].leben <= 0.0:
             _ringe.remove_at(i)
+
+    for i in range(_blenden.size() - 1, -1, -1):
+        _blenden[i].leben -= delta
+        if _blenden[i].leben <= 0.0:
+            _blenden.remove_at(i)
 
     queue_redraw()
 
@@ -161,6 +194,19 @@ func zerfall(ort: Vector2, farbe: Color, radius: float, richtung: Vector2) -> vo
         ring.weite = radius * 3.4
         _ringe.append(ring)
 
+    if _blenden.size() < HOECHSTZAHL:
+        var bl := Blende.new()
+        bl.ort = ort
+        bl.farbe = farbe
+        bl.gross = radius
+        bl.dreh = randf() * TAU
+        # Mehr Zacken bei einem grossen Tier - ein Leitwesen soll anders
+        # zerfallen als eine Laichwolke, und die Zahl ist das Einzige daran,
+        # was man auf zwanzig Pixeln noch zaehlt.
+        bl.zacken = clampi(int(radius * 0.22), 4, 9)
+        bl.leben = bl.voll
+        _blenden.append(bl)
+
 
 ## Ein Ei zerbricht: Schalensplitter, ein warmer Blitz, eine Welle.
 ##
@@ -208,7 +254,55 @@ func strahl(von: Vector2, nach: Vector2, farbe: Color) -> void:
     _strahlen.append(s)
 
 
+## Ein Zackenstern aus weichen Keilen - kein Kranz aus Strichen.
+##
+## Jede Zacke ist ein Dreieck von der Mitte nach aussen, aussen auf Deckung
+## null. Damit hat sie keine Kante, wo sie endet, und keine Kappe, wo sie
+## anfaengt. Die Laengen sind ungleich: gleich lange Strahlen ergeben einen
+## Stern aus dem Baukasten, ungleiche einen Ausbruch.
+func _zacken(ort: Vector2, gross: float, dreh: float, zahl: int,
+        farbe: Color, staerke: float) -> void:
+    if staerke <= 0.004 or zahl < 3:
+        return
+    var ecken := PackedVector2Array()
+    var farben := PackedColorArray()
+    var netz := PackedInt32Array()
+    var hell := Color(farbe.r, farbe.g, farbe.b, staerke)
+    var aus := Color(farbe.r, farbe.g, farbe.b, 0.0)
+    for i in zahl:
+        var w := dreh + TAU * float(i) / float(zahl)
+        # Die Laenge aus dem Winkel, nicht aus einem Wurf: eine Blende, die
+        # bei jedem Bild andere Zacken hat, flackert.
+        var lang := gross * (0.9 + 1.5 * absf(sin(w * 2.7 + dreh)))
+        var richtung := Vector2.RIGHT.rotated(w)
+        var breit := richtung.orthogonal() * gross * 0.16
+        var e := ecken.size()
+        ecken.append(ort - breit); farben.append(hell)
+        ecken.append(ort + breit); farben.append(hell)
+        ecken.append(ort + richtung * lang); farben.append(aus)
+        netz.append_array([e, e + 1, e + 2])
+    RenderingServer.canvas_item_add_triangle_array(
+        get_canvas_item(), netz, ecken, farben)
+
+
 func _draw() -> void:
+    # **Das Abgluehen zuerst.** Es liegt hinter Splittern und Ring - was von
+    # einem Tier uebrig ist, gehoert hinter das, was gerade zerfaellt.
+    for bl in _blenden:
+        var f := bl.leben / bl.voll
+        var n := f * f
+        # **Ein Glimmen hat einen Rand, an dem es aufhoert, aber keine
+        # Kante.** Zwei gefuellte Scheiben ergaben eine Blase mit einem
+        # Schnitt darum - dieselbe Beobachtung wie bei den Fundstellen,
+        # bevor sie einen Lichtsee bekamen. Drei Lagen mit fallender
+        # Deckung, und die aeusserste geht auf null.
+        var weit := bl.gross * (0.85 + 0.75 * (1.0 - f))
+        for i in 3:
+            var t := float(i + 1) / 3.0
+            draw_circle(bl.ort, weit * t,
+                Color(bl.farbe.r, bl.farbe.g, bl.farbe.b,
+                    0.15 * n * (1.0 - t) * 0.9 + 0.02 * n))
+
     for s in _strahlen:
         var f := s.leben / STRAHL_LEBEN
         draw_line(s.von, s.nach,
@@ -241,6 +335,26 @@ func _draw() -> void:
         var f := ring.leben / ring.voll
         var r := ring.weite * (1.0 - f * f)
         _druckwelle(ring.ort, r, 0.30 * f * f, 3.0 + 5.0 * (1.0 - f))
+
+    # **Der Blitz zuletzt.** Er dauert anderthalb Zehntel und gehoert ueber
+    # alles, was zum selben Tod gehoert - er ist der Augenblick, die anderen
+    # sind sein Nachhall.
+    for bl in _blenden:
+        var f := bl.leben / bl.voll
+        var b := clampf((f - 0.80) / 0.20, 0.0, 1.0)
+        if b <= 0.01:
+            continue
+        # Die Zacken tragen einen Hauch der Artfarbe: ein Tod gehoert zu
+        # einem Tier, und reines Weiss gehoert zu niemandem.
+        _zacken(bl.ort, bl.gross * (0.55 + 0.55 * (1.0 - b)), bl.dreh,
+            bl.zacken, Color(1.0, 0.97, 0.90).lerp(bl.farbe, 0.30), 0.55 * b)
+        # Der Kern ebenfalls in Lagen. Eine einzelne weisse Scheibe hatte
+        # eine harte Kante, und die ist im ganzen Bild sonst nirgends.
+        var kern := bl.gross * (0.20 + 0.34 * b)
+        for i in 3:
+            var t := float(i + 1) / 3.0
+            draw_circle(bl.ort, kern * t,
+                Color(1.0, 0.98, 0.94, 0.55 * b * b * (1.0 - t * 0.7)))
 
 
 ## Wieviele Ecken eine Druckwelle hat.
