@@ -235,7 +235,30 @@ func _farbe_an(spitze: Vector2, punkt: Vector2, puls: float) -> Color:
     if hell <= 0.0:
         return Color(farbe.r, farbe.g, farbe.b, 0.0)
     var mische := farbe.lerp(kern, hell * hell)
-    return Color(mische.r, mische.g, mische.b,
+
+    # **Wasser frisst zuerst das Rot.**
+    #
+    # Die Farbe hing bisher nur an der Helligkeit - im Kern des Strahls war
+    # sie damit von der Lampe bis zum Ende dieselbe, und ein Strahl, dessen
+    # Farbe nichts ueber die Entfernung sagt, ist ein Scheinwerfer in Luft.
+    # In Wasser faellt das lange Ende des Spektrums als erstes aus: nach
+    # zwanzig Metern ist von Rot fast nichts mehr da, von Gruen die Haelfte,
+    # von Blau das meiste. Genau deshalb ist die Tiefsee blau.
+    #
+    # **Gerechnet als Zehrung je Kanal, nicht als Mischung zu einer festen
+    # Farbe.** Ein `lerp` auf ein festes Blaugruen wuerde jeden Anstrich am
+    # Ende des Strahls gleich aussehen lassen - der Spieler hat sich seine
+    # Farbe verdient, und sie soll bis zum Rand seine bleiben. Die Zehrung
+    # nimmt jedem Kanal seinen Anteil und laesst das Verhaeltnis bestehen.
+    #
+    # **Und sie ruehrt die Deckung nicht an.** Die steht in `hell`, und
+    # `hell` ist dieselbe Zahl, aus der der Schaden faellt (Zusage 2). Was
+    # sich hier aendert, ist der Farbton und nichts sonst.
+    var tiefe := clampf(spitze.distance_to(punkt)
+        / maxf(1.0, reichweite), 0.0, 1.0)
+    var zehr := ZEHRUNG * tiefe * tiefe
+    return Color(mische.r * (1.0 - zehr), mische.g * (1.0 - zehr * 0.40),
+        mische.b * (1.0 - zehr * 0.08),
         hell * STAERKE * puls * _schlieren(spitze, punkt))
 
 
@@ -258,9 +281,41 @@ func _farbe_an(spitze: Vector2, punkt: Vector2, puls: float) -> Color:
 const SCHLIEREN_TIEFE := 0.075
 const SCHLIEREN_TIEFE_FEIN := 0.035
 
+## Wieviel Rot der Strahl bis an sein Ende verliert - siehe `_farbe_an()`.
+const ZEHRUNG := 0.46
+
+## Die Baender **laengs** des Strahls. Siehe `_schlieren()`.
+const SCHLIEREN_LAENGS := 0.070
+
 
 func _schlieren(spitze: Vector2, punkt: Vector2) -> float:
-    var weit := spitze.distance_to(punkt)
+    var d := punkt - spitze
+    var weit := d.length()
+    # **Ringe um die Lampe hat kein Strahl.**
+    #
+    # Die beiden Schwebungen haengen allein an der Entfernung - im Bild sind
+    # das konzentrische Boegen, also eine Zielscheibe mit der Lampe im
+    # Mittelpunkt. Was man in Wasser wirklich sieht, sind Baender **laengs**
+    # des Strahls: was nah an der Lampe im Weg steht, wirft einen weichen
+    # Schatten bis ans Ende, und weil das Wasser sich bewegt, wandern diese
+    # Baender langsam durch den Kegel.
+    #
+    # Sie werden mit der Entfernung staerker - an der Lampe ist der Strahl
+    # sauber, und er faechert sich erst auf, waehrend er laeuft. Und sie
+    # mitteln sich ueber den Kegel zu null, wie die anderen beiden: es ist
+    # Wasser vor dem Licht, nicht mehr Licht.
+    #
+    # Der Faktor auf dem Winkel ist ganzzahlig, aus demselben Grund wie bei
+    # `flackern`: ein Sprung des Winkels um TAU muss ein Vielfaches der
+    # Periode sein, sonst laeuft ein Riss durch den Kegel, sobald das Boot
+    # ueber die Nordrichtung dreht.
+    var laengs := 0.0
+    if weit > 1.0:
+        var w := d.angle() - richtung.angle()
+        laengs = SCHLIEREN_LAENGS \
+            * sin(w * 9.0 + flackern * 1.0) \
+            * clampf(weit / maxf(1.0, reichweite), 0.0, 1.0)
     return 1.0 \
         + SCHLIEREN_TIEFE * sin(weit * 0.026 - flackern * 1.0) \
-        + SCHLIEREN_TIEFE_FEIN * sin(weit * 0.068 - flackern * 1.0 + 2.1)
+        + SCHLIEREN_TIEFE_FEIN * sin(weit * 0.068 - flackern * 1.0 + 2.1) \
+        + laengs

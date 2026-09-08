@@ -285,8 +285,14 @@ func _test_schlieren_bleiben_schmuck() -> bool:
     #
     # Geprueft wird an den Konstanten, nicht am Bild: der Kegel ist ein
     # Szenenknoten und laeuft im Testlauf nicht.
+    # **Alle Anteile, nicht die, an die man sich erinnert.** Hier standen
+    # zwei Summanden, und als ein dritter dazukam (`SCHLIEREN_LAENGS`, die
+    # Baender laengs des Strahls), lief er ungeprueft mit - der Test blieb
+    # gruen und pruefte weniger als er behauptete. Ein Waechter, der eine
+    # Zahl vergisst, faellt niemandem auf: er wird ja nicht rot.
     var kegel := load("res://scripts/spiel/kegel.gd")
-    var tiefe: float = kegel.SCHLIEREN_TIEFE + kegel.SCHLIEREN_TIEFE_FEIN
+    var tiefe: float = kegel.SCHLIEREN_TIEFE + kegel.SCHLIEREN_TIEFE_FEIN \
+        + kegel.SCHLIEREN_LAENGS
     if not _melde(tiefe <= 0.20,
             "die Schlieren aendern die Deckung um %.0f %% - ueber 20 %% ist "
             % (tiefe * 100.0) + "das keine Verzierung mehr"):

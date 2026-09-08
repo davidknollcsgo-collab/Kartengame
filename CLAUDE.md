@@ -395,6 +395,21 @@ unter einer strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
    Eckpunkt dieselbe `Schlund.beleuchtung()`, die auch den Schaden bestimmt.
    Ein Kegel, der anders aussieht als er wirkt, ist unlernbar.
 
+   Der Kegel hat dazu zwei Dinge, die seine **Form nicht anfassen**: die
+   Farbe zehrt mit der Entfernung (Wasser frisst zuerst das Rot — je Kanal
+   gerechnet, damit jeder Anstrich bis zum Rand seiner bleibt, und ohne die
+   Deckung anzurühren), und die Schlieren haben ein Band **längs** des
+   Strahls. Vorher hingen sie allein an der Entfernung — im Bild
+   konzentrische Bögen um die Lampe, also eine Zielscheibe. Was man in
+   Wasser sieht, sind Bänder längs: was nah an der Lampe im Weg steht,
+   wirft einen weichen Schatten bis ans Ende.
+
+   **Und der Wächter dafür hatte aufgehört zu wachen.**
+   `_test_schlieren_bleiben_schmuck` summierte zwei Konstanten; die dritte
+   lief ungeprüft mit, und der Test blieb grün, während er weniger prüfte,
+   als er behauptete. Ein Wächter, der eine Zahl vergisst, fällt niemandem
+   auf — er wird ja nicht rot.
+
    Der **einzige** Zusatz darauf ist `kegel.gd::_schlieren()`: ein wanderndes
    Streiflicht, das die gezeichnete Deckung um höchstens ±20 % moduliert und
    sich über die Fläche zu null mittelt. Es ist Wasser vor dem Licht, nicht
