@@ -525,25 +525,51 @@ func _treffer(breite: float, hoehe: float) -> void:
     # Vier Lagen statt zweier: jede naeher am Rand, schmaler und heller. Bei
     # zweien blieb eine harte gerade Kante mitten im Bild stehen - vier
     # ergeben eine Treppe, die bei diesen Deckungen als Verlauf durchgeht.
-    var lagen := 4
+    # **Neun Lagen statt vier.** Jede Lage endet innen mit einer harten
+    # Kante - das ist die Bedingung dieser Ebene, auf der ein Verlauf ueber
+    # die Ecken nicht ankommt. Vier davon ergaben vier sichtbare Stufen quer
+    # durchs Bild. Neun duenne ergeben dieselbe Gesamtdeckung (ueber die
+    # Ueberlagerung gerechnet: 1 - 0,975^9 gegen 1 - 0,815^4) und eine
+    # Treppe, deren Stufen unter der Wahrnehmungsschwelle liegen.
+    var lagen := 9
+    # **Und der Bogen laeuft zu den Seiten aus.**
+    #
+    # Er war ein Stueck von hundertacht Grad in *einer* Farbe: an seinen
+    # beiden Enden stand damit eine schnurgerade Kante quer im Bild, und
+    # zusammen mit der Tiefe von 0,34 verdeckte der Treffer ein Drittel des
+    # Schirms mit einer harten roten Flaeche. Er soll sagen, woher es kam -
+    # nicht die Sicht nehmen, und schon gar nicht in dem Augenblick, in dem
+    # man sie am dringendsten braucht.
+    #
+    # Ein Verlauf ueber die Ecken geht auf dieser Ebene nicht (siehe oben),
+    # also wird der Bogen in Keile zerlegt, und jeder bekommt seine eigene
+    # Deckung: `sin` ueber die Bogenlaenge, hoch 1,4. Neun Keile mal vier
+    # Lagen sind sechsunddreissig Flaechen fuer einen Augenblick - und die
+    # Kante ist weg.
+    var keile := 7
     for lage in lagen:
         var t_lage := float(lage) / float(lagen - 1)
-        var sp := lerpf(0.95, 0.40, t_lage)
-        var tief := lerpf(0.34, 0.09, t_lage)
-        var a := lerpf(0.07, 0.30, t_lage) * f * f
-        var aussen := PackedVector2Array()
-        var innen := PackedVector2Array()
-        for i in stufen + 1:
-            var w := lerpf(r.angle() - sp, r.angle() + sp,
-                float(i) / float(stufen))
-            var d := Vector2.RIGHT.rotated(w)
-            var t := minf(halb.x / maxf(0.001, absf(d.x)),
-                halb.y / maxf(0.001, absf(d.y)))
-            aussen.append(mitte + d * t * 1.6)
-            innen.append(mitte + d * t * (1.0 - tief))
-        innen.reverse()
-        _flaeche.draw_colored_polygon(aussen + innen,
-            Color(WARNUNG.r, WARNUNG.g, WARNUNG.b, a))
+        var sp := lerpf(0.80, 0.34, t_lage)
+        var tief := lerpf(0.24, 0.05, t_lage)
+        var voll := lerpf(0.022, 0.115, t_lage) * f * f
+        for j in keile:
+            var um := (float(j) + 0.5) / float(keile)
+            var a: float = voll * pow(sin(PI * um), 1.4)
+            if a <= 0.004:
+                continue
+            var aussen := PackedVector2Array()
+            var innen := PackedVector2Array()
+            for i in 4:
+                var u := (float(j) + float(i) / 3.0) / float(keile)
+                var w := lerpf(r.angle() - sp, r.angle() + sp, u)
+                var d := Vector2.RIGHT.rotated(w)
+                var t := minf(halb.x / maxf(0.001, absf(d.x)),
+                    halb.y / maxf(0.001, absf(d.y)))
+                aussen.append(mitte + d * t * 1.6)
+                innen.append(mitte + d * t * (1.0 - tief))
+            innen.reverse()
+            _flaeche.draw_colored_polygon(aussen + innen,
+                Color(WARNUNG.r, WARNUNG.g, WARNUNG.b, a))
 
 
 ## Oben in der Mitte: die Pause. Klein, weit weg vom Daumen, und ohne Ton -

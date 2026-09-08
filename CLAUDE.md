@@ -1148,6 +1148,22 @@ Er war zudem die einzige Art **ohne Schein**, weil `_schein()` in
 `_koerper()` sitzt und er das nicht ruft. Der Schein gehört zum Tier und
 nicht zur Füllmethode.
 
+**Und der Treffersaum verdeckte ein Drittel des Schirms.** Er war ein
+Kreisausschnitt von hundertacht Grad in *einer* Farbe: an seinen beiden
+Enden stand eine schnurgerade Kante quer im Bild, und mit einer Tiefe von
+0,34 lag über der halben oberen Bildhälfte eine harte rote Fläche. Er soll
+sagen, woher es kam — nicht die Sicht nehmen, und schon gar nicht in dem
+Augenblick, in dem man sie am dringendsten braucht.
+
+Zwei Änderungen, beide durch dieselbe Einschränkung erzwungen: **auf dieser
+Ebene kommt ein Verlauf über die Ecken nicht an**. Der Bogen wird deshalb
+in sieben **Keile** zerlegt, jeder mit eigener Deckung (`sin` über die
+Bogenlänge, hoch 1,4) — damit läuft er zu den Seiten aus statt abzubrechen.
+Und statt vier dicker Lagen sind es **neun dünne**: jede endet innen mit
+einer harten Kante, vier davon waren vier sichtbare Stufen quer durchs
+Bild, neun liegen unter der Wahrnehmungsschwelle. Über die Überlagerung
+gerechnet ist die Gesamtdeckung dieselbe (1 − 0,975⁹ gegen 1 − 0,815⁴).
+
 **Ein Treffer war eine Zahl, die sich ändert.** Wer im Augenblick des
 Treffers auf sein Ziel sah — und das tut man immer —, merkte davon nichts;
 er sah später eine kleinere Zahl und wusste nicht, wann sie kleiner
