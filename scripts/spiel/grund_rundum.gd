@@ -809,7 +809,13 @@ func _kuppel(f: Dictionary, kraft: float) -> void:
     # ein linearer Verlauf ueber eine ganze Flaeche wie ein Farbverlauf
     # aussieht und nicht wie Licht: Licht faellt steil ab, sobald eine
     # Flaeche sich wegdreht.
-    var gewinn := (0.9 + 3.4 * hell) * kraft
+    # **Auch ohne Kegel hat ein Stein eine Kuppe.** Mit 0,9 als Sockel
+    # stand die Kuppe auf dem 1,9fachen des Grundtons und die Flanke auf
+    # dem 1,3fachen - ein Unterschied, den man sucht statt ihn zu sehen,
+    # und im unbeleuchteten Feld war der Fels damit eine flache Scheibe.
+    # Anderthalb als Sockel machen daraus 2,5 gegen 1,4, und der Stein hat
+    # eine Form, bevor Licht darauf faellt.
+    var gewinn := (1.5 + 3.0 * hell) * kraft
 
     var ecken := PackedVector2Array()
     var farben := PackedColorArray()
@@ -828,9 +834,27 @@ func _kuppel(f: Dictionary, kraft: float) -> void:
             (umriss[i] - mitte).normalized().dot(zum_licht))
         ecken.append(umriss[i])
         farben.append(_steinfarbe(dunkel, gewinn * 0.30, 0.20 * zu_ihm))
+    # **Ein Fels sitzt auf etwas.**
+    #
+    # Er stand als dunkle Scheibe im Wasser, und das Sediment um ihn herum
+    # sah aus wie das Sediment ueberall sonst - im Bild schwebte er, statt
+    # auf dem Grund zu liegen. Um einen Block auf Sand haeuft sich aber
+    # Sediment: ein flacher Kragen, der von seinem Fuss nach aussen
+    # auslaeuft. Genau das trennt ein Ding, das *auf* einer Flaeche liegt,
+    # von einem Loch *in* ihr.
+    #
+    # **Als vierter Ring im selben Netz, nicht als eigener Aufruf.** Der
+    # erste Anlauf zeichnete ihn getrennt: gemessen 5,85 gegen 6,35 Bilder
+    # je Sekunde, also acht Prozent fuer eine Verzierung. Was hier kostet,
+    # ist die Zahl der Zeichenaufrufe und nicht die der Dreiecke - ein Ring
+    # mehr in einem Netz, das ohnehin gebaut wird, ist umsonst.
+    var sediment := Color(0.075, 0.150, 0.175, 0.30 * kraft)
     for i in n:
         ecken.append(saum[i])
-        farben.append(Color(dunkel.r, dunkel.g, dunkel.b, 0.0))
+        farben.append(sediment)
+    for i in n:
+        ecken.append(mitte + (umriss[i] - mitte) * 1.42)
+        farben.append(Color(sediment.r, sediment.g, sediment.b, 0.0))
 
     var netz := PackedInt32Array()
     for i in n:
@@ -840,9 +864,12 @@ func _kuppel(f: Dictionary, kraft: float) -> void:
         # Schulter -> Kante
         netz.append_array([1 + i, 1 + n + i, 1 + n + j])
         netz.append_array([1 + i, 1 + n + j, 1 + j])
-        # Kante -> Saum
+        # Kante -> Kragen
         netz.append_array([1 + n + i, 1 + 2 * n + i, 1 + 2 * n + j])
         netz.append_array([1 + n + i, 1 + 2 * n + j, 1 + n + j])
+        # Kragen -> aus
+        netz.append_array([1 + 2 * n + i, 1 + 3 * n + i, 1 + 3 * n + j])
+        netz.append_array([1 + 2 * n + i, 1 + 3 * n + j, 1 + 2 * n + j])
     RenderingServer.canvas_item_add_triangle_array(
         get_canvas_item(), netz, ecken, farben)
 

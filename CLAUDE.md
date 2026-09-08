@@ -1270,6 +1270,20 @@ derselbe Ort — und die Wölbung trägt ihn dann auch ohne Kegel, weil die
 Kuppe auf dem 1,9fachen dieses Tons steht und die Flanke auf dem
 Einfachen.
 
+**Und ein Fels sitzt auf etwas.** Er stand als dunkle Scheibe im Wasser,
+und das Sediment um ihn herum sah aus wie das Sediment überall sonst — im
+Bild schwebte er, statt auf dem Grund zu liegen. Um einen Block auf Sand
+häuft sich aber Sediment: ein flacher Kragen, der von seinem Fuß nach
+außen ausläuft. Genau das trennt ein Ding, das *auf* einer Fläche liegt,
+von einem Loch *in* ihr. Dazu ein stärkerer Sockel für die Wölbung: mit
+0,9 stand die Kuppe auf dem 1,9fachen des Grundtons und die Flanke auf dem
+1,3fachen — ein Unterschied, den man sucht statt ihn zu sehen.
+
+**Der Kragen ist der vierte Ring im selben Netz und kein eigener Aufruf.**
+Getrennt gezeichnet kostete er gemessen acht Prozent (5,85 gegen 6,35
+Bilder/s) — was hier kostet, ist die Zahl der Zeichenaufrufe und nicht die
+der Dreiecke. Im vorhandenen Netz ist er umsonst.
+
 **Unerkundetes Wasser ist immer noch Wasser.** `NEBEL_FARBE` lag so nahe
 an Schwarz, dass die Deckung von 0,93 den Rest erledigte: gemessen (0, 0,
 3), und auf 720×1600 war das obere Drittel eine schwarze Fläche. Das liest
