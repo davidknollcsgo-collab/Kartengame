@@ -187,8 +187,55 @@ func _gewaehlt_am_ende(i: int) -> void:
 ## weil er je erlegtem Tier faellt. Die Punkte sind eine Bestmarke und mit der
 ## Fahrt vorbei. Was bleibt, gehoert nach oben.
 func _zeichne_ende(breite: float, hoehe: float) -> void:
-    _flaeche.draw_rect(Rect2(0.0, 0.0, breite, hoehe),
-        Color(0.010, 0.030, 0.042, 0.72))
+    # **Die Blende war flach, und damit war der Vorsatz darunter hinfaellig.**
+    #
+    # Weiter unten steht als Begruendung fuer den leeren Mittelteil: "dazwischen
+    # bleibt der Graben zu sehen, aus dem man gerade zurueckkommt". Darueber lag
+    # aber eine Flaeche mit 72 % Deckung ueber den ganzen Schirm - der Graben
+    # war also gerade **nicht** zu sehen, und die halbe Bildhoehe war schlicht
+    # leer. Eine Absicht, die eine Zeile weiter aufgehoben wird, ist keine.
+    #
+    # Jetzt ein Verlauf: dicht dort, wo Text steht, und duenn in der Mitte.
+    # Beides zugleich - der Text bekommt mehr Kontrast als vorher, und der
+    # Graben kommt zum Vorschein. Gerechnet in Baendern statt als Polygon mit
+    # Farbe je Ecke, weil das auf einer Bedienebene nicht zuverlaessig
+    # ankommt (siehe `rund_hud.gd::_treffer`).
+    # **Vierzig Baender waren zu wenig, und die Kurve hatte einen Knick.**
+    # Ein `absf` in der Mitte heisst: die Steigung springt dort, und genau
+    # dort standen im Bild sichtbare Stufen quer ueber den Schirm - ich
+    # hatte die Kante, die ich wegnehmen wollte, durch vierzig kleine
+    # ersetzt. Ein Sinus hat keinen Knick, und sechsundneunzig Baender sind
+    # siebzehn Pixel hoch.
+    # **Baender ergaben Naehte, nicht einen Verlauf.**
+    #
+    # Der erste Anlauf zeichnete Rechtecke, die sich um ein Pixel
+    # ueberlappen - sonst bleibt zwischen ihnen eine Haarlinie offen. Wo
+    # zwei halbdurchsichtige Rechtecke einander ueberlappen, deckt es
+    # doppelt: im Bild lag alle siebzehn Pixel eine dunkle Linie quer ueber
+    # den Schirm. Ich hatte die eine Kante, die ich wegnehmen wollte, durch
+    # sechsundneunzig kleine ersetzt.
+    #
+    # Ein Netz mit Farbe je Ecke hat weder Naht noch Stufe. Der Kommentar in
+    # `rund_hud.gd::_treffer` sagt, dass das auf einer Bedienebene nicht
+    # ankommt - hier nachgemessen, und hier kommt es an. Beides ist wahr:
+    # dort liegt eine `Control`-Flaeche mit eigenem Material darunter.
+    var ecken := PackedVector2Array()
+    var farben := PackedColorArray()
+    var netz := PackedInt32Array()
+    var stufen := 24
+    for i in stufen + 1:
+        var t := float(i) / float(stufen)
+        var offen: float = pow(sin(PI * t), 1.3)
+        var ton := Color(0.010, 0.030, 0.042, lerpf(0.86, 0.30, offen))
+        ecken.append(Vector2(0.0, hoehe * t))
+        farben.append(ton)
+        ecken.append(Vector2(breite, hoehe * t))
+        farben.append(ton)
+    for i in stufen:
+        var a := i * 2
+        netz.append_array([a, a + 1, a + 3, a, a + 3, a + 2])
+    RenderingServer.canvas_item_add_triangle_array(
+        _flaeche.get_canvas_item(), netz, ecken, farben)
     var oben := hoehe * 0.14
     # **Dasselbe Blatt in zwei Farben.** Gehalten und gebrochen zeigen
     # dieselben Zahlen - was sich unterscheidet, ist eine Zeile und ein

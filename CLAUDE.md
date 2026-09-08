@@ -1211,6 +1211,25 @@ Er war zudem die einzige Art **ohne Schein**, weil `_schein()` in
 `_koerper()` sitzt und er das nicht ruft. Der Schein gehört zum Tier und
 nicht zur Füllmethode.
 
+**Farbe je Ecke kommt auf den Bedienebenen sehr wohl an.** In
+`rund_hud.gd::_treffer` stand als Begründung für eine ganze
+Ersatzkonstruktion: `draw_polygon()` mit `PackedColorArray` zeichne dort
+nichts, ein Dreiecksnetz ebenso wenig. Daraus wurden erst vier Lagen in je
+einer Farbe, dann neun Lagen mal sieben Keile, um Stufen und Nähte
+wegzumitteln — **dreiundsechzig Flächen für einen Verlauf**.
+
+Die Begründung stimmt nicht: `_tafel()` zeichnet zwei Zeilen weiter oben
+in derselben Datei und auf derselben Fläche einen Verlauf mit genau dieser
+Technik, und der ist im Bild da. Nachgemessen mit einem Netz in
+`rund_menue.gd`: kommt an. Jetzt ist der Saum **ein** Netz aus zwei
+Punktreihen, ohne Stufe und ohne Naht.
+
+Die Lehre ist nicht „diese Zeile war falsch", sondern: **eine Notiz über
+eine Einschränkung der Engine altert, und solange sie steht, baut man um
+sie herum.** Wer eine findet, prüft sie nach, bevor er ihr eine
+Konstruktion hinterherbaut — das kostet einen Lauf und hat hier
+sechzigmal so viel Code gespart.
+
 **Und der Treffersaum verdeckte ein Drittel des Schirms.** Er war ein
 Kreisausschnitt von hundertacht Grad in *einer* Farbe: an seinen beiden
 Enden stand eine schnurgerade Kante quer im Bild, und mit einer Tiefe von

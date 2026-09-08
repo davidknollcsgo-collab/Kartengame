@@ -552,63 +552,50 @@ func _treffer(breite: float, hoehe: float) -> void:
     # Tortenstueck ueber einem Viertel des Schirms. Deshalb wird je Winkel
     # ausgerechnet, wo die Kante liegt, und der Saum davor gelegt.
     #
-    # Zwei Lagen statt eines Verlaufs: breit und blass, schmal und hell -
-    # dieselbe Machart wie bei den Leuchtroehren. Der Grund ist hier
-    # allerdings ein technischer: **`draw_polygon()` mit Farbe je Ecke
-    # zeichnet auf dieser Ebene nichts**, und ein Dreiecksnetz ueber
-    # `canvas_item_add_triangle_array` ebenso wenig. Dieselbe Flaeche mit
-    # *einer* Farbe erscheint sofort - nachgemessen mit einem
-    # vollflaechigen Gruen.
+    # **Ein Netz, nicht dreiundsechzig Flaechen.**
+    #
+    # Hier stand als Begruendung: `draw_polygon()` mit Farbe je Ecke
+    # zeichne auf dieser Ebene nichts, ein Dreiecksnetz ebenso wenig - und
+    # daraus wurden erst vier Lagen in je einer Farbe, dann neun Lagen mal
+    # sieben Keile, um Stufen und Kanten wegzumitteln.
+    #
+    # Die Begruendung stimmt nicht mehr (oder nie): `_tafel()` zeichnet
+    # zwei Zeilen weiter oben in derselben Datei und auf derselben Flaeche
+    # einen Verlauf mit `draw_polygon()` und einem `PackedColorArray`, und
+    # der ist im Bild da. Nachgemessen mit demselben Mittel in
+    # `rund_menue.gd`: kommt an.
+    #
+    # Damit faellt die ganze Ersatzkonstruktion weg. Ein Netz aus zwei
+    # Punktreihen - innen auf null, an der Bildkante voll, und je Winkel
+    # zu den Enden des Bogens auslaufend - hat weder Stufe noch Naht, und
+    # es ist **eine** Flaeche statt dreiundsechzig.
     var halb := Vector2(breite, hoehe) * 0.5
-    var stufen := 12
-    # Vier Lagen statt zweier: jede naeher am Rand, schmaler und heller. Bei
-    # zweien blieb eine harte gerade Kante mitten im Bild stehen - vier
-    # ergeben eine Treppe, die bei diesen Deckungen als Verlauf durchgeht.
-    # **Neun Lagen statt vier.** Jede Lage endet innen mit einer harten
-    # Kante - das ist die Bedingung dieser Ebene, auf der ein Verlauf ueber
-    # die Ecken nicht ankommt. Vier davon ergaben vier sichtbare Stufen quer
-    # durchs Bild. Neun duenne ergeben dieselbe Gesamtdeckung (ueber die
-    # Ueberlagerung gerechnet: 1 - 0,975^9 gegen 1 - 0,815^4) und eine
-    # Treppe, deren Stufen unter der Wahrnehmungsschwelle liegen.
-    var lagen := 9
-    # **Und der Bogen laeuft zu den Seiten aus.**
-    #
-    # Er war ein Stueck von hundertacht Grad in *einer* Farbe: an seinen
-    # beiden Enden stand damit eine schnurgerade Kante quer im Bild, und
-    # zusammen mit der Tiefe von 0,34 verdeckte der Treffer ein Drittel des
-    # Schirms mit einer harten roten Flaeche. Er soll sagen, woher es kam -
-    # nicht die Sicht nehmen, und schon gar nicht in dem Augenblick, in dem
-    # man sie am dringendsten braucht.
-    #
-    # Ein Verlauf ueber die Ecken geht auf dieser Ebene nicht (siehe oben),
-    # also wird der Bogen in Keile zerlegt, und jeder bekommt seine eigene
-    # Deckung: `sin` ueber die Bogenlaenge, hoch 1,4. Neun Keile mal vier
-    # Lagen sind sechsunddreissig Flaechen fuer einen Augenblick - und die
-    # Kante ist weg.
-    var keile := 7
-    for lage in lagen:
-        var t_lage := float(lage) / float(lagen - 1)
-        var sp := lerpf(0.80, 0.34, t_lage)
-        var tief := lerpf(0.24, 0.05, t_lage)
-        var voll := lerpf(0.022, 0.115, t_lage) * f * f
-        for j in keile:
-            var um := (float(j) + 0.5) / float(keile)
-            var a: float = voll * pow(sin(PI * um), 1.4)
-            if a <= 0.004:
-                continue
-            var aussen := PackedVector2Array()
-            var innen := PackedVector2Array()
-            for i in 4:
-                var u := (float(j) + float(i) / 3.0) / float(keile)
-                var w := lerpf(r.angle() - sp, r.angle() + sp, u)
-                var d := Vector2.RIGHT.rotated(w)
-                var t := minf(halb.x / maxf(0.001, absf(d.x)),
-                    halb.y / maxf(0.001, absf(d.y)))
-                aussen.append(mitte + d * t * 1.6)
-                innen.append(mitte + d * t * (1.0 - tief))
-            innen.reverse()
-            _flaeche.draw_colored_polygon(aussen + innen,
-                Color(WARNUNG.r, WARNUNG.g, WARNUNG.b, a))
+    var stufen := 28
+    var sp := 0.80
+    var tief := 0.26
+    var ecken := PackedVector2Array()
+    var farben := PackedColorArray()
+    for i in stufen + 1:
+        var u := float(i) / float(stufen)
+        var w := lerpf(r.angle() - sp, r.angle() + sp, u)
+        var d := Vector2.RIGHT.rotated(w)
+        var t := minf(halb.x / maxf(0.001, absf(d.x)),
+            halb.y / maxf(0.001, absf(d.y)))
+        # Zu den Enden des Bogens auslaufend: sonst steht dort eine gerade
+        # Kante quer im Bild.
+        var laengs: float = pow(sin(PI * u), 1.4)
+        var voll := Color(WARNUNG.r, WARNUNG.g, WARNUNG.b,
+            0.46 * f * f * laengs)
+        ecken.append(mitte + d * t * (1.0 - tief))
+        farben.append(Color(voll.r, voll.g, voll.b, 0.0))
+        ecken.append(mitte + d * t * 1.25)
+        farben.append(voll)
+    var netz := PackedInt32Array()
+    for i in stufen:
+        var a := i * 2
+        netz.append_array([a, a + 2, a + 3, a, a + 3, a + 1])
+    RenderingServer.canvas_item_add_triangle_array(
+        _flaeche.get_canvas_item(), netz, ecken, farben)
 
 
 ## Oben in der Mitte: die Pause. Klein, weit weg vom Daumen, und ohne Ton -
