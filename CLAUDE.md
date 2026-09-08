@@ -1227,6 +1227,20 @@ einer harten Kante, vier davon waren vier sichtbare Stufen quer durchs
 Bild, neun liegen unter der Wahrnehmungsschwelle. Über die Überlagerung
 gerechnet ist die Gesamtdeckung dieselbe (1 − 0,975⁹ gegen 1 − 0,815⁴).
 
+**Alle Tafeln hatten dasselbe Gewicht.** Hülle, Welle, Punkte und Karte
+sahen gleich wichtig aus, und in dem Augenblick, in dem es eng wird, sagte
+nichts „hierhin schauen" — eine Anzeige ohne Rangordnung ist eine Liste.
+`_tafel()` nimmt deshalb eine `warnung`: die Hülle ist der einzige Grund,
+warum eine Fahrt endet, also wird ihre Tafel lauter, **wenn und nur wenn**
+es darauf ankommt. Ab zwei Dritteln abwärts, linear — quadriert stand die
+Warnung bei halber Hülle auf sechs Prozent, war also nicht da, wo sie
+hingehört.
+
+Der Puls liegt dabei **unter** dem Rand, nicht auf ihm: ein blinkender
+Umriss ist ein Fehlerdialog, ein Schein, der unter der Kante aufgeht, ist
+eine Tafel, die glüht. Und er atmet langsam — schnelles Blinken nimmt
+einem das Spiel aus der Hand, statt zu warnen.
+
 **Ein Treffer war eine Zahl, die sich ändert.** Wer im Augenblick des
 Treffers auf sein Ziel sah — und das tut man immer —, merkte davon nichts;
 er sah später eine kleinere Zahl und wusste nicht, wann sie kleiner

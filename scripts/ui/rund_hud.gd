@@ -129,9 +129,26 @@ func _hexweg(kasten: Rect2, schraege := 12.0) -> PackedVector2Array:
 ## Dieselbe Regel wie im Ausbau (`kolonie_schirm.gd::_tafelgrund`) und
 ## draussen im Graben. Sie ist hier nur ueber ein Sechseck gelegt statt ueber
 ## eine gerundete Karte.
+## Eine Tafel.
+##
+## **`warnung` ist die Rangordnung des Bedienbilds.** Vorher hatten alle
+## Tafeln dasselbe Gewicht: Huelle, Welle, Punkte und Karte sahen gleich
+## wichtig aus, und in dem Augenblick, in dem es eng wird, sagte nichts
+## "hierhin schauen". Eine Anzeige ohne Rangordnung ist eine Liste.
+##
+## Die Huelle ist der einzige Grund, warum eine Fahrt endet - also wird ihre
+## Tafel lauter, **wenn und nur wenn** es darauf ankommt: der Rand nimmt die
+## Warnfarbe an, wird dichter, und ein zweiter Zug darunter pulst. Solange
+## alles gut steht, ist sie so ruhig wie jede andere, und genau das macht
+## den Unterschied lesbar.
 func _tafel(kasten: Rect2, farbe := RAHMEN, deckung := 0.42,
-        schraege := 12.0) -> void:
+        schraege := 12.0, warnung := 0.0) -> void:
     var weg := _hexweg(kasten, schraege)
+    var kante := farbe
+    var kraft := deckung
+    if warnung > 0.001:
+        kante = farbe.lerp(WARNUNG, clampf(warnung * 1.3, 0.0, 1.0))
+        kraft = deckung * (1.0 + 1.5 * warnung)
     var grund := PackedColorArray()
     var rand := PackedColorArray()
     for punkt in weg:
@@ -139,12 +156,23 @@ func _tafel(kasten: Rect2, farbe := RAHMEN, deckung := 0.42,
             / maxf(1.0, kasten.size.y), 0.0, 1.0)
         var st := lerpf(1.85, 0.50, t * t)
         grund.append(Color(0.020 * st, 0.052 * st, 0.066 * st, 0.78))
-        rand.append(Color(farbe.r, farbe.g, farbe.b,
-            deckung * lerpf(1.0, 0.22, t * t)))
+        rand.append(Color(kante.r, kante.g, kante.b,
+            kraft * lerpf(1.0, 0.22, t * t)))
     _flaeche.draw_polygon(weg, grund)
     rand.append(rand[0])
-    _flaeche.draw_polyline_colors(weg + PackedVector2Array([weg[0]]),
-        rand, 1.3, true)
+    var zu := weg + PackedVector2Array([weg[0]])
+    # **Der Puls liegt unter dem Rand, nicht auf ihm.** Ein blinkender
+    # Umriss ist ein Fehlerdialog; ein Schein, der unter der Kante
+    # aufgeht, ist eine Tafel, die glueht. Und er atmet langsam - schnelles
+    # Blinken nimmt einem das Spiel aus der Hand, statt zu warnen.
+    if warnung > 0.001:
+        var puls := 0.5 + 0.5 * sin(_zeit * lerpf(1.9, 4.6, warnung))
+        var hof := PackedColorArray()
+        for i in zu.size():
+            hof.append(Color(WARNUNG.r, WARNUNG.g, WARNUNG.b,
+                (0.10 + 0.24 * puls) * warnung))
+        _flaeche.draw_polyline_colors(zu, hof, 5.0, true)
+    _flaeche.draw_polyline_colors(zu, rand, 1.3, true)
 
 
 ## Ein segmentierter Balken. **Segmente, nicht ein glatter Streifen**: bei
@@ -293,7 +321,18 @@ func _zeichne() -> void:
 ## Links oben: Huelle und Ladung des Stosslichts.
 func _zustand(_breite: float) -> void:
     var kasten := Rect2(RAND + _rand_seite, RAND + _rand_oben, 186.0, 62.0)
-    _tafel(kasten)
+    # **Ab zwei Dritteln, nicht ab dem ersten Kratzer.** Wer noch fast voll
+    # ist, braucht keine Warnung - sonst warnt die Anzeige immer und sagt
+    # damit nichts. Dieselbe Schwelle wie beim Lebensbalken ueber einem
+    # Tier, und aus demselben Grund.
+    var stand := 1.0
+    if lauf.huelle_voll > 0:
+        stand = clampf(float(lauf.huelle) / float(lauf.huelle_voll),
+            0.0, 1.0)
+    # Linear und nicht quadriert: quadriert stand die Warnung bei halber
+    # Huelle auf sechs Prozent, war also nicht da, wo sie hingehoert.
+    var alarm := clampf((0.60 - stand) / 0.60, 0.0, 1.0)
+    _tafel(kasten, RAHMEN, 0.42, 12.0, alarm)
     _text(kasten.position + Vector2(14.0, 22.0), "HULL", 11, LEISE)
     # **Die Zahl steht immer da.** Sie stand nur oberhalb der Segmentgrenze,
     # und darunter musste man Striche zaehlen, um zu wissen, wieviel man noch
