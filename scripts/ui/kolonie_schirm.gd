@@ -723,26 +723,30 @@ func _umschalterzeile(breite: float) -> void:
 ## gestanzt wirkt, und wenig genug, dass eine Zeile nicht ins Runde laeuft.
 const ECKE := 10.0
 
-## Wieviele Punkte eine Ecke bekommt. Drei reichen: bei zehn Pixeln Radius
-## liegt zwischen zwei Punkten weniger als ein Pixel Abweichung.
-const ECKPUNKTE := 4
-
-
-## Der Umriss einer Tafel mit gerundeten Ecken.
+## Der Umriss einer Tafel: **abgeschraegt, nicht gerundet.**
+##
+## **Zwei Bildschirme, zwei Sprachen fuer dieselbe Sache.** Das Bedienbild im
+## Graben zeichnet seine Tafeln als Achteck mit abgeschnittenen Ecken
+## (`rund_hud.gd::_hexweg`) - das ist die Handschrift dieses Spiels. Der
+## Kolonieschirm zeichnete dieselbe Sache als Rechteck mit runden Ecken,
+## also als gewoehnliche Anwendungsoberflaeche, und weil hier jede Karte,
+## jeder Reiter und jeder Knopf durch diese eine Funktion geht, war der
+## halbe Bildschirm in der falschen Sprache.
+##
+## Eine Ecke, eine Diagonale. Dieselbe Geometrie wie drueben, und damit
+## sehen Fahrt und Kolonie zum ersten Mal nach demselben Spiel aus.
 func _tafelform(kasten: Rect2) -> PackedVector2Array:
     var r := minf(ECKE, minf(kasten.size.x, kasten.size.y) * 0.5)
-    var punkte := PackedVector2Array()
-    var mitten := PackedVector2Array([
-        kasten.position + Vector2(r, r),
-        Vector2(kasten.end.x - r, kasten.position.y + r),
-        kasten.end - Vector2(r, r),
-        Vector2(kasten.position.x + r, kasten.end.y - r)])
-    for i in 4:
-        var von := PI + PI * 0.5 * float(i)
-        for j in ECKPUNKTE:
-            var w := von + PI * 0.5 * float(j) / float(ECKPUNKTE - 1)
-            punkte.append(mitten[i] + Vector2.RIGHT.rotated(w) * r)
-    return punkte
+    return PackedVector2Array([
+        kasten.position + Vector2(r, 0.0),
+        Vector2(kasten.end.x - r, kasten.position.y),
+        Vector2(kasten.end.x, kasten.position.y + r),
+        Vector2(kasten.end.x, kasten.end.y - r),
+        Vector2(kasten.end.x - r, kasten.end.y),
+        Vector2(kasten.position.x + r, kasten.end.y),
+        Vector2(kasten.position.x, kasten.end.y - r),
+        Vector2(kasten.position.x, kasten.position.y + r),
+    ])
 
 
 ## Der Grund einer Tafel: ein Verlauf von oben nach unten.
