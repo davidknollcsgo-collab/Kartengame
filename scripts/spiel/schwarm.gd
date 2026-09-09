@@ -886,6 +886,126 @@ func _gebogen(rund: PackedVector2Array,
     return neu
 
 
+## --- Die zweite Bildsprache: Dunkelheit mit Licht darin --------------------
+##
+## **Was man in der Tiefsee von einem Tier sieht, ist nicht seine Haut.**
+##
+## Alle siebzehn Arten waren bisher nach derselben Regel gebaut: ein
+## gefaerbter Leib, dazu ein paar helle Punkte als Zierde. Das ist die
+## Bildsprache eines Spiels, das bei Tageslicht spielt - dort ist ein Tier
+## eine Flaeche mit Farbe, und Leuchten ist ein Zusatz. Hier ist es
+## umgekehrt. In tausend Metern Tiefe gibt es kein Umgebungslicht; ein
+## Tier **ist** sein Leuchtmuster, und der Koerper wird daraus erschlossen.
+##
+## Genau daran erkennt die Meeresbiologie ihre Arten: nicht an der Form,
+## sondern an Zahl und Anordnung der Photophoren. Zwei Fische derselben
+## Gattung unterscheiden sich in einer Reihe Leuchtpunkte.
+##
+## Diese zwei Helfer sind die neue Sprache:
+##
+##   * `_dunkelleib()` - ein Koerper, der **verdeckt statt zu leuchten**.
+##     Fast schwarz, undurchsichtig, und nur dort sichtbar, wo eine Kante
+##     das Licht des Kegels fasst.
+##   * `_organe()` - eine Reihe Leuchtorgane auf einem Weg, durch die ein
+##     Puls laeuft. Sie tragen die Art, nicht der Umriss.
+##
+## Der alte Weg (`_koerper`, `_leib`) bleibt, solange Arten daran haengen -
+## zwei Sprachen nebeneinander waeren dauerhaft falsch, aber ein Umbau, der
+## siebzehn Arten auf einmal anfasst, ist nicht pruefbar.
+func _dunkelleib(ruecken: PackedVector2Array, profil: PackedFloat32Array,
+        farbe: Color, hitze: float) -> void:
+    var n := ruecken.size()
+    if n < 2 or profil.size() != n:
+        return
+    var mitte := Vector2.ZERO
+    for v in ruecken:
+        mitte += v
+    mitte /= float(n)
+    var zum_licht := lichtquelle - mitte
+    zum_licht = zum_licht.normalized() if zum_licht.length_squared() > 1.0 \
+        else Vector2.UP
+
+    # **Fast schwarz, und das ist der Punkt.** Ein Koerper in dieser Tiefe
+    # reflektiert kaum etwas; was ihn zeigt, ist dass hinter ihm nichts mehr
+    # durchkommt. Beim Brennen hellt er auf - dann ist es der Kegel, der ihn
+    # sichtbar macht, und das ist genau die Rueckmeldung, die man braucht.
+    var haut := Color(farbe.r, farbe.g, farbe.b).lerp(
+        Color(0.02, 0.05, 0.07), 0.84 - 0.44 * hitze)
+    var reihen := PackedFloat32Array([-1.08, -1.0, -0.5, 0.0, 0.5, 1.0, 1.08])
+    var ecken := PackedVector2Array()
+    var farben := PackedColorArray()
+    for i in n:
+        var vor: Vector2 = ruecken[maxi(0, i - 1)]
+        var nach: Vector2 = ruecken[mini(n - 1, i + 1)]
+        var laengs := (nach - vor)
+        laengs = laengs.normalized() if laengs.length() > 0.001 \
+            else Vector2.RIGHT
+        var quer := laengs.orthogonal()
+        var seit := quer.dot(zum_licht)
+        for v in reihen:
+            var rand := absf(v) > 1.001
+            var vv := clampf(v, -1.0, 1.0)
+            # Nur eine Ahnung von Woelbung: der Leib soll dunkel bleiben.
+            var st := 1.0 + 0.55 * maxf(0.0, vv * seit)
+            ecken.append(ruecken[i] + quer * profil[i] * v)
+            farben.append(_gedeckt(Color(haut.r * st, haut.g * st,
+                haut.b * st, 0.0 if rand else 0.94)))
+    var netz := PackedInt32Array()
+    var m := reihen.size()
+    for i in n - 1:
+        for j in m - 1:
+            var a := i * m + j
+            var b := a + m
+            netz.append_array([a, b, b + 1, a, b + 1, a + 1])
+    RenderingServer.canvas_item_add_triangle_array(
+        get_canvas_item(), netz, ecken, farben)
+
+    # Die Kante, die das Licht fasst - nur auf der Lichtseite, und nur so
+    # hell, dass sie den Umriss traegt.
+    for seite: float in SEITEN:
+        var weg := PackedVector2Array()
+        var toene := PackedColorArray()
+        for i in n:
+            var vor: Vector2 = ruecken[maxi(0, i - 1)]
+            var nach: Vector2 = ruecken[mini(n - 1, i + 1)]
+            var laengs := (nach - vor)
+            laengs = laengs.normalized() if laengs.length() > 0.001 \
+                else Vector2.RIGHT
+            var quer := laengs.orthogonal()
+            weg.append(ruecken[i] + quer * profil[i] * seite)
+            var f := maxf(0.0, quer.dot(zum_licht) * seite)
+            toene.append(_gedeckt(Color(farbe.r, farbe.g, farbe.b,
+                (0.10 + 0.50 * f) * (0.55 + 0.45 * hitze))))
+        draw_polyline_colors(weg, toene, 1.3, true)
+
+
+## Eine Reihe Leuchtorgane auf einem Weg, durch die ein Puls laeuft.
+##
+## **Sie tragen die Art, nicht der Umriss.** Zahl, Abstand und Takt sind das,
+## was eine Art von der naechsten unterscheidet - bei echten Tiefseefischen
+## genauso. Der Puls laeuft von vorn nach hinten: ein Leuchtmuster, das
+## stillsteht, ist eine Lichterkette.
+func _organe(weg: PackedVector2Array, farbe: Color, gross: float,
+        zeit: float, hitze: float, welle := 2.4) -> void:
+    var n := weg.size()
+    if n < 1 or gross <= 0.2:
+        return
+    var hell := farbe.lerp(Color(1.0, 0.99, 0.96), 0.45 + 0.35 * hitze)
+    for i in n:
+        var u := float(i) / float(maxi(1, n - 1))
+        # Der Puls: eine schmale Welle, die den Weg entlangwandert.
+        var lauf := 0.5 + 0.5 * sin(zeit * welle - u * 5.4)
+        var kraft := 0.34 + 0.66 * pow(lauf, 2.2)
+        var r := gross * (0.72 + 0.42 * kraft)
+        # Hof, Koerper, Kern - dieselbe Machart wie bei einer Knospe.
+        draw_circle(weg[i], r * 2.4,
+            _gedeckt(Color(farbe.r, farbe.g, farbe.b, 0.10 * kraft)))
+        draw_circle(weg[i], r,
+            _gedeckt(Color(farbe.r, farbe.g, farbe.b, 0.55 * kraft)))
+        draw_circle(weg[i], r * 0.46,
+            _gedeckt(Color(hell.r, hell.g, hell.b, 0.60 + 0.40 * kraft)))
+
+
 ## Ein Leib als **Roehre auf einem Rueckgrat** - nicht als Kugel.
 ##
 ## **Der strukturelle Fehler, den das behebt.** `_koerper()` faerbt jede Ecke
@@ -1501,95 +1621,128 @@ func _zahnkiefer(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -
         Color(0.94, 1.0, 0.98, 0.75 + 0.25 * hitze))
 
 
-## Der Schleier: eine **Glocke mit gebogenem Saum**, die pumpt.
+## Der Schleier: eine **Staatsqualle**, keine Glocke.
 ##
-## Sie war ein halber Kreis aus neun Punkten mit einem Strich hinten quer
-## darueber - im Bild ein Halbmond, und weil sie mit sechshundert Auftritten
-## die zweithaeufigste Art ist, war dieser Halbmond ein grosser Teil des
-## ganzen Spiels.
+## **Das hier ist ein neuer Entwurf und keine Ueberarbeitung.** Die alte
+## Fassung war eine halbe Scheibe mit vier Faeden - dieselbe Grundform wie
+## Glutqualle und Schlundmutter, und dieselbe wie alles andere im Feld: ein
+## Klumpen mit Anhaengen. Sie ist mit sechshundert Auftritten die
+## zweithaeufigste Art, und sie sah aus wie ihre Nachbarn.
 ##
-## Drei Dinge machen daraus eine Qualle, und alle drei sind Silhouette und
-## nicht Zierat:
+## Eine Siphonophore ist etwas anderes, und zwar auf eine Art, die man auf
+## zwanzig Pixeln sofort sieht: **sie ist eine Kette.** Vorn eine kleine
+## Gasblase, dahinter eine Reihe paariger Schwimmglocken, und daran ein
+## langer Faden mit Fangpolypen. Kein Tier im Spiel hat diesen Umriss - und
+## das ist genau der Grund, ihn ihr zu geben. Der Physalia-Bauplan ist
+## ausserdem der biologisch richtige fuer etwas, das "in Schwaermen kommt
+## und allein fast nichts wert ist": eine Siphonophore *ist* eine Kolonie.
 ##
-## **Der Saum ist gewellt.** Der Rand einer Glocke ist nie glatt; er hat
-## Lappen. Vier davon reichen - man sieht sie noch bei zwanzig Pixeln, weil
-## sie den *Umriss* aendern und nicht die Fuellung.
-##
-## **Sie pumpt.** Eine Glocke schiebt sich durchs Wasser, indem sie sich
-## zusammenzieht und wieder oeffnet - schmaler und laenger, dann breiter und
-## kuerzer. Das ist eine Bewegung der Form selbst, und sie kostet zwei
-## Faktoren.
-##
-## **Der Schirm ist hohl.** Die Fuellung stand auf 0,42 und stieg beim
-## Brennen auf 0,84 - eine helle Flaeche, die von der Nachbearbeitung
-## milchig wird. Eine Qualle sieht man *durch*; was sie zeigt, ist ihr Rand
-## und die vier Radialkanaele darin.
+## Und sie ist die erste Art in der neuen Bildsprache (`_dunkelleib`,
+## `_organe`): der Koerper verdeckt, das Leuchtmuster traegt die Art.
 func _schleier(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> void:
     var k := t.richtung
     var quer := k.orthogonal()
-    # Pumpen: eng und lang, dann breit und kurz. Gegenlaeufig, damit die
-    # Flaeche ungefaehr gleich bleibt - eine Glocke, die nur groesser wird,
-    # atmet nicht, sie waechst.
+    # Der Stamm pumpt: die Kette zieht sich zusammen und streckt sich wieder.
     var stoss := sin(t.alter * 3.4 + t.phase)
-    var breit := 1.24 + 0.16 * stoss
-    var lang := 1.02 - 0.14 * stoss
+    var lang := 1.0 + 0.12 * stoss
 
-    var schirm := PackedVector2Array()
-    for i in 15:
-        var w := lerpf(-PI * 0.52, PI * 0.52, float(i) / 14.0)
-        # Vier Lappen auf dem Saum. Der Faktor greift nur aussen an, damit
-        # die Kuppe glatt bleibt - eine Glocke ist oben rund und unten
-        # gefranst.
-        var lappen := 1.0 + 0.10 * cos(w * 4.0) * absf(sin(w))
-        schirm.append(p + (k * cos(w) * lang + quer * sin(w) * breit)
-            * r * lappen)
-    # Der Glockenrand hinten leicht eingezogen, statt gerade abgeschnitten.
-    #
-    # **Die Reihenfolge ist nicht beliebig.** Der Bogen laeuft von der einen
-    # Seite zur anderen; die drei Punkte muessen von *dort* zurueck. Falsch
-    # herum angehaengt kreuzt der Umriss sich selbst, und Godot meldet
-    # dreihundertneunundneunzig Mal je Lauf `triangulation failed` - stumm
-    # im Bild, laut im Log.
-    schirm.append(p - k * r * 0.30 + quer * r * 0.30)
-    schirm.append(p - k * r * 0.46)
-    schirm.append(p - k * r * 0.30 - quer * r * 0.30)
+    # **Der Stamm.** Er traegt alles andere und schwingt ueber seine Laenge
+    # aus - eine Kette im Wasser ist nie gerade.
+    var glieder := 13
+    var stamm := PackedVector2Array()
+    for i in glieder:
+        var u := float(i) / float(glieder - 1)
+        var x := lerpf(1.05, -2.35 * lang, u)
+        var schwung := sin(t.alter * 2.2 + u * 4.4 + t.phase) \
+            * r * 0.40 * pow(u, 1.5)
+        stamm.append(p + k * r * x + quer * schwung)
 
-    # **Sie geht jetzt durch `_koerper()` wie jede andere Art.**
-    #
-    # Hier stand ein Hauch Fuellung (0,16) unter einem Umriss, der auf 18 %
-    # Weiss anfing und beim Brennen auf 73 stieg. Auf einem Tier von zwanzig
-    # Pixeln ist das kein Koerper, sondern eine **weisse Sichel** - und weil
-    # der Schleier mit sechshundert Auftritten die zweithaeufigste Art ist,
-    # war diese Sichel ein grosser Teil des Spiels. Die anderen sechzehn
-    # Arten waren laengst gefuellte Leiber; genau diese eine und die
-    # Glutqualle waren es nicht, und man sah es sofort, sobald sie
-    # nebeneinander standen.
-    #
-    # `weich = 1` statt der ueblichen zwei: zweimal Ecken schneiden macht
-    # aus den vier Lappen wieder einen glatten Bogen, und die Lappen sind
-    # das Einzige, was den Saum vom Halbkreis unterscheidet.
-    _koerper(schirm, farbe, hitze, k, 1)
+    # Der Faden hinten: duenn, dunkel, mit Polypen daran. Er ist mehr als die
+    # halbe Laenge des Tieres und damit das, was seinen Umriss ausmacht.
+    var faden := PackedVector2Array()
+    var fadendick := PackedFloat32Array()
+    for i in range(5, glieder):
+        faden.append(stamm[i])
+        var u := float(i - 5) / float(glieder - 6)
+        fadendick.append(r * (0.10 - 0.075 * u))
+    _dunkelleib(faden, fadendick, farbe, hitze)
 
-    # Der Magen als einziger heller Punkt, in der Kuppe - eine Qualle hat
-    # genau ein undurchsichtiges Organ, und das ist es.
-    draw_circle(p + k * r * 0.18, r * 0.20,
-        Color(farbe.r, farbe.g, farbe.b, 0.30))
-    draw_circle(p + k * r * 0.18, r * 0.12,
-        Color(1.0, 0.96, 0.90, 0.40 + 0.40 * hitze))
+    # **Die Schwimmglocken.** Paarig, abwechselnd versetzt, nach hinten
+    # kleiner - der Antrieb einer Siphonophore sitzt vorn. Jede ist ein
+    # kleiner Kegel mit der Spitze nach aussen; zusammen ergeben sie den
+    # gezackten Umriss, an dem man die Art auf zwanzig Pixeln erkennt.
+    var glocken := 4
+    for i in glocken:
+        var u := float(i) / float(glocken - 1)
+        var wo: Vector2 = stamm[1 + i * 2]
+        var seite: float = 1.0 if i % 2 == 0 else -1.0
+        var gr := r * (1.05 - 0.30 * u)
+        # Sie pumpen gegenlaeufig - eine Reihe, die im Gleichtakt schlaegt,
+        # ist ein Maschinenteil.
+        var pump := 0.86 + 0.20 * sin(t.alter * 5.2 + float(i) * 1.9 + t.phase)
+        # **Ein Kelch, kein Ring.** Der erste Anlauf zog einen geschlossenen
+        # Bogen um den Stamm - im Bild fuenf ueberlappende Kreise, also
+        # wieder eine Perlenkette. Eine Schwimmglocke sitzt **neben** dem
+        # Stamm und oeffnet sich nach hinten: Wurzel am Stamm, Spitze nach
+        # aussen, Muendung achtern. Erst dadurch wird aus der Kette ein
+        # gezackter Umriss, und der ist das Erkennungszeichen der Art.
+        var wurzel := wo + quer * seite * gr * 0.20
+        var spitze := wo + quer * seite * gr * 1.15 * pump - k * gr * 0.16
+        var muendung := wo + quer * seite * gr * 0.66 - k * gr * 0.92 * pump
+        var kelch := PackedVector2Array([wurzel])
+        for j in 5:
+            var u2 := float(j) / 4.0
+            # Die Aussenkante gewoelbt, die Muendung eingezogen.
+            kelch.append(wurzel.lerp(spitze, u2)
+                + (spitze - wurzel).orthogonal() * seite * -0.22
+                    * sin(PI * u2))
+        kelch.append(muendung)
+        # **Gefuellt und wenige, nicht viele und umrissen.** Sechs duenn
+        # umrissene Dreiecke ergaben bei zwanzig Pixeln ein weisses Gitter -
+        # das Auge sah Linien, keine Glocken. Vier gefuellte Kelche mit
+        # weicher Kante lesen sich als Koerper, und dazwischen bleibt Platz,
+        # an dem man die Kette ueberhaupt als Kette erkennt.
+        # **Nicht ueber `_fuellung()`.** Der Helfer daempft die Farbe auf
+        # 22 % und die Deckung auf 45 - zusammen ein Achtel, und damit war
+        # der Kelch leer und nur sein Umriss da. Er ist fuer Zierat innen
+        # gedacht, nicht fuer einen Koerperteil, der die Silhouette traegt.
+        var kelchton := Color(farbe.r, farbe.g, farbe.b).lerp(
+            Color(0.10, 0.20, 0.30), 0.42)
+        draw_colored_polygon(kelch, _gedeckt(Color(kelchton.r, kelchton.g,
+            kelchton.b, 0.62 + 0.24 * hitze)))
+        _zug(kelch + PackedVector2Array([kelch[0]]),
+            Color(farbe.r, farbe.g, farbe.b, 0.20 + 0.24 * hitze), 1.0)
 
-    # Drei bis fuenf Faeden, und jeder Schleier haengt sie ein Stueck weiter
-    # oder kuerzer nach hinten. Ein Schwarm aus Wolken, in dem jede Wolke
-    # dieselben vier Faeden in derselben Laenge zieht, ist ein Kamm.
-    var faeden := 3 + int(_eigenart(t, 4.9) * 3.0)
-    var laenge := lerpf(1.45, 2.05, _eigenart(t, 7.1))
-    for i in faeden:
-        var s := (float(i) - float(faeden - 1) * 0.5) * 0.42
-        var wurzel := p - k * r * 0.2 + quer * r * s
-        # Deutlicher ausschwingend und je Faden versetzt: vier Faeden mit
-        # derselben Auslenkung sind ein Kamm.
-        var wehen := sin(t.alter * 4.4 + float(i) * 1.7 + t.phase) * r * 0.85
-        _fangarm(wurzel, -k, r * laenge, r * 0.075, wehen, farbe, 0.30)
+    # **Die Gasblase vorn** - das Einzige an ihr, was hell ist, und der
+    # Grund, warum sie oben schwimmt.
+    var blase := stamm[0] + k * r * 0.18
+    draw_circle(blase, r * 0.68,
+        _gedeckt(Color(farbe.r, farbe.g, farbe.b, 0.13 + 0.14 * hitze)))
+    draw_circle(blase, r * 0.46,
+        _gedeckt(Color(farbe.r, farbe.g, farbe.b, 0.26 + 0.26 * hitze)))
+    draw_circle(blase, r * 0.22,
+        _gedeckt(Color(farbe.r, farbe.g, farbe.b, 0.46 + 0.34 * hitze)))
 
+    # **Das Leuchtmuster ist die Art.** Eine Reihe Organe am Stamm, durch
+    # die ein Puls nach hinten laeuft - genau das, woran man eine
+    # Siphonophore im Dunkeln erkennt, und das Einzige an ihr, was von
+    # weitem zu sehen ist.
+    # Kleiner als die Glocken und **zwischen** ihnen: ein Organ, das auf
+    # einer Glocke sitzt, verschwindet in ihr.
+    var kette := PackedVector2Array()
+    for i in range(1, glieder - 1):
+        kette.append(stamm[i])
+    _organe(kette, farbe, r * 0.075, t.alter, hitze, 3.0)
+
+    # Fangpolypen am Faden: kurz, ungleich lang, nach hinten treibend.
+    for i in 4:
+        var idx := 6 + i * 2
+        if idx >= stamm.size():
+            break
+        var wurzel: Vector2 = stamm[idx]
+        var laenge := r * (0.42 + 0.34 * _eigenart(t, 4.1 + float(i)))
+        var wehen := sin(t.alter * 4.0 + float(i) * 2.2 + t.phase) * r * 0.26
+        _fangarm(wurzel, -k, laenge, r * 0.045, wehen, farbe, 0.30)
 
 func _panzerkrebs(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> void:
     # Breiter, flacher Panzer, sechs Laufbeine, zwei schwere Scheren voran.
