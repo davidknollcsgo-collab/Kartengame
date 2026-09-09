@@ -3023,7 +3023,7 @@ func _n_zahnkiefer(p: Vector2, r: float, farbe: Color, t: Raeuber,
         # Faden mit Anbauten - jedes Teil fuer sich richtig, zusammen ein
         # Haufen. Ein Pfeilwurm ist schlank, aber er ist ein Koerper.
         profil.append(r * (0.03 + 0.30 * sin(PI * u)))
-    _dunkelleib(ruecken, profil, farbe, hitze)
+    _zellleib(ruecken, profil, farbe, hitze)
 
     # **Zwei Paar Seitenflossen.** Waagerechte Saeume, nicht senkrechte
     # Flossen - ein Pfeilwurm haelt sich damit in der Schwebe. Sie sind das
@@ -3092,7 +3092,7 @@ func _n_panzerkrebs(p: Vector2, r: float, farbe: Color, t: Raeuber,
         # die groesste Breite liegt vorn im Kopfschild.
         var b: float = sin(PI * pow(u, 0.62))
         profil.append(r * (0.16 + 0.56 * pow(b, 0.55)))
-    _dunkelleib(ruecken, profil, farbe, hitze)
+    _zellleib(ruecken, profil, farbe, hitze)
 
     # **Die Querbaender.** Sieben Ringe, jeder mit einer dunklen Fuge und
     # einer hellen Lippe auf der Lichtseite - dieselbe Sprache wie ueberall,
@@ -3187,3 +3187,148 @@ func _n_glutqualle(p: Vector2, r: float, farbe: Color, t: Raeuber,
         _gedeckt(Color(1.0, 0.86, 0.72, 0.16 + 0.20 * hitze)))
     draw_circle(kern, r * (0.17 + 0.04 * glut),
         _gedeckt(Color(1.0, 0.94, 0.86, 0.70 + 0.30 * hitze)))
+
+
+# --- Zellschattierung: flaechig, deckend, harte Stufen ------------------------
+#
+# **Warum alles bisher nach Strichmaennchen aussah.** Jede Zeichnung in
+# dieser Datei ist aus *Linien* gebaut: ein duenner heller Zug auf einer
+# Flaeche mit zehn bis dreissig Prozent Deckung. Das ergibt Umrisse, die im
+# Dunkeln leuchten - und genau das ist ein Strichmaennchen, egal wie gut die
+# Anatomie darunter stimmt. Auch der Verlauf in `_koerper()` und `_leib()`
+# aendert daran nichts: ein weicher Verlauf **ist** keine Form, er ist ein
+# Farbwechsel.
+#
+# Was ein flaechiges Bild ausmacht - Anime, Cel-Shading, "2D mit
+# 3D-Wirkung" - sind vier Dinge, und alle vier fehlten:
+#
+#   1. **Deckende, gesaettigte Flaechen.** Kein Durchscheinen. Ein Koerper
+#      verdeckt, was hinter ihm liegt, sonst ist er ein Schleier.
+#   2. **Harte Tonstufen statt Verlauf.** Zwei bis drei Toene mit einer
+#      sichtbaren Grenze dazwischen. Die Grenze ist die Form - ein weicher
+#      Uebergang sagt "irgendwo hier wird es dunkler", eine Kante sagt "hier
+#      dreht sich die Oberflaeche weg".
+#   3. **Ein hartes Glanzlicht.** Eine kleine helle Flaeche mit scharfem
+#      Rand, nicht ein Schimmer.
+#   4. **Eine Kontur.** In dieser Welt kann sie nicht dunkel sein - auf
+#      schwarzem Wasser saehe man sie nicht -, also ein Randlicht: heller
+#      Saum auf der Lichtseite, dunkler Ton auf der anderen.
+#
+# `_zellleib()` macht alle vier auf einmal, aus derselben Darstellung wie
+# `_leib()`: Rueckgrat plus Profil. Die Toene werden als **getrennte
+# Flaechen** gezeichnet und nicht als Verlauf - nur so bekommt die Grenze
+# eine Kante.
+
+
+## Wieviel dunkler der Schattenton ist, wie hell der Lichtton.
+const ZELL_SCHATTEN := 0.44
+const ZELL_LICHT := 0.34
+
+
+## Ein Querschnittsband eines Rueckgrats als Flaeche.
+##
+## `von` und `bis` sind Anteile der halben Breite (−1 bis +1). Damit laesst
+## sich der Leib in Toenungsbaender zerlegen, deren Grenzen **Kanten** sind.
+func _band(ruecken: PackedVector2Array, profil: PackedFloat32Array,
+        von: float, bis: float) -> PackedVector2Array:
+    var n := ruecken.size()
+    var oben := PackedVector2Array()
+    var unten := PackedVector2Array()
+    for i in n:
+        var vor: Vector2 = ruecken[maxi(0, i - 1)]
+        var nach: Vector2 = ruecken[mini(n - 1, i + 1)]
+        var laengs := (nach - vor)
+        laengs = laengs.normalized() if laengs.length() > 0.001 \
+            else Vector2.RIGHT
+        var quer := laengs.orthogonal()
+        oben.append(ruecken[i] + quer * profil[i] * von)
+        unten.append(ruecken[i] + quer * profil[i] * bis)
+    unten.reverse()
+    return oben + unten
+
+
+## Ein Leib in Zellschattierung.
+func _zellleib(ruecken: PackedVector2Array, profil: PackedFloat32Array,
+        farbe: Color, hitze: float) -> void:
+    var n := ruecken.size()
+    if n < 3 or profil.size() != n:
+        return
+    var mitte := Vector2.ZERO
+    for v in ruecken:
+        mitte += v
+    mitte /= float(n)
+    var zum_licht := lichtquelle - mitte
+    zum_licht = zum_licht.normalized() if zum_licht.length_squared() > 1.0 \
+        else Vector2.UP
+    # Auf welcher Seite des Rueckgrats das Licht steht. Gemittelt ueber den
+    # ganzen Leib: eine Toenungsgrenze, die je Segment die Seite wechselt,
+    # ist kein Schatten, sondern ein Zickzack.
+    var seit := 0.0
+    for i in n:
+        var vor: Vector2 = ruecken[maxi(0, i - 1)]
+        var nach: Vector2 = ruecken[mini(n - 1, i + 1)]
+        var laengs := (nach - vor)
+        laengs = laengs.normalized() if laengs.length() > 0.001 \
+            else Vector2.RIGHT
+        seit += laengs.orthogonal().dot(zum_licht)
+    seit = signf(seit / float(n)) if absf(seit) > 0.001 else 1.0
+
+    var grund := Color(farbe.r, farbe.g, farbe.b)
+    # Der Schatten kippt ins Blaue, nicht ins Graue - dieselbe Regel wie
+    # ueberall: was im Wasser im Schatten liegt, verliert zuerst das Rot.
+    var schatten := grund.lerp(Color(0.10, 0.20, 0.34), 0.52) \
+        * Color(ZELL_SCHATTEN, ZELL_SCHATTEN, ZELL_SCHATTEN, 1.0)
+    var licht := grund.lerp(Color(1.0, 0.98, 0.94), ZELL_LICHT)
+    # Beim Brennen wandert alles nach oben, aber die Stufen bleiben Stufen.
+    if hitze > 0.01:
+        grund = grund.lerp(Color(1.0, 0.98, 0.94), 0.30 * hitze)
+        licht = licht.lerp(Color(1.0, 1.0, 0.98), 0.45 * hitze)
+        schatten = schatten.lerp(grund, 0.40 * hitze)
+
+    # **Deckend, und in drei getrennten Baendern.**
+    #
+    # Der erste Anlauf fuellte den ganzen Leib und malte Schatten und Licht
+    # darueber: drei Flaechen, von denen sich zwei mit der ersten
+    # ueberlappen, zusammen das 1,7fache der Koerperflaeche. Gemessen zwoelf
+    # Prozent der Bildrate. Aneinandergelegt statt uebereinander ist es
+    # dieselbe Optik bei 40 % weniger Fuellung - und weil die Baender an
+    # ihren Grenzen stossen statt sich zu decken, bleibt die Kante scharf,
+    # auf die es hier ankommt.
+    draw_colored_polygon(_band(ruecken, profil, -1.0 * seit, -0.44 * seit),
+        _gedeckt(Color(licht.r, licht.g, licht.b, 1.0)))
+    draw_colored_polygon(_band(ruecken, profil, -0.44 * seit, 0.16 * seit),
+        _gedeckt(Color(grund.r, grund.g, grund.b, 1.0)))
+    draw_colored_polygon(_band(ruecken, profil, 0.16 * seit, 1.0 * seit),
+        _gedeckt(Color(schatten.r, schatten.g, schatten.b, 1.0)))
+
+    # **Das Glanzlicht.** Eine kleine harte Flaeche im vorderen Drittel,
+    # dort wo der Leib am dicksten ist - nicht ueber die ganze Laenge, sonst
+    # ist es ein Streifen und kein Glanz.
+    var a := maxi(1, int(float(n) * 0.18))
+    var b := maxi(a + 1, int(float(n) * 0.46))
+    var kurz := PackedVector2Array()
+    var kurz_p := PackedFloat32Array()
+    for i in range(a, b + 1):
+        kurz.append(ruecken[i])
+        kurz_p.append(profil[i])
+    if kurz.size() >= 2:
+        draw_colored_polygon(_band(kurz, kurz_p, -0.88 * seit, -0.62 * seit),
+            _gedeckt(Color(1.0, 0.99, 0.96, 0.72 + 0.28 * hitze)))
+
+    # **Die Kontur.** Auf schwarzem Wasser kann sie nicht dunkel sein - also
+    # ein Randlicht auf der Lichtseite und ein dunkler Saum auf der anderen.
+    for s: float in SEITEN:
+        var weg := PackedVector2Array()
+        for i in n:
+            var vor: Vector2 = ruecken[maxi(0, i - 1)]
+            var nach: Vector2 = ruecken[mini(n - 1, i + 1)]
+            var laengs := (nach - vor)
+            laengs = laengs.normalized() if laengs.length() > 0.001 \
+                else Vector2.RIGHT
+            weg.append(ruecken[i] + laengs.orthogonal() * profil[i] * s)
+        if s == -seit:
+            draw_polyline(weg, _gedeckt(Color(1.0, 0.99, 0.96,
+                0.55 + 0.35 * hitze)), 1.8, true)
+        else:
+            draw_polyline(weg, _gedeckt(Color(schatten.r * 0.5,
+                schatten.g * 0.5, schatten.b * 0.5, 0.9)), 1.4, true)
