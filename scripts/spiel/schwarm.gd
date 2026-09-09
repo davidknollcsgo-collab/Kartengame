@@ -925,6 +925,34 @@ func _dunkelleib(ruecken: PackedVector2Array, profil: PackedFloat32Array,
     zum_licht = zum_licht.normalized() if zum_licht.length_squared() > 1.0 \
         else Vector2.UP
 
+    # **Ein Schein, der alles zusammenhaelt.**
+    #
+    # Der erste Anlauf der neuen Arten sah vereinzelt aus: eine Nadel, zwei
+    # Flossenpaare, ein Hakenfaecher, zwei Leuchtpunkte - richtige Teile,
+    # die nebeneinander im Wasser standen, ohne dass etwas sie zu **einem**
+    # Tier machte. Genau das ist der Preis der neuen Sprache: wenn der
+    # Koerper dunkel ist, bindet er nichts mehr.
+    #
+    # Was bindet, ist ein weicher Schein um den ganzen Umriss - dieselbe
+    # Schale wie `_schein()` sie um ein Tier legt, hier um das Rueckgrat.
+    # Er ist blass genug, dass der Leib dunkel bleibt, und weit genug, dass
+    # die Anbauten hineinreichen: was in demselben Schein liegt, gehoert
+    # zusammen.
+    var huelle := PackedVector2Array()
+    var gegen := PackedVector2Array()
+    for i in n:
+        var vor0: Vector2 = ruecken[maxi(0, i - 1)]
+        var nach0: Vector2 = ruecken[mini(n - 1, i + 1)]
+        var q0 := (nach0 - vor0)
+        q0 = q0.orthogonal().normalized() if q0.length() > 0.001 \
+            else Vector2.UP
+        # Weiter als der Leib: der Schein soll die Anbauten mitfassen.
+        var weit: float = profil[i] * 1.5 + 2.0
+        huelle.append(ruecken[i] + q0 * weit)
+        gegen.append(ruecken[i] - q0 * weit)
+    gegen.reverse()
+    _schein(huelle + gegen, farbe, 7.0 + 14.0 * hitze, 0.09 + 0.11 * hitze)
+
     # **Fast schwarz, und das ist der Punkt.** Ein Koerper in dieser Tiefe
     # reflektiert kaum etwas; was ihn zeigt, ist dass hinter ihm nichts mehr
     # durchkommt. Beim Brennen hellt er auf - dann ist es der Kegel, der ihn
@@ -2991,7 +3019,10 @@ func _n_zahnkiefer(p: Vector2, r: float, farbe: Color, t: Raeuber,
             + quer * schlag * r * 0.22 * pow(u, 1.8))
         # Vorn spitz, in der Mitte am dicksten, hinten spitz - ein Wurm ist
         # an beiden Enden zu.
-        profil.append(r * (0.02 + 0.16 * sin(PI * u)))
+        # **Dick genug, dass er ein Tier ist.** Mit 0,16 Radien war er ein
+        # Faden mit Anbauten - jedes Teil fuer sich richtig, zusammen ein
+        # Haufen. Ein Pfeilwurm ist schlank, aber er ist ein Koerper.
+        profil.append(r * (0.03 + 0.30 * sin(PI * u)))
     _dunkelleib(ruecken, profil, farbe, hitze)
 
     # **Zwei Paar Seitenflossen.** Waagerechte Saeume, nicht senkrechte
@@ -3006,12 +3037,16 @@ func _n_zahnkiefer(p: Vector2, r: float, farbe: Color, t: Raeuber,
         laengs = laengs.normalized() if laengs.length() > 0.001 else k
         var q := laengs.orthogonal()
         for seite: float in SEITEN:
+            # **Angewachsen, nicht danebengestellt.** Die Wurzel liegt
+            # *innerhalb* des Leibes (bei −0,4 statt 0), damit die Flosse
+            # ihn ueberlappt statt ihn zu beruehren. Zwei Formen, die sich
+            # nur beruehren, liest das Auge als zwei Dinge.
             var saum := PackedVector2Array()
             for j in 7:
                 var v := lerpf(-1.0, 1.0, float(j) / 6.0)
-                saum.append(wo + laengs * r * 0.44 * v
-                    + q * seite * r * 0.40 * (1.0 - v * v))
-            saum.append(wo - laengs * r * 0.44)
+                saum.append(wo + laengs * r * 0.50 * v
+                    + q * seite * r * 0.46 * (1.0 - v * v))
+            saum.append(wo - laengs * r * 0.50 - q * seite * r * 0.12)
             draw_colored_polygon(saum, _gedeckt(Color(farbe.r, farbe.g,
                 farbe.b, 0.16 + 0.16 * hitze)))
             _zug(saum + PackedVector2Array([saum[0]]),
