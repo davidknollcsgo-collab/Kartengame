@@ -2014,13 +2014,9 @@ func _sprungaal(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) ->
     var k := t.richtung
     var quer := k.orthogonal()
 
-    var glieder := 5
-    for i in range(glieder - 1, -1, -1):
-        var f := float(i) / float(glieder - 1)
-        var wo := p - k * r * 1.5 * laenge * f \
-            + quer * sin(t.alter * 7.0 + f * 4.2 + t.phase) * r * 0.34 * f
-        draw_circle(wo, r * dicke * (0.52 - 0.30 * f),
-            Color(farbe.r, farbe.g, farbe.b, (0.34 + 0.40 * hitze) * (1.0 - 0.5 * f)))
+    # **Die fuenf Kreise dahinter sind weg.** Sie waren der Schwanz, bevor
+    # der Leib einer war - eine Perlenkette hinter einer Raute, dieselbe
+    # Sorte wie bei der Grabnatter. Der Ruecken traegt ihn jetzt selbst.
 
     # **Ein Aal ist lang.**
     #
@@ -2032,19 +2028,25 @@ func _sprungaal(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) ->
     # ist beim Zustossen ueber drei Radien lang. Das ist die ganze Aussage
     # dieser Art - sie schnellt vor -, und sie steht damit im Umriss statt in
     # einer Bewegung, die man verpassen kann.
-    var kopf := PackedVector2Array([
-        p + k * r * 1.30 * laenge,
-        p + k * r * 0.72 * laenge + quer * r * 0.40 * dicke,
-        p + k * r * 0.10 + quer * r * 0.46 * dicke,
-        p - k * r * 0.90 + quer * r * 0.26 * dicke,
-        p - k * r * 1.70 + quer * r * 0.10 * dicke,
-        p - k * r * 1.86,
-        p - k * r * 1.70 - quer * r * 0.10 * dicke,
-        p - k * r * 0.90 - quer * r * 0.26 * dicke,
-        p + k * r * 0.10 - quer * r * 0.46 * dicke,
-        p + k * r * 0.72 * laenge - quer * r * 0.40 * dicke,
-    ])
-    _koerper(kopf, farbe, hitze, t.richtung)
+    # **Als Roehre auf einem Rueckgrat** (siehe `_leib()`). Ein Aal ist der
+    # Schlauch schlechthin - und er ist die Art, an der das am meisten
+    # traegt, weil sein ganzer Umriss aus Laenge besteht. Der Ruecken
+    # schlaengelt dabei ueber seine eigene Laenge: ein Aal, der als starre
+    # Spindel durchs Wasser schiesst, ist ein Pfeil.
+    var ruecken := PackedVector2Array()
+    var profil := PackedFloat32Array()
+    var stufen := 15
+    for i in stufen:
+        var u := float(i) / float(stufen - 1)
+        var x := lerpf(1.30 * laenge, -1.86, u)
+        # Zwei Wellen ueber den Leib, nach hinten wachsend - vorn steuert
+        # er, hinten treibt er.
+        var wellen := sin(t.alter * 6.0 + u * 5.6 + t.phase) \
+            * r * 0.30 * pow(u, 1.4) * (1.0 - 0.6 * maxf(0.0, schub))
+        ruecken.append(p + k * r * x + quer * wellen)
+        var b: float = sin(PI * pow(u, 0.46))
+        profil.append(r * dicke * (0.04 + 0.46 * pow(b, 0.9)))
+    _leib(ruecken, profil, farbe, hitze)
 
     # Ein heller Blitz entlang des Leibes, wenn er gerade schiesst.
     if schub > 0.45:
@@ -2429,23 +2431,26 @@ func _lichtscheu(p: Vector2, r: float, farbe: Color, t: Raeuber,
     # hinten auf eine Spitze auslaufend, 2,5 lang zu 1,0 breit. Und die
     # Kapuze ist ihre Regel als Bild - ein Tier, das vor dem eigenen Licht
     # zurueckweicht, sieht aus, als duckte es sich unter etwas weg.
+    # **Als Roehre auf einem Rueckgrat** (siehe `_leib()`), wie Zahnkiefer
+    # und Sprungaal. Das Profil bleibt dasselbe - es war schon vorher aus
+    # einer Breitenfunktion gebaut und nicht aus einer Eckenliste; was sich
+    # aendert, ist die Beleuchtung: sie folgt jetzt der Woelbung quer zum
+    # Ruecken statt der Richtung vom Schwerpunkt.
     var lang := 1.05 + 0.20 * (1.0 - eng)
-    var oben := PackedVector2Array()
-    var unten := PackedVector2Array()
-    for i in 11:
-        var u := float(i) / 10.0
+    var ruecken := PackedVector2Array()
+    var profil := PackedFloat32Array()
+    for i in 13:
+        var u := float(i) / 12.0
         var x := lerpf(lang, -1.45, u)
+        ruecken.append(p + k * x * r + quer * (_biegung * r * 2.5
+            * pow(u, 1.7)))
         # Vorn die Kapuze, hinten die Spitze. Der Exponent zieht die groesste
         # Breite nach vorn - hinten laeuft sie lang aus, statt symmetrisch
-        # zu sein wie ein Blatt.
-        var b := pow(sin(PI * pow(u, 0.58)), 1.15) * 0.52
-        # Beim Zurueckweichen zieht sie sich zusammen: schmaler und kuerzer.
-        b *= 1.0 - 0.26 * eng
-        oben.append(p + k * x * r + quer * b * r)
-        unten.append(p + k * x * r - quer * b * r)
-    unten.reverse()
-    var leib := oben + unten
-    _koerper(leib, farbe, hitze, k, 1)
+        # zu sein wie ein Blatt. Beim Zurueckweichen zieht sie sich
+        # zusammen: schmaler und kuerzer.
+        var b: float = pow(sin(PI * pow(u, 0.58)), 1.15) * 0.52
+        profil.append(r * b * (1.0 - 0.26 * eng))
+    _leib(ruecken, profil, farbe, hitze)
 
     # Der Kapuzensaum: eine Rille quer ueber den Vorderleib, dort wo die
     # Kapuze aufhoert. Sie sagt, dass vorn etwas *ueber* dem Koerper liegt.
