@@ -581,17 +581,17 @@ func _zeichne(t: Raeuber, stufe := 0) -> void:
 
     match t.art:
         Arten.Art.ZAHNKIEFER:
-            _zahnkiefer(p, r, farbe, t, hitze)
+            _n_zahnkiefer(p, r, farbe, t, hitze)
         Arten.Art.SCHLEIER:
             _schleier(p, r, farbe, t, hitze)
         Arten.Art.PANZERKREBS:
-            _panzerkrebs(p, r, farbe, t, hitze)
+            _n_panzerkrebs(p, r, farbe, t, hitze)
         Arten.Art.GRABNATTER:
             _grabnatter(p, r, farbe, t, hitze)
         Arten.Art.SCHILDKORALLE:
             _schildkoralle(p, r, farbe, t, hitze)
         Arten.Art.GLUTQUALLE:
-            _glutqualle(p, r, farbe, t, hitze)
+            _n_glutqualle(p, r, farbe, t, hitze)
         Arten.Art.TREIBANKER:
             _treibanker(p, r, farbe, t, hitze)
         Arten.Art.SPRUNGAAL:
@@ -997,9 +997,27 @@ func _organe(weg: PackedVector2Array, farbe: Color, gross: float,
         var lauf := 0.5 + 0.5 * sin(zeit * welle - u * 5.4)
         var kraft := 0.34 + 0.66 * pow(lauf, 2.2)
         var r := gross * (0.72 + 0.42 * kraft)
-        # Hof, Koerper, Kern - dieselbe Machart wie bei einer Knospe.
+        # **Hof, Koerper, Kern - aber nur, solange man sie unterscheidet.**
+        #
+        # Drei Kreise je Organ sind bei einer Rippenqualle mit acht Reihen
+        # zu je sieben Organen **hundertachtundsechzig Kreise fuer ein
+        # Tier**, und gemessen kostet das sieben Prozent der Bildrate. Der
+        # Kern misst bei kleinen Organen unter einem Pixel - er ist dort
+        # nicht Zierde, sondern Rechnerei ohne Bild.
+        #
+        # Dieselbe Regel wie ueberall in dieser Datei: was man nicht sieht,
+        # wird nicht gezeichnet. Die Schwelle steht am Radius und nicht an
+        # der Tierzahl, weil ein Organ von einem Pixel bei zwei Tieren
+        # genauso unsichtbar ist wie bei achtzig.
         draw_circle(weg[i], r * 2.4,
             _gedeckt(Color(farbe.r, farbe.g, farbe.b, 0.10 * kraft)))
+        if r < 1.6:
+            # Ein einziger Kreis, aber in der Kernfarbe: was uebrig bleibt,
+            # soll der helle Punkt sein und nicht der blasse Koerper.
+            draw_circle(weg[i], r,
+                _gedeckt(Color(hell.r, hell.g, hell.b,
+                    0.55 + 0.35 * kraft)))
+            continue
         draw_circle(weg[i], r,
             _gedeckt(Color(farbe.r, farbe.g, farbe.b, 0.55 * kraft)))
         draw_circle(weg[i], r * 0.46,
@@ -2933,3 +2951,204 @@ func _spiegler(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> 
             Color(0.92, 0.98, 1.0, 0.30 * blenden), 1.6)
 
     _auge(p + k * r * 0.46, r * 0.13, hitze, farbe)
+
+
+# --- Die neuen Arten ---------------------------------------------------------
+#
+# **Hier faengt der Entwurf von vorn an.** Die Funktionen darueber bleiben in
+# der Datei, aber sie verlieren ihren Aufrufer, sobald ihre Art hier
+# ankommt - geloescht wird nichts, bis alle siebzehn umgezogen sind.
+#
+# Der Grund fuer den Schnitt: alle alten Arten waren nach *einer* Regel
+# gebaut - ein gefaerbter Leib, ein paar helle Punkte als Zierde. Jede
+# Ueberarbeitung daran blieb deshalb dieselbe Form in anderer Beleuchtung.
+# Was hier entsteht, geht von der Biologie aus und nicht vom vorigen Bild:
+# jede Art bekommt einen **Bauplan**, den keine andere hat, und ihr
+# Leuchtmuster traegt sie, nicht ihr Umriss.
+
+
+## Der Zahnkiefer: ein **Pfeilwurm**.
+##
+## Seine Regel ist die schlichteste im Spiel - "kommt geradeaus und stirbt
+## schnell, der Massstab fuer alles andere". Ein Pfeilwurm (Chaetognath) ist
+## genau das als Tier: durchsichtig, gerade, ohne Umweg, mit einem Kranz aus
+## Greifhaken am Kopf und zwei Paar seitlicher Flossen. Er hat **keinen
+## Fischleib** - kein Kopf, kein Schwanz, keine Woelbung -, und das ist der
+## Unterschied zum alten Drachenfisch: eine Nadel statt einer Spindel.
+func _n_zahnkiefer(p: Vector2, r: float, farbe: Color, t: Raeuber,
+        hitze: float) -> void:
+    var k := t.richtung
+    var quer := k.orthogonal()
+    var schlag := sin(t.alter * 6.0 + t.phase)
+
+    # Der Leib: eine Nadel von vier Radien Laenge und einem Zehntel Breite.
+    var ruecken := PackedVector2Array()
+    var profil := PackedFloat32Array()
+    for i in 11:
+        var u := float(i) / 10.0
+        var x := lerpf(1.9, -2.1, u)
+        ruecken.append(p + k * r * x
+            + quer * schlag * r * 0.22 * pow(u, 1.8))
+        # Vorn spitz, in der Mitte am dicksten, hinten spitz - ein Wurm ist
+        # an beiden Enden zu.
+        profil.append(r * (0.02 + 0.16 * sin(PI * u)))
+    _dunkelleib(ruecken, profil, farbe, hitze)
+
+    # **Zwei Paar Seitenflossen.** Waagerechte Saeume, nicht senkrechte
+    # Flossen - ein Pfeilwurm haelt sich damit in der Schwebe. Sie sind das
+    # Einzige an ihm, was breiter ist als sein Leib, und damit sein
+    # Erkennungszeichen von oben.
+    for paar in 2:
+        var mitte_u := 0.34 + 0.34 * float(paar)
+        var idx := int(mitte_u * 10.0)
+        var wo: Vector2 = ruecken[idx]
+        var laengs := (ruecken[mini(10, idx + 1)] - ruecken[maxi(0, idx - 1)])
+        laengs = laengs.normalized() if laengs.length() > 0.001 else k
+        var q := laengs.orthogonal()
+        for seite: float in SEITEN:
+            var saum := PackedVector2Array()
+            for j in 7:
+                var v := lerpf(-1.0, 1.0, float(j) / 6.0)
+                saum.append(wo + laengs * r * 0.44 * v
+                    + q * seite * r * 0.40 * (1.0 - v * v))
+            saum.append(wo - laengs * r * 0.44)
+            draw_colored_polygon(saum, _gedeckt(Color(farbe.r, farbe.g,
+                farbe.b, 0.16 + 0.16 * hitze)))
+            _zug(saum + PackedVector2Array([saum[0]]),
+                Color(farbe.r, farbe.g, farbe.b, 0.26 + 0.30 * hitze), 1.0)
+
+    # **Der Greifhakenkranz.** Sechs feine Haken um das Kopfende, nach vorn
+    # geoeffnet - das ist der Name der Art und ihre einzige Drohung.
+    var kopf: Vector2 = ruecken[0]
+    for i in 6:
+        var w := lerpf(-0.95, 0.95, float(i) / 5.0)
+        var haken := kopf + (k * cos(w) - quer * sin(w)) * r * 0.52
+        _glied(kopf + k * r * 0.06, haken, r * 0.035, r * 0.012,
+            farbe.lerp(Color(1.0, 0.98, 0.94), 0.30), 0.55 + 0.35 * hitze)
+
+    # Das Leuchtmuster: **zwei Punkte**, mehr nicht. Der Massstab-Gegner ist
+    # der schlichteste im Feld, auch im Licht.
+    _organe(PackedVector2Array([ruecken[2], ruecken[6]]), farbe,
+        r * 0.11, t.alter, hitze, 2.0)
+
+
+## Der Panzerkrebs: eine **Riesenassel**.
+##
+## Regel: langsam und zaeh, zwingt den Kegel zum Verweilen. Eine Assel ist
+## das gebaute Gegenstueck - ein breiter, flacher Panzer aus sieben Ringen,
+## der nichts tut als aushalten. Von oben ist sie ein **Schild aus
+## Querbaendern**, und kein anderes Tier im Feld hat Querbaender.
+##
+## Kein Fangarm, keine Schere, kein Auge in der Mitte: was sie ausmacht, ist
+## dass an ihr nichts vorsteht.
+func _n_panzerkrebs(p: Vector2, r: float, farbe: Color, t: Raeuber,
+        hitze: float) -> void:
+    var k := t.richtung
+    var quer := k.orthogonal()
+    var ringe := 7
+
+    # Der Umriss: vorn ein runder Kopfschild, hinten ein Faecher.
+    var ruecken := PackedVector2Array()
+    var profil := PackedFloat32Array()
+    for i in 13:
+        var u := float(i) / 12.0
+        ruecken.append(p + k * r * lerpf(1.15, -1.35, u))
+        # Breit und flach: einskommaacht lang zu einskommavier breit, und
+        # die groesste Breite liegt vorn im Kopfschild.
+        var b: float = sin(PI * pow(u, 0.62))
+        profil.append(r * (0.16 + 0.56 * pow(b, 0.55)))
+    _dunkelleib(ruecken, profil, farbe, hitze)
+
+    # **Die Querbaender.** Sieben Ringe, jeder mit einer dunklen Fuge und
+    # einer hellen Lippe auf der Lichtseite - dieselbe Sprache wie ueberall,
+    # aber hier ist sie die ganze Zeichnung.
+    var zum_licht := lichtquelle - p
+    zum_licht = zum_licht.normalized() if zum_licht.length_squared() > 1.0 \
+        else Vector2.UP
+    for i in ringe:
+        var u := 0.20 + 0.66 * float(i) / float(ringe - 1)
+        var idx := int(u * 12.0)
+        var halb: float = profil[idx] * 1.02
+        var mitte: Vector2 = ruecken[idx]
+        var bogen := PackedVector2Array()
+        for j in 7:
+            var v := lerpf(-1.0, 1.0, float(j) / 6.0)
+            # Die Fuge woelbt sich nach vorn: ein Ring liegt auf dem
+            # naechsten.
+            bogen.append(mitte + quer * halb * v
+                + k * r * 0.13 * (1.0 - v * v))
+        _rille(bogen, Color(0.02, 0.05, 0.08, 0.50 + 0.16 * hitze),
+            farbe.lerp(Color(1.0, 0.98, 0.94), 0.20 + 0.40 * hitze),
+            zum_licht * (r * 0.07))
+
+    # Kurze Beine unter dem Rand - sie ragen kaum heraus, aber ohne sie
+    # schwebt der Panzer.
+    for i in 5:
+        var u := 0.24 + 0.60 * float(i) / 4.0
+        var idx := int(u * 12.0)
+        for seite: float in SEITEN:
+            var wurzel: Vector2 = ruecken[idx] + quer * profil[idx] * seite
+            var zappel := sin(t.alter * 3.4 + float(i) * 1.6 + t.phase)
+            var spitze := wurzel + (quer * seite * 0.86
+                - k * (0.5 + 0.2 * zappel)).normalized() * r * 0.30
+            _glied(wurzel, spitze, r * 0.05, r * 0.02, farbe, 0.42)
+
+    # **Das Leuchtmuster: eine Reihe an jeder Flanke.** Eine Assel leuchtet
+    # nicht aus der Mitte - sie hat Reihen an den Panzerraendern, und die
+    # zeichnen im Dunkeln genau ihren Umriss nach.
+    for seite: float in SEITEN:
+        var reihe := PackedVector2Array()
+        for i in 5:
+            var idx := 2 + i * 2
+            reihe.append(ruecken[idx] + quer * profil[idx] * seite * 0.86)
+        _organe(reihe, farbe, r * 0.085, t.alter, hitze, 1.6)
+
+
+## Die Glutqualle: eine **Rippenqualle**.
+##
+## Regel: brennt nur im Kern des Kegels. Eine Ctenophore ist dafuer die
+## richtige Gestalt - ein durchsichtiges Ei, an dem nur eines wirklich
+## leuchtet: acht Wimpernreihen, die das Licht brechen. Der Kern ist ein
+## einzelner heller Punkt in der Mitte, und genau der ist zu treffen.
+##
+## Sie hat **keine Glocke und keine Tentakel** - das unterscheidet sie vom
+## alten Entwurf und von jeder anderen Qualle im Feld.
+func _n_glutqualle(p: Vector2, r: float, farbe: Color, t: Raeuber,
+        hitze: float) -> void:
+    var k := t.richtung
+    var quer := k.orthogonal()
+
+    # Das Ei: laenger als breit, vorn stumpf, hinten spitz.
+    var ruecken := PackedVector2Array()
+    var profil := PackedFloat32Array()
+    for i in 11:
+        var u := float(i) / 10.0
+        ruecken.append(p + k * r * lerpf(1.20, -1.05, u))
+        var b: float = sin(PI * pow(u, 0.70))
+        profil.append(r * (0.06 + 0.62 * pow(b, 0.75)))
+    _dunkelleib(ruecken, profil, farbe, hitze)
+
+    # **Acht Wimpernreihen.** Sie laufen vom Vorderende nach hinten ueber
+    # die Woelbung, und durch jede wandert ein Puls - das ist das Bild, an
+    # dem man eine Rippenqualle im Dunkeln erkennt, und es gibt sonst
+    # nirgends im Spiel etwas, das so aussieht.
+    for i in 4:
+        var s := (float(i) - 1.5) / 1.5
+        for seite: float in SEITEN:
+            var reihe := PackedVector2Array()
+            for j in 7:
+                var u := lerpf(0.10, 0.86, float(j) / 6.0)
+                var idx := int(u * 10.0)
+                # Die Reihe liegt auf der Woelbung: aussen bei s = ±1,
+                # ueber der Mitte bei s = 0.
+                reihe.append(ruecken[idx] + quer * profil[idx] * s * seite)
+            _organe(reihe, farbe, r * 0.055, t.alter + float(i) * 0.4,
+                hitze, 3.4)
+
+    # Der Statolith: der eine helle Punkt, den es zu treffen gilt.
+    var glut := 0.5 + 0.5 * sin(t.alter * 3.0 + t.phase)
+    var kern := p + k * r * 0.10
+    draw_circle(kern, r * (0.34 + 0.08 * glut),
+        _gedeckt(Color(1.0, 0.86, 0.72, 0.16 + 0.20 * hitze)))
+    draw_circle(kern, r * (0.17 + 0.04 * glut),
+        _gedeckt(Color(1.0, 0.94, 0.86, 0.70 + 0.30 * hitze)))
