@@ -659,9 +659,32 @@ func _knapp(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> voi
         p - k * r * 1.0,
         p - quer * r * 0.62,
     ])
-    _fuellung(leib, Color(farbe.r, farbe.g, farbe.b, 0.30 + 0.35 * hitze))
-    _zug(leib + PackedVector2Array([leib[0]]),
-        farbe.lerp(Color(1.0, 0.98, 0.94), 0.4 + 0.4 * hitze), 1.4)
+    # **Auch die Sparfassung ist flaechig.** Sie war eine durchscheinende
+    # Raute mit einem hellen Zug darum - und sie ist die Fassung, die man
+    # in einer vollen Welle am **haeufigsten** sieht. Ein Stil, der ab
+    # achtzig Tieren aussetzt, ist keiner.
+    #
+    # Zwei Toene und ein Randlicht, mehr nicht: drei Zeichenaufrufe statt
+    # der sieben, die `_zellkoerper()` braucht. Genau dafuer gibt es diese
+    # Fassung.
+    var mitte := _mitte(leib)
+    var zum_licht := lichtquelle - mitte
+    zum_licht = zum_licht.normalized() if zum_licht.length_squared() > 1.0 \
+        else Vector2.UP
+    var grund := Color(farbe.r, farbe.g, farbe.b).lerp(
+        Color(1.0, 0.98, 0.94), 0.30 * hitze)
+    var schatten := grund.lerp(Color(0.10, 0.20, 0.34), ZELL_BLAU) \
+        * Color(ZELL_SCHATTEN, ZELL_SCHATTEN, ZELL_SCHATTEN, 1.0)
+    schatten = schatten.lerp(grund, 0.40 * hitze)
+    draw_colored_polygon(leib,
+        _gedeckt(Color(schatten.r, schatten.g, schatten.b, 1.0)))
+    var hell := _schnitt(leib, mitte, zum_licht, -r * 0.10, true)
+    if hell.size() >= 3:
+        draw_colored_polygon(hell,
+            _gedeckt(Color(grund.r, grund.g, grund.b, 1.0)))
+    draw_polyline(hell if hell.size() >= 2
+        else leib + PackedVector2Array([leib[0]]),
+        _gedeckt(Color(1.0, 0.99, 0.96, 0.50 + 0.35 * hitze)), 1.4, true)
 
 
 ## Der **Schein um eine Form** - kein Kreis um einen Mittelpunkt.
@@ -783,7 +806,7 @@ func _glied(von: Vector2, nach: Vector2, dick_von: float, dick_nach: float,
         seit = 1.0
     var a := minf(1.0, deckung * 1.7)
     var grund := Color(farbe.r, farbe.g, farbe.b)
-    var schatten := grund.lerp(Color(0.10, 0.20, 0.34), 0.52) \
+    var schatten := grund.lerp(Color(0.10, 0.20, 0.34), ZELL_BLAU) \
         * Color(ZELL_SCHATTEN, ZELL_SCHATTEN, ZELL_SCHATTEN, 1.0)
     var licht := grund.lerp(Color(1.0, 0.98, 0.94), ZELL_LICHT)
 
@@ -2739,14 +2762,23 @@ func _ringmaul(p: Vector2, r: float, farbe: Color, t: Raeuber,
     # `_koerper()` als Schale entlang des Umrisses zeichnet - ein
     # runder Fleck ueber einer Form, die nicht rund ist, und bei einem
     # Leitwesen von sechzig Einheiten Radius der auffaelligste im Bild.
-    # Der Leib als offener Bogen quer zur Bahn.
+    # **Der Leib ist ein Band auf einem Bogen**, wie beim Kreiser - und aus
+    # demselben Grund. Er stand hier als offener Bogen, den `_fuellung()`
+    # zu einer Linse schloss: eine durchscheinende Flaeche mit einem hellen
+    # Zug darauf, also genau die Strichkunst, die ueberall sonst schon weg
+    # ist. Ein Ring hat aber eine **Dicke**, und seine lichtnahe Haelfte
+    # ist hell, waehrend die abgewandte im Schatten liegt.
     var bogen := PackedVector2Array()
+    var dick := PackedFloat32Array()
     for i in 15:
-        var w := lerpf(-PI * 0.82, PI * 0.82, float(i) / 14.0)
-        var weit := r * (0.78 + 0.10 * sin(w * 3.0 + t.alter))
+        var u := float(i) / 14.0
+        var w := lerpf(-PI * 0.82, PI * 0.82, u)
+        var weit := r * (0.68 + 0.09 * sin(w * 3.0 + t.alter))
         bogen.append(p + k * sin(w) * weit + quer * cos(w) * weit)
-    _fuellung(bogen, Color(farbe.r, farbe.g, farbe.b, 0.30))
-    _zug(bogen, farbe.lightened(0.28), 2.2)
+        # Zu den beiden Maulwinkeln laeuft er duenner aus - ein Ring, der
+        # stumpf abbricht, hat zwei Schnittkanten mitten im Wasser.
+        dick.append(r * 0.22 * (0.34 + 0.66 * sin(PI * pow(u, 0.8))))
+    _zellband(bogen, dick, farbe, hitze)
     # Zaehne nach innen - das Maul liegt auf der Innenseite des Rings.
     # **Zaehne sind Dreiecke, keine Balken.**
     #
@@ -3082,16 +3114,18 @@ func _n_zahnkiefer(p: Vector2, r: float, farbe: Color, t: Raeuber,
             # *innerhalb* des Leibes (bei −0,4 statt 0), damit die Flosse
             # ihn ueberlappt statt ihn zu beruehren. Zwei Formen, die sich
             # nur beruehren, liest das Auge als zwei Dinge.
+            # **Lang und flach, nicht rund.** Mit halber Laenge und knapp
+            # halber Breite war jede Flosse ein Halbkreis, und deckend
+            # gezeichnet wurden daraus zwei Scheiben an einem Stiel - eine
+            # Hantel. Eine Pfeilwurmflosse ist ein **Band** laengs des
+            # Leibes; das Verhaeltnis traegt sie, nicht die Flaeche.
             var saum := PackedVector2Array()
-            for j in 7:
-                var v := lerpf(-1.0, 1.0, float(j) / 6.0)
-                saum.append(wo + laengs * r * 0.50 * v
-                    + q * seite * r * 0.46 * (1.0 - v * v))
-            saum.append(wo - laengs * r * 0.50 - q * seite * r * 0.12)
-            draw_colored_polygon(saum, _gedeckt(Color(farbe.r, farbe.g,
-                farbe.b, 0.16 + 0.16 * hitze)))
-            _zug(saum + PackedVector2Array([saum[0]]),
-                Color(farbe.r, farbe.g, farbe.b, 0.26 + 0.30 * hitze), 1.0)
+            for j in 9:
+                var v := lerpf(-1.0, 1.0, float(j) / 8.0)
+                saum.append(wo + laengs * r * 0.92 * v
+                    + q * seite * r * 0.21 * pow(1.0 - v * v, 0.55))
+            saum.append(wo - laengs * r * 0.92 - q * seite * r * 0.03)
+            _zellflosse(saum, farbe, hitze, 0.86)
 
     # **Der Greifhakenkranz.** Sechs feine Haken um das Kopfende, nach vorn
     # geoeffnet - das ist der Name der Art und ihre einzige Drohung.
@@ -3230,10 +3264,13 @@ func _n_glutqualle(p: Vector2, r: float, farbe: Color, t: Raeuber,
     # Der Statolith: der eine helle Punkt, den es zu treffen gilt.
     var glut := 0.5 + 0.5 * sin(t.alter * 3.0 + t.phase)
     var kern := p + k * r * 0.10
-    draw_circle(kern, r * (0.34 + 0.08 * glut),
-        _gedeckt(Color(1.0, 0.86, 0.72, 0.16 + 0.20 * hitze)))
-    draw_circle(kern, r * (0.17 + 0.04 * glut),
-        _gedeckt(Color(1.0, 0.94, 0.86, 0.70 + 0.30 * hitze)))
+    # **Klein.** Er stand auf einem Drittel des Radius, und deckend
+    # gezeichnet war das ein weisser Klecks, der den halben Leib einnahm -
+    # der eine helle Punkt soll ein Ziel sein, nicht die Art.
+    draw_circle(kern, r * (0.20 + 0.05 * glut),
+        _gedeckt(Color(1.0, 0.86, 0.72, 0.18 + 0.22 * hitze)))
+    draw_circle(kern, r * (0.10 + 0.03 * glut),
+        _gedeckt(Color(1.0, 0.94, 0.86, 0.75 + 0.25 * hitze)))
 
 
 # --- Zellschattierung: flaechig, deckend, harte Stufen ------------------------
@@ -3268,8 +3305,19 @@ func _n_glutqualle(p: Vector2, r: float, farbe: Color, t: Raeuber,
 
 
 ## Wieviel dunkler der Schattenton ist, wie hell der Lichtton.
-const ZELL_SCHATTEN := 0.44
+##
+## **Auch der Schatten bleibt farbig.** Mit 0,44 auf einer um die Haelfte
+## ins Blaue gezogenen Farbe fiel die abgewandte Haelfte einer Rippenqualle
+## fast auf Wasserton, und im Bild war das Tier eine halbe Melone - ein
+## Koerper, dem die Haelfte fehlt, statt eines Koerpers mit einer
+## Schattenseite. Dieselbe Falle wie in `_koerper()` ("kein Leib wird
+## schwarz") und bei den Felsen: in trueber Tiefe faellt nichts aus, es
+## verschleiert nur.
+const ZELL_SCHATTEN := 0.52
 const ZELL_LICHT := 0.34
+
+## Wie weit der Schattenton ins Blaue kippt.
+const ZELL_BLAU := 0.44
 
 
 ## Ein Querschnittsband eines Rueckgrats als Flaeche.
@@ -3323,7 +3371,7 @@ func _zellleib(ruecken: PackedVector2Array, profil: PackedFloat32Array,
     var grund := Color(farbe.r, farbe.g, farbe.b)
     # Der Schatten kippt ins Blaue, nicht ins Graue - dieselbe Regel wie
     # ueberall: was im Wasser im Schatten liegt, verliert zuerst das Rot.
-    var schatten := grund.lerp(Color(0.10, 0.20, 0.34), 0.52) \
+    var schatten := grund.lerp(Color(0.10, 0.20, 0.34), ZELL_BLAU) \
         * Color(ZELL_SCHATTEN, ZELL_SCHATTEN, ZELL_SCHATTEN, 1.0)
     var licht := grund.lerp(Color(1.0, 0.98, 0.94), ZELL_LICHT)
     # Beim Brennen wandert alles nach oben, aber die Stufen bleiben Stufen.
@@ -3368,8 +3416,12 @@ func _zellleib(ruecken: PackedVector2Array, profil: PackedFloat32Array,
     # **Das Glanzlicht.** Eine kleine harte Flaeche im vorderen Drittel,
     # dort wo der Leib am dicksten ist - nicht ueber die ganze Laenge, sonst
     # ist es ein Streifen und kein Glanz.
-    var a := maxi(1, int(float(n) * 0.18))
-    var b := maxi(a + 1, int(float(n) * 0.46))
+    # **Kurz.** Von 18 auf 46 Prozent der Laenge war es auf einem gedrungenen
+    # Leib ein weisser Streifen quer durchs Tier statt eines Glanzes - und
+    # ein Glanzlicht, das man fuer eine Kante haelt, macht aus einem
+    # Koerper zwei.
+    var a := maxi(1, int(float(n) * 0.22))
+    var b := maxi(a + 1, int(float(n) * 0.36))
     var kurz := PackedVector2Array()
     var kurz_p := PackedFloat32Array()
     for i in range(a, b + 1):
@@ -3472,7 +3524,7 @@ func _zellkoerper(punkte: PackedVector2Array, farbe: Color, hitze: float,
         return
 
     var grund := Color(farbe.r, farbe.g, farbe.b)
-    var schatten := grund.lerp(Color(0.10, 0.20, 0.34), 0.52) \
+    var schatten := grund.lerp(Color(0.10, 0.20, 0.34), ZELL_BLAU) \
         * Color(ZELL_SCHATTEN, ZELL_SCHATTEN, ZELL_SCHATTEN, 1.0)
     var licht := grund.lerp(Color(1.0, 0.98, 0.94), ZELL_LICHT)
     if hitze > 0.01:
@@ -3578,7 +3630,7 @@ func _zellband(ruecken: PackedVector2Array, profil: PackedFloat32Array,
         return
 
     var grund := Color(farbe.r, farbe.g, farbe.b)
-    var schatten := grund.lerp(Color(0.10, 0.20, 0.34), 0.52) \
+    var schatten := grund.lerp(Color(0.10, 0.20, 0.34), ZELL_BLAU) \
         * Color(ZELL_SCHATTEN, ZELL_SCHATTEN, ZELL_SCHATTEN, 1.0)
     var licht := grund.lerp(Color(1.0, 0.98, 0.94), ZELL_LICHT)
     if hitze > 0.01:
@@ -3661,7 +3713,7 @@ func _zellblase(wo: Vector2, g: float, farbe: Color, hitze: float) -> void:
     zum_licht = zum_licht.normalized() if zum_licht.length_squared() > 1.0 \
         else Vector2.UP
     var grund := Color(farbe.r, farbe.g, farbe.b)
-    var schatten := grund.lerp(Color(0.10, 0.20, 0.34), 0.52) \
+    var schatten := grund.lerp(Color(0.10, 0.20, 0.34), ZELL_BLAU) \
         * Color(ZELL_SCHATTEN, ZELL_SCHATTEN, ZELL_SCHATTEN, 1.0)
     var licht := grund.lerp(Color(1.0, 0.98, 0.94), ZELL_LICHT)
     if hitze > 0.01:
@@ -3680,3 +3732,39 @@ func _zellblase(wo: Vector2, g: float, farbe: Color, hitze: float) -> void:
         _gedeckt(Color(licht.r, licht.g, licht.b, 1.0)))
     draw_circle(wo + zum_licht * g * 0.54, g * 0.19,
         _gedeckt(Color(1.0, 0.99, 0.96, 0.85 + 0.15 * hitze)))
+
+
+## Eine **Membran** in Zellschattierung: Flosse, Saum, Segel.
+##
+## Sie war ueberall eine Flaeche mit sechzehn Prozent Deckung und einem
+## duennen Zug darum - im Bild ein Hauch, den man fuer einen Zeichenfehler
+## haelt. Eine Flosse ist duenn, aber sie ist nicht durchsichtig: im Bild
+## traegt sie einen eigenen Ton, dunkler als der Leib, und ihre **Aussen-
+## kante** ist das, woran man sie erkennt (dieselbe Lehre wie beim
+## Treibanker: eine Flosse erkennt man an ihrem Rand, nicht an ihren
+## Rippen).
+func _zellflosse(punkte: PackedVector2Array, farbe: Color, hitze: float,
+        tiefe := 0.82) -> void:
+    if punkte.size() < 3:
+        return
+    var mitte := _mitte(punkte)
+    var zum_licht := lichtquelle - mitte
+    zum_licht = zum_licht.normalized() if zum_licht.length_squared() > 1.0 \
+        else Vector2.UP
+    var haut := Color(farbe.r, farbe.g, farbe.b).lerp(
+        Color(0.10, 0.20, 0.34), 0.42) \
+        * Color(0.72, 0.72, 0.72, 1.0)
+    haut = haut.lerp(Color(1.0, 0.98, 0.94), 0.34 * hitze)
+    draw_colored_polygon(punkte,
+        _gedeckt(Color(haut.r, haut.g, haut.b, tiefe)))
+    # Die Kante: hell, wo sie zum Licht zeigt, sonst nur ein Saum. Ein
+    # gleichmaessig heller Rand macht aus der Membran wieder einen Umriss.
+    var zu := punkte + PackedVector2Array([punkte[0]])
+    var toene := PackedColorArray()
+    var kante := farbe.lerp(Color(1.0, 0.98, 0.94), 0.34 + 0.40 * hitze)
+    for v in zu:
+        var aussen := (v - mitte).normalized()
+        var f: float = 0.18 + 0.82 * maxf(0.0, aussen.dot(zum_licht))
+        toene.append(_gedeckt(Color(kante.r, kante.g, kante.b,
+            (0.22 + 0.62 * f) * (0.8 + 0.2 * hitze))))
+    draw_polyline_colors(zu, toene, 1.4, true)
