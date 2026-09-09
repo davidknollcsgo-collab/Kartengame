@@ -1003,6 +1003,90 @@ werden musste (nur `zurueck_beschriftung` blieb: „BACK TO THE TRENCH").
 Erreichbar über `COLONY` im Titelbild **und** im Bericht — nach der Fahrt liegt der Nährstoff frisch in der Kolonie, und
 das ist der Moment, in dem man ihn ausgeben will.
 
+**Ein weicher Verlauf ist keine Form.** Die Rückmeldung lautete: *„Das
+wirkt alles so Strichmännchen-mäßig, dabei will ich es eher anime-2D-mäßig,
+also 2D3D."* Sie war richtig, und sie benennt die Ursache genauer als jede
+vorherige Runde. Jede Zeichnung in `schwarm.gd` war aus **Linien** gebaut:
+ein dünner heller Zug auf einer Fläche mit zehn bis dreißig Prozent Deckung.
+Das ergibt Umrisse, die im Dunkeln leuchten — also genau ein Strichmännchen,
+egal wie gut die Anatomie darunter stimmt. Und der Verlauf in `_koerper()`
+half nichts: er sagt *„irgendwo hier wird es dunkler"*, eine Kante sagt
+*„hier dreht sich die Oberfläche weg"*.
+
+Was ein flächiges Bild ausmacht, sind vier Dinge, und alle vier fehlten:
+**deckende Flächen** (kein Durchscheinen), **harte Tonstufen** statt
+Verlauf, ein **hartes Glanzlicht**, und eine **Kontur** — die hier nicht
+dunkel sein kann, weil man sie auf schwarzem Wasser nicht sähe, also ein
+Randlicht auf der Lichtseite und ein dunkler Saum auf der anderen.
+
+Fünf Helfer machen das für alle Arten auf einmal, und welcher gilt, hängt
+davon ab, wie eine Art gebaut ist:
+
+| Helfer | für | Toenungsgrenze |
+|---|---|---|
+| `_zellleib()` | Rückgrat + Profil (Schlauch, Fisch, Wurm) | quer zum Rückgrat |
+| `_zellkoerper()` | ein Umriss (Schild, Rochen, Muschel) | quer zum Licht |
+| `_zellband()` | Ringe und Bänder (Kreiser, Ringmaul) | **längs** |
+| `_zellblase()` | Kugeln (Laichwolke) | vier Kreise |
+| `_zellflosse()` | Membranen (Flosse, Saum, Segel) | einer, plus Kante |
+
+Sechs Dinge, die dabei zu lernen waren — jedes im Bild gefunden, keines
+geraten:
+
+*Bänder werden aneinandergelegt, nicht gestapelt.* Der erste Anlauf füllte
+den Leib und malte Schatten und Licht darüber: drei Flächen, von denen zwei
+die erste überlappen, zusammen das 1,7fache der Körperfläche, gemessen
+zwölf Prozent der Bildrate. Aneinandergelegt ist es dieselbe Optik bei 40 %
+weniger Füllung — und weil die Bänder an ihren Grenzen **stoßen** statt
+sich zu decken, bleibt die Kante scharf, auf die es hier ankommt.
+
+*Unter vier Pixeln Breite sind drei Töne drei Striche.* Das Lichtband nimmt
+28 % der Breite, der Grundton 30, der Schatten 42, und das Glanzlicht liegt
+noch darauf. Auf einem Pfeilwurm von sechs Pixeln Breite sind das vier
+Streifen zu anderthalb Pixeln — im Bild ein Gitter, also der Rückfall in
+genau das, was abgeschafft werden sollte. Ein Ton und ein Randlicht sagen
+dort mehr.
+
+*Auch der Schatten bleibt farbig.* Mit 0,44 auf einer um die Hälfte ins
+Blaue gezogenen Farbe fiel die abgewandte Hälfte fast auf Wasserton, und
+die Rippenqualle war im Bild eine **halbe Melone** — ein Körper, dem die
+Hälfte fehlt, statt eines Körpers mit einer Schattenseite. Dieselbe Falle
+wie „kein Leib wird schwarz" in `_koerper()` und wie bei den Felsen.
+
+*Ein Glanzlicht, das man für eine Kante hält, macht aus einem Körper zwei.*
+Über ein Drittel der Länge ist es auf einem gedrungenen Leib ein weißer
+Streifen quer durchs Tier.
+
+*Ein Halbebenenschnitt verträgt keine starke Konkavität.* Ein offener Ring,
+als Umriss gebaut (außen herum und innen zurück), ergibt beim Schneiden
+eine Fläche, die sich selbst berührt: `triangulation failed`, und im Bild
+fehlt das Tier. Ein Ring ist deshalb ein **Band auf einem Bogen**
+(`_zellband`), und seine Tönung wechselt längs — quer geschattet wäre er
+auf ganzer Länge gleich hell, also wieder ein Reifen aus Neon.
+
+*Und deckend heißt: die alten Begründungen verfallen.* Fast überall stand
+„eine gefüllte Scheibe wird von der Nachbearbeitung milchig, ein Ring wird
+zur Röhre". Das galt, solange **additiv** gezeichnet wurde. Seit die Szene
+mischt und die HDR-Schwelle bei 0,62 steht, blüht nur noch, was wirklich
+hell ist — und die Ringe waren nur noch Ringe. Betroffen waren die
+Laichwolke (die häufigste Art im Spiel), die Begleiter und die
+Sparfassung.
+
+**Der Stil darf nicht bei achtzig Tieren aussetzen.** `_knapp()` — die
+Sparfassung ab `DICHT_AB` — war eine durchscheinende Raute mit einem hellen
+Zug darum, und sie ist die Fassung, die man in einer vollen Welle am
+häufigsten sieht. Zwei Töne und ein Randlicht, drei Zeichenaufrufe statt
+der sieben von `_zellkoerper()`: dafür gibt es diese Fassung.
+
+**Und was der Spieler selbst ist, gehört in dieselbe Sprache.** Die
+Begleiter waren drei `draw_arc` übereinander und standen damit als einzige
+Drahtringe in einem Bild aus deckenden Leibern — dauernd in der Bildmitte,
+also öfter gesehen als jedes Tier. Der Rumpf des Bootes lief über einen
+weichen Verlauf von Bug zu Heck; er trägt jetzt drei Töne mit sichtbaren
+Kanten quer zur Längsachse (`_laengs_stueck()`, dieselbe Rechnung wie
+`schwarm.gd::_schnitt()`). Ein Boot in einer anderen Bildsprache als alles,
+was es beleuchtet, ist ein Fremdkörper in der eigenen Szene.
+
 **Die Tiere sind gefüllte Körper, nicht Leuchtröhren — und das hängt an
 einer einzigen Zeile.** `schwarm.gd` zeichnete **additiv**, und additiv kann
 nichts decken: jede Fläche addiert sich zu dem, was dahinter liegt, zwei

@@ -1770,20 +1770,38 @@ func _zeichne_rumpf(umriss: PackedVector2Array, k: Vector2, r: float) -> void:
     # Jetzt faellt der Grundton aus `_haut` - stark abgedunkelt, damit er
     # Rumpf bleibt und nicht Leuchtreklame wird -, und der Bug ist heller als
     # das Heck. Dieselbe Rechnung wie beim Fels und bei den Tieren.
-    var laengs := PackedColorArray()
-    for punkt in umriss:
-        var vorn := clampf((punkt - _ort).dot(k) / maxf(1.0, r * RUMPF_LANG),
-            0.0, 1.0)
-        # **Und das Heck war dunkler als das Wasser.** Mit 0,10 als Sockel
-        # lag es bei (21 / 44 / 53) gegen ein Wasser von rund (20 / 55 /
-        # 65): die hintere Haelfte des Bootes verschwand, und uebrig blieb
-        # ein Umriss. Ein Rumpf, durch den man den Grund zu sehen glaubt,
-        # ist ein Drahtgitter - dasselbe, was die Tiere waren, bevor sie
-        # gefuellte Leiber wurden. Der Sockel traegt jetzt bis achtern.
-        var st := 0.24 + 0.30 * vorn * vorn
-        laengs.append(Color(_haut.r * st + 0.020, _haut.g * st + 0.040,
-            _haut.b * st + 0.055, 1.0))
-    _vorn.draw_polygon(umriss, laengs)
+    # **Und der Verlauf ist eine Stufenfolge, kein Uebergang.**
+    #
+    # Er lief ueber die Eckpunkte, also weich vom Bug bis zum Heck - das
+    # ist die Sprache, die bei den Tieren gerade abgeschafft wurde
+    # (`schwarm.gd`, Zellschattierung): ein weicher Uebergang **ist** keine
+    # Form, er ist ein Farbwechsel. Der Rumpf traegt jetzt drei Toene mit
+    # sichtbaren Kanten quer zur Laengsachse, gezeichnet als
+    # aneinanderstossende Stuecke - dieselbe Regel wie dort, dieselbe
+    # Begruendung, und das Boot steht nicht laenger in einer anderen
+    # Bildsprache als alles, was es beleuchtet.
+    var stufen := 3
+    for stufe in stufen:
+        var u0 := float(stufe) / float(stufen)
+        var u1 := float(stufe + 1) / float(stufen)
+        var laenge := maxf(1.0, r * RUMPF_LANG)
+        # Das hinterste Stueck reicht beliebig weit nach achtern: der
+        # Umriss beginnt **hinter** dem Bezugspunkt, und ein Band, das bei
+        # null anfaengt, laesst das Heck als Loch stehen.
+        var teil := _laengs_stueck(umriss, k,
+            -laenge * 4.0 if stufe == 0 else u0 * laenge, u1 * laenge)
+        if teil.size() < 3:
+            continue
+        var mitte_u := (u0 + u1) * 0.5
+        var st := 0.24 + 0.30 * mitte_u * mitte_u
+        _vorn.draw_colored_polygon(teil, Color(_haut.r * st + 0.020,
+            _haut.g * st + 0.040, _haut.b * st + 0.055, 1.0))
+    # **Das Heck war einmal dunkler als das Wasser.** Mit 0,10 als Sockel
+    # lag es bei (21 / 44 / 53) gegen ein Wasser von rund (20 / 55 / 65):
+    # die hintere Haelfte des Bootes verschwand, und uebrig blieb ein
+    # Umriss. Ein Rumpf, durch den man den Grund zu sehen glaubt, ist ein
+    # Drahtgitter - dasselbe, was die Tiere waren, bevor sie gefuellte
+    # Leiber wurden. Der Sockel oben traegt bis achtern.
     var ring := umriss + PackedVector2Array([umriss[0]])
     _vorn.draw_polyline(ring, Color(_haut.r, _haut.g, _haut.b, 0.12), 5.0, true)
     _vorn.draw_polyline(ring, Color(_haut.r, _haut.g, _haut.b, 0.52), 1.6, true)
@@ -2154,16 +2172,41 @@ func _zeichne_begleiter() -> void:
                     w * 0.55 + wiege))
             _leitzug(arm, grund, 0.30 + 0.10 * atem, 1.2)
 
-        # Der Kelch: zwei Ringe statt einer Scheibe. Eine Scheibe wird vom
-        # Gluehen milchig, ein Ring wird davon zu einer Roehre.
-        _vorn.draw_arc(p, gr * 0.74, 0.0, TAU, 22,
-            Color(grund.r, grund.g, grund.b, 0.16), 4.2, true)
-        _vorn.draw_arc(p, gr * 0.74, 0.0, TAU, 22,
-            Color(0.66, 1.0, 0.90, 0.75), 1.5, true)
+        # **Der Kelch ist ein Koerper, kein Ring.**
+        #
+        # Hier standen drei `draw_arc` uebereinander, mit der Begruendung,
+        # eine gefuellte Scheibe werde vom Gluehen milchig. Das galt,
+        # solange die Tiere daneben ebenfalls aus Linien bestanden; seit
+        # sie deckende Leiber mit harten Tonstufen sind, waren die
+        # Begleiter die einzigen Drahtringe im Bild - und sie stehen
+        # dauernd in der Bildmitte, also sieht man sie oefter als jedes
+        # Tier.
+        #
+        # Dieselben vier Kreise wie `schwarm.gd::_zellblase()`: Schatten
+        # ganz, Grundton zum Licht versetzt (das laesst die Mondsichel
+        # stehen, die eine Kugel ausmacht), Lichtton, hartes Glanzlicht.
+        # Das Licht kommt vom Boot - es ist dasselbe, das auch die Tiere
+        # beleuchtet.
+        var zum_licht := _ort - p
+        zum_licht = zum_licht.normalized() \
+            if zum_licht.length_squared() > 1.0 else Vector2.UP
+        var schatten := grund.lerp(Color(0.10, 0.20, 0.34), 0.44) * 0.52
+        var kelch := gr * 0.74
+        _vorn.draw_circle(p, kelch,
+            Color(schatten.r, schatten.g, schatten.b, 1.0))
+        _vorn.draw_circle(p + zum_licht * kelch * 0.17, kelch * 0.90,
+            Color(grund.r, grund.g, grund.b, 1.0))
+        _vorn.draw_circle(p + zum_licht * kelch * 0.36, kelch * 0.52,
+            grund.lerp(Color(1.0, 0.98, 0.94), 0.34))
+        _vorn.draw_circle(p + zum_licht * kelch * 0.54, kelch * 0.19,
+            Color(1.0, 0.99, 0.96, 0.9))
+        # Die Mundoeffnung: eine dunkle Rille mit heller Lippe zur
+        # Lichtseite - dieselbe Sprache wie `_rille()` bei den Tieren.
         _vorn.draw_arc(p, gr * 0.40, 0.0, TAU, 16,
-            Color(0.52, 0.98, 0.84, 0.42), 1.1, true)
-        # Der Kern - der einzige gefuellte Fleck, und er ist winzig.
-        _vorn.draw_circle(p, gr * (0.17 + 0.05 * atem),
+            Color(schatten.r * 0.7, schatten.g * 0.7, schatten.b * 0.7,
+            0.9), 1.6, true)
+        # Der Kern - der einzige Fleck, der wirklich leuchtet.
+        _vorn.draw_circle(p, gr * (0.15 + 0.04 * atem),
             Color(0.86, 1.0, 0.94, 0.95))
 
         # **Der Strahl auf sein Ziel - eine Entladung, kein Draht.**
@@ -2648,3 +2691,35 @@ func _nimm_auf() -> void:
     var bild := get_viewport().get_texture().get_image()
     bild.save_png(_schuss)
     get_tree().quit()
+
+
+## Ein Stueck eines Umrisses zwischen zwei Abstaenden auf der Laengsachse.
+##
+## Gebraucht fuer die Tonstufen des Rumpfes: sie muessen **aneinander-
+## stossen** und duerfen sich nicht ueberlappen, sonst ist die Grenze
+## zwischen ihnen eine Naht statt einer Kante - dieselbe Rechnung und
+## dieselbe Begruendung wie `schwarm.gd::_schnitt()`.
+func _laengs_stueck(umriss: PackedVector2Array, k: Vector2,
+        von: float, bis: float) -> PackedVector2Array:
+    var teil := umriss
+    for schritt in 2:
+        var grenze: float = von if schritt == 0 else bis
+        var ueber: bool = schritt == 0
+        var raus := PackedVector2Array()
+        var n := teil.size()
+        if n < 3:
+            return PackedVector2Array()
+        for i in n:
+            var a: Vector2 = teil[i]
+            var b: Vector2 = teil[(i + 1) % n]
+            var ta := (a - _ort).dot(k) - grenze
+            var tb := (b - _ort).dot(k) - grenze
+            if not ueber:
+                ta = -ta
+                tb = -tb
+            if ta >= 0.0:
+                raus.append(a)
+            if (ta >= 0.0) != (tb >= 0.0):
+                raus.append(a.lerp(b, ta / (ta - tb)))
+        teil = raus
+    return teil
