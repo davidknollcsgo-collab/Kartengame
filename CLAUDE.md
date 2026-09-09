@@ -1282,6 +1282,26 @@ Form im Bild steht, die keine Zeichnung erklärt, ist die schnellste Frage
 nicht „wer zeichnet sie", sondern „welcher Aufruf hat die falschen
 Zahlen".**
 
+**Ein Schliff braucht Stufen und genug Facetten.** Der Spiegler rechnete
+seine Facettenhelligkeit glatt aus dem Winkel zum Licht — und weil ein
+flaches Vieleck aus *einer* Richtung beleuchtet wird, standen fünf von
+sieben Facetten auf fast demselben Wert. Im Bild war er eine graue Platte
+mit einem weißen Rand: die Facettenkanten waren da, aber links und rechts
+von ihnen stand dieselbe Farbe, **und eine Kante zwischen zwei gleichen
+Flächen ist keine.** Zwei Änderungen: jede Facette bekommt eine eigene
+Neigung (fest je Platz — ein Kristall flackert nicht, und zwei Spiegler
+dürfen denselben Schliff haben), und der Wert wird auf vier Stufen
+gerastert. Dazu elf Ecken statt sieben; bei sieben nahmen zwei Facetten die
+vordere Hälfte des Tieres ein, und eine Facette ist in sich gleich hell.
+
+**Was die Silhouette trägt, kann nicht durchsichtig sein.** Das Segel des
+Treibankers lief von 0,40 Deckung an der Wurzel auf 0,13 außen — bei 1,7
+Radien, also dem größten Teil des Tieres. Sichtbar blieben ein Außenrand
+und zwei Speichen, und im Bild war der Treibanker ein kleiner Klumpen mit
+einer langen dünnen Nadel daran. Und auf einer deckenden Membran ist eine
+Speiche eine **Falte** — dunkel mit einer hellen Lippe; hell allein wären
+es wieder zwei Striche auf einer Fläche.
+
 **Ein Facettenkranz um zwei Grate deckt die Flaeche nicht.** Der Spiegler
 zeichnet seine Facetten selbst: je Aussenkante ein Dreieck zum *näheren*
 der beiden Gratpunkte. Der Streifen zwischen den beiden Graten gehört

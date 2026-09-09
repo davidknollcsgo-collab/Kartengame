@@ -2222,35 +2222,32 @@ func _treibanker(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -
         var flattern := sin(t.alter * 2.6 + u * 4.2 + t.phase) * r * 0.13
         aussen.append(basis + zug * maxf(0.0, weite + flattern))
 
+    # **Und die Membran deckt.** Sie lief von 0,40 Deckung an der Wurzel auf
+    # 0,13 aussen - bei einem Segel von 1,7 Radien, also dem groessten Teil
+    # des Tieres, blieben davon ein Aussenrand und zwei Speichen sichtbar.
+    # Im Bild war der Treibanker ein kleiner Klumpen mit einer langen
+    # duennen Nadel daran. Das Segel **ist** die Silhouette; was die
+    # Silhouette traegt, kann nicht durchsichtig sein.
     var flosse := PackedVector2Array([wurzel_a])
-    var toene := PackedColorArray([
-        _gedeckt(Color(farbe.r, farbe.g, farbe.b, 0.40 + 0.24 * hitze))])
-    for v in aussen:
-        flosse.append(v)
-        toene.append(_gedeckt(Color(farbe.r, farbe.g, farbe.b,
-            0.13 + 0.10 * hitze)))
+    flosse.append_array(aussen)
     flosse.append(wurzel_b)
-    toene.append(_gedeckt(Color(farbe.r, farbe.g, farbe.b,
-        0.40 + 0.24 * hitze)))
-    draw_polygon(flosse, toene)
+    _zellflosse(flosse, farbe, hitze, 0.80)
 
-    # Die Aussenkante, an den Enden auslaufend: der Rand macht die Form.
-    var kante := PackedColorArray()
-    for i in aussen.size():
-        var u := float(i) / float(aussen.size() - 1)
-        kante.append(_gedeckt(farbe.lerp(Color(1.0, 0.98, 0.94),
-            0.18 + 0.40 * hitze) * Color(1, 1, 1,
-                (0.30 + 0.30 * hitze) * sin(PI * u))))
-    draw_polyline_colors(aussen, kante, 1.3, true)
-
-    # Zwei duenne Speichen - genug, damit die Flaeche gespannt wirkt.
+    # Zwei Speichen - genug, damit die Flaeche gespannt wirkt. Auf einer
+    # deckenden Membran ist eine Speiche eine **Falte**, also dunkel mit
+    # einer hellen Lippe: hell allein waeren es wieder zwei Striche auf
+    # einer Flaeche.
     for i in 2:
         var idx := 2 + i * 4
         var u := float(idx) / 8.0
-        draw_line(wurzel_a.lerp(wurzel_b, u),
-            wurzel_a.lerp(wurzel_b, u).lerp(aussen[idx], 0.88),
-            _gedeckt(Color(farbe.r, farbe.g, farbe.b, 0.26 + 0.18 * hitze)),
-            1.1, true)
+        var von := wurzel_a.lerp(wurzel_b, u)
+        var bis := von.lerp(aussen[idx], 0.88)
+        var quer_s := (bis - von).orthogonal().normalized() * 0.7
+        draw_line(von, bis, _gedeckt(Color(0.05, 0.10, 0.16,
+            0.52 - 0.20 * hitze)), 1.4, true)
+        draw_line(von + quer_s, bis + quer_s,
+            _gedeckt(farbe.lerp(Color(1.0, 0.98, 0.94),
+            0.24 + 0.40 * hitze) * Color(1, 1, 1, 0.42)), 0.9, true)
 
     _auge(p + k * r * 0.42 + zug * r * 0.22, r * 0.19, hitze, farbe)
 
@@ -2939,15 +2936,23 @@ func _spiegler(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> 
     # Der Leib ist deshalb kein Umriss mit Fuellung, sondern ein Kranz von
     # Facetten um eine Firstlinie. Jede bekommt ihre Helligkeit aus ihrer
     # eigenen Normalen.
-    var ecken := PackedVector2Array([
-        p + k * r * 1.34,
-        p + k * r * 0.52 + quer * r * 0.62,
-        p - k * r * 0.34 + quer * r * 0.70,
-        p - k * r * 1.10 + quer * r * 0.26,
-        p - k * r * 1.10 - quer * r * 0.26,
-        p - k * r * 0.34 - quer * r * 0.70,
-        p + k * r * 0.52 - quer * r * 0.62,
-    ])
+    # **Sieben Ecken sind vier Facetten, und vier Facetten sind eine
+    # Platte mit Kanten darauf.** Zwei davon nahmen die vordere Haelfte
+    # des Tieres ein, und weil eine Facette in sich gleich hell ist, war
+    # das eine grosse graue Flaeche. Elf Ecken geben elf schmalere
+    # Facetten - erst dann liest man Schliff statt Umriss. Die
+    # Radienfolge ist **fest** und nicht gewuerfelt: ein Kristall
+    # flackert nicht, und zwei Spiegler duerfen denselben Schliff haben.
+    var ecken := PackedVector2Array()
+    for i in 11:
+        var w := TAU * float(i) / 11.0
+        # Laenger als breit, vorn spitzer als hinten - dieselbe Silhouette
+        # wie vorher, nur feiner unterteilt.
+        var lang := r * (1.22 + 0.14 * cos(w))
+        var weit := r * 0.66
+        var kerbe := 1.0 + 0.11 * sin(float(i) * 3.1)
+        ecken.append(p + k * cos(w) * lang * kerbe
+            + quer * sin(w) * weit * kerbe)
     var first_v := p + k * r * 0.95
     var first_h := p - k * r * 0.80
     var zum_licht := lichtquelle - p
@@ -2997,23 +3002,41 @@ func _spiegler(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> 
         # Felsen und in `_koerper()`. Ein Viertel als Sockel laesst den
         # Sprung immer noch das Sechsfache betragen; das ist Schliff, und
         # nicht einmal knapp.
-        var st := 0.45 + 1.45 * zu * zu
+        # **Ein Schliff hat Stufen, und er hat sie in jeder Blickrichtung.**
+        #
+        # Die Helligkeit lief bisher glatt aus `zu` - und weil ein flaches
+        # Vieleck in einer Richtung beleuchtet wird, standen meist fuenf
+        # der sieben Facetten auf fast demselben Wert. Im Bild war der
+        # Spiegler damit eine graue Platte mit einem weissen Rand: die
+        # Facettenkanten waren da, aber links und rechts von ihnen stand
+        # dieselbe Farbe, und eine Kante zwischen zwei gleichen Flaechen
+        # ist keine.
+        #
+        # Zwei Aenderungen. Jede Facette bekommt eine eigene **Neigung**
+        # (fest je Platz, nicht gewuerfelt - ein Kristall flackert nicht),
+        # damit auch bei seitlichem Licht helle neben dunklen liegen. Und
+        # der Wert wird auf vier Stufen gerastert: ein Spiegel hat Flecken,
+        # keinen Verlauf.
+        var kipp := 0.5 + 0.5 * sin(float(i) * 2.39 + t.phase * 0.7)
+        var stufe := floorf(clampf(zu * 0.55 + kipp * 0.45, 0.0, 0.999)
+            * 4.0) / 3.0
+        var st := 0.40 + 1.55 * stufe
         var ton := Color(farbe.r, farbe.g, farbe.b).lerp(
-            Color(0.12, 0.30, 0.44), 0.34 * (1.0 - zu))
+            Color(0.12, 0.30, 0.44), 0.34 * (1.0 - stufe))
         draw_colored_polygon(PackedVector2Array([grat, a1, b1]),
             _gedeckt(Color(minf(1.0, ton.r * st), minf(1.0, ton.g * st),
                 minf(1.0, ton.b * st), 0.94)))
         # **Der Glanz** sitzt nur auf der Facette, die dem Licht am naechsten
         # steht, und ist eine scharfe Flaeche: ein Spiegel hat kein weiches
         # Glanzlicht, er hat einen Fleck oder keinen.
-        if zu > 0.80:
+        if stufe > 0.99:
             draw_colored_polygon(PackedVector2Array([
                 grat.lerp(mitte_f, 0.34),
                 a1.lerp(mitte_f, 0.46), b1.lerp(mitte_f, 0.46)]),
                 _gedeckt(Color(1.0, 1.0, 0.98, 0.28 + 0.42 * hitze)))
         # Die Facettenkante macht den Sprung sichtbar.
         draw_line(grat, a1, _gedeckt(Color(farbe.r, farbe.g, farbe.b,
-            0.22 + 0.34 * zu)), 1.0, true)
+            0.22 + 0.34 * stufe)), 1.0, true)
 
     var zu_r := ecken + PackedVector2Array([ecken[0]])
     var rand := PackedColorArray()
