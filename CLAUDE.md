@@ -1040,6 +1040,13 @@ zwölf Prozent der Bildrate. Aneinandergelegt ist es dieselbe Optik bei 40 %
 weniger Füllung — und weil die Bänder an ihren Grenzen **stoßen** statt
 sich zu decken, bleibt die Kante scharf, auf die es hier ankommt.
 
+*Unter vier Pixeln Breite sind drei Töne drei Striche — und beim Glied
+kehrt sich der Fehler um.* Dieselbe Stufe gilt für `_glied()`, aber dort
+ist der **Schatten** das breiteste Band: ein Fangarm der Lichtscheuen war
+im Bild ein dunkles Haar quer über ein helles Tier. Ein Faden im Wasser
+fängt Licht — unter anderthalb Einheiten bekommt ein Glied deshalb den
+Lichtton und keine Stufen.
+
 *Unter vier Pixeln Breite sind drei Töne drei Striche.* Das Lichtband nimmt
 28 % der Breite, der Grundton 30, der Schatten 42, und das Glanzlicht liegt
 noch darauf. Auf einem Pfeilwurm von sechs Pixeln Breite sind das vier

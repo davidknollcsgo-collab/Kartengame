@@ -810,6 +810,24 @@ func _glied(von: Vector2, nach: Vector2, dick_von: float, dick_nach: float,
         * Color(ZELL_SCHATTEN, ZELL_SCHATTEN, ZELL_SCHATTEN, 1.0)
     var licht := grund.lerp(Color(1.0, 0.98, 0.94), ZELL_LICHT)
 
+    # **Unter anderthalb Einheiten ist ein Glied ein Faden.**
+    #
+    # Dieselbe Stufe wie im Leib, und aus demselben Grund: drei Toene auf
+    # einer Breite von einem Pixel sind kein Koerper, sondern ein Muster.
+    # Beim duennen Glied ist der Schattenton der breiteste - und damit las
+    # sich ein Fangarm der Lichtscheuen im Bild als **dunkles Haar** quer
+    # ueber ein helles Tier. Ein Faden im Wasser faengt Licht; er bekommt
+    # deshalb den Lichtton und keine Stufen.
+    var duenn := maxf(dick_von, dick_nach)
+    if duenn < 1.5:
+        draw_colored_polygon(PackedVector2Array([
+            von + quer * dick_von, nach + quer * dick_nach,
+            nach - quer * dick_nach, von - quer * dick_von]),
+            _gedeckt(Color(licht.r, licht.g, licht.b, a)))
+        draw_line(von, nach, _gedeckt(Color(1.0, 0.99, 0.96,
+            minf(1.0, deckung * 1.2) * 0.42)), 0.8, true)
+        return
+
     # Zwei **aneinanderstossende** Baender, wie im Leib: die Grenze
     # zwischen ihnen ist die Form, und eine Grenze, an der sich zwei
     # Flaechen ueberlappen, ist eine Naht.
