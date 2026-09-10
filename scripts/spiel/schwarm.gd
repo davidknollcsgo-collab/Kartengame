@@ -1987,49 +1987,38 @@ func _grabnatter(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -
     # vorher unfreiwillig erzaehlt haben.
     var gn := glieder.size()
     if gn >= 3:
-        # **Fuenf Punktreihen, nicht drei.** Mit dreien faellt die Deckung
-        # von der Mittellinie aus sofort ab, und dann sieht ein Band von
-        # zwei Radien Breite aus wie ein Faden von einem: der Verlauf
-        # frisst die halbe Breite. Ein Koerper braucht einen vollen Kern
-        # und einen Saum darum - genau wie der Fels (Schulter, Kante,
-        # Saum).
-        var ecken := PackedVector2Array()
-        var farben := PackedColorArray()
-        var seiten := PackedFloat32Array([-1.0, -0.66, 0.0, 0.66, 1.0])
+        # **Der Leib war verkehrt herum, und niemand konnte es sehen.**
+        #
+        # Die Breite lief ueber `f = 1 - i/gn`, und `glieder[0]` ist der
+        # **aelteste** Ort, also der Schwanz: der Schwanz war damit r·1,28
+        # dick und der Hals r·0,42. Im Bild blaehte sich der Leib hinter
+        # einem winzigen Kopf auf. Aufgefallen ist es erst, als die
+        # Tierschau der Natter einen Rueckweg gab - vorher fiel sie dort
+        # auf ein einziges Glied zurueck, und die einzige Art, die man von
+        # der Seite sehen muss, war die einzige, die man nicht sah.
+        #
+        # **Und der Leib geht durch dieselbe Zellschattierung wie alle.**
+        # Er war ein Band in *einer* Farbe mit weichen Raendern - flach,
+        # ohne Lichtseite, mit einer geraden Schnittkante am Schwanz. Als
+        # Band auf einem Rueckgrat (`_zellband`) bekommt er die Toene und
+        # das Randlicht, die jedes andere Tier hat, und er laeuft spitz
+        # aus: ein abgeschnittener Schwanz ist wieder eine Kante, wo keine
+        # hingehoert.
+        var ruecken := PackedVector2Array()
+        var dick := PackedFloat32Array()
         for i in gn:
-            var f := 1.0 - float(i) / float(gn)
-            var vor: Vector2 = glieder[maxi(0, i - 1)]
-            var nach: Vector2 = glieder[mini(gn - 1, i + 1)]
-            var q := (nach - vor)
-            q = q.orthogonal().normalized() if q.length() > 0.001 \
-                else Vector2.UP
-            var dick := r * (0.42 + 0.86 * f)
-            var haut := Color(farbe.r, farbe.g, farbe.b,
-                0.66 + 0.24 * hitze).darkened(0.30 * (1.0 - f))
-            for sp in seiten:
-                var rand := absf(sp) >= 0.99
-                ecken.append(glieder[i] + q * dick * sp)
-                farben.append(_gedeckt(Color(haut.r, haut.g, haut.b,
-                    0.0 if rand else haut.a)))
-        var netz := PackedInt32Array()
-        for i in gn - 1:
-            var a := i * 5
-            var b := a + 5
-            for j in 4:
-                netz.append_array([a + j, b + j, b + j + 1,
-                    a + j, b + j + 1, a + j + 1])
-        RenderingServer.canvas_item_add_triangle_array(
-            get_canvas_item(), netz, ecken, farben)
-        # Die Ruecken-Mittellinie, heller und schmaler.
-        var ruecken := PackedColorArray()
-        var linie := PackedVector2Array()
-        for i in gn:
-            var f2 := 1.0 - float(i) / float(gn)
-            linie.append(glieder[i])
-            ruecken.append(_gedeckt(farbe.lerp(Color(1.0, 0.98, 0.94),
-                0.20 + 0.45 * hitze) * Color(1, 1, 1,
-                    (0.10 + 0.24 * hitze) * f2)))
-        draw_polyline_colors(linie, ruecken, maxf(1.0, r * 0.09), true)
+            # 0 am Schwanz, 1 am Kopf - `glieder` laeuft von alt nach neu.
+            var u := float(i) / float(gn - 1)
+            ruecken.append(glieder[i])
+            # **Am Hals schmaler als am Kopf.** Mit `pow(u, 0.45)` war der
+            # Leib am vordersten Glied am dicksten, und weil dort zugleich
+            # die staerkste Kruemmung sitzt, stand hinter dem Kopf ein
+            # breiter Keil - im Bild ein Pfeil, keine Schlange. Eine
+            # Natter ist ein Stueck **hinter** dem Kopf am dicksten, und
+            # ihr Hals ist duenner als er.
+            var bauch := sin(PI * pow(u, 1.35))
+            dick.append(r * (0.05 + 0.40 * pow(bauch, 0.7)))
+        _zellband(ruecken, dick, farbe, hitze)
 
     var k := t.richtung
     var quer := k.orthogonal()
@@ -3679,13 +3668,8 @@ func _zellband(ruecken: PackedVector2Array, profil: PackedFloat32Array,
             continue
         var bis: int = mini(n - 1, i)
         if bis - von >= 1:
-            var teil := PackedVector2Array()
-            var teil_p := PackedFloat32Array()
-            for j in range(von, bis + 1):
-                teil.append(ruecken[j])
-                teil_p.append(profil[j])
             var ton: Color = toene[stufe.call(lage[von])]
-            draw_colored_polygon(_band(teil, teil_p, -1.0, 1.0),
+            _streifen(ruecken, profil, von, bis,
                 _gedeckt(Color(ton.r, ton.g, ton.b, 1.0)))
         von = i
 
@@ -3791,3 +3775,37 @@ func _zellflosse(punkte: PackedVector2Array, farbe: Color, hitze: float,
         toene.append(_gedeckt(Color(kante.r, kante.g, kante.b,
             (0.22 + 0.62 * f) * (0.8 + 0.2 * hitze))))
     draw_polyline_colors(zu, toene, 1.4, true)
+
+
+## Ein Stueck Rueckgrat als **Dreiecksstreifen**, ein Aufruf.
+##
+## Nicht als Vieleck aus Aussen- und Innenkante: eine Kurve, die sich
+## staerker kruemmt als sie breit ist, schneidet ihre eigene Versatzlinie -
+## im Bild wurde aus dem Hals der Grabnatter ein dunkler Keil mit einer
+## Kerbe darin, also die klassische Selbstueberschneidung. Vierecke zwischen
+## je zwei Querschnitten koennen das nicht: jedes steht fuer sich, und weil
+## benachbarte sich eine Kante teilen, gibt es trotzdem keine Naht.
+func _streifen(ruecken: PackedVector2Array, profil: PackedFloat32Array,
+        von: int, bis: int, farbe: Color) -> void:
+    var n := bis - von + 1
+    if n < 2:
+        return
+    var ecken := PackedVector2Array()
+    var farben := PackedColorArray()
+    for j in range(von, bis + 1):
+        var vor: Vector2 = ruecken[maxi(0, j - 1)]
+        var nach: Vector2 = ruecken[mini(ruecken.size() - 1, j + 1)]
+        var laengs := (nach - vor)
+        laengs = laengs.normalized() if laengs.length() > 0.001 \
+            else Vector2.RIGHT
+        var quer := laengs.orthogonal()
+        ecken.append(ruecken[j] + quer * profil[j])
+        farben.append(farbe)
+        ecken.append(ruecken[j] - quer * profil[j])
+        farben.append(farbe)
+    var netz := PackedInt32Array()
+    for j in n - 1:
+        var a := j * 2
+        netz.append_array([a, a + 2, a + 3, a, a + 3, a + 1])
+    RenderingServer.canvas_item_add_triangle_array(
+        get_canvas_item(), netz, ecken, farben)

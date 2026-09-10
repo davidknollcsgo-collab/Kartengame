@@ -2398,6 +2398,26 @@ func _stelle_tierschau_auf() -> void:
         var reihe := a / spalten
         t.ort = Vector2(links + abstand.x * float(a % spalten),
             -abstand.y * 2.0 + abstand.y * float(reihe))
+        # **Ein Rueckweg, sonst fehlt der Grabnatter der Leib.**
+        #
+        # `_grabnatter()` liest ihren Koerper aus `t.rueckweg` - der wird
+        # waehrend der Fahrt mitgeschrieben, und in der Tierschau faehrt
+        # niemand. Ohne ihn faellt sie auf ein einziges Glied zurueck, also
+        # auf einen Klumpen, und die eine Art von siebzehn, die man am
+        # dringendsten von der Seite sehen will, war in der Schau gar nicht
+        # zu beurteilen. Ein Messstand, der eine Art nicht zeigt, ist fuer
+        # diese Art keiner.
+        # **Vom Schwanz zum Kopf, nicht umgekehrt.** `_merke_rueckweg()`
+        # haengt hinten an und vergleicht den **letzten** Eintrag mit dem
+        # Ort des Tieres; steht dort der Schwanz, sind das zweihundert
+        # Einheiten, also ein Versetzen - und die Liste wird im ersten Bild
+        # geleert. Der erste Anlauf sah deshalb genau so aus wie gar keiner.
+        var laengs := t.richtung
+        var quer := laengs.orthogonal()
+        for j in 26:
+            var u := 1.0 - float(j) / 25.0
+            t.rueckweg.append(t.ort - laengs * u * 210.0
+                + quer * sin(u * 2.6 + t.phase) * 26.0)
         _tiere.append(t)
     _offen = _tiere.size()
     _schwarm.tiere = _tiere

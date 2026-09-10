@@ -1282,6 +1282,33 @@ Form im Bild steht, die keine Zeichnung erklärt, ist die schnellste Frage
 nicht „wer zeichnet sie", sondern „welcher Aufruf hat die falschen
 Zahlen".**
 
+**Die Grabnatter war verkehrt herum gebaut, und niemand konnte es sehen.**
+Ihre Breite lief über `f = 1 − i/gn`, und `glieder[0]` ist der **älteste**
+Ort, also der Schwanz: der Schwanz war r·1,28 dick, der Hals r·0,42. Im
+Spiel blähte sich der Leib hinter einem winzigen Kopf auf — seit es die
+Art gibt. Gefunden hat es keine Codelesung, sondern der Messstand:
+`--tierschau` gab ihr keinen Rückweg, sie fiel dort auf ein einziges Glied
+zurück, und **die eine Art, die man von der Seite sehen muss, war die
+einzige, die man dort nicht sah.** Die Schau legt jetzt jedem Tier einen
+Rückweg an — vom Schwanz zum Kopf, weil `_merke_rueckweg()` den *letzten*
+Eintrag mit dem Ort vergleicht und die Liste sonst im ersten Bild als
+„versetzt" leert (der erste Anlauf sah deshalb genau so aus wie gar
+keiner).
+
+Und zwei Dinge am Leib selbst, die erst dieses Bild zeigte: er war ein Band
+in *einer* Farbe mit weichen Rändern und einer geraden Schnittkante am
+Schwanz — jetzt `_zellband` wie der Kreiser, mit Tönen, Randlicht und einer
+Spitze. Und er ist **hinter** dem Kopf am dicksten, nicht am vordersten
+Glied: dort sitzt zugleich die stärkste Krümmung, und ein breites Ende auf
+einer engen Kurve liest sich als Pfeil, nicht als Schlange.
+
+**Ein Band ist ein Dreiecksstreifen, kein Vieleck aus zwei Kanten.** Eine
+Kurve, die sich stärker krümmt als sie breit ist, schneidet ihre eigene
+Versatzlinie — `_band()` liefert dann eine Fläche, die sich selbst berührt.
+Vierecke zwischen je zwei Querschnitten (`_streifen()`) können das nicht:
+jedes steht für sich, und weil benachbarte sich eine Kante teilen, gibt es
+trotzdem keine Naht. Ein Aufruf pro Tonlauf, wie vorher.
+
 **Ein Schliff braucht Stufen und genug Facetten.** Der Spiegler rechnete
 seine Facettenhelligkeit glatt aus dem Winkel zum Licht — und weil ein
 flaches Vieleck aus *einer* Richtung beleuchtet wird, standen fünf von
