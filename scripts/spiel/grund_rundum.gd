@@ -1157,30 +1157,74 @@ func _faecher(p: Vector2, r: float, farbe: Color, a: float, dreh: float,
 
 
 ## Roehren: kurze Stiele mit einem Ring obendrauf.
+## Roehrenbewuchs: ein Buschel aus Polypenroehren.
+##
+## **Er war ein Zahnrad.** Die Arme standen in exakt gleichen Winkeln
+## (`TAU * i / n`), alle gleich gebaut, jeder aus einer Linie, einem Kreis,
+## einem Bogen und zwei Zacken - im Bild ein perfekt radialsymmetrisches
+## Rad mit zehn Speichen. Das ist das Einzige im ganzen Spiel, das so
+## gebaut war; die Regel hier heisst seit jeher, dass es keine geraden
+## Kanten und keine perfekten Formen gibt, und perfekte Radialsymmetrie ist
+## dieselbe Sorte Fehler in rund.
+##
+## Zwei Aenderungen, beide aus Zahlen, die schon dastehen:
+##
+## * **Die Winkel sind ungleich.** `arme[i]` ist die Laenge des Arms und
+##   war die einzige Stelle, an der sich zwei Arme unterschieden; sie
+##   verschiebt jetzt auch seinen Winkel. Gewuerfelt wird nichts - ein
+##   Busch, der jede Sekunde anders steht, waere ein Flackern.
+## * **Ein Arm ist ein Koerper.** Verjuengte Baender in einem Netz statt
+##   Strichen, dieselbe Sprache wie die Polypenarme und die Fischschwaerme.
+##   Fuenf Zeichenaufrufe je Arm werden zu einem je Busch.
 func _roehren(p: Vector2, r: float, farbe: Color, a: float, dreh: float,
         arme: PackedFloat32Array, atem: float) -> void:
-    for i in arme.size():
-        var w := dreh + TAU * float(i) / float(arme.size())
+    var n := arme.size()
+    if n < 1:
+        return
+    var ecken := PackedVector2Array()
+    var farben := PackedColorArray()
+    var netz := PackedInt32Array()
+    var koepfe: Array[Vector2] = []
+    var dick := maxf(0.8, r * 0.085)
+    for i in n:
+        # Der Versatz kommt aus der Laenge des Arms: fest je Busch, und
+        # gross genug, dass die Speichen aufhoeren, Speichen zu sein.
+        var schief := (arme[i] - 0.85) * 1.30
+        var w := dreh + TAU * float(i) / float(n) + schief
         var fuss := p + Vector2.RIGHT.rotated(w) * r * 0.34
         var kopf := fuss + Vector2.RIGHT.rotated(w + 0.3) \
             * r * arme[i] * (0.7 + 0.06 * atem)
-        # Der Stiel ist Kalk und traegt nichts; die Krone ist das Tier.
-        draw_line(fuss, kopf, Color(farbe.r * 0.8, farbe.g * 0.8,
-            farbe.b * 0.8, a * 0.9), 1.8, true)
-        draw_circle(kopf, r * 0.13, Color(farbe.r, farbe.g, farbe.b, a * 0.5))
-        draw_arc(kopf, r * 0.13, 0.0, TAU, 8,
-            Color(farbe.r, farbe.g, farbe.b, a * 1.4), 1.0, true)
-        # Die Fangarme, quer zur Roehre - daran erkennt man einen
-        # Roehrenwurm und nicht einen Nagel mit Kopf.
-        for seite: float in [-1.1, 1.1]:
-            draw_line(kopf, kopf + Vector2.RIGHT.rotated(w + 0.3 + seite)
-                * r * 0.20, Color(farbe.r, farbe.g, farbe.b, a * 1.1),
-                1.0, true)
+        koepfe.append(kopf)
+        var quer := (kopf - fuss).orthogonal().normalized() * dick
+        var k := ecken.size()
+        ecken.append(fuss + quer)
+        ecken.append(fuss - quer)
+        ecken.append(kopf + quer * 0.35)
+        ecken.append(kopf - quer * 0.35)
+        var unten := Color(farbe.r * 0.62, farbe.g * 0.70, farbe.b * 0.76,
+            a * 0.9)
+        var oben := Color(farbe.r, farbe.g, farbe.b, a * 1.15)
+        farben.append_array([unten, unten, oben, oben])
+        netz.append_array([k, k + 1, k + 2, k + 1, k + 3, k + 2])
+    RenderingServer.canvas_item_add_triangle_array(
+        get_canvas_item(), netz, ecken, farben)
+    # **Ein Polypenkopf ist ein Becher, kein Ring.**
+    #
+    # Der erste Anlauf liess vom Kopf einen hellen Bogen um eine fast leere
+    # Scheibe uebrig - im Bild ein Lutscher am Stiel. Ein Polyp ist ein
+    # gefuellter Kelch mit einem dunklen Mund darin; das ist dieselbe
+    # Gliederung wie ueberall sonst hier, Flaeche traegt, Kante begleitet.
+    for kopf in koepfe:
+        draw_circle(kopf, r * 0.15, Color(farbe.r, farbe.g, farbe.b, a * 1.1),
+            true, -1.0, true)
+        draw_circle(kopf, r * 0.07, Color(farbe.r * 0.35, farbe.g * 0.42,
+            farbe.b * 0.50, a * 1.2), true, -1.0, true)
+    # Und ein Fuss, an dem das Buschel sitzt: die Arme beginnen bei 0,34 r,
+    # also stand dort vorher ein Loch.
+    draw_circle(p, r * 0.30, Color(farbe.r * 0.50, farbe.g * 0.58,
+        farbe.b * 0.64, a * 0.85), true, -1.0, true)
 
 
-## Ein Schopf: gebogene Halme aus einem Punkt, die sich in der Stroemung
-## wiegen. Der einzige Bewuchs, der sich sichtbar bewegt - mehr Bewegung im
-## Hintergrund zieht den Blick von den Raeubern ab.
 func _schopf(p: Vector2, r: float, farbe: Color, a: float, dreh: float,
         arme: PackedFloat32Array, atem: float) -> void:
     for i in arme.size():
