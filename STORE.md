@@ -84,50 +84,57 @@ One finger, one cone of light, and a trench that comes at you from all sides.
 **Vollständige Beschreibung** (max. 4000 Zeichen)
 
 ```
-Deep in a lightless trench, a colony survives on one thing: light. You steer
-it — first out in the dark water, later at the mouth of the colony itself.
+Deep in a lightless trench, a colony survives on one thing: light. You take a
+boat out into the dark water above the trench floor and bring back what the
+colony needs to grow.
 
 Hold your finger anywhere on the screen. The light turns to face it, and the
 boat drives toward it. What stands in the light burns. What reaches you takes
-a piece of the hull.
+a piece of the hull. That is the whole control scheme — no buttons to learn,
+no aiming reticle, no timing windows. Where the light should be is a harder
+question than it sounds once a dozen species are closing from every direction
+at once, each of them wrong to treat the same way.
 
 THE DIVE
-A dark map, a small boat, and predators closing from every direction. The
-trench is unlit until you drive through it: what you have seen stays on your
-map, and what you have not could be anything. Sites are buried out there that
-only show themselves once you have been close. So are ambushers — a quarter of
-every wave is already lying in the dark, waiting for you to come near.
+Five waves to a dive, three or four minutes, and then the report: what you
+brought back stays with the colony even when the hull does not.
 
-Three guard polyps trail behind you and burn what they can reach. Five waves
-to a dive, three or four minutes, and then the report: what you brought back
-stays with the colony even when the hull does not.
+The trench is unlit until you drive through it. What you have seen stays on
+your map; what you have not could be anything. Sites lie buried out there
+that only show themselves once you have been close — and so do ambushers. A
+quarter of every wave is already lying in the dark when you arrive, waiting
+for you to come near.
 
-THE WATCH
-The other half of the game, and the one it started as. The guardian sits still
-at the mouth of the colony and sweeps a cone of light across everything that
-sinks toward the brood. Forty to seventy seconds a wave, five waves a session.
-No timing windows, no buttons, no aiming reticle — just a beam of light and
-the decision of where it should be, which is a harder question than it sounds
-once nine ordinary species and three wardens come down at once, each of them wrong to treat the same way.
+Guard polyps ride behind you and burn what they can reach. How many is up to
+your colony: one at the start, up to eight once the polyp chamber is deep.
 
-Fangjaw sinks straight and dies fast. Shellback is slow enough to ignore and
-tough enough that ignoring it costs you. Emberjelly only burns in the core of
-the beam, never at the edge. Driftanchor leaves the cone on its own while you
-hold perfectly still. Lunge Eel sinks in bursts, so the tracking that works on
-everything else misses it.
+SEVENTEEN WAYS TO BE WRONG
+Fangjaw comes straight at you and dies fast — the yardstick for everything
+else. Shellback is slow enough to ignore and tough enough that ignoring it
+costs you. Emberjelly burns only in the core of the beam, never at the edge.
+Mirrorshell is the exact opposite: its shell throws the core back, so only
+the fringe of the light bites. Driftanchor slides sideways and leaves the
+cone even if you hold perfectly still. Shylight backs away while it is lit,
+so half a beam only pushes it out of reach. Ringrunner never closes at all —
+it circles, and holding the beam on it means you stop steering.
+
+Five wardens close the sections, and none of them is just a bigger animal.
+One keeps spawning young while it lives. One will not hold still. One circles
+and makes you choose between shooting and driving.
 
 THE COLONY
-Between dives the game turns into something slower — and it is the same colony
-either way you play. Five chambers, dug down a shaft into the rock: a brighter light organ, tougher guard polyps, more brood
-to lose, nutrients while you are away, and a shaft that opens the trench
-deeper. Build times run from minutes to hours — enough to give the day a
-rhythm, never enough to make you wait for permission to play.
+Between dives the game turns into something slower. Five chambers, dug down a
+shaft into the rock: a brighter light organ, more and stronger guard polyps,
+a thicker hull, nutrients that accrue while you are away, and a shaft that
+opens the trench deeper. Build times run from minutes to hours — enough to
+give the day a rhythm, never enough to make you wait for permission to play.
 
 THE TRENCH HAS NO FLOOR
 Every ten waves the trench changes its rules: a current that bends your aim,
 raiders that avoid light, stretches of darkness. Past the sixth section the
-raiders begin to mutate — plated, lightshy, erratic, bloated — in combinations
-that keep arriving as long as you keep descending. There is no last wave.
+raiders begin to mutate — plated, lightshy, erratic, bloated — in
+combinations that keep arriving as long as you keep descending. There is no
+last wave.
 
 NO STRINGS
 One price, once. No ads. No loot boxes. No energy meter. No second currency
@@ -139,6 +146,7 @@ Everything you see and hear was made for this game and generated by it: the
 graphics are drawn in code, every sound is synthesised as it plays. There is
 not one image file and not one audio file in the whole app.
 ```
+
 
 **Kategorie**: Spiele → Strategie
 **Tags**: Strategy, Casual, Single player, Offline
@@ -159,8 +167,10 @@ tools/ladengrafik.sh build/laden    # das Feature-Bild, 1024x500
 ```
 
 Jeder Lauf legt sich einen eigenen, leeren Spielstand an. Ohne das lief die
-Aufnahme auf dem Stand, der zufällig im Behälter lag — und über der
-Schlundwache stand die Rückkehrtafel „WHILE YOU WERE AWAY" statt des Spiels.
+Aufnahme auf dem Stand, der zufällig im Behälter lag — und statt des Spiels
+stand dann eine Rückkehrtafel im Bild. **Eine Aufnahme, die den Spielstand
+der Maschine zeigt, zeigt nicht das Spiel**, und das fällt erst auf, wenn der
+Eintrag schon steht.
 
 ## 4. Formulare — die Antworten
 

@@ -22,11 +22,11 @@ GROESSE="1080x1920"
 # **Ein eigener, leerer Spielstand je Lauf.**
 #
 # Vorher liefen die Aufnahmen auf dem Stand, der zufaellig im Behaelter lag -
-# und der hatte ein Datum. Beim naechsten Lauf stand deshalb ueber der
-# Schlundwache die Tafel "WHILE YOU WERE AWAY" mit 45.3K gefilterten
-# Naehrstoffen: ein Ladenbild, das nicht das Spiel zeigt, sondern eine
-# Rueckkehr. Die Kammerstufen kommen ohnehin aus `--stufen`, also braucht
-# keine Aufnahme einen gewachsenen Stand.
+# und der hatte ein Datum. Beim naechsten Lauf stand deshalb die Tafel
+# "WHILE YOU WERE AWAY" mit 45.3K gefilterten Naehrstoffen im Bild: ein
+# Ladenbild, das nicht das Spiel zeigt, sondern eine Rueckkehr. Die
+# Kammerstufen kommen ohnehin aus `--stufen`, also braucht keine Aufnahme
+# einen gewachsenen Stand.
 STAND="$(mktemp -d)"
 trap 'rm -rf "$STAND"' EXIT
 export HOME="$STAND"
