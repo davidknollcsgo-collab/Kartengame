@@ -52,6 +52,33 @@ const BOOT_TEMPO := 260.0
 const BOOT_TRAEGHEIT := 6.0
 const DREH_TEMPO := 7.0
 
+## Wie nah die Kamera steht.
+##
+## **Ein Tier stand im Spielbild bei zwoelf bis fuenfundzwanzig Pixeln.**
+## Auf dieser Groesse entscheidet die Silhouette, und alles, was an
+## Flaechen, Toenen und Konturen gebaut wurde, kam gar nicht an. Naeher
+## heran ist aber keine reine Optikfrage: weniger Ausschnitt heisst weniger
+## Vorwarnung, also eine Aenderung am Spiel.
+##
+## **Deshalb kam erst der Wächter und dann die Zahl.** Der Pilot der
+## Fahrprobe sah bis dahin das ganze Feld; seit er nur noch sieht, was im
+## Bild steht (`probe_sicht()`), misst die Probe genau das. Ueber
+## fuenfundvierzig Wellen, derselbe Lauf zweimal:
+##
+## | | Huelle gesamt | Rueckstand gesamt |
+## |---|---|---|
+## | ohne Zoom (Sicht 905) | 690 | 103,3 s |
+## | Zoom 1,18 (Sicht 767) | 688 | 128,3 s |
+##
+## Die Huelle kostet es **nichts** (0,3 % und damit im Rauschen), der
+## Rueckstand steigt um rund eine halbe Sekunde je Welle. Die Wellen bleiben
+## damit in der Spanne, die der Plan nennt. Das ist der Preis, und er ist
+## gemessen und nicht geschaetzt.
+##
+## Wer diese Zahl anfasst, laeuft die Fahrprobe noch einmal: sie haengt
+## ueber `probe_sicht()` daran und meldet es.
+const KAMERA_ZOOM := 1.18
+
 ## Wie traege die Kamera folgt und wie weit sie vorausschaut.
 ## **Straff, nicht traege.** Beim ersten Versuch lag die Kamera so weit
 ## zurueck, dass das Boot am Bildrand klebte: bei Tempo 260 und einer
@@ -352,6 +379,7 @@ func _ready() -> void:
     Fortschritt.bau_fertig.connect(_bau_fertig)
     _koloniebild.zurueck_beschriftung = "BACK TO THE TRENCH"
     _kamera.position = _ort
+    _kamera.zoom = Vector2(KAMERA_ZOOM, KAMERA_ZOOM)
     _stelle_ausbau_ein()
     _stelle_begleiter_auf()
     _bereite_welle_vor()
@@ -2549,6 +2577,8 @@ func _fahre_probe() -> void:
     # Spielstand, der zufaellig auf der Platte liegt.
     _erste_welle = 1
     print("Fahrprobe - bis Welle %d, Kolonie auf der Sollkurve" % _fahrprobe)
+    print("Sichtweite des Piloten: %.0f Einheiten (Feld %.0f, Eintritt %.0f)"
+        % [probe_sicht(), Rundum.SICHT, Rundum.EINTRITT_RADIUS])
     print("")
     print(" Welle | Huelle | Sekunden | Fenster | Rueckstand | Erlegt | Naehrstoff (Soll)")
     print(" ------+--------+----------+---------+------------+--------+------------------")
@@ -2643,17 +2673,45 @@ func _setze_sollstand() -> void:
 
 
 ## Der Pilot: Licht auf das naechste Tier, und heran, wenn es weit weg ist.
+## Wie weit der Pilot sieht.
+##
+## **Er sah bisher das ganze Feld.** Er zielte auf das naechste Tier, ganz
+## gleich ob es im Bild stand - und damit konnte die Fahrprobe die eine
+## Frage nicht beantworten, die an der Kamera haengt: was kostet es, weniger
+## Vorwarnung zu haben? Jede Aenderung am Ausschnitt war ein Blindflug, und
+## deshalb ist der Zoom hier zweimal verworfen worden.
+##
+## Die Zahl ist **abgeleitet und nicht gesetzt**: die halbe Bilddiagonale,
+## geteilt durch den Kamerazoom. Wer den Ausschnitt enger macht, macht damit
+## automatisch auch den Piloten kurzsichtiger, und die Probe misst es. Das
+## ist dieselbe Regel wie ueberall hier - eine Kurve, nicht zwei.
+func probe_sicht() -> float:
+    var bild := get_viewport_rect().size
+    var z := 1.0
+    if _kamera != null:
+        z = maxf(0.01, _kamera.zoom.x)
+    return maxf(120.0, bild.length() * 0.5 / z)
+
+
 func _steuere_probe() -> void:
     var naechstes: Raeuber = null
     var beste := INF
+    var sicht := probe_sicht()
+    var reicht := sicht * sicht
     for t in _tiere:
         if not t.lebendig or t.alter < 0.0:
             continue
         var d := t.ort.distance_squared_to(_ort)
-        if d < beste:
+        if d < beste and d < reicht:
             beste = d
             naechstes = t
     if naechstes == null:
+        # **Was er nicht sieht, faehrt er nicht an.** Ein Pilot, der ins
+        # Dunkle zieht, weil dort rechnerisch etwas steht, misst wieder das
+        # ganze Feld. Er haelt still und laesst kommen - das ist die
+        # vorsichtigste Annahme und damit die richtige fuer eine untere
+        # Schranke.
+        _finger = _ort
         return
     var richtung := (naechstes.ort - _ort).normalized()
     # Innerhalb der Totzone zielt der Finger nur; darueber faehrt das Boot

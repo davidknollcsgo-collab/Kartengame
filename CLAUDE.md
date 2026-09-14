@@ -1824,6 +1824,34 @@ Die Kolonie steht dabei je Welle auf `Ausbau.stufe_soll()` — dieselbe
 Vorgabe, gegen die der Wellenprüfer misst. Ohne das misst man nicht das
 Spiel, sondern den Spielstand, der zufällig auf der Platte liegt.
 
+**Und seit sie eine Sichtweite kennt, kann sie den Ausschnitt messen.** Der
+Pilot zielte auf das nächste Tier, ganz gleich ob es im Bild stand — damit
+war jede Änderung an der Kamera ein Blindflug, und der Zoom ist hier
+zweimal daran verworfen worden. `probe_sicht()` ist die halbe Bilddiagonale
+geteilt durch den Kamerazoom, also **abgeleitet und nicht gesetzt**: wer den
+Ausschnitt enger macht, macht den Piloten automatisch kurzsichtiger. Sieht
+er nichts, hält er still — ein Pilot, der ins Dunkle zieht, weil dort
+rechnerisch etwas steht, misst wieder das ganze Feld.
+
+Damit war die Frage in einem Lauf beantwortet. Über fünfundvierzig Wellen,
+derselbe Lauf zweimal:
+
+| | Sicht | Hülle gesamt | Rückstand gesamt |
+|---|---|---|---|
+| ohne Zoom | 905 | 690 | 103,3 s |
+| `KAMERA_ZOOM` 1,18 | 767 | 688 | 128,3 s |
+
+Die Hülle kostet es **nichts** (0,3 %, also Rauschen), der Rückstand steigt
+um rund eine halbe Sekunde je Welle und bleibt in der Spanne, die der Plan
+nennt. Die Tiere sind dafür linear 18 % größer — und auf zwölf bis
+fünfundzwanzig Pixeln ist das der Unterschied zwischen einer Silhouette und
+einem Fleck.
+
+**Was der Wächter dabei nicht sagt:** der Pilot ist *passiv*, er lässt
+kommen. Er beantwortet „sind die Wellen noch zu räumen", nicht „hat ein
+Mensch genug Reaktionszeit". Die zweite Frage bleibt offen, und sie bleibt
+es auch, solange der Pilot nicht ausweicht.
+
 **Was noch offen ist:** es gibt keine Wellenpausen — wer im Rundumlauf baut,
 tut es zwischen den Fahrten und nicht in ihnen. Der Wellenprüfer
 kann diese Schleife **nicht** messen: ein simulierter Daumen ersetzt kein
