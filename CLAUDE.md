@@ -174,6 +174,38 @@ godot --headless --path . --script tools/mutationskosten.gd -- --zug Plated
 > Einzelpreis-Änderung übergibt die Welle dem Füller, und die Trefferliste
 > des Kolonielaufs nennt danach den, der übrig war.
 >
+> **Nachgemessen im richtigen Fenster — und die Tabelle oben hält.** Das
+> Werkzeug mass fest über die Wellen 161 bis 240, mit der Begründung „dort
+> steht die Kolonielauf-Trefferliste". Die ist falsch: der Kolonielauf meldet
+> seine Fälle **von Welle 30 bis 210**, also deckt das Fenster ein Viertel
+> davon. Über 30 bis 210 nachgemessen (`--von` / `--bis`, seit demselben
+> Commit):
+>
+> | Art | kommt | Anteil an der Hülle | je Auftritt |
+> |---|---|---|---|
+> | Shellback | 225 | 16,4 % | 0,28 |
+> | Chalk Ray | 4 | 4,2 % | 4,0 |
+>
+> Shellback steht bei 16,4 statt 18,6 % — **dieselbe Aussage**, und damit ist
+> der teuer bezahlte Befund oben bestätigt statt widerlegt.
+>
+> **Chalk Ray dagegen ist ein Artefakt, und zwar ein lehrreiches.** In der
+> Trefferliste des Kolonielaufs steht er mit 69 ganz oben, in *jedem* Lauf
+> dieser Sitzung und unter jeder Begleiterformation. Im Messstand tritt er in
+> 181 Wellen **viermal** an: einmal kostet er nichts, dreimal seine volle
+> `wucht`. Im alten Fenster kam er zweimal vor, und dort machte sein
+> Aussperren die Welle **schlechter** (−4,2 %) statt besser (+4,2 %) — ein
+> Vorzeichenwechsel aus Rauschen, genau wovor die Spalte `kommt` in derselben
+> Datei warnt.
+>
+> **Die Spitze der Trefferliste ist kein Schuldnachweis.** Sie zählt Hülle
+> innerhalb *gefallener* Sitzungen — eine Stichprobe, die nach dem Ergebnis
+> ausgewählt ist. Wer dort oben steht, war anwesend, als es schiefging. Ein
+> Leitwesen steht dort zwangsläufig weit oben: es kommt selten, aber wenn es
+> durchkommt, kostet es vier auf einmal, und eine Sitzung mit zwanzig Hülle
+> fällt daran. Woran eine Art die Welle wirklich teuer macht, sagt
+> `tools/artenlast.gd` — im Fenster, in dem die Fälle liegen.
+>
 > **Was daraus folgt und noch offen ist:** der Hebel ist nicht ein Preis,
 > sondern der **Abstand** zwischen dem billigsten Tier und dem Rest — oder
 > der Füller selbst. Wer das anfasst, fasst `Wellen.billigste()` und
