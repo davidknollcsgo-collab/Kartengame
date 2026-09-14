@@ -503,6 +503,51 @@ static func rundendauer(nummer: int) -> float:
 ##
 ## Jeder Eintrag: `art` (Index in `Arten.TABELLE`), `zeit` (Sekunden ab
 ## Wellenbeginn), `x` (Eintrittsstelle), `phase` (Versatz des Schlaengelns).
+## Wie stark die Gruppengroesse aus der Ziehung herausgerechnet wird.
+##
+## **Die Ziehung war gleichverteilt, der Ertrag einer Ziehung nicht.** Jede
+## Art wird gleich oft gezogen - gemessen ueber die Wellen 30 bis 210:
+## 198 bis 270 Mal, quer durch die Tabelle. Was eine Ziehung an Koerpern
+## bringt, ist aber sehr verschieden: Laichwolke 5,7, Schleier 3,5, alle
+## uebrigen 1,1. Zwei Schwarmarten stellten damit 62 % aller Koerper, und
+## zwar **unabhaengig von jedem Preis** - `aufwand` bepreist Lebenspunkte,
+## und ein Schwarm hat wenige davon.
+##
+## Das erklaert die Fehlschlaege in CLAUDE.md: wer an einem Einzelpreis
+## dreht, dreht an der Zahl der *Ziehungen* einer Art. Die Zahl der
+## **Koerper** haengt daran kaum.
+##
+## Bei 0 bleibt alles wie es war, bei 1 traegt jede Art gleich viele Koerper
+## bei. Dazwischen ist der Schwarm noch ein Schwarm und nicht mehr die halbe
+## Welle.
+const SCHWARM_AUSGLEICH := 0.0
+
+
+## Eine Art ziehen - nach Koerpern gewichtet, nicht nach Arten.
+##
+## Eigene Funktion, weil sie messbar sein muss: die Verteilung einer Welle
+## ist eine Aussage ueber das Spiel, und eine Aussage, die nur als Ausdruck
+## mitten in einer Schleife steht, kann niemand nachzaehlen.
+static func ziehe_art(moeglich: PackedInt32Array,
+        rng: RandomNumberGenerator) -> int:
+    if SCHWARM_AUSGLEICH <= 0.0 or moeglich.is_empty():
+        return moeglich[rng.randi_range(0, moeglich.size() - 1)]
+    var summe := 0.0
+    var gewichte := PackedFloat32Array()
+    for i in moeglich:
+        var g := Arten.gruppe(i)
+        var mittel := maxf(1.0, 0.5 * float(g.x + g.y))
+        var wert := pow(1.0 / mittel, SCHWARM_AUSGLEICH)
+        gewichte.append(wert)
+        summe += wert
+    var wurf := rng.randf() * summe
+    for k in moeglich.size():
+        wurf -= gewichte[k]
+        if wurf <= 0.0:
+            return moeglich[k]
+    return moeglich[moeglich.size() - 1]
+
+
 static func auftritte(nummer: int) -> Array[Dictionary]:
     var rng := RandomNumberGenerator.new()
     rng.seed = SAAT + nummer * 7919
@@ -535,7 +580,7 @@ static func auftritte(nummer: int) -> Array[Dictionary]:
         budget -= aufwand_in(leit, nummer)
 
     while budget > 0.0 and gruppen.size() < deckel:
-        var index := moeglich[rng.randi_range(0, moeglich.size() - 1)]
+        var index := ziehe_art(moeglich, rng)
         # **Wieviele auf einen Schlag, sagt die Art.** Hier stand der
         # Schleier namentlich; jede weitere Schwarmart haette an zwei Stellen
         # eingetragen werden muessen, und die zweite vergisst man.
