@@ -12,7 +12,16 @@ render_mode blend_mix;
 //   2. Schwebstoff    - langsam sinkender Meeresschnee in drei Ebenen
 //   3. Schlieren      - traege Stroemung, damit das Bild nie ganz still steht
 
-uniform vec3 tief : source_color = vec3(0.008, 0.018, 0.034);
+// **Das dunkelste Wasser ist immer noch Wasser.**
+//
+// Gemessen im Spielbild kam am Bildrand und in jeder unbefahrenen Ecke
+// (0 / 0 / 1) heraus - praktisch Schwarz, und auf einem Schirm von 720 auf
+// 1600 war das ein Drittel des Bildes. Der Absatz in CLAUDE.md schrieb das
+// dem Nebel zu; der ist es nicht. Nachgemessen: `NEBEL_FARBE` verdreifacht
+// aendert an diesen Stellen **nichts**, und den Nebel ganz stillgestellt
+// ebenso wenig. Was dort steht, ist dieser Ton, von der Randabdunklung
+// weiter halbiert.
+uniform vec3 tief : source_color = vec3(0.030, 0.066, 0.088);
 uniform vec3 grund : source_color = vec3(0.020, 0.062, 0.085);
 uniform vec3 schein : source_color = vec3(0.055, 0.180, 0.190);
 uniform float zeit_tempo : hint_range(0.0, 2.0) = 0.28;
@@ -146,7 +155,11 @@ void fragment() {
     // Fuehrung heisst Gefaelle, nicht Ausloeschung.
     float rand = mix(0.5, 0.30, enge);
     float seitlich = smoothstep(rand, 0.02, abs(uv.x - 0.5));
-    farbe *= mix(0.52, 0.26, enge) + (0.48 - 0.14 * enge) * seitlich;
+    // **Und der Sockel traegt, wo der Verlauf schon unten ist.** Mit 0,52
+    // stand am Bildrand die Haelfte des ohnehin dunkelsten Tons - gemessen
+    // (0 / 0 / 1), also Schwarz. Die Fuehrung zur Mitte bleibt dieselbe
+    // Spanne; sie faengt nur hoeher an.
+    farbe *= mix(0.64, 0.32, enge) + (0.36 - 0.10 * enge) * seitlich;
 
     COLOR = vec4(farbe, 1.0);
 }

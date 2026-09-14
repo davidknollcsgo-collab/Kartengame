@@ -1583,13 +1583,28 @@ Getrennt gezeichnet kostete er gemessen acht Prozent (5,85 gegen 6,35
 Bilder/s) — was hier kostet, ist die Zahl der Zeichenaufrufe und nicht die
 der Dreiecke. Im vorhandenen Netz ist er umsonst.
 
-**Unerkundetes Wasser ist immer noch Wasser.** `NEBEL_FARBE` lag so nahe
-an Schwarz, dass die Deckung von 0,93 den Rest erledigte: gemessen (0, 0,
-3), und auf 720×1600 war das obere Drittel eine schwarze Fläche. Das liest
-sich nicht als Dunkelheit, sondern als ausgeschaltet — der Graben ist
-nicht leer, er ist unbeleuchtet. Jetzt ein sehr dunkles Blaugrün, dunkler
-als das dunkelste befahrene Wasser und heller als nichts; was der Nebel
-verbirgt, verbirgt er unverändert.
+**Unerkundetes Wasser ist immer noch Wasser — und der Nebel war nicht
+schuld.** Der Absatz, der hier stand, schrieb die schwarzen Flächen
+`NEBEL_FARBE` zu. Das ist **falsch**, und zwar nachmessbar: den Ton
+verdreifacht ändert an den dunkelsten Stellen nichts, und `_zeichne_nebel()`
+ganz stillgestellt ebenso wenig (es ändert 600 000 Pixel woanders, dort
+aber keines). Gemessen am Bildrand und in jeder unbefahrenen Ecke: **(0 / 0
+/ 0)**.
+
+Was dort steht, ist der tiefste Ton des Wasser-Shaders (`graben.gdshader`,
+`tief`), von der Randabdunklung noch einmal halbiert — im Rundumlauf läuft
+der Verlauf radial um die Bildmitte, und außerhalb von 0,60 ist er auf
+null. Beide Zahlen sind gehoben: `tief` von (0,008 / 0,018 / 0,034) auf
+(0,030 / 0,066 / 0,088), und der Sockel der Randabdunklung von 0,52 auf
+0,64 — dieselbe Spanne der Führung zur Mitte, sie fängt nur höher an.
+Gemessen danach (0 / 9 / 15) statt (0 / 0 / 0), die beleuchtete Fläche
+unverändert bei (115 / 151 / 154).
+
+**Die Lehre ist dieselbe wie beim Fels, und das ist das zweite Mal in
+derselben Datei:** eine Zahl wird angefasst, das Bild wird besser, und die
+Notiz schreibt die Wirkung der angefassten Zahl zu — ohne zu prüfen, ob sie
+es war. **Wer eine Ursache notiert, stellt sie einmal ab und sieht nach, ob
+es dunkel bleibt.**
 
 **Ein Ring ist kein Kreis, und ein Fels ist kein Umriss.** Die Rückmeldung
 lautete: *zu viele einzelne Linien.* Sie war richtig, und zwar überall aus
