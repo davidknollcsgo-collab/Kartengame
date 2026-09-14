@@ -37,7 +37,19 @@ var kern := Color(0.82, 1.0, 0.96)
 ## Flaeche, sondern das, was darin schwebt und funkelt: der Strahl selbst ist
 ## unsichtbar, man sieht nur, was er trifft. Also der Keil zurueck und dafuer
 ## dreimal so viel Staub, in mehr Groessen.
-const STAERKE := 0.33
+## **Und dann noch einmal gesenkt, aus demselben Grund.** Bei 0,33 war der
+## Keil eine milchige Flaeche ueber dem Grund - im Schuss gemessen liegen
+## 88 % des Bildes im Untergrund, und der spannt Gruen 12 bis 50 von 255.
+## Der Strahl deckte damit genau das zu, was er aufdecken soll. Bei 0,22
+## steht er als Schaft und nicht als Nebel, und was im Licht liegt, sieht
+## man wieder.
+##
+## Nachgesehen im **Dark Band** (Abschnitt 3, Restlicht 0,22): der Strahl
+## bleibt dort lesbar. Weiter herunter (0,17 war probiert) sieht im Behaelter
+## noch besser aus - aber auf einem Telefon bei Tageslicht kann das hier
+## niemand pruefen, und der Kegel ist die einzige Zielrueckmeldung, die es
+## gibt.
+const STAERKE := 0.22
 
 ## --- Staub im Strahl ---
 ##
