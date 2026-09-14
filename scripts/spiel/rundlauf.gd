@@ -77,7 +77,33 @@ const DREH_TEMPO := 7.0
 ##
 ## Wer diese Zahl anfasst, laeuft die Fahrprobe noch einmal: sie haengt
 ## ueber `probe_sicht()` daran und meldet es.
-const KAMERA_ZOOM := 1.18
+##
+## **Und sie ist noch einmal angefasst worden, aus demselben Grund.** Die
+## Rueckmeldung war ein Stilbild - so soll das ganze Spiel aussehen -, und
+## nachgemessen lag der Unterschied zwischen Bild und Spiel **nicht** an
+## Farbe: ueber ganze Bilder verglichen ist die Saettigung dieselbe (Median
+## 0,45 gegen 0,37 bis 0,45, oberes Zehntel 0,65 gegen 0,65). Die Tiere
+## sehen im Spiel aus wie in der Schau - sie sind nur **klein**.
+##
+## Dieselbe Probe, drei Stufen ueber fuenfundvierzig Wellen:
+##
+## | Zoom | Sicht | Rueckstand gesamt | je Welle |
+## |---|---|---|---|
+## | 1,18 | 767 | 124,3 s | 2,8 s |
+## | 1,34 | 675 | 167,5 s | 3,7 s |
+## | 1,50 | 603 | 198,1 s | 4,4 s |
+##
+## Alle drei tragen die fuenfundvierzig Wellen und bleiben in der Spanne,
+## die der Plan nennt. Gewaehlt ist die Mitte: ein Siebtel groessere Tiere
+## als bei 1,18, zwoelf Prozent weniger Sicht.
+##
+## **Was diese Zahlen nicht sagen**, und das steht hier, damit es der
+## naechste nicht vergisst: der Pilot ist passiv, er laesst kommen. Er
+## beantwortet "sind die Wellen noch zu raeumen", nicht "hat ein Mensch
+## genug Reaktionszeit" - und weniger Sicht heisst weniger Vorwarnung. Wer
+## auf 1,50 gehen will, hat die Zahlen dafuer; die offene Frage bleibt
+## dieselbe.
+const KAMERA_ZOOM := 1.34
 
 ## Wie traege die Kamera folgt und wie weit sie vorausschaut.
 ## **Straff, nicht traege.** Beim ersten Versuch lag die Kamera so weit
