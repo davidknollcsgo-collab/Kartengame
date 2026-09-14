@@ -159,29 +159,60 @@ func _draw() -> void:
             continue
         var farbe: Color = s[&"farbe"]
         var schreck: float = Rundum.schreck(s[&"mitte"], boot)
-        for g in _glieder(i):
-            _fisch(g, farbe, schreck)
+        _schwarmnetz(_glieder(i), farbe, schreck)
 
 
-## Ein Fisch: zwei Striche und ein Punkt.
+## **Ein Schwarm ist ein Netz, kein Haufen Striche.**
 ##
-## Mehr braucht es nicht - er ist sechs Pixel gross, und jede weitere Linie
-## waere ein Fleck. Der Schwanz schlaegt, und er schlaegt schneller, wenn der
-## Schwarm erschrocken ist: das ist die ganze Erzaehlung.
-func _fisch(g: Dictionary, farbe: Color, schreck: float) -> void:
-    var p: Vector2 = g[&"ort"]
-    var r: Vector2 = g[&"richtung"]
-    var q := r.orthogonal()
-    var gr: float = g[&"gross"]
-    var schlag := sin(zeit * float(g[&"takt"]) * (1.0 + schreck * 2.4)
-        + float(g[&"phase"])) * (0.4 + 0.4 * schreck)
-    var a := 0.34 + 0.30 * schreck
-    var nase := p + r * gr
-    var heck := p - r * gr * 0.9
-    draw_line(nase, heck, Color(farbe.r, farbe.g, farbe.b, a), 1.4, true)
-    # Die Schwanzflosse: ein Strich quer am Heck, der mitschlaegt.
-    var flosse := heck - r * gr * 0.5
-    draw_line(heck, flosse + q * gr * schlag,
-        Color(farbe.r, farbe.g, farbe.b, a * 0.8), 1.2, true)
-    draw_circle(nase - r * gr * 0.25, 1.2,
-        Color(farbe.r, farbe.g, farbe.b, a * 1.5))
+## Ein Fisch war zwei `draw_line` und ein `draw_circle` - bei achtzehn
+## Fischen je Schwarm und vierzehn Schwaermen also bis zu siebenhundert
+## Zeichenaufrufe je Bild fuer etwas, das nichts kostet und nichts zahlt.
+## Was hier teuer ist, ist die Zahl der Aufrufe und nicht die der Dreiecke;
+## derselbe Grund, aus dem Fels, Rippel und Druckwelle Netze sind.
+##
+## **Und ein Strich ist kein Fisch.** Zwei helle Zuege auf schwarzem Wasser
+## lesen sich bei sechs Pixeln als Kratzer - im Bild lagen damit ueber die
+## ganze Flaeche verteilt gleich lange, gleich helle Striche, und das war
+## das Unruhigste im Bild, obwohl es das Unwichtigste ist. Jeder Fisch ist
+## jetzt ein Leib: Nase, zwei Flanken, Schwanzstiel, dazu die Flosse als
+## eigenes Dreieck. Fuenf Ecken, die eine Silhouette ergeben.
+func _schwarmnetz(glieder: Array, farbe: Color, schreck: float) -> void:
+    var ecken := PackedVector2Array()
+    var farben := PackedColorArray()
+    var netz := PackedInt32Array()
+    # **Leiser als vorher.** Sie sind Kulisse: was nichts kostet und nichts
+    # zahlt, darf nicht heller stehen als das, was beides tut.
+    var a := 0.26 + 0.26 * schreck
+    for g in glieder:
+        var p: Vector2 = g[&"ort"]
+        var r: Vector2 = g[&"richtung"]
+        var q := r.orthogonal()
+        var gr: float = g[&"gross"]
+        var schlag := sin(zeit * float(g[&"takt"]) * (1.0 + schreck * 2.4)
+            + float(g[&"phase"])) * (0.4 + 0.4 * schreck)
+        var k := ecken.size()
+        var nase := p + r * gr
+        var heck := p - r * gr * 0.9
+        var stiel := heck - r * gr * 0.12
+        ecken.append(nase)                                   # 0
+        ecken.append(p + q * gr * 0.30 - r * gr * 0.15)      # 1 Flanke
+        ecken.append(stiel)                                  # 2
+        ecken.append(p - q * gr * 0.30 - r * gr * 0.15)      # 3 Flanke
+        ecken.append(heck - r * gr * 0.5 + q * gr * schlag)  # 4 Flosse
+        # Der Ruecken faengt Licht, der Bauch nicht - zwei Toene reichen bei
+        # sechs Pixeln, und ein dritter waere ein Streifen (dieselbe Grenze
+        # wie `schwarm.gd::_glied()` unter anderthalb Einheiten).
+        var hell := Color(farbe.r, farbe.g, farbe.b, a)
+        var tief := Color(farbe.r * 0.55, farbe.g * 0.62, farbe.b * 0.70, a)
+        farben.append(Color(farbe.r, farbe.g, farbe.b, a * 1.5))
+        farben.append(hell)
+        farben.append(tief)
+        farben.append(tief)
+        farben.append(Color(farbe.r, farbe.g, farbe.b, a * 0.75))
+        netz.append_array([k, k + 1, k + 2])
+        netz.append_array([k, k + 2, k + 3])
+        netz.append_array([k + 2, k + 4, k + 3])
+    if netz.is_empty():
+        return
+    RenderingServer.canvas_item_add_triangle_array(
+        get_canvas_item(), netz, ecken, farben)
