@@ -1828,7 +1828,17 @@ func _zeichne_rumpf(umriss: PackedVector2Array, k: Vector2, r: float) -> void:
         # die man nicht sah, und die Spanten darauf wie Draehte. Das Boot
         # ist das einzige Ding, das immer in der Bildmitte steht - es muss
         # das am besten lesbare sein und nicht das blasseste.
-        var st := 0.46 + 0.64 * mitte_u * mitte_u
+        # **Drei Toene, die sich um ein Viertel unterscheiden, sind ein Ton.**
+        # Mit 0,46 bis 1,10 lagen die Stufen benachbart bei Faktor 1,25 -
+        # im Bild eine gleichmaessig helle Flaeche, auf der nur die Striche
+        # zu sehen waren. Jetzt 1,6 bis 1,8 zwischen zwei Baendern: die
+        # Kanten quer zur Laengsachse tragen die Form, und das ist die
+        # Aufgabe, die vorher die Striche uebernommen hatten.
+        # Die Decke ist gemessen und nicht gewaehlt: bei 0,34 + 1,05 u^2 stand
+        # der Bug im Schuss auf (189 / 254 / 255) - zwei Kanaele am Anschlag,
+        # also eine weisse Kuppe statt eines hellen Blechs. Die Spreizung
+        # bleibt (Faktor 1,5 und 1,67 zwischen den Baendern), die Spitze faellt.
+        var st := 0.30 + 0.72 * mitte_u * mitte_u
         _vorn.draw_colored_polygon(teil, Color(_haut.r * st + 0.030,
             _haut.g * st + 0.055, _haut.b * st + 0.070, 1.0))
     # **Das Heck war einmal dunkler als das Wasser.** Mit 0,10 als Sockel
@@ -1849,9 +1859,14 @@ func _zeichne_rumpf(umriss: PackedVector2Array, k: Vector2, r: float) -> void:
     for punkt in ring:
         var vorn := clampf(((punkt - _ort).dot(k)
             / maxf(1.0, r * RUMPF_LANG)) * 0.5 + 0.5, 0.0, 1.0)
-        if vorn > 0.5:
-            var f := (vorn - 0.5) * 2.0
-            saum.append(Color(1.0, 0.99, 0.96, 0.22 + 0.56 * f))
+        # **Das Randlicht war zu breit und zu laut.** Es setzte auf halber
+        # Laenge ein und stieg auf 0,78 reinweiss - ueber die ganze vordere
+        # Haelfte also ein heller Ring, und ein gleichmaessig heller Umriss
+        # um eine Flaeche ist Strichkunst. Es beginnt jetzt im vorderen
+        # Drittel und bleibt unter dem hellsten Rumpfband.
+        if vorn > 0.66:
+            var f := (vorn - 0.66) / 0.34
+            saum.append(Color(1.0, 0.99, 0.96, 0.10 + 0.34 * f))
         else:
             var d := 1.0 - vorn * 2.0
             saum.append(Color(_haut.r * 0.16, _haut.g * 0.20,
@@ -1868,8 +1883,13 @@ func _zeichne_spanten(k: Vector2, quer: Vector2, r: float,
     # helle Zuege auf einer fast leeren Flaeche - im Bild Draehte, und sie
     # waren der Hauptgrund, warum das Boot als Gitter las. Dieselbe Sprache
     # wie `schwarm.gd::_rille()`: dunkle Rille, helle Lippe zur Lichtseite.
-    _fuge(_ort - k * r * RUMPF_LANG * 0.72,
-        _ort + k * r * RUMPF_LANG * 0.86, quer)
+    # **Der Kiel war der staerkste Gitterstab.** Er lief ueber 1,58 von 1,85
+    # Rumpflaengen genau durch die Mitte - eine Linie, die einen Koerper
+    # halbiert, macht aus ihm zwei. Von oben gesehen hat ein Rumpf dort
+    # ohnehin keine Kante, sondern seinen Ruecken: die hellste Stelle. Er
+    # bleibt als kurze Fuge im Heck, wo die Platten wirklich zusammenstossen.
+    _fuge(_ort - k * r * RUMPF_LANG * 0.66,
+        _ort - k * r * RUMPF_LANG * 0.10, quer)
 
     for anteil: float in [-0.30, 0.10, 0.48]:
         var i := int(clampf((anteil + 1.0) * 0.5, 0.0, 1.0)
@@ -1878,17 +1898,24 @@ func _zeichne_spanten(k: Vector2, quer: Vector2, r: float,
         var mitte := _ort + k * _profil[i].x * r * RUMPF_LANG
         var bogen := PackedVector2Array()
         for j in 9:
-            var t := lerpf(-1.0, 1.0, float(j) / 8.0)
+            # **Nicht ganz bis an die Kante.** Eine Polylinie setzt an jedes
+            # Ende eine runde Kappe von halber Strichbreite; bei voller
+            # Rumpfbreite stand der Spant damit im Wasser. Erst seit die
+            # Rille dunkel ist, sieht man das - vorher war die Kappe hell auf
+            # hellem Rumpf und fiel niemandem auf.
+            var t := lerpf(-0.90, 0.90, float(j) / 8.0)
             var seit: float = eng.x if t < 0.0 else eng.y
             # Ein leichter Bogen statt einer Geraden: ein Spant liegt auf
             # einem runden Rumpf und ist deshalb im Bild gekruemmt.
             bogen.append(mitte + quer * t * breit * seit
                 + k * (1.0 - t * t) * r * 0.09)
-        _vorn.draw_polyline(bogen, Color(0.02, 0.05, 0.08, 0.50), 1.6, true)
+        _vorn.draw_polyline(bogen, Color(0.02, 0.05, 0.08, 0.64), 1.9, true)
+        # Dieselbe Umkehr wie in `_fuge()`: auf hellem Blech traegt die
+        # Rille, nicht die Lippe.
         var lippe := PackedVector2Array()
         for punkt in bogen:
-            lippe.append(punkt + k * 1.1)
-        _vorn.draw_polyline(lippe, Color(1.0, 0.99, 0.96, 0.30), 0.9, true)
+            lippe.append(punkt + k * 1.3)
+        _vorn.draw_polyline(lippe, Color(1.0, 0.99, 0.96, 0.10), 0.8, true)
 
 
 ## Die Tiefenruder am Heck.
@@ -1987,13 +2014,25 @@ func _zeichne_flossen(k: Vector2, quer: Vector2, r: float,
         for punkt in kante:
             var weg := clampf((_ort - punkt).dot(k) / maxf(1.0, r * 1.6),
                 0.0, 1.0)
-            var st := 0.34 - 0.14 * weg
+            # Ein Ruder liegt im Schatten des Rumpfes, aber es ist kein
+            # anderes Material: es bleibt knapp unter dem hinteren
+            # Rumpfband (0,30) statt darunter zu verschwinden.
+            var st := 0.30 - 0.09 * weg
             toene.append(Color(_haut.r * st + 0.030, _haut.g * st + 0.060,
                 _haut.b * st + 0.075, 1.0))
         _vorn.draw_polygon(kante, toene)
+        # **Hof plus Kern ist zwei Linien.** Dieselbe Konstruktion wie am
+        # Turm und an den alten Polypenarmen, und dieselbe Wirkung: eine
+        # dunkle Platte mit einem hellen Ring darum. Ein Ruder faengt das
+        # Licht an seiner **Aussenkante** - dort, wo es sich dem Strahl
+        # zuwendet -, und sonst nirgends.
         var zu := kante + PackedVector2Array([kante[0]])
-        _vorn.draw_polyline(zu, Color(_haut.r, _haut.g, _haut.b, 0.07), 3.2, true)
-        _vorn.draw_polyline(zu, Color(_haut.r, _haut.g, _haut.b, 0.34), 1.1, true)
+        var saum := PackedColorArray()
+        for punkt in zu:
+            var aus := clampf(absf((punkt - _ort).dot(quer))
+                / maxf(1.0, r * 0.76), 0.0, 1.0)
+            saum.append(Color(1.0, 0.99, 0.96, 0.05 + 0.26 * aus * aus))
+        _vorn.draw_polyline_colors(zu, saum, 1.1, true)
         _vorn.draw_circle(spitze_vorn, 1.6, Color(0.52, 0.96, 0.86, 0.75))
 
 
@@ -2044,17 +2083,49 @@ func _zeichne_turm(k: Vector2, quer: Vector2, r: float) -> void:
         var voll := 1.0 + 0.18 * laengs
         umriss.append(mitte + k * laengs * lang
             + quer * sin(w) * breit * voll)
-    _vorn.draw_colored_polygon(umriss, Color(0.030, 0.078, 0.098))
+    # **Der Turm war ein Loch mit zwei Ringen darum.**
+    #
+    # Eine dunkle Fuellung (0,030 / 0,078 / 0,098), darauf ein blasser Hof
+    # von vier Pixeln und ein heller Kern von 1,4 - das ist Zug um Zug die
+    # Konstruktion, die bei den Polypenarmen als Drahtfaecher abgeschafft
+    # wurde, und sie hat hier ueberlebt. Auf einem Rumpf, der inzwischen
+    # deutlich heller ist, las sie sich als Loch mit einem Ring.
+    #
+    # Ein Turm steht **auf** dem Rumpf, also faengt er mehr Licht als der:
+    # eine eigene Tonstufe ueber dem hellsten Rumpfband waere zuviel, eine
+    # zwischen Mitte und Bug ist genau der Absatz, den man sehen soll.
+    var turm_st := 0.62
+    _vorn.draw_colored_polygon(umriss, Color(_haut.r * turm_st + 0.030,
+        _haut.g * turm_st + 0.055, _haut.b * turm_st + 0.070, 1.0))
+    # Kein Ring: ein Randlicht vorn, wo der eigene Strahl zurueckwirft.
     var zu := umriss + PackedVector2Array([umriss[0]])
-    _vorn.draw_polyline(zu, Color(_haut.r, _haut.g, _haut.b, 0.10), 4.0, true)
-    _vorn.draw_polyline(zu, Color(_haut.r, _haut.g, _haut.b, 0.62), 1.4, true)
+    var kante := PackedColorArray()
+    for punkt in zu:
+        var vorn := clampf((punkt - mitte).dot(k) / maxf(1.0, lang), -1.0, 1.0)
+        if vorn > 0.1:
+            kante.append(Color(1.0, 0.99, 0.96, 0.10 + 0.30 * vorn))
+        else:
+            kante.append(Color(_haut.r * 0.14, _haut.g * 0.18,
+                _haut.b * 0.22, 0.30 - 0.22 * vorn))
+    _vorn.draw_polyline_colors(zu, kante, 1.3, true)
 
     # Zwei Vorflossen am Turm - die Ruder, mit denen ein Boot steigt und
-    # sinkt. Zwei kurze Striche, mehr braucht es bei dieser Groesse nicht.
+    # sinkt.
+    #
+    # **Sie standen im Wasser.** Zwei nackte `draw_line` von 0,40 r Laenge,
+    # gewurzelt bei 0,19 r - also bis 0,59 r hinaus, bei einer Rumpfbreite
+    # von 0,50 r. Im Bild zwei dunkle Balken, die links und rechts aus der
+    # Silhouette ragen. Aufgefallen ist es erst, seit die Rillen dunkel sind:
+    # vorher war der Ueberstand hell auf hellem Rumpf.
+    #
+    # Und sie sind jetzt verjuengte Baender wie die Polypenarme, keine
+    # Striche - ein Ruder ist ein Blatt.
     for seite: float in SEITEN:
         var wurzel := mitte + quer * seite * breit * 0.9
-        _vorn.draw_line(wurzel, wurzel + quer * seite * r * 0.40
-            - k * r * 0.06, Color(_haut.r, _haut.g, _haut.b, 0.38), 2.2, true)
+        var blatt := PackedVector2Array([wurzel,
+            wurzel + quer * seite * r * 0.15 - k * r * 0.02,
+            wurzel + quer * seite * r * 0.27 - k * r * 0.05])
+        _polypenarm(blatt, _haut, 0.42, r * 0.085)
 
     # **Das Positionslicht.** Ein Boot im Dunkeln blinkt - nicht fuer sich,
     # sondern damit andere es sehen. Hier sieht es niemand ausser dem
@@ -2080,8 +2151,12 @@ func _zeichne_kanzel(k: Vector2, quer: Vector2, r: float) -> void:
     var mitte := _ort + k * r * 0.54
     _vorn.draw_circle(mitte, r * 0.17, Color(0.014, 0.040, 0.056))
     _vorn.draw_circle(mitte, r * 0.105, Color(_glut.r, _glut.g, _glut.b, 0.42))
-    _vorn.draw_arc(mitte, r * 0.17, 0.0, TAU, 20,
-        Color(_haut.r, _haut.g, _haut.b, 0.55), 1.1, true)
+    # **Ein voller heller Ring war der letzte Drahtumriss am Boot.** Rundum
+    # dieselbe Deckung um ein dunkles Loch - dieselbe Strichkunst wie beim
+    # Rumpfsaum, nur kleiner. Eine Kuppel faengt das Licht dort, wo sie sich
+    # ihm zuwendet: vorn ein Randlicht, hinten nichts.
+    _vorn.draw_arc(mitte, r * 0.17, -PI * 0.92, PI * 0.16, 14,
+        Color(1.0, 0.99, 0.96, 0.34), 1.0, true)
     # Zwei Streben ueber die Kuppel: das ist der Unterschied zwischen einem
     # Fenster und einem Fleck.
     for versatz: float in SEITEN:
@@ -2836,9 +2911,21 @@ func _laengs_stueck(umriss: PackedVector2Array, k: Vector2,
 ## auf einer deckenden Flaeche sieht eine helle Linie aus wie ein Kratzer,
 ## eine Fuge sagt, dass dort zwei Teile aneinanderstossen.
 func _fuge(von: Vector2, nach: Vector2, quer: Vector2) -> void:
-    _vorn.draw_line(von, nach, Color(0.02, 0.05, 0.08, 0.52), 1.8, true)
-    _vorn.draw_line(von + quer * 1.1, nach + quer * 1.1,
-        Color(1.0, 0.99, 0.96, 0.32), 1.0, true)
+    # **Eine helle Lippe gehoert auf einen dunklen Leib.**
+    #
+    # Die Regel kommt aus `schwarm.gd::_rille()`, und dort stimmt sie: ein
+    # Tier ist dunkel, also liest sich die Lippe als Glanz auf einer Kante.
+    # Der Rumpf ist **hell** - hier verschwand die Lippe im Blech und uebrig
+    # blieb ein heller Strich auf heller Flaeche. Genau daraus war das
+    # Drahtgitter gebaut: acht solcher Striche auf einem Koerper, dessen
+    # Tonstufen dichter beieinanderlagen als die Striche hell waren.
+    #
+    # Auf hellem Grund traegt die **Rille**. Die Lippe bleibt als Hauch, weil
+    # eine Fuge ohne sie flach ist - aber sie ist jetzt leiser als der Rumpf
+    # und nicht lauter.
+    _vorn.draw_line(von, nach, Color(0.02, 0.05, 0.08, 0.66), 2.1, true)
+    _vorn.draw_line(von + quer * 1.3, nach + quer * 1.3,
+        Color(1.0, 0.99, 0.96, 0.10), 0.8, true)
 
 
 ## Ein **Polypenarm**: ein verjuengtes, deckendes Band statt eines Zuges.
