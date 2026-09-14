@@ -1793,28 +1793,42 @@ func _zeichne_rumpf(umriss: PackedVector2Array, k: Vector2, r: float) -> void:
         if teil.size() < 3:
             continue
         var mitte_u := (u0 + u1) * 0.5
-        var st := 0.24 + 0.30 * mitte_u * mitte_u
-        _vorn.draw_colored_polygon(teil, Color(_haut.r * st + 0.020,
-            _haut.g * st + 0.040, _haut.b * st + 0.055, 1.0))
+        # **Ein Rumpf, den man fuer Wasser haelt, ist ein Drahtgitter.**
+        #
+        # Mit 0,24 bis 0,54 lagen die drei Toene dicht beieinander und nur
+        # knapp ueber dem Wasser: im Bild ein heller Umriss um eine Flaeche,
+        # die man nicht sah, und die Spanten darauf wie Draehte. Das Boot
+        # ist das einzige Ding, das immer in der Bildmitte steht - es muss
+        # das am besten lesbare sein und nicht das blasseste.
+        var st := 0.46 + 0.64 * mitte_u * mitte_u
+        _vorn.draw_colored_polygon(teil, Color(_haut.r * st + 0.030,
+            _haut.g * st + 0.055, _haut.b * st + 0.070, 1.0))
     # **Das Heck war einmal dunkler als das Wasser.** Mit 0,10 als Sockel
     # lag es bei (21 / 44 / 53) gegen ein Wasser von rund (20 / 55 / 65):
     # die hintere Haelfte des Bootes verschwand, und uebrig blieb ein
     # Umriss. Ein Rumpf, durch den man den Grund zu sehen glaubt, ist ein
     # Drahtgitter - dasselbe, was die Tiere waren, bevor sie gefuellte
     # Leiber wurden. Der Sockel oben traegt bis achtern.
+    # **Die Kontur ist ein Randlicht, kein Ring.**
+    #
+    # Sie lief rundum mit derselben Deckung - und ein gleichmaessig heller
+    # Umriss um eine blasse Flaeche ist genau die Strichkunst, die bei den
+    # Tieren abgeschafft wurde. Vorn liegt das Licht (der Rueckwurf des
+    # eigenen Strahls), hinten ein dunkler Saum, der den Rumpf vom Wasser
+    # trennt.
     var ring := umriss + PackedVector2Array([umriss[0]])
-    _vorn.draw_polyline(ring, Color(_haut.r, _haut.g, _haut.b, 0.12), 5.0, true)
-    _vorn.draw_polyline(ring, Color(_haut.r, _haut.g, _haut.b, 0.52), 1.6, true)
-
-    # Der vordere Bogen noch einmal, heller. Wo "vorn" ist, sagt das Profil
-    # und nicht eine zweite Zahl.
-    var vorne := PackedVector2Array()
+    var saum := PackedColorArray()
     for punkt in ring:
-        if (punkt - _ort).dot(k) > 0.0:
-            vorne.append(punkt)
-    if vorne.size() > 2:
-        _vorn.draw_polyline(vorne, Color(_haut.r, _haut.g, _haut.b, 0.52),
-            1.5, true)
+        var vorn := clampf(((punkt - _ort).dot(k)
+            / maxf(1.0, r * RUMPF_LANG)) * 0.5 + 0.5, 0.0, 1.0)
+        if vorn > 0.5:
+            var f := (vorn - 0.5) * 2.0
+            saum.append(Color(1.0, 0.99, 0.96, 0.22 + 0.56 * f))
+        else:
+            var d := 1.0 - vorn * 2.0
+            saum.append(Color(_haut.r * 0.16, _haut.g * 0.20,
+                _haut.b * 0.24, 0.40 + 0.50 * d))
+    _vorn.draw_polyline_colors(ring, saum, 1.7, true)
 
 
 ## Spanten und Kiellinie - die Linien, die aus einem Umriss einen Koerper
@@ -1822,9 +1836,12 @@ func _zeichne_rumpf(umriss: PackedVector2Array, k: Vector2, r: float) -> void:
 ## die Kante hinaus.
 func _zeichne_spanten(k: Vector2, quer: Vector2, r: float,
         eng: Vector2) -> void:
-    _vorn.draw_line(_ort - k * r * RUMPF_LANG * 0.72,
-        _ort + k * r * RUMPF_LANG * 0.86,
-        Color(_haut.r, _haut.g, _haut.b, 0.16), 1.0, true)
+    # **Eine Fuge ist ein Schatten, keine Linie.** Kiel und Spanten waren
+    # helle Zuege auf einer fast leeren Flaeche - im Bild Draehte, und sie
+    # waren der Hauptgrund, warum das Boot als Gitter las. Dieselbe Sprache
+    # wie `schwarm.gd::_rille()`: dunkle Rille, helle Lippe zur Lichtseite.
+    _fuge(_ort - k * r * RUMPF_LANG * 0.72,
+        _ort + k * r * RUMPF_LANG * 0.86, quer)
 
     for anteil: float in [-0.30, 0.10, 0.48]:
         var i := int(clampf((anteil + 1.0) * 0.5, 0.0, 1.0)
@@ -1839,8 +1856,11 @@ func _zeichne_spanten(k: Vector2, quer: Vector2, r: float,
             # einem runden Rumpf und ist deshalb im Bild gekruemmt.
             bogen.append(mitte + quer * t * breit * seit
                 + k * (1.0 - t * t) * r * 0.09)
-        _vorn.draw_polyline(bogen, Color(_haut.r, _haut.g, _haut.b, 0.17),
-            1.0, true)
+        _vorn.draw_polyline(bogen, Color(0.02, 0.05, 0.08, 0.50), 1.6, true)
+        var lippe := PackedVector2Array()
+        for punkt in bogen:
+            lippe.append(punkt + k * 1.1)
+        _vorn.draw_polyline(lippe, Color(1.0, 0.99, 0.96, 0.30), 0.9, true)
 
 
 ## Die Tiefenruder am Heck.
@@ -2160,17 +2180,24 @@ func _zeichne_begleiter() -> void:
         # Fangarme nach hinten, in die Stroemung. Jeder ist ein Zug mit Hof -
         # dieselbe Machart wie beim Boot, damit Begleiter und Boot als
         # dieselbe Kolonie lesbar sind.
-        for a in 5:
-            var t := float(a) / 4.0
+        # **Kein Polyp sieht aus wie der andere.** Fuenf gleich lange Arme
+        # in gleichem Winkel, sechsmal nebeneinander, sind ein Stempel -
+        # dieselbe Falle wie bei den Arten (`schwarm.gd::_eigenart`). Die
+        # Zahl und die Laenge kommen aus dem Platz, sind also je Begleiter
+        # fest und ueber die ganze Fahrt dieselbe.
+        var arme := 4 + (i * 3) % 3
+        for a in arme:
+            var t := float(a) / maxf(1.0, float(arme - 1))
             var w := lerpf(-0.9, 0.9, t)
             var arm := PackedVector2Array()
             for j in 5:
                 var u := float(j) / 4.0
                 var wiege := sin(_wellenzeit * 2.1 + float(a) + float(i)) \
                     * 0.30 * u * u
-                arm.append(p + (k * gr * (0.5 + 1.9 * u)).rotated(
-                    w * 0.55 + wiege))
-            _leitzug(arm, grund, 0.30 + 0.10 * atem, 1.2)
+                arm.append(p + (k * gr * (0.5
+                    + (1.5 + 0.8 * absf(sin(float(a) * 2.1 + float(i))))
+                    * u)).rotated(w * 0.55 + wiege))
+            _polypenarm(arm, grund, 0.56 + 0.16 * atem, gr * 0.19)
 
         # **Der Kelch ist ein Koerper, kein Ring.**
         #
@@ -2743,3 +2770,54 @@ func _laengs_stueck(umriss: PackedVector2Array, k: Vector2,
                 raus.append(a.lerp(b, ta / (ta - tb)))
         teil = raus
     return teil
+
+
+## Eine **Fuge** im Rumpf: dunkle Rille mit heller Lippe zur Lichtseite.
+##
+## Dieselbe Sprache wie `schwarm.gd::_rille()` - und aus demselben Grund:
+## auf einer deckenden Flaeche sieht eine helle Linie aus wie ein Kratzer,
+## eine Fuge sagt, dass dort zwei Teile aneinanderstossen.
+func _fuge(von: Vector2, nach: Vector2, quer: Vector2) -> void:
+    _vorn.draw_line(von, nach, Color(0.02, 0.05, 0.08, 0.52), 1.8, true)
+    _vorn.draw_line(von + quer * 1.1, nach + quer * 1.1,
+        Color(1.0, 0.99, 0.96, 0.32), 1.0, true)
+
+
+## Ein **Polypenarm**: ein verjuengtes, deckendes Band statt eines Zuges.
+##
+## Die Arme waren `_leitzug` - ein blasser Hof mit einem hellen Kern darauf,
+## also zwei Linien. Neben einem Kelch, der seit der Zellschattierung ein
+## deckender Koerper ist, standen damit sechs Drahtfaecher im Bild, und zwar
+## dauernd in der Bildmitte. Ein Faden im Wasser faengt Licht: er bekommt den
+## hellen Ton und keine Stufen (dieselbe Regel wie `schwarm.gd::_glied()`
+## unter anderthalb Einheiten).
+func _polypenarm(punkte: PackedVector2Array, farbe: Color, deckung: float,
+        dick: float) -> void:
+    var n := punkte.size()
+    if n < 2:
+        return
+    var ecken := PackedVector2Array()
+    var farben := PackedColorArray()
+    var hell := farbe.lerp(Color(1.0, 0.99, 0.96), 0.34)
+    for i in n:
+        var vor: Vector2 = punkte[maxi(0, i - 1)]
+        var nach: Vector2 = punkte[mini(n - 1, i + 1)]
+        var laengs := (nach - vor)
+        laengs = laengs.normalized() if laengs.length() > 0.001 \
+            else Vector2.RIGHT
+        var quer := laengs.orthogonal()
+        # Zur Spitze hin duenner und blasser - ein Arm laeuft aus, er
+        # bricht nicht ab.
+        var u := float(i) / float(n - 1)
+        var breit: float = dick * (1.0 - 0.78 * u)
+        var ton := Color(hell.r, hell.g, hell.b, deckung * (1.0 - 0.45 * u))
+        ecken.append(punkte[i] + quer * breit)
+        farben.append(ton)
+        ecken.append(punkte[i] - quer * breit)
+        farben.append(ton)
+    var netz := PackedInt32Array()
+    for i in n - 1:
+        var a := i * 2
+        netz.append_array([a, a + 2, a + 3, a, a + 3, a + 1])
+    RenderingServer.canvas_item_add_triangle_array(
+        _vorn.get_canvas_item(), netz, ecken, farben)

@@ -1438,6 +1438,43 @@ einsetzen, schießen, wieder herausnehmen; und dabei **getippte**
 Variablen verwenden, sonst lädt `funken.gd` nicht und der ganze Knoten
 fällt stumm auf `Node2D` zurück.
 
+**Und dann war es doch noch eins.** Im Spielbild — nicht in der Tierschau,
+sondern in dem Bild, das man beim Spielen wirklich sieht — stand das Boot
+als heller Umriss um eine Fläche, die man nicht sah, mit dem Kiel und drei
+Spanten als weißen Drähten darauf. Drei Zahlen waren schuld, und alle drei
+sind dieselbe Lehre wie bei den Tieren:
+
+*Die Tonstufen lagen zu dicht und zu tief.* 0,24 bis 0,54 über drei Bänder,
+also knapp über dem Wasser und untereinander kaum verschieden. Jetzt 0,46
+bis 1,10. **Das Boot ist das einzige Ding, das immer in der Bildmitte steht
+— es muss das am besten lesbare sein und nicht das blasseste.**
+
+*Die Kontur war ein Ring.* Rundum dieselbe Deckung, und ein gleichmäßig
+heller Umriss um eine blasse Fläche ist genau die Strichkunst, die bei den
+Tieren abgeschafft wurde. Jetzt Randlicht am Bug (der Rückwurf des eigenen
+Strahls) und ein dunkler Saum am Heck.
+
+*Kiel und Spanten waren helle Linien.* Auf einer deckenden Fläche ist eine
+helle Linie ein Kratzer. `_fuge()` zieht sie als Rille mit heller Lippe —
+dieselbe Sprache wie `schwarm.gd::_rille()`.
+
+**Und die Begleiter standen auf einem Kreisbogen.** `Rundum.begleiter_ziel`
+gab jedem denselben Abstand und gleiche Winkelabstände: im Bild sechs
+gleiche Marken in einer Reihe über dem Boot — eine Anzeige, keine Tiere.
+Jeder hält jetzt seinen eigenen Abstand und weicht ein Stück aus der Reihe,
+und Zahl und Länge seiner Arme kommen aus seinem Platz. Gewürfelt wird
+nichts: ein Polyp, der seinen Platz jede Sekunde neu sucht, wäre ein
+Flackern.
+
+Der Test dazu prüft seither die **Spanne** statt der Zahl. Das ist keine
+gelockerte Schranke, sondern die Zusage, die er immer gemeint hat: sie
+bleiben in Formation hinter dem Boot und schwimmen ihm weder davon noch auf
+den Kegel zu.
+
+Ihre Arme waren zuletzt die einzigen Drahtfächer im Bild (`_leitzug`: ein
+blasser Hof mit hellem Kern, also zwei Linien) — jetzt verjüngte deckende
+Bänder, die zur Spitze hin auslaufen.
+
 **Und das Boot war das letzte Drahtgitter.** Drei Stellen, alle dieselbe
 Falle. Die Flossen waren einfarbig (0,016 / 0,042 / 0,058) gefüllt —
 dunkler als das Wasser daneben, und im Bild klaffte hinter dem Boot eine

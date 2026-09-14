@@ -1003,8 +1003,15 @@ func _test_rundum_begleiter_bleiben_hinten() -> bool:
                 var blick := Vector2.UP.rotated(w)
                 var p := Rundum.begleiter_ziel(i, anzahl, fuehrer, blick, 90.0)
                 var hin := p - fuehrer
-                if not _melde(absf(hin.length() - 90.0) < 0.01,
-                        "Begleiter %d/%d haelt %.1f statt 90 Abstand"
+                # **Die Spanne statt der Zahl.** Jeder Begleiter haelt
+                # seinen eigenen Abstand, damit sie nicht als Kreisbogen
+                # ueber dem Boot stehen (siehe `Rundum.begleiter_ziel`).
+                # Geprueft wird, was die Zusage wirklich meint: sie bleiben
+                # in Formation hinter dem Boot und schwimmen ihm weder
+                # davon noch auf den Kegel zu.
+                if not _melde(hin.length() > 90.0 * 0.72
+                        and hin.length() < 90.0 * 1.10,
+                        "Begleiter %d/%d haelt %.1f statt rund 90 Abstand"
                         % [i, anzahl, hin.length()]):
                     return false
                 # Hinter dem Boot heisst: mehr als ein rechter Winkel weg

@@ -257,8 +257,20 @@ static func begleiter_ziel(index: int, anzahl: int, fuehrer: Vector2,
     var t := 0.5
     if anzahl > 1:
         t = float(index) / float(anzahl - 1)
-    var w := lerpf(-FAECHER, FAECHER, t)
-    return fuehrer - blick.normalized().rotated(w) * abstand
+    # **Ein Schwarm steht nicht auf einem Kreisbogen.**
+    #
+    # Sie sassen auf exakt gleichem Abstand in exakt gleichen Winkeln, und
+    # im Bild war das ein Bogen aus sechs gleichen Marken ueber dem Boot -
+    # eine Anzeige, keine Tiere. Jeder haelt jetzt seinen **eigenen**
+    # Abstand und weicht ein Stueck aus der Reihe.
+    #
+    # Gewuerfelt wird nichts: die Verschiebung kommt allein aus dem Platz,
+    # ist also je Begleiter fest und ueber die ganze Fahrt dieselbe. Ein
+    # Polyp, der seinen Platz jede Sekunde neu sucht, waere ein Flackern.
+    var versatz := sin(float(index) * 2.39 + 0.7)
+    var w := lerpf(-FAECHER, FAECHER, t) + versatz * FAECHER * 0.22
+    var weit := abstand * (0.80 + 0.26 * absf(sin(float(index) * 1.71)))
+    return fuehrer - blick.normalized().rotated(w) * weit
 
 
 ## Welches Tier ein Begleiter nimmt: das naechste in seiner Reichweite.
