@@ -110,11 +110,22 @@ godot --headless --path . --script tools/mutationskosten.gd -- --zug Plated
 > **1,0 Stufen** — die naheliegende Erklärung („der Spieler hängt hinterher")
 > war damit in einem Lauf widerlegt.
 >
-> **Er meldet trotzdem achtunddreißig gefallene Sitzungen, tragbar sind
+> **Er meldet trotzdem fünfunddreißig gefallene Sitzungen, tragbar sind
 > zwölf.** Die beiden Leitwesen-Fehler waren echt und sind behoben; die
 > Fallzahl haben sie **nicht** bewegt (Chalk Ray 86 → 69, Shellback 68 → 58,
 > Summe unverändert 38). Eine Reparatur, die stimmt und nichts bewirkt, ist
 > ein Zwischenergebnis und kein Erfolg.
+>
+> **Und zwischendurch stand er bei neunundachtzig, ohne dass jemand an einer
+> Balance-Zahl gedreht hätte.** Schuld war ein Commit über die *Optik* der
+> Begleiter: er gab jedem seinen eigenen Abstand zum Boot, im Mittel 0,93
+> statt 1,00. `Rundum.begleiter_ziel()` liest aber nicht nur die Szene,
+> sondern auch `tools/simulation.gd`. Die Geschichte steht unten beim
+> Rundumlauf; die Regel daraus gehört hierher: **alles in `scripts/kern/`,
+> was `tools/simulation.gd` liest, ist Balance — gleich wie der Commit
+> heißt, und es bekommt einen Kolonielauf, bevor es geschoben wird.** Der
+> Testlauf blieb 96/96 grün, der Wellenprüfer meldete nichts, die Fahrprobe
+> trug ihre Wellen. Gesehen hat es nur dieses Werkzeug.
 >
 > **Das Werkzeug, das hier gefordert war, gibt es jetzt — und es hat die
 > Vermutung widerlegt, die an dieser Stelle stand.** Hier hieß es: oben
@@ -741,6 +752,38 @@ unter einer strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
    den größten** (`Brutlinien.gesamt_hoechst`). Der Anteil ist die Stelle,
    an der es darauf ankommt: zwei Linien, die je 62 % Panzer wegfressen,
    dürften nie 124 % ergeben — ein Panzer, der ins Negative kippt, heilt.
+
+33. **Der Begleiterabstand hält im Mittel `BEGLEITER_ABSTAND`.** Wie sie um
+   diesen Abstand herum stehen, ist Bild und frei: zwei Reihen, ein Zittern
+   im Winkel, was der Schwarm braucht. Ihr **Mittel** ist es nicht — es ist
+   die Zahl, mit der `Ausbau.durchsatz()` den Beitrag der Polypen ansetzt
+   und aus der über `Wellen.staerke()` die ganze Sollkurve fällt. Auf 0,93
+   verschoben meldete der Kolonielauf 89 gefallene Sitzungen statt 38,
+   während kein einziger Test rot wurde; dieselbe Streuung um 1,00 kostet
+   nichts. `_test_rundum_begleiter_bleiben_hinten` hält deshalb drei Dinge
+   fest, und alle drei sind abgeleitet statt gewählt: den Mittelwert (fünf
+   Prozent), die Spanne (`1 ± REIHE_TIEFE / 2`) und dass das Zittern die
+   eigene Lücke nicht aufzehrt (`1 − 2 · ZITTERN`).
+
+34. **`Ausbau.durchsatz()` und `Kammern` sind noch nicht überall dieselbe
+   Kurve** — das ist ein offener Posten, kein erledigter. Zusage 8 sagt, es
+   gebe genau eine Ausbaukurve, und
+   `_test_kammern_treffen_die_sollkurve` hält das für Leistung, Reichweite,
+   Winkel und Ziele fest. Der **Polypenterm steht nicht in dieser Liste**,
+   weil es zu ihm gar kein `Ausbau`-Gegenstück gibt: `durchsatz()` rechnet
+   mit dem flachen `Graben.POLYP_LEISTUNG`, während Spiel und Simulator
+   `Kammern.polyp_leistung()` nehmen — auf Stufe 40 das 6,6fache. Ein
+   Wächter prüft eben die Zahlen, die jemand hineingeschrieben hat.
+
+   Dazu ein zweiter Verdacht an derselben Zeile, und er ist gemessen: sie
+   zählt alle acht Begleiter als volle Schadensquellen, während acht
+   Polypen ihr Ziel zu **79,6 %** von einem schon belegten Tier nehmen —
+   `BEGLEITER_REICHWEITE` ist mehr als doppelt so groß wie die ganze
+   Formation, also sehen sie fast dasselbe Feld. Zwei Zeilen tiefer steht
+   für das Stoßlicht ausdrücklich das Gegenteil: „Gezählt wird es als
+   **ein** zusätzliches Ziel, nicht als alle." Beide Fehler zeigen in
+   entgegengesetzte Richtungen; ob sie sich aufheben, ist eine Messung und
+   kein Argument.
 
 ## Der Rundumlauf — die Schleife
 
@@ -1507,15 +1550,79 @@ dieselbe Sprache wie `schwarm.gd::_rille()`.
 **Und die Begleiter standen auf einem Kreisbogen.** `Rundum.begleiter_ziel`
 gab jedem denselben Abstand und gleiche Winkelabstände: im Bild sechs
 gleiche Marken in einer Reihe über dem Boot — eine Anzeige, keine Tiere.
-Jeder hält jetzt seinen eigenen Abstand und weicht ein Stück aus der Reihe,
-und Zahl und Länge seiner Arme kommen aus seinem Platz. Gewürfelt wird
-nichts: ein Polyp, der seinen Platz jede Sekunde neu sucht, wäre ein
-Flackern.
+Jeder weicht jetzt ein Stück aus der Reihe, und Zahl und Länge seiner Arme
+kommen aus seinem Platz. Gewürfelt wird nichts: ein Polyp, der seinen Platz
+jede Sekunde neu sucht, wäre ein Flackern.
 
-Der Test dazu prüft seither die **Spanne** statt der Zahl. Das ist keine
-gelockerte Schranke, sondern die Zusage, die er immer gemeint hat: sie
-bleiben in Formation hinter dem Boot und schwimmen ihm weder davon noch auf
-den Kegel zu.
+**Der erste Anlauf hat dabei jedem auch seinen eigenen *Abstand* gegeben,
+und das war der teuerste Fehler dieses Repositoriums.** Der Kolonielauf
+sprang von achtunddreißig gefallenen Sitzungen auf neunundachtzig — durch
+einen Commit, der „Grafik" heißt und in dem keine einzige Balance-Zahl
+steht. `Rundum.begleiter_ziel()` liest nämlich nicht nur die Szene, sondern
+auch `tools/simulation.gd` (Zusage 1, und sie hat genau so funktioniert, wie
+sie gedacht ist). Jede Größe einzeln gemessen:
+
+| Formation | Mittel | gefallene Sitzungen |
+|---|---|---|
+| Bogen, fester Abstand | 1,00 | 38 |
+| Zittern im Winkel, fester Abstand | 1,00 | 36 |
+| Bogenwinkel, Abstand 0,80 bis 1,06 | 0,93 | **89** |
+| beides zusammen | 0,93 | **89** |
+| zwei Reihen 0,82/1,06 | 0,94 | **90** |
+| Zittern an der Lücke, fester Abstand | 1,00 | **34** |
+| zwei Reihen 0,88/1,12 | 1,00 | **35** |
+
+Gespielt wird die letzte Zeile, mit einer Abweichung: ein **einzelner**
+Polyp bildet keine zwei Reihen und steht auf `abstand` statt auf 0,88.
+
+**Nicht die Streuung kostet, sondern ein Mittelwert daneben.** Das ist der
+Teil, der nicht zu erraten war und den ich zweimal falsch hatte: zwei Reihen
+um 0,94 stehen bei neunzig, **dieselben zwei Reihen um 1,00 bei
+fünfunddreißig.** Die Tiefe darf also sein, was das Bild braucht — ihr
+Mittel muss `BEGLEITER_ABSTAND` sein, denn das ist die Zahl, gegen die
+`Ausbau.durchsatz()` und mit ihr die ganze Sollkurve gemessen wurde. Ein
+einzelner Polyp bildet keine zwei Reihen und steht deshalb genau darauf.
+
+Fünf Lehren, und keine davon war zu erraten.
+
+*Erstens: was der Simulator liest, ist Balance — ganz gleich, wie der Commit
+heißt.* Alles in `scripts/kern/`, was in `tools/simulation.gd` vorkommt,
+gehört vor dem Schieben durch einen Kolonielauf. Der Testlauf blieb 96/96
+grün, der Wellenprüfer meldete nichts, die Fahrprobe trug ihre Wellen — die
+einzige Stelle, an der es sichtbar wurde, war der Kolonielauf.
+
+*Zweitens: der Wächter prüfte Abstand und Richtung, also alles außer der
+Wirkung.* `_test_rundum_begleiter_bleiben_hinten` blieb grün, während zwei
+Polypen sechs Einheiten auseinander standen. Er prüft jetzt zusätzlich, dass
+das Zittern die eigene Lücke nicht aufzehrt, und seine Schranke ist
+abgeleitet statt gewählt: `ZITTERN` misst sich an der Lücke zum Nachbarn,
+zwei Nachbarn können höchstens aufeinander zu weichen, also bleiben
+`1 − 2 · ZITTERN`.
+
+*Drittens: eine Reparatur an der falschen Größe sieht aus wie eine
+Reparatur.* Der erste Versuch stellte die Begleiter in zwei Reihen — behielt
+dabei aber den verschobenen Mittelwert (0,94 statt 0,93) und stand prompt
+bei **90**. Grün war er trotzdem. Der zweite nahm dem Bild die Tiefe ganz
+und stand bei 34 — richtig gemessen, aber teurer bezahlt als nötig: die
+Tiefe war nie das Problem.
+
+*Viertens: eine Schranke, die von Hand gesetzt ist, stellt beim nächsten
+Mal die falsche Frage.* Die Spanne im Wächter stand auf 0,72 bis 1,10; als
+die hintere Reihe auf 1,12 kam, hieß die Frage „Schranke hochsetzen oder
+nicht" — und die richtige Antwort war keine von beiden. Sie ist jetzt aus
+`REIHE_TIEFE` abgeleitet (`1 ± REIHE_TIEFE / 2`), und daneben steht die
+Zusage, um die es wirklich geht: **der Mittelwert**, auf fünf Prozent. Gegen
+die alte Zeile eingesetzt meldet er „Begleiter 0/1 hält 72.0 statt rund 90
+Abstand".
+
+*Und fünftens, die teuerste: eine Erklärung, die plausibel klingt, ist keine
+Messung.* Für den ersten Versuch stand als Begründung, zwei Polypen auf
+demselben Fleck nähmen über `naechstes_ziel()` dasselbe Tier. Sie tun das —
+aber gemessen über viertausend Felder tun es **alle** Formationen: acht
+Polypen schießen zu 79,6 % (Bogen), 80,3 % (kaputt) und 79,3 % (zwei Reihen)
+auf ein schon belegtes Tier. `BEGLEITER_REICHWEITE` ist mehr als doppelt so
+groß wie die ganze Formation, also sehen sie ohnehin fast dasselbe Feld. Der
+Abstand zweier Polypen ist dafür gleichgültig.
 
 Ihre Arme waren zuletzt die einzigen Drahtfächer im Bild (`_leitzug`: ein
 blasser Hof mit hellem Kern, also zwei Linien) — jetzt verjüngte deckende

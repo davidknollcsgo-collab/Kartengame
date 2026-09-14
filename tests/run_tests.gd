@@ -1003,14 +1003,17 @@ func _test_rundum_begleiter_bleiben_hinten() -> bool:
                 var blick := Vector2.UP.rotated(w)
                 var p := Rundum.begleiter_ziel(i, anzahl, fuehrer, blick, 90.0)
                 var hin := p - fuehrer
-                # **Die Spanne statt der Zahl.** Jeder Begleiter haelt
-                # seinen eigenen Abstand, damit sie nicht als Kreisbogen
-                # ueber dem Boot stehen (siehe `Rundum.begleiter_ziel`).
-                # Geprueft wird, was die Zusage wirklich meint: sie bleiben
-                # in Formation hinter dem Boot und schwimmen ihm weder
-                # davon noch auf den Kegel zu.
-                if not _melde(hin.length() > 90.0 * 0.72
-                        and hin.length() < 90.0 * 1.10,
+                # **Die Spanne statt der Zahl** - und die Spanne ist
+                # abgeleitet, nicht gewaehlt: die zwei Reihen liegen
+                # symmetrisch um den Abstand, also bei
+                # `1 +- REIHE_TIEFE / 2`. Hier standen einmal 0,72 und
+                # 1,10 von Hand, und als die hintere Reihe auf 1,12 kam,
+                # war die Frage "Schranke hochsetzen oder nicht" - eine
+                # Frage, die sich bei einer abgeleiteten Schranke gar
+                # nicht erst stellt.
+                var halb := Rundum.REIHE_TIEFE * 0.5
+                if not _melde(hin.length() > 90.0 * (1.0 - halb) - 0.01
+                        and hin.length() < 90.0 * (1.0 + halb) + 0.01,
                         "Begleiter %d/%d haelt %.1f statt rund 90 Abstand"
                         % [i, anzahl, hin.length()]):
                     return false
@@ -1052,6 +1055,30 @@ func _test_rundum_begleiter_bleiben_hinten() -> bool:
         if not _melde(eng >= eng_glatt * mindest_anteil,
                 "bei %d Begleitern stehen zwei %.1f auseinander statt %.1f"
                 % [anzahl, eng, eng_glatt * mindest_anteil]):
+            return false
+
+    # **Und ihr Mittel bleibt der Abstand, gegen den gemessen wurde.**
+    #
+    # Das ist die Groesse, an der es wirklich haengt, und sie hat hier
+    # gefehlt. Ein Commit ueber das *Bild* gab jedem Begleiter seinen
+    # eigenen Abstand, im Mittel 0,93 statt 1,00 - der Kolonielauf sprang
+    # von 38 gefallenen Sitzungen auf 89, und kein Test wurde rot. Dieselbe
+    # Streuung um 1,00 herum kostet nichts (gemessen: 35). Nicht die Tiefe
+    # kostet, sondern ein Mittel daneben.
+    #
+    # Fuenf Prozent lassen Raum fuer eine ungerade Zahl Begleiter, bei der
+    # eine Reihe einmal mehr besetzt ist; mehr waere ein Ausbau, den die
+    # Sollkurve nicht kennt.
+    for anzahl in range(1, 9):
+        var blick := Vector2.UP.rotated(-0.4)
+        var summe := 0.0
+        for i in anzahl:
+            summe += (Rundum.begleiter_ziel(i, anzahl, fuehrer, blick, 90.0)
+                - fuehrer).length()
+        var mittel := summe / float(anzahl)
+        if not _melde(absf(mittel - 90.0) <= 90.0 * 0.05,
+                "%d Begleiter halten im Mittel %.1f statt 90 Abstand"
+                % [anzahl, mittel]):
             return false
 
     # Und ein Ziel ausserhalb der Reichweite wird nicht genommen.

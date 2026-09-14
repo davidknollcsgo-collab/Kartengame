@@ -250,6 +250,13 @@ const UMLAUF_ENGER := 0.02
 const FAECHER := 0.62
 
 
+## Wie tief die hintere der zwei Reihen hinter der vorderen liegt, als
+## Anteil von `BEGLEITER_ABSTAND`. Die Reihen liegen **symmetrisch** um den
+## Abstand - 0,88 und 1,12 -, und genau daran haengt alles: nicht die
+## Streuung kostet, sondern ein Mittelwert daneben. Gemessen 0,93 im Mittel:
+## neunundachtzig gefallene Sitzungen. Mittelwert auf `abstand`: fuenfunddreissig.
+const REIHE_TIEFE := 0.24
+
 ## Wieviel ein Begleiter aus der Reihe weicht, als Anteil des Winkelabstands
 ## zu seinem Nachbarn - **nicht** der Faecherbreite. Der Unterschied ist die
 ## Zahl der Begleiter: die Breite steht fest, die Luecke wird mit jedem
@@ -278,17 +285,21 @@ static func begleiter_ziel(index: int, anzahl: int, fuehrer: Vector2,
     # Abstand zu verschieben - und der Abstand hat das Spiel verschoben.
     # Gemessen mit dem Kolonielauf, jede Groesse einzeln:
     #
-    #   | Formation | gefallene Sitzungen |
-    #   |---|---|
-    #   | Bogen, fester Abstand | 38 |
-    #   | Zittern im Winkel, fester Abstand | 38 |
-    #   | Bogenwinkel, Abstand 0,80 bis 1,06 | 89 |
-    #   | beides zusammen | 89 |
+    #   | Formation | Mittel | gefallene Sitzungen |
+    #   |---|---|---|
+    #   | Bogen, fester Abstand | 1,00 | 38 |
+    #   | Zittern im Winkel, fester Abstand | 1,00 | 36 |
+    #   | Bogenwinkel, Abstand 0,80 bis 1,06 | 0,93 | 89 |
+    #   | beides zusammen | 0,93 | 89 |
+    #   | zwei Reihen 0,82/1,06 | 0,94 | 90 |
+    #   | zwei Reihen 0,88/1,12 | 1,00 | 35 |
     #
-    # **Der Winkel ist umsonst, der Abstand kostet.** Er bleibt deshalb
-    # genau `abstand` - das ist die Zahl, gegen die `Ausbau.durchsatz()`
-    # und mit ihm die ganze Sollkurve gemessen wurde. Was das Bild braucht,
-    # traegt das Zittern allein.
+    # **Nicht die Streuung kostet, sondern ein Mittelwert daneben.** Das war
+    # nicht zu erraten: zwei Reihen um 0,94 stehen bei neunzig, dieselben
+    # zwei Reihen um 1,00 bei fuenfunddreissig. Die Tiefe darf also sein,
+    # was das Bild braucht - ihr Mittel muss `abstand` sein, denn das ist
+    # die Zahl, gegen die `Ausbau.durchsatz()` und mit ihm die ganze
+    # Sollkurve gemessen wurde.
     #
     # Gewuerfelt wird nichts: die Verschiebung kommt allein aus dem Platz,
     # ist also je Begleiter fest und ueber die ganze Fahrt dieselbe. Ein
@@ -296,7 +307,12 @@ static func begleiter_ziel(index: int, anzahl: int, fuehrer: Vector2,
     var luecke := 2.0 * FAECHER / float(maxi(1, anzahl - 1))
     var versatz := sin(float(index) * 2.39 + 0.7)
     var w := lerpf(-FAECHER, FAECHER, t) + versatz * luecke * ZITTERN
-    return fuehrer - blick.normalized().rotated(w) * abstand
+    # Ein einzelner Polyp bildet keine zwei Reihen - er steht auf dem
+    # Abstand, gegen den die Sollkurve gemessen ist, und fertig.
+    var weit := abstand
+    if anzahl > 1:
+        weit = abstand * (1.0 + REIHE_TIEFE * (float(index % 2) - 0.5))
+    return fuehrer - blick.normalized().rotated(w) * weit
 
 
 ## Welches Tier ein Begleiter nimmt: das naechste in seiner Reichweite.
