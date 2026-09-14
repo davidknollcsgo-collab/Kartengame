@@ -3469,22 +3469,28 @@ func _zellleib(ruecken: PackedVector2Array, profil: PackedFloat32Array,
 ## - man saehe sie nicht.
 func _zellkante(ruecken: PackedVector2Array, profil: PackedFloat32Array,
         seit: float, schatten: Color, hitze: float) -> void:
+    # **Zwei Flanken sind keine Kontur.** Hier liefen zwei offene Zuege
+    # laengs am Leib entlang - Nase und Schwanz blieben damit rohe
+    # Polygonkanten, also genau die Treppe, gegen die eine Kontur
+    # geschrieben ist. Und an einem Pfeilwurm ist die Nase die Stelle, die
+    # man ansieht.
+    #
+    # Der geschlossene Umriss liegt ohnehin schon vor: `_band()` baut ihn
+    # fuer die Fuellung. Er geht durch dieselbe `_kontur()` wie jeder andere
+    # Leib, damit es nicht zwei Konturstile gibt.
+    var rund := _band(ruecken, profil, -1.0, 1.0)
+    if rund.size() < 3:
+        return
+    var mitte := Vector2.ZERO
+    for v in ruecken:
+        mitte += v
+    mitte /= float(maxi(1, ruecken.size()))
+    # `seit` sagt, auf welcher Flanke das Licht steht; daraus die Richtung,
+    # nach der `_kontur()` hell von dunkel trennt.
     var n := ruecken.size()
-    for s: float in SEITEN:
-        var weg := PackedVector2Array()
-        for i in n:
-            var vor: Vector2 = ruecken[maxi(0, i - 1)]
-            var nach: Vector2 = ruecken[mini(n - 1, i + 1)]
-            var laengs := (nach - vor)
-            laengs = laengs.normalized() if laengs.length() > 0.001 \
-                else Vector2.RIGHT
-            weg.append(ruecken[i] + laengs.orthogonal() * profil[i] * s)
-        if s == -seit:
-            draw_polyline(weg, _gedeckt(Color(1.0, 0.99, 0.96,
-                0.55 + 0.35 * hitze)), 1.8, true)
-        else:
-            draw_polyline(weg, _gedeckt(Color(schatten.r * 0.5,
-                schatten.g * 0.5, schatten.b * 0.5, 0.9)), 1.4, true)
+    var laengs := ruecken[mini(n - 1, 1)] - ruecken[0]
+    laengs = laengs.normalized() if laengs.length() > 0.001 else Vector2.RIGHT
+    _kontur(rund, mitte, laengs.orthogonal() * -seit, schatten, hitze)
 
 
 ## Eine Flaeche an einer Geraden abschneiden (Sutherland-Hodgman).
@@ -3594,13 +3600,54 @@ func _zellkoerper(punkte: PackedVector2Array, farbe: Color, hitze: float,
     # Randlicht auf der Lichtseite und ein dunkler Saum auf der anderen.
     # Zwei `draw_polyline` statt eines Aufrufs je Kante: was hier kostet,
     # ist die Zahl der Zeichenaufrufe.
+    _kontur(rund, mitte, zum_licht, schatten, hitze)
+
+
+## Ein Leib in Zellschattierung, dessen Toene **laengs** wechseln.
+##
+## `_zellleib()` legt die Baender quer zum Rueckgrat - richtig fuer alles,
+## was ein Schlauch ist. Ein **Ring** ist das nicht: er fuehrt um etwas
+## herum, und seine lichtnahe Haelfte ist hell, waehrend die abgewandte im
+## Schatten liegt. Quer geschattet waere er auf ganzer Laenge gleich hell,
+## und dann ist er wieder ein Reifen aus Neon.
+##
+## Der Umweg ueber `_zellkoerper()` geht hier ausserdem nicht: ein offener
+## Ring ist stark konkav, und ein Halbebenenschnitt darauf liefert eine
+## Flaeche, die sich selbst beruehrt - Godot meldet dazu `triangulation
+## failed`, und im Bild fehlt das Tier.
+## **Der Rand jedes Sprites ist eine Linie.**
+##
+## Eine gefuellte Flaeche hat in Godot 2D keine geglaettete Kante -
+## `draw_colored_polygon`, `draw_polygon` und `canvas_item_add_triangle_array`
+## rastern hart, und `msaa_2d` kann der Kompatibilitaets-Renderer nicht
+## (siehe `project.godot`). Weich wird ein Umriss hier nur dadurch, dass
+## jemand ihn **zieht**: `draw_polyline` mit `antialiased`.
+##
+## Genau das ist bei der Umstellung auf Zellschattierung verlorengegangen.
+## `_koerper()` - die alte Route - legte einen Zug ueber jede Fuellkante, und
+## die Notiz in `project.godot` beruft sich bis heute darauf. Die neuen
+## Helfer fuellen aber nur: `_zellleib`, `_zellblase` und `_streifen`
+## zeichneten **keine einzige** Polylinie. Betroffen war damit auch die
+## Laichwolke, die haeufigste Art im Bild.
+##
+## Die Kontur ist kein gleichmaessiger Ring - das waere die Strichkunst, die
+## hier ueberall abgeschafft ist. Sie ist ein Randlicht auf der Lichtseite
+## und ein dunkler Saum auf der abgewandten, an der Lichtscheide getrennt.
+## Und sie steht **einmal** im Quelltext: zwei Konturen waeren zwei Stile.
+func _kontur(rund: PackedVector2Array, mitte: Vector2, zum_licht: Vector2,
+        schatten: Color, hitze: float) -> void:
+    var n := rund.size()
+    if n < 3:
+        return
+    var tmin := INF
+    var tmax := -INF
     var start := 0
-    var best := INF
     for i in n:
         var t := (rund[i] - mitte).dot(zum_licht)
-        if t < best:
-            best = t
+        if t < tmin:
+            tmin = t
             start = i
+        tmax = maxf(tmax, t)
     var gm := (tmin + tmax) * 0.5
     var randlicht := _gedeckt(Color(1.0, 0.99, 0.96, 0.55 + 0.35 * hitze))
     var saum := _gedeckt(Color(schatten.r * 0.5, schatten.g * 0.5,
@@ -3623,18 +3670,6 @@ func _zellkoerper(punkte: PackedVector2Array, farbe: Color, hitze: float,
             1.8 if lauf_hell else 1.4, true)
 
 
-## Ein Leib in Zellschattierung, dessen Toene **laengs** wechseln.
-##
-## `_zellleib()` legt die Baender quer zum Rueckgrat - richtig fuer alles,
-## was ein Schlauch ist. Ein **Ring** ist das nicht: er fuehrt um etwas
-## herum, und seine lichtnahe Haelfte ist hell, waehrend die abgewandte im
-## Schatten liegt. Quer geschattet waere er auf ganzer Laenge gleich hell,
-## und dann ist er wieder ein Reifen aus Neon.
-##
-## Der Umweg ueber `_zellkoerper()` geht hier ausserdem nicht: ein offener
-## Ring ist stark konkav, und ein Halbebenenschnitt darauf liefert eine
-## Flaeche, die sich selbst beruehrt - Godot meldet dazu `triangulation
-## failed`, und im Bild fehlt das Tier.
 func _zellband(ruecken: PackedVector2Array, profil: PackedFloat32Array,
         farbe: Color, hitze: float) -> void:
     var n := ruecken.size()
@@ -3745,18 +3780,41 @@ func _zellblase(wo: Vector2, g: float, farbe: Color, hitze: float) -> void:
         grund = grund.lerp(Color(1.0, 0.98, 0.94), 0.30 * hitze)
         licht = licht.lerp(Color(1.0, 1.0, 0.98), 0.45 * hitze)
         schatten = schatten.lerp(grund, 0.40 * hitze)
+    # **`draw_circle` rastert hart.** Der `antialiased`-Schalter steht nicht
+    # umsonst da: ohne ihn ist eine Blase ein Treppenkreis - und die
+    # Laichwolke ist die haeufigste Art im ganzen Bild, also die Kante, die
+    # man am oeftesten sieht.
     draw_circle(wo, g, _gedeckt(Color(schatten.r, schatten.g, schatten.b,
-        1.0)))
+        1.0)), true, -1.0, true)
     draw_circle(wo + zum_licht * g * 0.17, g * 0.90,
-        _gedeckt(Color(grund.r, grund.g, grund.b, 1.0)))
+        _gedeckt(Color(grund.r, grund.g, grund.b, 1.0)), true, -1.0, true)
+    # Und eine Kontur wie bei jedem anderen Leib: Randlicht zum Licht hin,
+    # dunkler Saum davon weg. Ein Kreis ist dafuer die einfachste Form -
+    # zwei Boegen, kein Umriss noetig.
+    #
+    # **Aber nicht unter zwei Einheiten.** Eine Kontur von anderthalb Pixeln
+    # um eine Blase von zweien ist keine Kante, sondern die ganze Blase - und
+    # die Laichwolke stellt 45 % aller Koerper im Feld, kommt also zu sechst
+    # bis neunt. Zwei geglaettete Boegen je Stueck waeren dort am teuersten,
+    # wo sie am wenigsten zeigen. Dieselbe Groessenschwelle wie bei den
+    # duennen Gliedern in `_glied()`.
+    if g < 2.0:
+        return
+    var winkel := zum_licht.angle()
+    draw_arc(wo, g, winkel - PI * 0.5, winkel + PI * 0.5, 12,
+        _gedeckt(Color(1.0, 0.99, 0.96, 0.55 + 0.35 * hitze)), 1.5, true)
+    draw_arc(wo, g, winkel + PI * 0.5, winkel + PI * 1.5, 12,
+        _gedeckt(Color(schatten.r * 0.5, schatten.g * 0.5,
+            schatten.b * 0.5, 0.9)), 1.2, true)
     # Unter drei Pixeln waeren Lichtton und Glanz zusammen ein Punkt - dann
     # lieber zwei saubere Toene als vier verwaschene.
     if g < 3.0:
         return
     draw_circle(wo + zum_licht * g * 0.36, g * 0.52,
-        _gedeckt(Color(licht.r, licht.g, licht.b, 1.0)))
+        _gedeckt(Color(licht.r, licht.g, licht.b, 1.0)), true, -1.0, true)
     draw_circle(wo + zum_licht * g * 0.54, g * 0.19,
-        _gedeckt(Color(1.0, 0.99, 0.96, 0.85 + 0.15 * hitze)))
+        _gedeckt(Color(1.0, 0.99, 0.96, 0.85 + 0.15 * hitze)),
+        true, -1.0, true)
 
 
 ## Eine **Membran** in Zellschattierung: Flosse, Saum, Segel.
