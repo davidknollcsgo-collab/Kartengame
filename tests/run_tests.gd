@@ -1021,18 +1021,18 @@ func _test_rundum_begleiter_bleiben_hinten() -> bool:
                     return false
     # **Und keine zwei stehen aufeinander.**
     #
-    # Das ist die Zusage, die hier gefehlt hat, und ihr Fehlen hat Schaden
-    # gekostet, den kein Bild zeigt: ein Begleiter nimmt das **naechste**
-    # Tier in seiner Reichweite (`naechstes_ziel`), und zwei Polypen auf
-    # demselben Fleck nehmen darum immer dasselbe. Einer von beiden zahlt
-    # dann auf einen Leib ein, der ohnehin faellt.
+    # Der Faecher darf aufgebrochen werden - er soll es sogar, sonst ist er
+    # eine Anzeige und kein Schwarm. Was er dabei nicht darf, ist seine
+    # eigene Teilung aufzehren: `Rundum.ZITTERN` misst sich am Winkelabstand
+    # zum Nachbarn, und zwei Nachbarn koennen hoechstens aufeinander zu
+    # weichen. Mehr als zwei Fuenftel der Luecke duerfen dabei nicht
+    # verlorengehen - die Schranke ist also aus `ZITTERN` abgeleitet und
+    # nicht gewaehlt.
     #
-    # Gemessen wird gegen den gleichmaessigen Bogen: wer die Formation
-    # aufbricht, darf zwei Nachbarn nicht dichter zusammenschieben, als sie
-    # ohne jedes Aufbrechen stuenden. `MINDEST_ANTEIL` laesst dafuer etwas
-    # Luft nach unten, weil die zweite Reihe an anderer Stelle mehr Abstand
-    # schafft, als sie hier nimmt.
-    const MINDEST_ANTEIL := 0.80
+    # Der Anlass war eine Zeile, die sich an der **Breite** des Faechers
+    # mass statt an seiner Teilung: bei acht Begleitern standen zwei davon
+    # sechs Einheiten auseinander, und im Bild waren es sieben Polypen.
+    var mindest_anteil := 1.0 - 2.0 * Rundum.ZITTERN
     for anzahl in range(2, 9):
         var blick := Vector2.UP.rotated(0.9)
         var plaetze: Array[Vector2] = []
@@ -1049,9 +1049,9 @@ func _test_rundum_begleiter_bleiben_hinten() -> bool:
             for j in range(i + 1, anzahl):
                 eng = minf(eng, plaetze[i].distance_to(plaetze[j]))
                 eng_glatt = minf(eng_glatt, glatt[i].distance_to(glatt[j]))
-        if not _melde(eng >= eng_glatt * MINDEST_ANTEIL,
+        if not _melde(eng >= eng_glatt * mindest_anteil,
                 "bei %d Begleitern stehen zwei %.1f auseinander statt %.1f"
-                % [anzahl, eng, eng_glatt * MINDEST_ANTEIL]):
+                % [anzahl, eng, eng_glatt * mindest_anteil]):
             return false
 
     # Und ein Ziel ausserhalb der Reichweite wird nicht genommen.

@@ -250,14 +250,15 @@ const UMLAUF_ENGER := 0.02
 const FAECHER := 0.62
 
 
-## Die zwei Reihen der Formation, als Anteil von `BEGLEITER_ABSTAND`: die
-## nahe Reihe und wieviel die hintere dahinterliegt.
-const REIHE_NAH := 0.82
-const REIHE_TIEFE := 0.24
-
 ## Wieviel ein Begleiter aus der Reihe weicht, als Anteil des Winkelabstands
-## zu seinem Nachbarn. Unter einem Viertel bleibt die Reihenfolge und der
-## groesste Teil der Luecke erhalten.
+## zu seinem Nachbarn - **nicht** der Faecherbreite. Der Unterschied ist die
+## Zahl der Begleiter: die Breite steht fest, die Luecke wird mit jedem
+## weiteren kleiner. An der Breite gemessen zitterte ein Begleiter bei acht
+## Mann weiter, als seine Luecke breit war, und zwei landeten uebereinander.
+##
+## Bei einem Fuenftel der Luecke koennen zwei Nachbarn hoechstens zwei
+## Fuenftel davon verlieren - die Reihenfolge bleibt in jedem Fall, und
+## `_test_rundum_begleiter_bleiben_hinten` haelt den Rest fest.
 const ZITTERN := 0.20
 
 
@@ -268,39 +269,34 @@ static func begleiter_ziel(index: int, anzahl: int, fuehrer: Vector2,
     var t := 0.5
     if anzahl > 1:
         t = float(index) / float(anzahl - 1)
-    # **Ein Schwarm steht nicht auf einem Kreisbogen - aber auch nicht
-    # uebereinander.**
+    # **Ein Schwarm steht nicht auf einem Kreisbogen - aber der Abstand ist
+    # nicht die Stelle, an der man das loest.**
     #
     # Sie sassen einmal auf exakt gleichem Abstand in exakt gleichen
-    # Winkeln, und im Bild war das ein Bogen aus sechs gleichen Marken
-    # ueber dem Boot - eine Anzeige, keine Tiere. Der erste Ausweg war eine
-    # freie Verschiebung in Winkel *und* Abstand, und der hat etwas
-    # zerstoert, was man dem Bild nicht ansieht: bei acht Begleitern lagen
-    # zwei davon sechs Einheiten auseinander, bei einer Reichweite von
-    # `BEGLEITER_REICHWEITE`. Zwei Polypen auf demselben Fleck nehmen
-    # **dasselbe** Tier (`naechstes_ziel` waehlt das naechste), also zahlt
-    # einer von beiden auf einen Leib ein, der ohnehin faellt.
+    # Winkeln, und im Bild war das ein Bogen aus sechs gleichen Marken ueber
+    # dem Boot: eine Anzeige, keine Tiere. Der Ausweg war, Winkel **und**
+    # Abstand zu verschieben - und der Abstand hat das Spiel verschoben.
+    # Gemessen mit dem Kolonielauf, jede Groesse einzeln:
     #
-    # Zwei Regeln halten das auseinander, und beide sind aus der Formation
-    # selbst abgeleitet statt gewaehlt:
+    #   | Formation | gefallene Sitzungen |
+    #   |---|---|
+    #   | Bogen, fester Abstand | 38 |
+    #   | Zittern im Winkel, fester Abstand | 38 |
+    #   | Bogenwinkel, Abstand 0,80 bis 1,06 | 89 |
+    #   | beides zusammen | 89 |
     #
-    #   * **Zwei Reihen statt einer.** Der Abstand wechselt von Platz zu
-    #     Platz - das bricht den Bogen staerker, als ein Zittern es konnte,
-    #     und es *vergroessert* den Abstand zwischen Nachbarn, statt ihn zu
-    #     verkleinern: auf einem Bogen trennt Nachbarn nur der Winkel, in
-    #     zwei Reihen zusaetzlich die Tiefe.
-    #   * **Das Zittern bleibt unter der eigenen Luecke.** Es misst sich am
-    #     Winkelabstand zweier Nachbarn, nicht an der Breite des Faechers:
-    #     ein Faecher, der weiter zittert als er teilt, ist keiner mehr.
+    # **Der Winkel ist umsonst, der Abstand kostet.** Er bleibt deshalb
+    # genau `abstand` - das ist die Zahl, gegen die `Ausbau.durchsatz()`
+    # und mit ihm die ganze Sollkurve gemessen wurde. Was das Bild braucht,
+    # traegt das Zittern allein.
     #
-    # Gewuerfelt wird nichts: beides kommt allein aus dem Platz, ist also je
-    # Begleiter fest und ueber die ganze Fahrt dieselbe. Ein Polyp, der
-    # seinen Platz jede Sekunde neu sucht, waere ein Flackern.
+    # Gewuerfelt wird nichts: die Verschiebung kommt allein aus dem Platz,
+    # ist also je Begleiter fest und ueber die ganze Fahrt dieselbe. Ein
+    # Polyp, der seinen Platz jede Sekunde neu sucht, waere ein Flackern.
     var luecke := 2.0 * FAECHER / float(maxi(1, anzahl - 1))
     var versatz := sin(float(index) * 2.39 + 0.7)
     var w := lerpf(-FAECHER, FAECHER, t) + versatz * luecke * ZITTERN
-    var weit := abstand * (REIHE_NAH + REIHE_TIEFE * float(index % 2))
-    return fuehrer - blick.normalized().rotated(w) * weit
+    return fuehrer - blick.normalized().rotated(w) * abstand
 
 
 ## Welches Tier ein Begleiter nimmt: das naechste in seiner Reichweite.
