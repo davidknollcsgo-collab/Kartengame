@@ -58,11 +58,24 @@ extends SceneTree
 ## auf der Kurve eingerechnet und darunter eine Wand; der Wellenpruefer und
 ## dieser Messstand fahren beide auf der Kurve und sehen davon nichts.
 
-## Ueber welche Wellen gemessen wird. Zyklus 2 und 3 - dort steht die
-## Kolonielauf-Trefferliste, und breit genug, dass ein Wurf nichts
-## entscheidet.
-const VON := 161
-const BIS := 240
+## Ueber welche Wellen gemessen wird. Zyklus 2 und 3 - breit genug, dass ein
+## Wurf nichts entscheidet.
+##
+## **Hier stand als Begruendung "dort steht die Kolonielauf-Trefferliste",
+## und das war nicht nachgesehen.** Der Kolonielauf meldet seine gefallenen
+## Sitzungen von Welle 30 bis 210; das Fenster 161-240 deckt davon ein
+## Viertel. Ein Leitwesen tritt darin zweimal auf, und aus zwei Auftritten
+## laesst sich kein Preis lesen - genau davor warnt die Spalte `kommt` zwei
+## Absaetze weiter, und die Vorgabe selbst lief hinein.
+##
+## Das Fenster ist deshalb einstellbar, ohne dass die Vorgabe sich aendert:
+##
+##     tools/artenlast.gd -- --art "Chalk Ray" --von 30 --bis 210
+const VON_VORGABE := 161
+const BIS_VORGABE := 240
+
+static var VON := VON_VORGABE
+static var BIS := BIS_VORGABE
 
 ## Wieviel Huelle der Messstand mitgibt. Gemessen wird der Verlust, nicht das
 ## Ueberleben: eine Welle, die bei Huelle null abbricht, meldet zu wenig
@@ -113,6 +126,20 @@ static func zaehle(art: int) -> int:
 
 
 func _init() -> void:
+    # **Erst lesen, dann messen.** Die Schalter standen einmal unter dem
+    # ersten Messlauf: ein `--von` haette dann die Ueberschrift und die
+    # Grundmessung unberuehrt gelassen und nur die Sperrlaeufe verschoben -
+    # also zwei Fenster in einem Vergleich.
+    var nur := ""
+    var args := OS.get_cmdline_user_args()
+    for i in args.size():
+        if args[i] == "--art" and i + 1 < args.size():
+            nur = args[i + 1]
+        elif args[i] == "--von" and i + 1 < args.size():
+            VON = maxi(1, int(args[i + 1]))
+        elif args[i] == "--bis" and i + 1 < args.size():
+            BIS = maxi(VON, int(args[i + 1]))
+
     print("Artenlast - Huellenverlust ueber die Wellen %d bis %d" % [VON, BIS])
     print("")
     var wellen := float(BIS - VON + 1)
@@ -127,12 +154,6 @@ func _init() -> void:
     print("%-14s %5s %6s %10s %10s %9s %8s %8s"
         % ["Art", "wucht", "kommt", "Huelle", "je Welle", "Anteil",
             "aufwand", "waere"])
-
-    var nur := ""
-    var args := OS.get_cmdline_user_args()
-    for i in args.size():
-        if args[i] == "--art" and i + 1 < args.size():
-            nur = args[i + 1]
 
     var schlimmste := 0.0
     var wer := "keine"
