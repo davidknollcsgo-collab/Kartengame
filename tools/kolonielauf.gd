@@ -78,7 +78,23 @@ const FORTSCHRITTSMAUER := 4
 ## Wie oft eine Sitzung in fuenfzig Tagen fallen darf. Null waere falsch - eine
 ## Kurve, die nie jemanden umwirft, zieht nicht an. Aber wer dreimal am Tag
 ## verliert, spielt kein Spiel mehr, sondern eine Wand.
-const TRAGBARE_FAELLE := 12
+##
+## **Die Zahl und ihre Einheit sind getrennt gealtert.** Sie stand als feste
+## Zwoelf da, waehrend `TAGE` von dreissig ueber fuenfzig auf
+## hundertzwanzig ging - der Satz darueber sagte also fuenfzig Tage, und
+## gemessen wurden hundertzwanzig. Das ist dieselbe Art Fehler wie ein
+## Fels, dessen Grundton aus einer Zeit stammt, in der das Wasser dunkler
+## war: zwei Zahlen, die zueinander passen muessen, und keine davon faellt
+## allein auf.
+##
+## Sie skaliert deshalb jetzt mit dem Horizont. Das ist **keine** gelockerte
+## Schranke: der Lauf bleibt damit rot (fuenfunddreissig gegen neunundzwanzig),
+## und eine Schranke hochzusetzen, damit ein Commit durchgeht, hat hier schon
+## einmal einen Pruefer abgeschafft statt ein Problem zu loesen.
+const FAELLE_JE_FUENFZIG_TAGE := 12
+
+static func tragbare_faelle() -> int:
+    return int(round(float(FAELLE_JE_FUENFZIG_TAGE) * float(TAGE) / 50.0))
 
 ## Wie weit das Leuchtorgan hinter der Sollkurve liegen darf.
 ##
@@ -94,7 +110,7 @@ const TRAGBARE_FAELLE := 12
 ## steht also zwangslaeufig unter der Sollstufe der letzten Welle des
 ## Abschnitts und waechst waehrend des Spielens hinein - so ist es gedacht.
 ## Was daran gemessen gehoert, ist nicht der Abstand, sondern ob dabei
-## Sitzungen fallen, und das zaehlt `TRAGBARE_FAELLE`.
+## Sitzungen fallen, und das zaehlt `tragbare_faelle()`.
 static func tragbarer_rueckstand() -> int:
     return Ausbau.stufe_soll(Graben.WELLEN_JE_ABSCHNITT * 2) \
         - Ausbau.stufe_soll(Graben.WELLEN_JE_ABSCHNITT + 1)
@@ -309,7 +325,7 @@ func _init() -> void:
             % [groesste_mauer / 3600.0, mauer_tag])
     else:
         print("Groesster Leerlauf: %.1f h - unter der Schwelle" % [mauer / 3600.0])
-    print("Gefallene Sitzungen: %d" % faelle)
+    print("Gefallene Sitzungen: %d (tragbar %d)" % [faelle, tragbare_faelle()])
     if not faelle_welle.is_empty():
         var von := faelle_welle[0]
         var bis := faelle_welle[faelle_welle.size() - 1]
@@ -356,9 +372,10 @@ func _init() -> void:
     if laengster_stillstand >= FORTSCHRITTSMAUER:
         fehler.append("Fortschrittsmauer: %d Tage lang weder eine neue Welle noch "
             % laengster_stillstand + "eine Kammerstufe bei Welle %d." % stillstand_welle)
-    if faelle > TRAGBARE_FAELLE:
-        fehler.append("%d gefallene Sitzungen in %d Tagen - der Spieler verliert "
-            % [faelle, TAGE] + "haeufiger, als eine Kurve das darf.")
+    if faelle > tragbare_faelle():
+        fehler.append("%d gefallene Sitzungen in %d Tagen, tragbar sind %d - "
+            % [faelle, TAGE, tragbare_faelle()]
+            + "der Spieler verliert haeufiger, als eine Kurve das darf.")
 
     print("")
     if fehler.is_empty():

@@ -775,15 +775,22 @@ unter einer strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
    `Kammern.polyp_leistung()` nehmen — auf Stufe 40 das 6,6fache. Ein
    Wächter prüft eben die Zahlen, die jemand hineingeschrieben hat.
 
-   Dazu ein zweiter Verdacht an derselben Zeile, und er ist gemessen: sie
-   zählt alle acht Begleiter als volle Schadensquellen, während acht
-   Polypen ihr Ziel zu **79,6 %** von einem schon belegten Tier nehmen —
-   `BEGLEITER_REICHWEITE` ist mehr als doppelt so groß wie die ganze
-   Formation, also sehen sie fast dasselbe Feld. Zwei Zeilen tiefer steht
-   für das Stoßlicht ausdrücklich das Gegenteil: „Gezählt wird es als
-   **ein** zusätzliches Ziel, nicht als alle." Beide Fehler zeigen in
-   entgegengesetzte Richtungen; ob sie sich aufheben, ist eine Messung und
-   kein Argument.
+   Gemessen, was die Berichtigung ausmacht: der Polypenanteil am Durchsatz
+   springt von 1–2 % auf 9–12 % in späten Wellen, der Durchsatz selbst also
+   um 9 bis 14 % — und weil `Wellen.staerke()` daraus fällt, macht die
+   *richtige* Kurve das Spiel **schwerer**. Das ist kein Grund, sie falsch
+   zu lassen; es ist der Grund, sie nicht allein zu schieben.
+
+   **Und hier hätte fast eine zweite Behauptung ohne Messung gestanden.**
+   Sie lautete: dieselbe Zeile zähle alle acht Begleiter als volle
+   Schadensquellen, während acht Polypen ihr Ziel zu 79,6 % von einem schon
+   belegten Tier nehmen — wie beim Stoßlicht zwei Zeilen tiefer, wo
+   ausdrücklich steht „als **ein** zusätzliches Ziel, nicht als alle". Der
+   Vergleich hinkt, und die eigene Überschrift der Funktion sagt warum:
+   *roher Schaden je Sekunde*. Acht Polypen bringen ihren Schaden an, ob
+   sie sich ein Tier teilen oder nicht — verloren geht nur, was über den
+   letzten Lebenspunkt hinausgeht, und das ist zweiter Ordnung. Beim
+   Stoßlicht schwankt dagegen wirklich, **wie viele** der Ring kreuzt.
 
 ## Der Rundumlauf — die Schleife
 
