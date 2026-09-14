@@ -44,7 +44,24 @@ const NACHLAUF := 8.0
 
 ## Feste Saat. "NEK" als Zahl - beliebig, aber nie wieder zu aendern, weil
 ## sich sonst jede geprueft Welle veraendert.
-const SAAT := 0x4e454b
+const SAAT_VORGABE := 0x4e454b
+
+## **Fest im Spiel, verstellbar im Messstand.**
+##
+## Der Kolonielauf misst mit einer festen Saat genau **eine** Realisierung
+## der ganzen Wellenfolge. Solange man nichts aendert, ist das gut - derselbe
+## Stand gibt dieselbe Zahl. Sobald man aber einen Preis anfasst, wird die
+## Welle neu zusammengesetzt, und das ist so gut wie eine neue Stichprobe.
+##
+## Gemessen, was das anrichtet: Veilform auf 1,50 / 2,00 / 2,50 gesetzt gibt
+## 87 / 20 / 46 gefallene Sitzungen gegen 35 auf der Vorgabe. Keine Kurve,
+## sondern Rauschen - und eine gruene Zahl darin ist ein Zufallstreffer.
+##
+## Deshalb ist die Saat jetzt eine `static var` mit der alten Zahl als
+## Vorgabe. Das Spiel setzt sie nie; die Messwerkzeuge duerfen sie
+## verschieben und ueber mehrere Laeufe mitteln. Nur so ist die Fallzahl eine
+## Aussage ueber Balance statt ueber einen Wurf.
+static var SAAT := SAAT_VORGABE
 
 ## Wie zaeh die Raeuber in spaeten Wellen werden.
 ##

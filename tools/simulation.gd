@@ -173,7 +173,10 @@ class Tier extends RefCounted:
 static func stelle_auf(nummer: int) -> Array[Tier]:
     var tiere: Array[Tier] = []
     var rng := RandomNumberGenerator.new()
-    rng.seed = 0x52554e44 + nummer
+    # Die Saat der Aufstellung wandert mit der Wellensaat: sonst wuerde ein
+    # Messlauf zwar andere Wellen bauen, sie aber immer gleich hinstellen -
+    # eine halbe Stichprobe ist keine.
+    rng.seed = 0x52554e44 + nummer + (Wellen.SAAT - Wellen.SAAT_VORGABE)
     var eintraege: Array[Dictionary] = []
     for versatz in Rundum.DICHTE:
         for e in Wellen.auftritte(nummer + versatz):

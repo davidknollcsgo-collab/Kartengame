@@ -264,11 +264,57 @@ godot --headless --path . --script tools/mutationskosten.gd -- --zug Plated
 > macht, sind **sechzehn auf einmal** - und `aufwand` rechnet je
 > Lebenspunkt und kann Gleichzeitigkeit gar nicht ausdruecken.
 >
-> Ob ein Preis trotzdem hilft, weil er das Budget von der schnellsten Art
-> zur langsameren Laichwolke umlenkt, wird gerade gemessen (Veilform auf
-> 2,00). Das Ergebnis gehoert hierher, sobald es da ist - und wenn es
-> nichts bringt, ist der naechste Ort die Gruppengroesse und
-> `Wellen.anlauf()`, nicht die Preisspalte.
+> **Und dann hat die Messung die ganze Fragestellung umgeworfen.** Veilform
+> auf 2,00 gesetzt gab **20** gefallene Sitzungen bei 29 tragbaren - der
+> erste grüne Kolonielauf überhaupt, samt „Die Kolonie trägt die Sollkurve".
+> Der Befund hielt genau so lange, wie es dauert, einen zweiten Punkt zu
+> messen:
+>
+> | Veilform `aufwand` | 1,00 | 1,50 | 2,00 | 2,50 |
+> |---|---|---|---|---|
+> | gefallene Sitzungen | 35 | **87** | **20** | **46** |
+>
+> Keine Kurve, sondern Rauschen. Und der Grund ist nicht die Art, sondern
+> das Werkzeug: **ohne jede Änderung am Spiel**, nur die Wellensaat
+> verschoben, meldet derselbe Stand **35, 41 und 144** gefallene Sitzungen.
+> Faktor vier aus dem Wurf allein, bei einer Schranke von 29.
+>
+> Zwei weitere Messungen schließen das Bild:
+>
+> * **Die Gesamtstärke ist es nicht.** Über 96 Sitzungen mit künstlich
+>   skalierter Wellenstärke fallen 5 / 4 / 4 / 5 bei ±4,5 % und −10 %. Die
+>   4,5 % weniger Leben, die der Veilform-Preis kauft, können die Fallzahl
+>   also gar nicht halbiert haben.
+> * **Die Kolonie ist es auch nicht.** Im 144er-Lauf steht sie *weniger* im
+>   Rückstand (0,3 Stufen) als im 35er (1,0), und „Tage hinter der
+>   Sollkurve" ist gleich. Der Koloniestand ist über die Saaten stabil.
+>
+> **Die Fallzahl misst, wieviele katastrophale Wellen eine Saat gewürfelt
+> hat** - und davon gibt es wenige (die schlimmste kostet 167 % der Hülle),
+> also streut die Zahl entsprechend. Damit ist jede Einzelmessung an diesem
+> Werkzeug ein Zug aus einer Verteilung mit enormer Streuung, und das gilt
+> rückwirkend für jeden Befund in dieser Datei, der auf **einem** Lauf
+> beruht.
+>
+> Zwei Folgen, beide gezogen:
+>
+> 1. `Wellen.SAAT` ist eine `static var` mit der alten Zahl als Vorgabe. Das
+>    Spiel setzt sie nie - dieselbe Welle bleibt dieselbe Welle -, die
+>    Messwerkzeuge dürfen sie verschieben (`--saat n`).
+> 2. **CI prüft drei Saaten einzeln.** Das ist die Zusage, die hier immer
+>    gemeint war: egal wie die Würfel fallen, ein normaler Spieler verliert
+>    nicht öfter als die Schranke erlaubt. Der Lauf bleibt damit rot, und
+>    zwar deutlicher als vorher - aber zum ersten Mal aus einem Grund, der
+>    etwas bedeutet.
+>
+> **Der Hebel ist damit benannt und es ist keiner der bisher versuchten:**
+> nicht die Gesamtstärke, nicht ein Preis, nicht die Zusammensetzung,
+> sondern der **Ausläufer** - die wenigen Wellen, die mehr kosten als eine
+> ganze Hülle. Wer den kappt, senkt die Fallzahl in *jeder* Saat.
+>
+> Und ein Versuch, der dazu naheliegt, ist schon gemessen und war
+> wirkungslos: den Mitgliedern einer Gruppe versetzte Eintrittszeiten geben
+> (`SCHWARM_TAKT` 0,55 s) - 34 gegen 35 Fälle.
 >
 > **Was daraus folgt und noch offen ist:** der Hebel ist nicht ein Preis,
 > sondern der **Abstand** zwischen dem billigsten Tier und dem Rest — oder

@@ -70,8 +70,25 @@ jobs:
 
       # Beantwortet, was man einem Aufbauspiel nicht ansieht: erreicht ein
       # normaler Spieler die Sollkurve, und entsteht dabei eine Wartemauer?
-      - name: Kolonie über 120 Tage
-        run: godot --headless --path . --script tools/kolonielauf.gd
+      #
+      # **Drei Saaten, nicht eine.** Der Lauf ist deterministisch, aber die
+      # Fallzahl haengt fast vollstaendig daran, wieviele katastrophale
+      # Wellen eine Saat wuerfelt: ohne jede Aenderung am Spiel gibt die
+      # Vorgabe 35, +1 gibt 41 und +2 gibt 144 gefallene Sitzungen. Eine
+      # einzelne Saat misst damit den Wurf und nicht die Balance, und eine
+      # gruene Zahl darin ist ein Zufallstreffer (Veilform auf 1,50 / 2,00 /
+      # 2,50 gesetzt: 87 / 20 / 46).
+      #
+      # Geprueft wird deshalb **jede** Saat einzeln. Das ist die Zusage, die
+      # hier immer gemeint war: egal wie die Wuerfel fallen, ein normaler
+      # Spieler verliert nicht oefter als die Schranke erlaubt.
+      - name: Kolonie über 120 Tage, drei Saaten
+        run: |
+          set -euo pipefail
+          for s in 0 1 2; do
+            echo "=== Saat +$s ==="
+            godot --headless --path . --script tools/kolonielauf.gd -- --saat "$s"
+          done
 
       # **Der Testlauf allein beweist nicht, dass das Spiel läuft.** Er lädt
       # `rundlauf.gd`, `rund_hud.gd` und `kolonie_schirm.gd` nie - ein

@@ -118,6 +118,19 @@ static func tragbarer_rueckstand() -> int:
 
 
 func _init() -> void:
+    # **`--saat <n>` verschiebt die Wellensaat.**
+    #
+    # Ohne das misst dieser Lauf eine einzige Realisierung, und jede
+    # Preisaenderung zieht faktisch eine neue Stichprobe: Veilform auf
+    # 1,50 / 2,00 / 2,50 gab 87 / 20 / 46 Faelle gegen 35 auf der Vorgabe.
+    # Eine gruene Zahl darin sagt nichts. Wer eine Balance-Aenderung
+    # beurteilen will, laeuft mehrere Saaten und vergleicht die Mittel.
+    for i in OS.get_cmdline_user_args().size():
+        var args := OS.get_cmdline_user_args()
+        if args[i] == "--saat" and i + 1 < args.size():
+            Wellen.SAAT = Wellen.SAAT_VORGABE + int(args[i + 1])
+            print("Wellensaat um %d verschoben" % int(args[i + 1]))
+
     var stand := KolonieStand.new()
     var zeit := 0.0
 
