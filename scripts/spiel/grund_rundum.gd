@@ -873,7 +873,28 @@ func _kuppel(f: Dictionary, kraft: float) -> void:
         var d := licht_spitze - mitte
         if d.length_squared() > 1.0:
             zum_licht = d.normalized()
+    # **Das Licht gehoert an die Ecke, nicht an den Stein.**
+    #
+    # `hell` wurde einmal je Fels am Mittelpunkt ausgewertet. Ein Stein war
+    # damit ganz beleuchtet oder gar nicht, und einer, dessen Mitte knapp
+    # neben dem Kegel liegt, blieb dunkel, waehrend der Strahl ueber seine
+    # halbe Flaeche strich - der Kegel konnte nie **ueber** den Grund
+    # streichen, er schaltete Steine um.
+    #
+    # **Und es ist billig, weil fast kein Stein den Kegel beruehrt.** Ein
+    # Blick auf `weit` (der groesste Radius, steht schon da) sagt, ob er
+    # ueberhaupt in Reichweite liegt; alle anderen behalten die eine
+    # Auswertung, die sie vorher auch hatten. Teuer wird es nur fuer die ein
+    # bis drei Steine, die der Strahl wirklich trifft - und das ist genau
+    # die Stelle, an der man es sieht.
     var hell := _angeleuchtet(mitte)
+    var hell_ecke := PackedFloat32Array()
+    var weit: float = f.get(&"weit", 0.0)
+    if licht_reichweite > 0.0 \
+            and mitte.distance_to(licht_spitze) < licht_reichweite + weit:
+        hell_ecke.resize(n)
+        for i in n:
+            hell_ecke[i] = _angeleuchtet(umriss[i])
 
     # Der Grundton des Steins.
     #
@@ -921,16 +942,21 @@ func _kuppel(f: Dictionary, kraft: float) -> void:
     ecken.append(mitte)
     farben.append(_steinfarbe(dunkel, gewinn, 1.0))
 
+    var ruhe := 2.4 * (0.45 + 0.55 * kraft)
     for i in n:
         var zu_ihm: float = maxf(0.0,
             (umriss[i] - mitte).normalized().dot(zum_licht))
         ecken.append(schulter[i])
-        farben.append(_steinfarbe(dunkel, gewinn, 0.35 + 0.65 * zu_ihm))
+        farben.append(_steinfarbe(dunkel,
+            ruhe + 9.0 * _hell_an(hell_ecke, i, hell) * kraft,
+            0.35 + 0.65 * zu_ihm))
     for i in n:
         var zu_ihm: float = maxf(0.0,
             (umriss[i] - mitte).normalized().dot(zum_licht))
         ecken.append(umriss[i])
-        farben.append(_steinfarbe(dunkel, gewinn * 0.30, 0.20 * zu_ihm))
+        farben.append(_steinfarbe(dunkel,
+            (ruhe + 9.0 * _hell_an(hell_ecke, i, hell) * kraft) * 0.30,
+            0.20 * zu_ihm))
     # **Ein Fels sitzt auf etwas.**
     #
     # Er stand als dunkle Scheibe im Wasser, und das Sediment um ihn herum
@@ -990,18 +1016,24 @@ func _kuppel(f: Dictionary, kraft: float) -> void:
     # gezeichnete Kontur - dieselbe Doppelung wie die Schulterlinie, die
     # deshalb weg ist. Er sagt weiter "hier stoesst du an", aber er ist
     # nicht mehr das Erste, was man von einem Stein sieht.
+    # **Die Kante ebenso je Ecke.** Sie haengte am Fels: ein Stein mit
+    # *einer* Ecke im Strahl bekam den vollen hellen Rand - dasselbe
+    # Alles-oder-nichts wie bei der Flaeche, nur leichter ausgeloest. Der
+    # Zug wird deshalb mit der Helligkeit seines eigenen Stuecks gezogen.
     var grundrand := 0.11 if bool(f.get(&"fest", false)) else 0.04
-    var rand := grundrand + 0.52 * hell
     var glanz := PackedVector2Array()
+    var glanz_hell := 0.0
     for i in n:
         if (umriss[i] - mitte).normalized().dot(zum_licht) > 0.10:
             glanz.append(umriss[i])
+            glanz_hell = maxf(glanz_hell, _hell_an(hell_ecke, i, hell))
         else:
             if glanz.size() > 1:
-                _kantenzug(glanz, rand * kraft)
+                _kantenzug(glanz, (grundrand + 0.52 * glanz_hell) * kraft)
             glanz = PackedVector2Array()
+            glanz_hell = 0.0
     if glanz.size() > 1:
-        _kantenzug(glanz, rand * kraft)
+        _kantenzug(glanz, (grundrand + 0.52 * glanz_hell) * kraft)
 
     # Risse nur, wo das Licht sie findet. Ein Riss, den man auch im Dunkeln
     # sieht, ist aufgemalt.
@@ -1014,6 +1046,12 @@ func _kuppel(f: Dictionary, kraft: float) -> void:
 ## Ein Stueck Lichtkante: ein weiter blasser Hof und ein schmaler Kern
 ## darauf. Dieselbe Machart wie bei den Leuchtroehren - eine Linie mit einem
 ## Hof hat einen Uebergang, eine ohne hat eine Kante.
+## Die Helligkeit an einer Ecke - oder die des ganzen Steins, wenn er zu weit
+## vom Kegel weg ist, um einzeln abgetastet zu werden.
+func _hell_an(ecke: PackedFloat32Array, i: int, ganz: float) -> float:
+    return ecke[i] if i < ecke.size() else ganz
+
+
 func _kantenzug(punkte: PackedVector2Array, staerke: float) -> void:
     draw_polyline(punkte, Color(0.42, 0.68, 0.74,
         staerke * 0.22), 5.0, true)
