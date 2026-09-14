@@ -1492,6 +1492,26 @@ das Vorhandene. Der Schaden schrie, die Hülle flüsterte. Eine ruhige
 Anzeige zeigt, was **da** ist; wo nichts ist, ist eine Lücke, und eine
 Lücke braucht keine Farbe.
 
+**Zwei Zahlen, die zueinander passen müssen, altern getrennt.** Gemessen im
+Spielbild: Fels (1 / 17 / 22), Wasser einen Zentimeter daneben (2 / 17 /
+22) — **identisch.** Übrig blieb die Umrisslinie, also wieder ein
+Drahtgitter, und der ganze Meeresgrund war eine leere Fläche mit Kringeln
+darauf. Der Grundton des Steins stammte aus einer Zeit, in der das Wasser
+dunkler war; seither sind Nebel und Grund heller geworden, und niemand hat
+die beiden Zahlen noch einmal nebeneinander gehalten. Dieselbe Art Fehler
+wie eine Notiz über eine Engine-Einschränkung, der man hinterherbaut, ohne
+sie nachzuprüfen — **der Absatz eine Seite weiter oben behauptete die ganze
+Zeit, der Stein stehe auf zwei Dritteln des Wassers.**
+
+**Und die Entfernung darf Kontrast nehmen, nicht die Form.** `kraft` stand
+als Faktor vor der ganzen Klammer: in der hintersten Lage (0,14) blieb von
+der Wölbung ein Fünftel übrig, also nichts, und ein Massiv war eine flache
+Scheibe. Ein Stein hat seine Kuppe auch in der Ferne — was mit dem Abstand
+nachlässt, ist wie stark er auf den Kegel *antwortet*. Seither trägt die
+Wölbung den Stein, und der helle Rand darf leiser werden (0,19 → 0,11): auf
+einer sichtbaren Kuppe war er wieder eine gezeichnete Kontur, dieselbe
+Doppelung wie die Schulterlinie, die deshalb weg ist.
+
 **Ein Fels ist dunkler als das Wasser, aber er ist kein Loch.** Der
 Grundton des Steins lag bei dreissig Prozent des Wassers daneben (gemessen
 im Schuss: Fels (3, 13, 19), Wasser (9, 43, 52)) — im Bild waren das

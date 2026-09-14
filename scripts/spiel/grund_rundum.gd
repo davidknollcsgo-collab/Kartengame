@@ -804,7 +804,15 @@ func _kuppel(f: Dictionary, kraft: float) -> void:
     # Die Woelbung traegt ihn dabei auch ohne Kegel: die Kuppe steht auf dem
     # 1,9fachen dieses Tons, die Flanke auf dem Einfachen. Das ist der
     # Unterschied zwischen einer Silhouette und einem Koerper.
-    var dunkel := Color(0.020, 0.052, 0.064, 1.0)
+    # **Und gemessen war er zuletzt genau so hell wie das Wasser daneben.**
+    # Im Schuss: Fels (1 / 17 / 22), Wasser einen Zentimeter weiter (2 / 17
+    # / 22). Uebrig blieb seine Umrisslinie, also wieder ein Drahtgitter.
+    # Der Grundton stammt aus einer Zeit, in der das Wasser dunkler war;
+    # seither sind Nebel und Grund heller geworden und niemand hat die
+    # beiden Zahlen noch einmal nebeneinander gehalten. **Zwei Zahlen, die
+    # zueinander passen muessen, altern getrennt** - dieselbe Art Fehler wie
+    # eine Notiz ueber eine Engine-Einschraenkung, die niemand nachprueft.
+    var dunkel := Color(0.028, 0.060, 0.072, 1.0)
     # Wieviel Licht die Kuppe hoechstens annimmt. Quadriert angewandt, weil
     # ein linearer Verlauf ueber eine ganze Flaeche wie ein Farbverlauf
     # aussieht und nicht wie Licht: Licht faellt steil ab, sobald eine
@@ -815,7 +823,12 @@ func _kuppel(f: Dictionary, kraft: float) -> void:
     # und im unbeleuchteten Feld war der Fels damit eine flache Scheibe.
     # Anderthalb als Sockel machen daraus 2,5 gegen 1,4, und der Stein hat
     # eine Form, bevor Licht darauf faellt.
-    var gewinn := (1.5 + 3.0 * hell) * kraft
+    # **Die Entfernung nimmt Kontrast, nicht die Form.** `kraft` lag als
+    # Faktor vor der ganzen Klammer: in der hintersten Lage (0,14) blieb von
+    # der Woelbung ein Fuenftel uebrig, also nichts, und ein Massiv war eine
+    # flache Scheibe. Ein Stein hat seine Kuppe auch in der Ferne - was mit
+    # dem Abstand nachlaesst, ist wie stark er auf den Kegel antwortet.
+    var gewinn := 2.4 * (0.45 + 0.55 * kraft) + 3.0 * hell * kraft
 
     var ecken := PackedVector2Array()
     var farben := PackedColorArray()
@@ -888,7 +901,12 @@ func _kuppel(f: Dictionary, kraft: float) -> void:
     # ist keine Entscheidung, sondern ein Hinterhalt aus Stein. Die Kulisse
     # dahinter darf dagegen im Dunkeln verschwinden - dorthin faehrt
     # niemand.
-    var grundrand := 0.19 if bool(f.get(&"fest", false)) else 0.05
+    # **Und seit die Woelbung traegt, darf der Rand leiser werden.** Mit
+    # 0,19 war er auf einer Kuppe, die man jetzt sieht, wieder eine
+    # gezeichnete Kontur - dieselbe Doppelung wie die Schulterlinie, die
+    # deshalb weg ist. Er sagt weiter "hier stoesst du an", aber er ist
+    # nicht mehr das Erste, was man von einem Stein sieht.
+    var grundrand := 0.11 if bool(f.get(&"fest", false)) else 0.04
     var rand := grundrand + 0.52 * hell
     var glanz := PackedVector2Array()
     for i in n:
