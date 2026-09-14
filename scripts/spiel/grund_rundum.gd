@@ -173,8 +173,18 @@ var _rippel_netz := PackedInt32Array()
 func _baue_rippel(rng: RandomNumberGenerator) -> void:
     var weite := Rundum.FELD_RADIUS + UEBERSTAND
     var richtung := rng.randf_range(0.0, PI)
+    # **Von sechsundneunzig Rippeln kamen zweiundzwanzig im Feld an.** Der
+    # Versatz lief ueber `float(i) / 21.0` - ab i = 22 liegt er ausserhalb
+    # des Feldes, jeder Punkt faellt aus der Laengenpruefung, und der Zug
+    # wird nie angehaengt. Im Bild war der Sand deshalb fast leer: ein Band
+    # alle siebzig Einheiten statt alle dreissig, und der Grund unter dem
+    # Kegel ein glatter Verlauf mit einer einzelnen Linie darin.
+    #
+    # Der Kommentar daneben sagte die ganze Zeit "davon gibt es
+    # sechsundneunzig". Eine Zahl in einer Schleife und dieselbe Zahl in
+    # einem Nenner muessen zusammenpassen, und hier tat es niemand.
     for i in 96:
-        var versatz := lerpf(-weite, weite, float(i) / 21.0) \
+        var versatz := lerpf(-weite, weite, float(i) / 95.0) \
             + rng.randf_range(-9.0, 9.0)
         var quer := Vector2.RIGHT.rotated(richtung)
         var laengs := quer.orthogonal()
@@ -185,6 +195,30 @@ func _baue_rippel(rng: RandomNumberGenerator) -> void:
         for j in 41:
             var t := lerpf(-weite, weite, float(j) / 40.0)
             var p := quer * (versatz + hub * sin(t * takt + phase)) + laengs * t
+            if p.length() > weite:
+                continue
+            zug.append(p)
+        if zug.size() > 3:
+            _rippel.append(zug)
+
+    # **Eine zweite, feinere Schar unter einem flachen Winkel.** Eine
+    # einzige Richtung ergibt ein Wellblech; Sediment traegt die Handschrift
+    # von mehr als einer Stroemung, und erst die Ueberlagerung liest sich
+    # als Sand statt als Muster. Sie ist kuerzer getaktet und flacher, damit
+    # sie die Hauptrichtung stuetzt und nicht mit ihr streitet.
+    var quer2 := Vector2.RIGHT.rotated(richtung + 0.34)
+    var laengs2 := quer2.orthogonal()
+    for i in 64:
+        var versatz := lerpf(-weite, weite, float(i) / 63.0) \
+            + rng.randf_range(-14.0, 14.0)
+        var zug := PackedVector2Array()
+        var takt := rng.randf_range(0.022, 0.038)
+        var hub := rng.randf_range(4.0, 11.0)
+        var phase := rng.randf_range(0.0, TAU)
+        for j in 41:
+            var t := lerpf(-weite, weite, float(j) / 40.0)
+            var p := quer2 * (versatz + hub * sin(t * takt + phase)) \
+                + laengs2 * t
             if p.length() > weite:
                 continue
             zug.append(p)
@@ -247,7 +281,16 @@ func _baue_rippelnetz() -> void:
                 * (0.55 + 0.45 * sin(s_lang * TAU * 4.3 + ph * 1.7))
             lang = pow(clampf(lang, 0.0, 1.0), 1.5) \
                 * sqrt(sin(PI * s_lang))
-            var mitte := Color(ton.r, ton.g, ton.b, 0.15 * lang)
+            # **Und sichtbar genug, um Sand zu sein.** Mit 0,15 waren sie
+            # selbst im vollen Kegel kaum zu ahnen, und der Grund unter dem
+            # Strahl blieb ein glatter Verlauf. Sie tragen die Textur des
+            # Bodens; was man sucht statt es zu sehen, traegt nichts.
+            # Bei 0,26 lagen wieder lange helle Baender ueber dem Grund -
+            # genau die Streifen, gegen die die Ruecken eingefuehrt wurden.
+            # Was die Textur traegt, ist ihre **Zahl**, nicht ihre
+            # Helligkeit: hundertsechzig schwache Ruecken sind Sand,
+            # zwanzig kraeftige sind ein Wellblech.
+            var mitte := Color(ton.r, ton.g, ton.b, 0.17 * lang)
             _rippel_ecken.append(zug[i] - quer * RIPPEL_BREIT)
             _rippel_farben.append(aus)
             _rippel_ecken.append(zug[i])
@@ -525,7 +568,11 @@ func _zeichne_kleinzeug() -> void:
         var weg := p.distance_to(_blickmitte) / KLEIN_SICHT
         var saum := clampf((1.0 - weg) * 2.2, 0.0, 1.0)
         var hell := _angeleuchtet(p)
-        var a := (0.13 + 0.34 * hell) * float(k[&"ton"]) * saum
+        # **Und sie leuchten nicht heller als der Boden, auf dem sie
+        # liegen.** Mit 0,47 im vollen Kegel waren Kies und Schalen das
+        # Hellste im Bild - der Blick blieb am Kleinkram haengen statt an
+        # dem, was ihn angreift.
+        var a := (0.12 + 0.26 * hell) * float(k[&"ton"]) * saum
         var farbe := Color(grund_farbe.r, grund_farbe.g, grund_farbe.b, a)
 
         # Woher das Licht kommt. Ohne Kegel faellt es von oben ein - dann
@@ -536,6 +583,29 @@ func _zeichne_kleinzeug() -> void:
             if d.length_squared() > 1.0:
                 zum_licht = d.normalized()
         var lick := 0.35 + 0.65 * hell
+
+        # **Was auf Sand liegt, wirft einen Schatten - und erst der setzt
+        # es auf den Grund.**
+        #
+        # Im Kegel standen Schalen, Kiesel und Scherben als helle Umrisse
+        # auf einer glatten Flaeche: Papierschnipsel auf einem Verlauf. Es
+        # fehlte nicht an Zeichnung, sondern an **Kontakt** - dieselbe
+        # Frage wie beim Fels, der schwebte, bis er einen Sedimentkragen
+        # bekam.
+        #
+        # Nur im Licht: was man ohnehin kaum sieht, braucht keinen
+        # Schatten, und damit kostet er nur dort, wo der Kegel steht.
+        # **Und er ist kleiner als das Ding, das ihn wirft.** Der erste
+        # Anlauf nahm den anderthalbfachen Radius bei 0,34 Deckung: im Bild
+        # lag unter jeder Schale ein weicher Fleck, groesser als sie selbst
+        # - ein Schmutzrand, kein Schatten. Was auf dem Grund *aufliegt*,
+        # hat kaum Abstand zu ihm, also auch kaum Schatten; er sitzt dicht
+        # und knapp daneben.
+        if hell > 0.15:
+            var weit := gr * (0.66 + 0.18 * hell)
+            var wo := p - zum_licht * gr * 0.42
+            draw_circle(wo, weit, Color(0.010, 0.030, 0.040,
+                0.30 * hell * saum))
 
         match int(k[&"art"]):
             0:

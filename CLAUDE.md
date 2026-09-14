@@ -962,6 +962,38 @@ in jedem Bild neu aufgenommen wird, um nichts auszugeben, kostet gemessen
 0,25 Bilder je Sekunde — und nahe am Feldrand fährt man die kleinere Hälfte
 jeder Fahrt.
 
+**Von sechsundneunzig Rippeln kamen zweiundzwanzig im Feld an.** Der
+Versatz lief über `float(i) / 21.0` — ab i = 22 liegt er außerhalb des
+Feldes, jeder Punkt fällt aus der Längenprüfung, und der Zug wird nie
+angehängt. Im Bild war der Sand deshalb fast leer: ein Band alle siebzig
+Einheiten statt alle dreißig, und der Grund unter dem Kegel ein glatter
+Verlauf mit *einer* Linie darin. Der Kommentar daneben sagte die ganze
+Zeit „davon gibt es sechsundneunzig". **Eine Zahl in einer Schleife und
+dieselbe Zahl in einem Nenner müssen zusammenpassen** — hier tat es
+niemand, und das Ergebnis sah nicht nach einem Fehler aus, sondern nach
+einer Entwurfsentscheidung.
+
+Dazu eine **zweite, feinere Schar** unter einem flachen Winkel: eine
+einzige Richtung ergibt ein Wellblech, und erst die Überlagerung liest sich
+als Sand. Beides kostet zur Laufzeit nichts — es steht im gebauten Netz.
+
+Und die Helligkeit ist **nicht** der Hebel. Auf 0,26 gehoben lagen sofort
+wieder lange helle Bänder über dem Grund, also genau die Streifen, gegen
+die die Rücken eingeführt wurden. Was die Textur trägt, ist ihre **Zahl**:
+hundertsechzig schwache Rücken sind Sand, zwanzig kräftige sind ein
+Wellblech.
+
+**Und was auf Sand liegt, wirft einen Schatten.** Schalen, Kiesel und
+Scherben standen im Kegel als helle Umrisse auf einer glatten Fläche —
+Papierschnipsel auf einem Verlauf. Es fehlte nicht an Zeichnung, sondern an
+**Kontakt**, dieselbe Frage wie beim Fels, der schwebte, bis er einen
+Sedimentkragen bekam. Zwei Regeln halten ihn klein: nur im Licht (was man
+ohnehin kaum sieht, braucht keinen Schatten, und so kostet er nur dort, wo
+der Kegel steht), und **kleiner als das Ding, das ihn wirft** — der erste
+Anlauf nahm den anderthalbfachen Radius, und unter jeder Schale lag ein
+Fleck, größer als sie selbst. Was aufliegt, hat kaum Abstand zum Grund,
+also auch kaum Schatten.
+
 **Eine Rippel ist ein Rücken, kein Kratzer.** Die Sandbänder liefen mit
 gleichbleibender Deckung von einem Bildrand zum anderen — das Einzige im
 ganzen Feld, das das tut. Im Bild lagen damit lange helle Striche über
