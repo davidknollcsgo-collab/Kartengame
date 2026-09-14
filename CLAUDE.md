@@ -983,6 +983,20 @@ die die Rücken eingeführt wurden. Was die Textur trägt, ist ihre **Zahl**:
 hundertsechzig schwache Rücken sind Sand, zwanzig kräftige sind ein
 Wellblech.
 
+**Und eine Rippel ist ein Schatten, kein Streifen.** Auch 0,17 war zu
+viel — nur sah man das nicht im Kegel, wo ich es geprüft hatte, sondern
+**daneben**. Das Netz wird einmal gebaut, also antwortet die Rippel als
+Einzige am ganzen Grund *nicht* auf den Kegel: im Dunkeln stand sie
+genauso hell da wie im Strahl und war dort das Hellste im Bild — lange
+helle Diagonalen über das ganze unbeleuchtete Feld. Eine dritte Wahrheit
+über dasselbe Licht.
+
+Ein **dunkler** Ton löst beides auf einmal, ohne eine Rechnung je Bild: im
+Strahl steht er als Mulde gegen den hellen Sand, im Dunkeln liegt Dunkel
+auf Dunkel. Dieselbe Regel wie „eine Fuge ist ein Schatten, keine Linie".
+Und die Lehre über das Prüfen: **wer eine Zahl im Licht einstellt, sieht
+sie im Dunkeln nach** — der Kegel deckt ein Fünftel des Bildes ab.
+
 **Und was auf Sand liegt, wirft einen Schatten.** Schalen, Kiesel und
 Scherben standen im Kegel als helle Umrisse auf einer glatten Fläche —
 Papierschnipsel auf einem Verlauf. Es fehlte nicht an Zeichnung, sondern an

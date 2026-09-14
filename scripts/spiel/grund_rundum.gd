@@ -247,7 +247,21 @@ func _baue_rippelnetz() -> void:
     _rippel_ecken = PackedVector2Array()
     _rippel_farben = PackedColorArray()
     _rippel_netz = PackedInt32Array()
-    var ton := Color(0.22, 0.44, 0.50)
+    # **Eine Rippel ist ein Schatten, kein Streifen.**
+    #
+    # Sie war ein *heller* Ton auf dem Sand - und weil das Netz einmal
+    # gebaut wird, antwortet sie als Einzige am ganzen Grund **nicht** auf
+    # den Kegel: im Dunkeln stand sie genauso hell da wie im Strahl, und
+    # damit war sie dort das Hellste im Bild. Im Schuss lagen lange helle
+    # Diagonalen ueber das ganze unbeleuchtete Feld, also genau die
+    # Striche, gegen die die Ruecken eingefuehrt wurden. Eine dritte
+    # Wahrheit ueber dasselbe Licht.
+    #
+    # Ein dunkler Ton loest beides auf einmal: im Strahl steht er als Mulde
+    # gegen den hellen Sand, im Dunkeln liegt Dunkel auf Dunkel und man
+    # sieht ihn nicht. Dieselbe Regel wie "eine Fuge ist ein Schatten, keine
+    # Linie" - und sie braucht keine Rechnung je Bild.
+    var ton := Color(0.010, 0.030, 0.044)
     var aus := Color(ton.r, ton.g, ton.b, 0.0)
     for zug: PackedVector2Array in _rippel:
         var n := zug.size()
@@ -290,7 +304,7 @@ func _baue_rippelnetz() -> void:
             # Was die Textur traegt, ist ihre **Zahl**, nicht ihre
             # Helligkeit: hundertsechzig schwache Ruecken sind Sand,
             # zwanzig kraeftige sind ein Wellblech.
-            var mitte := Color(ton.r, ton.g, ton.b, 0.17 * lang)
+            var mitte := Color(ton.r, ton.g, ton.b, 0.40 * lang)
             _rippel_ecken.append(zug[i] - quer * RIPPEL_BREIT)
             _rippel_farben.append(aus)
             _rippel_ecken.append(zug[i])
