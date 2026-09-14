@@ -250,6 +250,17 @@ const UMLAUF_ENGER := 0.02
 const FAECHER := 0.62
 
 
+## Die zwei Reihen der Formation, als Anteil von `BEGLEITER_ABSTAND`: die
+## nahe Reihe und wieviel die hintere dahinterliegt.
+const REIHE_NAH := 0.82
+const REIHE_TIEFE := 0.24
+
+## Wieviel ein Begleiter aus der Reihe weicht, als Anteil des Winkelabstands
+## zu seinem Nachbarn. Unter einem Viertel bleibt die Reihenfolge und der
+## groesste Teil der Luecke erhalten.
+const ZITTERN := 0.20
+
+
 static func begleiter_ziel(index: int, anzahl: int, fuehrer: Vector2,
         blick: Vector2, abstand: float) -> Vector2:
     if blick.length_squared() < 0.000001:
@@ -257,19 +268,38 @@ static func begleiter_ziel(index: int, anzahl: int, fuehrer: Vector2,
     var t := 0.5
     if anzahl > 1:
         t = float(index) / float(anzahl - 1)
-    # **Ein Schwarm steht nicht auf einem Kreisbogen.**
+    # **Ein Schwarm steht nicht auf einem Kreisbogen - aber auch nicht
+    # uebereinander.**
     #
-    # Sie sassen auf exakt gleichem Abstand in exakt gleichen Winkeln, und
-    # im Bild war das ein Bogen aus sechs gleichen Marken ueber dem Boot -
-    # eine Anzeige, keine Tiere. Jeder haelt jetzt seinen **eigenen**
-    # Abstand und weicht ein Stueck aus der Reihe.
+    # Sie sassen einmal auf exakt gleichem Abstand in exakt gleichen
+    # Winkeln, und im Bild war das ein Bogen aus sechs gleichen Marken
+    # ueber dem Boot - eine Anzeige, keine Tiere. Der erste Ausweg war eine
+    # freie Verschiebung in Winkel *und* Abstand, und der hat etwas
+    # zerstoert, was man dem Bild nicht ansieht: bei acht Begleitern lagen
+    # zwei davon sechs Einheiten auseinander, bei einer Reichweite von
+    # `BEGLEITER_REICHWEITE`. Zwei Polypen auf demselben Fleck nehmen
+    # **dasselbe** Tier (`naechstes_ziel` waehlt das naechste), also zahlt
+    # einer von beiden auf einen Leib ein, der ohnehin faellt.
     #
-    # Gewuerfelt wird nichts: die Verschiebung kommt allein aus dem Platz,
-    # ist also je Begleiter fest und ueber die ganze Fahrt dieselbe. Ein
-    # Polyp, der seinen Platz jede Sekunde neu sucht, waere ein Flackern.
+    # Zwei Regeln halten das auseinander, und beide sind aus der Formation
+    # selbst abgeleitet statt gewaehlt:
+    #
+    #   * **Zwei Reihen statt einer.** Der Abstand wechselt von Platz zu
+    #     Platz - das bricht den Bogen staerker, als ein Zittern es konnte,
+    #     und es *vergroessert* den Abstand zwischen Nachbarn, statt ihn zu
+    #     verkleinern: auf einem Bogen trennt Nachbarn nur der Winkel, in
+    #     zwei Reihen zusaetzlich die Tiefe.
+    #   * **Das Zittern bleibt unter der eigenen Luecke.** Es misst sich am
+    #     Winkelabstand zweier Nachbarn, nicht an der Breite des Faechers:
+    #     ein Faecher, der weiter zittert als er teilt, ist keiner mehr.
+    #
+    # Gewuerfelt wird nichts: beides kommt allein aus dem Platz, ist also je
+    # Begleiter fest und ueber die ganze Fahrt dieselbe. Ein Polyp, der
+    # seinen Platz jede Sekunde neu sucht, waere ein Flackern.
+    var luecke := 2.0 * FAECHER / float(maxi(1, anzahl - 1))
     var versatz := sin(float(index) * 2.39 + 0.7)
-    var w := lerpf(-FAECHER, FAECHER, t) + versatz * FAECHER * 0.22
-    var weit := abstand * (0.80 + 0.26 * absf(sin(float(index) * 1.71)))
+    var w := lerpf(-FAECHER, FAECHER, t) + versatz * luecke * ZITTERN
+    var weit := abstand * (REIHE_NAH + REIHE_TIEFE * float(index % 2))
     return fuehrer - blick.normalized().rotated(w) * weit
 
 

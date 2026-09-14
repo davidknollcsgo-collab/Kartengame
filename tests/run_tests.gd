@@ -1019,6 +1019,41 @@ func _test_rundum_begleiter_bleiben_hinten() -> bool:
                 if not _melde(hin.normalized().dot(blick) < 0.0,
                         "Begleiter %d/%d steht vor dem Boot" % [i, anzahl]):
                     return false
+    # **Und keine zwei stehen aufeinander.**
+    #
+    # Das ist die Zusage, die hier gefehlt hat, und ihr Fehlen hat Schaden
+    # gekostet, den kein Bild zeigt: ein Begleiter nimmt das **naechste**
+    # Tier in seiner Reichweite (`naechstes_ziel`), und zwei Polypen auf
+    # demselben Fleck nehmen darum immer dasselbe. Einer von beiden zahlt
+    # dann auf einen Leib ein, der ohnehin faellt.
+    #
+    # Gemessen wird gegen den gleichmaessigen Bogen: wer die Formation
+    # aufbricht, darf zwei Nachbarn nicht dichter zusammenschieben, als sie
+    # ohne jedes Aufbrechen stuenden. `MINDEST_ANTEIL` laesst dafuer etwas
+    # Luft nach unten, weil die zweite Reihe an anderer Stelle mehr Abstand
+    # schafft, als sie hier nimmt.
+    const MINDEST_ANTEIL := 0.80
+    for anzahl in range(2, 9):
+        var blick := Vector2.UP.rotated(0.9)
+        var plaetze: Array[Vector2] = []
+        var glatt: Array[Vector2] = []
+        for i in anzahl:
+            plaetze.append(Rundum.begleiter_ziel(i, anzahl, fuehrer,
+                blick, 90.0))
+            var w := lerpf(-Rundum.FAECHER, Rundum.FAECHER,
+                float(i) / float(anzahl - 1))
+            glatt.append(fuehrer - blick.normalized().rotated(w) * 90.0)
+        var eng := INF
+        var eng_glatt := INF
+        for i in anzahl:
+            for j in range(i + 1, anzahl):
+                eng = minf(eng, plaetze[i].distance_to(plaetze[j]))
+                eng_glatt = minf(eng_glatt, glatt[i].distance_to(glatt[j]))
+        if not _melde(eng >= eng_glatt * MINDEST_ANTEIL,
+                "bei %d Begleitern stehen zwei %.1f auseinander statt %.1f"
+                % [anzahl, eng, eng_glatt * MINDEST_ANTEIL]):
+            return false
+
     # Und ein Ziel ausserhalb der Reichweite wird nicht genommen.
     var orte: Array[Vector2] = [Vector2(400.0, 0.0), Vector2(30.0, 40.0)]
     if not _melde(Rundum.naechstes_ziel(Vector2.ZERO, orte, 120.0) == 1,
