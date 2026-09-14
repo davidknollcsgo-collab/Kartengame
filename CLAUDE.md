@@ -206,6 +206,70 @@ godot --headless --path . --script tools/mutationskosten.gd -- --zug Plated
 > fällt daran. Woran eine Art die Welle wirklich teuer macht, sagt
 > `tools/artenlast.gd` — im Fenster, in dem die Fälle liegen.
 >
+> **Und dann ist zum ersten Mal nachgesehen worden, *wie* eine Sitzung
+> faellt.** "Fuenfunddreissig gefallene Sitzungen" sagt nicht, ob eine Welle
+> zu stark ist oder ob die Huelle ueber fuenf Wellen aufgerieben wird - zwei
+> verschiedene Krankheiten mit zwei verschiedenen Hebeln. Gemessen ueber 96
+> Sitzungen:
+>
+> | Welle in der Sitzung | 1 | 2 | 3 | 4 | 5 |
+> |---|---|---|---|---|---|
+> | Huelle danach | 93 % | 86 % | 76 % | 67 % | 54 % |
+> | faellt dort | 0 | 0 | 1 | 0 | **4** |
+>
+> **Es ist Zermuerbung, und sie faellt in der letzten Welle.** Im Mittel
+> bleibt die Haelfte der Huelle uebrig - und trotzdem stirbt jede zwanzigste
+> Sitzung. Dann entscheidet nicht der Mittelwert, sondern der Auslaeufer.
+> Ueber 480 Wellen, Verlust als Anteil der vollen Huelle:
+>
+> | Median | oberes Zehntel | Hoechst |
+> |---|---|---|
+> | 6,8 % | 22,7 % | **167,5 %** |
+>
+> Eine einzelne Welle kann mehr kosten als die ganze Huelle. **Die Leitwesen
+> sind es nicht** - sie tragen 14 % des gesamten Huellenverlusts.
+>
+> **Die teuren Wellen lassen sich benennen.** Welle 176 steht dreimal unter
+> den zwoelf teuersten, bei verschiedenen Koloniestaenden - dieselbe Welle,
+> die weiter oben seit Langem als offener Posten steht. Und der Vergleich
+> zeigt, dass es nicht die Zahl der Tiere ist:
+>
+> | | Welle 176 | Welle 205 (Median) | Welle 178 |
+> |---|---|---|---|
+> | Verlust | 168 % | 7 % | harmlos |
+> | Tiere | 45 | 36 | **64** |
+> | davon Veilform | **16** | 0 | **0** |
+>
+> Welle 178 hat die meisten Tiere und tut nichts. Was die teuren Wellen
+> teilen, ist ein hoher Anteil **schneller** Tiere.
+>
+> **Und die Preistabelle steht gegenueber dem Tempo auf dem Kopf:**
+>
+> | Art | Tempo | erreichbar | aufwand |
+> |---|---|---|---|
+> | Veilform | 168 | 5,8 s | **1,00** |
+> | Spawncloud | 132 | 7,4 s | **1,00** |
+> | Fangjaw (der Massstab) | 92 | 10,7 s | 1,00 |
+> | Shellback | 54 | 18,1 s | 1,00 |
+> | Shieldcoral | 44 | 22,3 s | 1,60 |
+>
+> Veilform ist 83 % schneller als der Massstab und zahlt denselben Preis -
+> es hat schlicht **keinen Eintrag** und erbt die Vorgabe.
+>
+> **Der naheliegende Schluss ist trotzdem falsch, und auch das ist
+> gemessen.** Pro Sekunde Erreichbarkeit zahlt Veilform mit 0,171 bereits
+> mehr als fast jede andere Art (Shellback 0,055), und der geforderte
+> Schaden je Sekunde ist bei ihm der **niedrigste** (1,38 gegen Shellbacks
+> 4,09). Ein einzelnes Veilform ist nicht zu billig. Was die Welle teuer
+> macht, sind **sechzehn auf einmal** - und `aufwand` rechnet je
+> Lebenspunkt und kann Gleichzeitigkeit gar nicht ausdruecken.
+>
+> Ob ein Preis trotzdem hilft, weil er das Budget von der schnellsten Art
+> zur langsameren Laichwolke umlenkt, wird gerade gemessen (Veilform auf
+> 2,00). Das Ergebnis gehoert hierher, sobald es da ist - und wenn es
+> nichts bringt, ist der naechste Ort die Gruppengroesse und
+> `Wellen.anlauf()`, nicht die Preisspalte.
+>
 > **Was daraus folgt und noch offen ist:** der Hebel ist nicht ein Preis,
 > sondern der **Abstand** zwischen dem billigsten Tier und dem Rest — oder
 > der Füller selbst. Wer das anfasst, fasst `Wellen.billigste()` und
