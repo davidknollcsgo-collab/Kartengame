@@ -52,6 +52,8 @@ godot --headless --path . --script tools/artenlast.gd         # was eine Art in 
 godot --headless --path . --script tools/artenlast.gd -- --art Shellback
 godot --headless --path . --script tools/mutationskosten.gd   # was ein Zug wirklich kostet, ~30 min
 godot --headless --path . --script tools/mutationskosten.gd -- --zug Plated
+godot --headless --path . --script tools/ausreisser.gd       # die Verteilung einer Welle, ~6 min
+godot --headless --path . --script tools/ausreisser.gd -- --saat 1
 ```
 
 > **Der Wellenprüfer meldet drei gefallene Sitzungen von achtundvierzig**,
@@ -109,6 +111,69 @@ godot --headless --path . --script tools/mutationskosten.gd -- --zug Plated
 > `Wellen.umgebung()` fällt in späten Abschnitten weit ab, und ein Budget
 > kann zwar Lebenspunkte kürzen, aber **kein Zeitfenster verlängern**. Wer
 > das anfasst, fasst `Wellen.fenster()` an und nicht die Schranke.
+
+> **Und seit es `tools/ausreisser.gd` gibt, ist die Frage falsch gestellt
+> gewesen.** Der Kolonielauf zählt gefallene Sitzungen — über 120 Tage ein
+> knappes Dutzend seltener Ereignisse, und derselbe Stand meldet über drei
+> Saaten 35, 41 und 144. Das Werkzeug misst stattdessen **die Verteilung
+> selbst**: jede Welle von 30 bis 210 einzeln, auf der Sollkurve, mit voller
+> Hülle, Verlust als Anteil der Hülle. Hundertachtzig Stichproben statt eines
+> Dutzends.
+>
+> | Median | oberes Zehntel | Höchst | über der ganzen Hülle |
+> |---|---|---|---|
+> | **0,0 %** | 17,4 % | 82,9 % | 0 von 181 |
+>
+> **Der Median ist null.** Mehr als die Hälfte aller Wellen kostet gar
+> nichts, und das obere Zehntel trägt siebenundvierzig Prozent des gesamten
+> Verlusts. Das ist keine Schwierigkeitskurve, sondern eine **zweigipflige
+> Verteilung**: die meisten Wellen sind geschenkt, ein paar kosten die halbe
+> Hülle. Eine Sitzung fällt nicht daran, dass es zu schwer ist, sondern
+> daran, wie viele Wellen aus dem Schwanz sie zufällig zieht — und genau
+> deshalb streut die Fallzahl um den Faktor vier.
+>
+> **Und die Vermutung, die oben steht, hält über 181 Wellen nicht.** Sie
+> lautet: die teuren Wellen teilen einen hohen Anteil **schneller** Tiere,
+> gemessen an Welle 176 (16 Veilform) gegen 205 und 178. Nebeneinander:
+>
+> | Welle | Verlust | Tiere | davon schnell |
+> |---|---|---|---|
+> | 176 | **83 %** | 45 | 71 % |
+> | 56 | **0 %** | 36 | **89 %** |
+> | 57 | 0 % | 27 | 81 % |
+> | 210 | **47 %** | 21 | **48 %** |
+>
+> Die günstigsten Wellen der ganzen Messung stehen mit dem **höchsten**
+> Anteil schneller Tiere da. Drei Wellen waren zu wenig; das Merkmal
+> trennt nicht.
+>
+> **Was in den teuren Wellen wirklich steht**, sagt `verlust_je_art` — und
+> es sind fast durchweg die **gepanzerten** Arten: Shellback, Shieldcoral,
+> Mirrorshell. Und dazu ein **Verdacht mit einem Ort**, der noch nicht
+> bezahlt ist: `Schlund.schaden_an()` zieht den Panzer vom Strahl *an dieser
+> Stelle* ab (`leistung * helligkeit - panzer`) und nicht von der Quelle.
+> Damit gibt es eine Helligkeit, unterhalb derer ein gepanzertes Tier
+> **unantastbar** ist — und weil `brennende()` nach Wirkung wählt, wählt es
+> ein unantastbares Tier folgerichtig nie aus: es läuft in Ruhe heran. Der
+> Kommentar über der Funktion behauptet seit jeher das Gegenteil, *„ein
+> Wehrpolyp kratzt an einer Schildkoralle, der Kegel nicht"* — der Kegel tut
+> es sehr wohl, überall außer in seiner Mitte.
+>
+> Eine Klippe, auf deren Seiten der Wurf entscheidet, ist genau die Form,
+> die eine zweigipflige Verteilung erzeugt. **Gemessen ist sie trotzdem
+> nicht.** Ein erster Versuch — Panzer von der Leistung abziehen,
+> `maxf(0, leistung - panzer) * helligkeit`, Testlauf 96/96 grün, weil alle
+> drei Zusicherungen von `_test_haut_schluckt_schwache_quellen` bei voller
+> Helligkeit stehen und dort unverändert gelten — ließ das obere Zehntel
+> unverändert (17,4 → 17,0 %) und machte Welle 176 **schlimmer** (83 →
+> 100 %). Plausibler Grund: gepanzerte Tiere nehmen am Rand jetzt Schaden,
+> belegen damit die knappen Zielplätze von `brennende()`, und andere laufen
+> durch. Wer das aufgreift, misst es an drei Saaten und nicht an einer.
+>
+> **Das Werkzeug meldet dazu absichtlich auch die zwölf günstigsten Wellen
+> mit denselben Spalten.** Wer ein Merkmal in der Spitze findet, muss
+> nachsehen, ob es unten anders steht; sonst hat er kein Merkmal gefunden,
+> sondern einen Wurf. Genau daran ist die Tempo-Erklärung gestorben.
 
 > **Und der Kolonielauf sagt es auch.** Er meldet, von welcher Welle bis
 > welcher seine Sitzungen fallen, wieviele Stufen der Spieler dabei hinter
@@ -2429,12 +2494,87 @@ eine Polylinie, und der Schwanz des Kalkrochen stufte an den spitzen Ecken.
 Die Umstellung ist deshalb **wieder draußen** — neun Prozent für ein
 schlechteres Bild ist kein Handel.
 
-**Woher die 9754 wirklich kommen, ist damit offen** und der nächste Schritt
-für jeden, der hier weitermacht: selbst die Sparfassung `_knapp()` kostet
-gemessen rund hundert Aufrufe je Tier bei vier Zeichenbefehlen. Die
-Zuordnung „ein Befehl, ein Aufruf" stimmt also nicht, und bevor wieder
-jemand eine Umstellung baut, gehört geklärt, was dieser Zähler im
-Kompatibilitäts-Renderer tatsächlich zählt.
+**Woher die 9754 wirklich kommen, ist inzwischen gemessen — und die Zahl
+steht heute bei 4113.** Der Weg dorthin ist derselbe wie immer: erst
+klären, was der Zähler zählt, und dann erst etwas umbauen. Eine Fläche, ein
+Primitivtyp, N Aufrufe:
+
+| Aufruf | Zeichenaufrufe |
+|---|---|
+| `draw_colored_polygon` | 1 je Stück, **auch mit Deckung null** |
+| `draw_polyline` geglättet | **3 je Zug**, unabhängig von der Länge |
+| `draw_polyline` ungeglättet | 1 |
+| `draw_circle` | 1 je Stück, kein Zusammenfassen |
+| `draw_line` geglättet | 50 Stück = **1** Aufruf |
+
+**Damit ist die Erklärung oben endgültig erledigt, und zwar samt ihrer
+Bestätigung.** Eine geglättete Polylinie kostet nicht einen Aufruf je
+Segment, sondern drei je Zug. Die verworfene Umstellung sparte deshalb
+genau 869 Aufrufe — rund 290 Züge mal drei —, und die Zahl ging damals auf,
+aber aus dem falschen Grund. **Eine Rechnung, die aufgeht, ist kein
+Beweis**, solange man die Größe, an der sie hängt, nicht einzeln gemessen
+hat.
+
+Zwei Posten, beide daraus:
+
+*Erstens: der Umrisspass zeichnete durchsichtig.* Er lief durch jede
+Artfunktion und gab über `_gedeckt()` durchsichtige Farben aus. In Bildern
+je Sekunde war das gratis (2,50 gegen 2,57) und galt hier lange als
+umsonst; in Zeichenaufrufen kostet eine Fläche mit Deckung null den vollen
+Preis. Jeder Zeichenbefehl von `schwarm.gd` läuft jetzt über eine Hülle
+(`_d_circle`, `_d_line`, …), die im Umrisspass abbricht; die einzige
+Ausnahme ist der Zug in `_kennung_umriss()`.
+
+*Zweitens, und das ist der große: die Zeichenschleife fragte nur
+`lebendig`.* Das steht ab dem Wellenbau — gezeichnet wurde damit **die
+ganze Welle ab dem ersten Bild**, samt der Tiere, deren Auftritt noch
+dreißig Sekunden entfernt ist, an dem Ort, an dem sie angelegt wurden.
+Jede andere Schleife in `rundlauf.gd` fragt `alter < 0.0` ab; diese eine
+nicht. **Godot keult in 2D je Knoten**, und dieser eine Knoten deckt das
+ganze Feld ab, also wurde nichts weggekeult. Gemessen bei Welle 40, elf
+Tiere im Bild: `_laichwolke()` lief 76-mal je Bild, `_zellblase()`
+376-mal. Dieselbe Zahl wird zwei Absätze weiter oben als `sichtbar` schon
+gerechnet — sie ging nur in die Sparstufe und nicht in die Schleife.
+
+| Stand | Zeichenaufrufe | Bilder/s |
+|---|---|---|
+| vorher | 9713 | 2,1 |
+| nur die Hülle | 8713 | 2,8 |
+| **beides** | **4113** | **3,2** |
+
+Das Bild ist dabei unverändert, und das ist gegen den **Rauschboden**
+geprüft statt gegen null: zwei Schüsse verschiedener Stände unterscheiden
+sich in 2573 Punkten, zwei Schüsse **desselben** Standes in 2117.
+
+**Und wo die 4113 heute liegen**, je Teil stillgestellt gemessen
+(1080×2400, Welle 40):
+
+| Teil | Zeichenaufrufe |
+|---|---|
+| Kleinzeug | **1062** |
+| Felsen | **744** |
+| Staub | 203 |
+| Schlote / Bewuchs | zusammen ~120 |
+| Funde / Schatten / Nebel / Rippel | zusammen ~0 (sind Netze) |
+| alles außer dem Grund | 2142 |
+
+Der nächste Schritt ist damit benannt und nicht mehr geraten: **Kleinzeug
+und Felsrand.** Beim Kleinzeug sind es rund dreihundert Stücke zu je drei
+bis vier Aufrufen — die Hausform dafür ist das Dreiecksnetz, wie bei
+Rippel, Druckwelle und Fels. Beim Fels ist der Körper längst ein Netz; was
+drei von vier Aufrufen kostet, ist der auslaufende helle Rand als
+geglätteter Zug. **Vorsicht dabei:** genau diese Umstellung ist in
+`schwarm.gd` schon einmal zurückgenommen worden, weil das Netz an spitzen
+Ecken stufte. Ein Felsumriss hat keine spitzen Ecken — das ist der
+Unterschied, und er gehört im Bild nachgesehen und nicht behauptet.
+
+**Und die erste Fassung der Hülle war ein Lehrstück.** Sie benannte die
+Aufrufe nach `_d_circle` um und die Funktionen nach `_dcircle`. Der
+Testlauf blieb **96/96 grün**, der Messstand meldete **2622 statt 9713**
+Aufrufe — das sah nach dem größten Gewinn des Tages aus. Es war die Datei,
+die nicht mehr lud. Gefunden hat es der Startlauf, wie schon dreimal
+vorher in dieser Datei. **Eine Leistungszahl, die zu gut ist, ist ein
+Fehlerbericht.**
 
 **Und der Messstand hat dabei einen echten Fehler gefunden — in einem
 Commit von zwei Stunden vorher.** Ein Schuss der Tierschau war **leer**:
