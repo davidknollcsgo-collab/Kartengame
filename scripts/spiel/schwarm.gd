@@ -2524,14 +2524,51 @@ func _kalkrochen(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -
 func _schwarmherz(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> void:
     var dreh := t.alter * 1.4 + t.phase
 
+    # **Es war ein Molekuelmodell.** Neun Trabanten auf exakt `TAU * i / 9`,
+    # jeder als perfekter Kreis, und von jedem eine **gerade Linie zum Kern**
+    # - also neun Speichen um eine Nabe. Genau die Bauart, die in dieser
+    # Datei am Roehrenbewuchs, am Faecher und an der Fundstelle schon
+    # abgeschafft ist, nur an der Art, die den Ring als ihre ganze Aussage
+    # traegt.
+    #
+    # Was einen Schwarm an sein Herz bindet, ist keine Verbindung, die man
+    # zeichnen kann - es ist, dass alle um denselben Punkt ziehen. Die
+    # Speichen fallen ersatzlos weg; sichtbar wird der Umlauf dadurch, dass
+    # jeder Trabant ein kleiner **Koerper laengs seiner Bahn** ist statt
+    # eines Punktes. Ein Punkt hat keine Richtung, und ohne Richtung sieht
+    # man ihm den Umlauf nicht an.
+    var ecken := PackedVector2Array()
+    var farben := PackedColorArray()
+    var netz := PackedInt32Array()
+    var unten := Color(farbe.r * 0.58, farbe.g * 0.66, farbe.b * 0.72,
+        0.30 + 0.30 * hitze)
+    var oben := Color(farbe.r, farbe.g, farbe.b, 0.48 + 0.38 * hitze)
+    var kerne := PackedVector2Array()
     for i in 9:
-        var w := TAU * float(i) / 9.0 + dreh
+        # Ungleiche Winkel und ungleiche Groessen, beide fest aus dem Platz
+        # gerechnet: ein Ring, der jede Sekunde anders steht, waere ein
+        # Flackern, und neun gleiche Trabanten sind wieder ein Zahnrad.
+        var w := TAU * float(i) / 9.0 + dreh + sin(float(i) * 2.3) * 0.32
         var weit := r * (1.02 + 0.20 * sin(dreh * 1.7 + float(i)))
         var wo := p + Vector2(cos(w), sin(w) * 0.72) * weit
-        draw_line(p, wo, Color(farbe.r, farbe.g, farbe.b, 0.13 + 0.10 * hitze), 1.4)
-        draw_circle(wo, r * 0.13,
-            Color(farbe.r, farbe.g, farbe.b, 0.34 + 0.34 * hitze))
-        draw_circle(wo, r * 0.055, Color(0.92, 1.0, 0.96, 0.55 + 0.35 * hitze))
+        var tang := Vector2(-sin(w), cos(w) * 0.72)
+        tang = tang.normalized() if tang.length() > 0.001 else Vector2.RIGHT
+        var lang := r * (0.26 + 0.10 * sin(float(i) * 1.7))
+        var dick := r * (0.075 + 0.028 * sin(float(i) * 3.1))
+        var quer_t := tang.orthogonal()
+        var k := ecken.size()
+        ecken.append(wo + tang * lang * 0.42)
+        ecken.append(wo + quer_t * dick)
+        ecken.append(wo - tang * lang * 0.58)
+        ecken.append(wo - quer_t * dick)
+        farben.append_array([oben, oben, unten, unten])
+        netz.append_array([k, k + 1, k + 3, k + 1, k + 2, k + 3])
+        kerne.append(wo)
+    RenderingServer.canvas_item_add_triangle_array(
+        get_canvas_item(), netz, ecken, farben)
+    for wo in kerne:
+        draw_circle(wo, r * 0.045,
+            Color(0.92, 1.0, 0.96, 0.55 + 0.35 * hitze), true, -1.0, true)
 
     var kern := PackedVector2Array()
     for i in 15:
