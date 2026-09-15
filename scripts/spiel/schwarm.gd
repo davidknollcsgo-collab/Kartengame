@@ -310,6 +310,25 @@ func _schleppe(t: Raeuber) -> void:
 
 ## Nur die Deckung, nicht die Farbe: ein Lauerer soll blasser sein, nicht
 ## grauer - sonst verliert er die Farbe, an der man seine Art erkennt.
+## Eine gefuellte Flaeche mit weicher Kante.
+##
+## **`draw_colored_polygon` ist in Godot nicht kantengeglaettet,
+## `draw_polyline` schon.** MSAA-2D kann der Kompatibilitaets-Renderer nicht -
+## in Godot 4.5 nachgeprueft, er meldet "2D MSAA is not yet supported for
+## GLES3" -, und ein Zug in **derselben** Farbe entlang des eigenen Randes ist
+## der Ersatz: er macht die Flaeche um einen knappen Bildpunkt groesser, und
+## genau der ist die Glaettung. Als Linie liest er sich nicht, weil er
+## dieselbe Farbe hat wie das, was er umgibt.
+##
+## `_koerper()` macht das seit jeher fuer den Leib; was es nicht hatte, waren
+## die Flaechen, die eine Art **selbst** zeichnet.
+func _weiche_flaeche(punkte: PackedVector2Array, f: Color) -> void:
+    draw_colored_polygon(punkte, f)
+    if punkte.size() < 3:
+        return
+    draw_polyline(punkte + PackedVector2Array([punkte[0]]), f, 1.7, true)
+
+
 func _gedeckt(farbe: Color) -> Color:
     if deckung >= 1.0:
         return farbe
@@ -3103,7 +3122,7 @@ func _spiegler(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> 
     # steht die abgewandte Seite des Schliffs.
     var grundton := Color(farbe.r, farbe.g, farbe.b).lerp(
         Color(0.12, 0.30, 0.44), 0.34)
-    draw_colored_polygon(ecken, _gedeckt(Color(grundton.r * 0.45,
+    _weiche_flaeche(ecken, _gedeckt(Color(grundton.r * 0.45,
         grundton.g * 0.45, grundton.b * 0.45, 0.94)))
 
     # **Der Grat ist eine Strecke, kein Paar von Punkten.**
@@ -3181,14 +3200,14 @@ func _spiegler(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> 
         var st := 0.40 + 1.55 * stufe
         var ton := Color(farbe.r, farbe.g, farbe.b).lerp(
             Color(0.12, 0.30, 0.44), 0.34 * (1.0 - stufe))
-        draw_colored_polygon(PackedVector2Array([ga, a1, b1, gb]),
+        _weiche_flaeche(PackedVector2Array([ga, a1, b1, gb]),
             _gedeckt(Color(minf(1.0, ton.r * st), minf(1.0, ton.g * st),
                 minf(1.0, ton.b * st), 0.94)))
         # **Der Glanz** sitzt nur auf der Facette, die dem Licht am naechsten
         # steht, und ist eine scharfe Flaeche: ein Spiegel hat kein weiches
         # Glanzlicht, er hat einen Fleck oder keinen.
         if stufe > 0.99:
-            draw_colored_polygon(PackedVector2Array([
+            _weiche_flaeche(PackedVector2Array([
                 grat.lerp(mitte_f, 0.34),
                 a1.lerp(mitte_f, 0.46), b1.lerp(mitte_f, 0.46)]),
                 _gedeckt(Color(1.0, 1.0, 0.98, 0.28 + 0.42 * hitze)))

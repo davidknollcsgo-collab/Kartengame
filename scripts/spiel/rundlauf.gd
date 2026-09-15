@@ -1880,7 +1880,7 @@ func _zeichne_rumpf(umriss: PackedVector2Array, k: Vector2, r: float) -> void:
         # also eine weisse Kuppe statt eines hellen Blechs. Die Spreizung
         # bleibt (Faktor 1,5 und 1,67 zwischen den Baendern), die Spitze faellt.
         var st := 0.30 + 0.72 * mitte_u * mitte_u
-        _vorn.draw_colored_polygon(teil, Color(_haut.r * st + 0.030,
+        _weiche_flaeche(_vorn, teil, Color(_haut.r * st + 0.030,
             _haut.g * st + 0.055, _haut.b * st + 0.070, 1.0))
     # **Das Heck war einmal dunkler als das Wasser.** Mit 0,10 als Sockel
     # lag es bei (21 / 44 / 53) gegen ein Wasser von rund (20 / 55 / 65):
@@ -2061,7 +2061,7 @@ func _zeichne_flossen(k: Vector2, quer: Vector2, r: float,
             var st := 0.30 - 0.09 * weg
             toene.append(Color(_haut.r * st + 0.030, _haut.g * st + 0.060,
                 _haut.b * st + 0.075, 1.0))
-        _vorn.draw_polygon(kante, toene)
+        _weiche_flaeche_bunt(_vorn, kante, toene)
         # **Hof plus Kern ist zwei Linien.** Dieselbe Konstruktion wie am
         # Turm und an den alten Polypenarmen, und dieselbe Wirkung: eine
         # dunkle Platte mit einem hellen Ring darum. Ein Ruder faengt das
@@ -2136,7 +2136,7 @@ func _zeichne_turm(k: Vector2, quer: Vector2, r: float) -> void:
     # eine eigene Tonstufe ueber dem hellsten Rumpfband waere zuviel, eine
     # zwischen Mitte und Bug ist genau der Absatz, den man sehen soll.
     var turm_st := 0.62
-    _vorn.draw_colored_polygon(umriss, Color(_haut.r * turm_st + 0.030,
+    _weiche_flaeche(_vorn, umriss, Color(_haut.r * turm_st + 0.030,
         _haut.g * turm_st + 0.055, _haut.b * turm_st + 0.070, 1.0))
     # Kein Ring: ein Randlicht vorn, wo der eigene Strahl zurueckwirft.
     var zu := umriss + PackedVector2Array([umriss[0]])
@@ -2920,6 +2920,39 @@ func _nimm_auf() -> void:
 ## stossen** und duerfen sich nicht ueberlappen, sonst ist die Grenze
 ## zwischen ihnen eine Naht statt einer Kante - dieselbe Rechnung und
 ## dieselbe Begruendung wie `schwarm.gd::_schnitt()`.
+## Eine gefuellte Flaeche mit weicher Kante.
+##
+## **`draw_colored_polygon` ist in Godot nicht kantengeglaettet,
+## `draw_polyline` schon** - das steht eine Seite weiter oben in dieser Datei
+## als Begruendung dafuer, das Boot aus Linien zu bauen. Seit es ein
+## gefuellter Koerper ist, gilt die Begruendung weiter, nur wurde die
+## Konsequenz nicht mitgenommen: der Rumpf, die Ruder und der Turm standen
+## als blanke Polygone da, und im Schuss bei 1:1 ist jede ihrer Kanten eine
+## Treppe. MSAA-2D kann der Renderer nicht - in Godot 4.5 nachgeprueft, er
+## meldet "2D MSAA is not yet supported for GLES3" -, also bleibt der Weg,
+## den die Tierkunst in `_koerper()` seit jeher geht.
+##
+## Ein Zug in **derselben** Farbe entlang des eigenen Randes deckt die Treppe
+## zu, ohne als Linie zu lesen: er macht die Flaeche um einen halben
+## Bildpunkt groesser, und genau der halbe Bildpunkt ist die Glaettung.
+func _weiche_flaeche(ziel: CanvasItem, punkte: PackedVector2Array,
+        f: Color) -> void:
+    ziel.draw_colored_polygon(punkte, f)
+    if punkte.size() < 3:
+        return
+    ziel.draw_polyline(punkte + PackedVector2Array([punkte[0]]), f, 1.7, true)
+
+
+## Dasselbe fuer eine Flaeche mit Farbe je Ecke.
+func _weiche_flaeche_bunt(ziel: CanvasItem, punkte: PackedVector2Array,
+        toene: PackedColorArray) -> void:
+    ziel.draw_polygon(punkte, toene)
+    if punkte.size() < 3 or toene.size() < punkte.size():
+        return
+    ziel.draw_polyline_colors(punkte + PackedVector2Array([punkte[0]]),
+        toene + PackedColorArray([toene[0]]), 1.7, true)
+
+
 func _laengs_stueck(umriss: PackedVector2Array, k: Vector2,
         von: float, bis: float) -> PackedVector2Array:
     var teil := umriss

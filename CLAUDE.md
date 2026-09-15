@@ -2014,6 +2014,50 @@ Notiz schreibt die Wirkung der angefassten Zahl zu — ohne zu prüfen, ob sie
 es war. **Wer eine Ursache notiert, stellt sie einmal ab und sieht nach, ob
 es dunkel bleibt.**
 
+**„Alles sieht pixelig aus, keine glatten Linien."** Die Rückmeldung trifft
+eine Ursache, die in dieser Datei und in `rundlauf.gd` längst beschrieben
+steht und deren Konsequenz zweimal verlorenging: **`draw_colored_polygon` und
+`canvas_item_add_triangle_array` sind in Godot nicht kantengeglättet,
+`draw_polyline` mit `antialiased` schon.** Seit Tiere, Boot, Felsen und
+Bewuchs gefüllte Körper sind, hat also fast jede Kante im Bild eine Treppe.
+
+**MSAA-2D ist kein Ausweg, und das ist jetzt in 4.5 nachgeprüft** statt
+geglaubt: mit `anti_aliasing/quality/msaa_2d=2` meldet die Engine beim Start
+wörtlich `2D MSAA is not yet supported for GLES3`. Die alte Notiz in
+`project.godot` stimmt weiterhin.
+
+Was bleibt, ist der Zug in **derselben** Farbe entlang des eigenen Randes —
+er macht die Fläche um einen knappen Bildpunkt größer, und genau der ist die
+Glättung; als Linie liest er sich nicht, weil er die Farbe dessen hat, was er
+umgibt. `schwarm.gd::_koerper()` macht das seit jeher für den Leib; was es
+nicht hatte, waren die Flächen, die eine Art oder das Boot **selbst**
+zeichnet. Gemessen an harten Sprüngen zwischen Nachbarpixeln:
+
+| | Boot | Spiegler |
+|---|---|---|
+| ohne Zug | 5,09 % | 514 |
+| Zug 1,0 | 5,00 % | — |
+| **Zug 1,7** | **4,65 %** | **466** |
+
+Rund neun Prozent weniger, und es kostet nichts messbares (5,35 gegen 5,45
+Bilder/s, zwei Stichproben je Stand).
+
+**Der eigentliche Hebel ist Überabtastung, und er ist gemessen.** Dieselbe
+Szene bei 1440×3200 gerendert und auf 720×1600 heruntergerechnet — also genau
+das, was ein SubViewport bei 2× täte — ist im Bild deutlich glatter als der
+direkte Lauf: Rumpf, Flossen, Bandgrenzen und Bullaugenring sind sauber statt
+gestuft. Der Preis ist die vierfache Füllrate, und genau die ist hier der
+Engpass.
+
+**Aber der Behälter misst schlechter als jedes Telefon.** `stretch/mode` steht
+auf `canvas_items`, und in diesem Modus zeichnet Godot die Canvas in der
+**Fenster**auflösung, nicht in der Grundgröße von 720×1280. Auf einem Gerät
+mit 1080×2400 wird also ohnehin mit gut der doppelten Punktzahl gezeichnet,
+auf einem mit 1440×3200 mit der vierfachen. Jeder Schuss in dieser Datei ist
+bei 720×1600 entstanden und zeigt die Treppen damit gröber, als ein Spieler
+sie je sieht. Eine harte Kante bleibt trotzdem hart — nur ist sie dort
+kleiner.
+
 **Ein Ring ist kein Kreis, und ein Fels ist kein Umriss.** Die Rückmeldung
 lautete: *zu viele einzelne Linien.* Sie war richtig, und zwar überall aus
 demselben Grund — fast alles im Bild war eine **Linie**, und eine Linie hat
