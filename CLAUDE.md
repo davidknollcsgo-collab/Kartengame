@@ -1442,17 +1442,40 @@ richtig ist.
 Zahlen: eine Kennung, die beim Feind dicker ist als beim Freund, liest sich
 als Bedeutung, wo keine ist.
 
-**Und sie darf an keiner Art fehlen — `_kontur()` läuft aber nur bei zwei von
-fünf Leibhelfern.** Laichwolke (`_zellblase`), Bänder (`_zellband`),
-Membranen (`_zellflosse`) und vor allem die Sparfassung `_knapp()` ziehen
-keinen Umriss: ausgerechnet die häufigste Art im Spiel und die Fassung, die
-man in einer **vollen** Welle sieht, also genau dort, wo die Frage am
-dringendsten ist. Wo kein Umriss vorliegt, tritt deshalb ein Ring am
-**echten Radius** an seine Stelle. `Wellen.radius_in()` ist der Kreis, den
-auch der Kegel trifft (Zusage 28) — der Ring behauptet damit nichts, was
-nicht stimmt, er zeigt genau die Fläche, die getroffen wird. Im Bild sieht
-man den Unterschied: die meisten Arten tragen die Kennung auf ihrer
-Silhouette, einige wenige als Kreis.
+**Und sie läuft am Rand des Leibes, nie als Kreis.** Hier stand ein Ring am
+**echten Radius**, und die Begründung klang gut: `Wellen.radius_in()` ist der
+Kreis, den auch der Kegel trifft (Zusage 28), der Ring behauptet also nichts
+Falsches. Nur ist "stimmt" nicht dasselbe wie "sagt dasselbe". Vier Arten
+trugen damit einen Reifen, während dreizehn ihre Silhouette trugen — und ein
+Unterschied, den man sieht, wird als Bedeutung gelesen, auch wenn keine da
+ist. Die Rückmeldung dazu war ein Satz: *„Die Linie soll immer am Rand des
+Körpers sein, es soll kein Kreis sein."*
+
+Die Umrisse lagen fast alle schon vor, man musste sie nur nehmen:
+`_zellband()` hat ihn in `_band()` (beim Kreiser läuft die Kennung damit außen
+herum **und durch sein Loch**, so wie das Tier aussieht), `_knapp()` in seiner
+Raute, der Spiegler in seinen Eckpunkten. Gebaut werden musste genau einer:
+`_traubenhuelle()` legt eine Hülle um die Blasen der Laichwolke — kein Kreis
+um den Schwerpunkt und keine konvexe Hülle, denn beide glätten die Beulen weg,
+an denen man sie erkennt, sondern achtzehn Strahlen und für jeden der
+weiteste Austritt aus irgendeiner Blase. Gemessen kostet das nichts (3,00
+gegen 3,03 Bilder/s, drei Stichproben je Stand).
+
+**Der Spiegler hatte gar keine** — und das zum zweiten Mal aus demselben
+Grund. Er zeichnet seine Facetten selbst und geht nicht durch `_koerper()`,
+also holt ihn auch kein `_kontur()` ab; genauso stand er vorher als einzige
+Art ohne `_schein()` da. **Wer den gemeinsamen Weg verlässt, verliert alles,
+was an ihm hängt**, und im Quelltext sieht man davon nichts.
+
+**Und der Prüfer dafür musste ein anderer sein, als der erste Anlauf war.**
+Rote Bildpunkte zu zählen findet die Kennung nur über dunklem Wasser: auf dem
+fast weißen Spiegler mischt sie zu Rosa, und `r > g · 1,7` fällt durch — der
+Zähler meldete „keine Kennung" an genau der Art, an der ich sie eine Minute
+vorher im Bild gesehen hatte. Was es beantwortet hat, ist derselbe Griff wie
+überall hier: **einmal abschalten und noch einmal schießen.**
+`KENNUNG_DECKUNG` auf null, zweiter Schuss, Differenzbild — siebzehn
+Ballungen an siebzehn Plätzen, und damit ist die Frage beantwortet statt
+geschätzt.
 
 **Die Kontur war ein Ring — derselbe, den Boot und Fels längst hinter sich
 haben.** `_kontur()` teilte zwar in Licht- und Schattenseite, aber **binär**:

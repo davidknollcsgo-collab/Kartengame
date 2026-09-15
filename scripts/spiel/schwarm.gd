@@ -451,7 +451,6 @@ func _zeichne(t: Raeuber, stufe := 0) -> void:
     # wirkt. Verschoben werden Faerbung und Zierat innerhalb des Umrisses.
     var farbe: Color = _eigenfarbe(t, Arten.farbe(t.art))
     var r: float = Wellen.radius_in(t.art, t.welle)
-    _kennung_steht = false
 
     # Wer im Licht steht, glueht auf. Das ist die einzige Rueckmeldung, die
     # der Spieler zum Zielen braucht - ohne sie sieht er nicht, wen er fasst.
@@ -596,7 +595,6 @@ func _zeichne(t: Raeuber, stufe := 0) -> void:
     # lesbar, die Zierde geht.
     if stufe >= 2:
         _knapp(p, r, farbe, t, hitze)
-        _kennung_ersatz(p, r)
         t.richtung = alte_richtung
         return
 
@@ -666,7 +664,6 @@ func _zeichne(t: Raeuber, stufe := 0) -> void:
     # Trefferkreis auch nicht: der ist ein **Kreis** um `t.ort`, und ein
     # Kreis hat keine Richtung. Genau deshalb ist der Schlag hier erlaubt
     # und eine Aenderung am Radius es nicht.
-    _kennung_ersatz(p, r)
     t.richtung = alte_richtung
 
 
@@ -707,6 +704,11 @@ func _knapp(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> voi
     draw_polyline(hell if hell.size() >= 2
         else leib + PackedVector2Array([leib[0]]),
         _gedeckt(Color(1.0, 0.99, 0.96, 0.50 + 0.35 * hitze)), 1.4, true)
+    # Auch die Sparfassung traegt die Kennung, und sie traegt sie auf ihrem
+    # eigenen Umriss: in einer **vollen** Welle ist das die Fassung, die man
+    # sieht, also genau dort, wo die Frage "Gegner oder Hintergrund" am
+    # dringendsten ist.
+    _kennung_zug(leib)
 
 
 ## Der **Schein um eine Form** - kein Kreis um einen Mittelpunkt.
@@ -2746,6 +2748,12 @@ func _laichwolke(p: Vector2, r: float, farbe: Color, t: Raeuber,
             + quer * sin(w + welle)) * r * 0.42,
             Color(farbe.r, farbe.g, farbe.b, 0.26 + 0.20 * hitze), 1.0)
 
+    # **Die Kennung um die ganze Traube**, nicht um jede Blase. Sechs rote
+    # Kreise nebeneinander waeren sechs Tiere; was hier steht, ist eines.
+    # Die Huelle folgt den aeusseren Blasen und faellt zwischen ihnen ein -
+    # der beulige Umriss ist genau das, woran man eine Laichwolke erkennt.
+    _kennung_zug(_traubenhuelle(_mitte(orte), orte, groessen))
+
 
 ## Kreiser: ein flacher Rumpf mit einem Ruderkranz, der zur Seite steht.
 ##
@@ -3226,6 +3234,13 @@ func _spiegler(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> 
         rand.append(_gedeckt(Color(kante.r, kante.g, kante.b,
             0.30 + 0.70 * f)))
     draw_polyline_colors(zu_r, rand, 1.6, true)
+    # Und die Seitenkennung auf demselben Umriss. Der Spiegler zeichnet
+    # seine Flaeche selbst und geht nicht durch `_koerper()`, also holt ihn
+    # auch kein `_kontur()` ab - er stand als einzige Art ohne Kennung im
+    # Bild, so wie er vorher als einzige ohne Schein dastand. Dieselbe
+    # Lehre zum zweiten Mal: **wer den gemeinsamen Weg verlaesst, verliert
+    # alles, was an ihm haengt**, und man sieht es nur im Bild.
+    _kennung_zug(ecken)
     # Zwei Facettenkanten laengs - sie fangen das Licht und sagen, dass die
     # Oberflaeche aus Flaechen besteht und nicht aus Haut.
     # **Die frueheren Facettenzuege sind weg.** Es waren zwei Laengskanten
@@ -3837,20 +3852,55 @@ func _zellkoerper(punkte: PackedVector2Array, farbe: Color, hitze: float,
 ## die man in einer **vollen** Welle sieht, also genau dort, wo die Frage
 ## "Gegner oder Hintergrund" am dringendsten ist.
 ##
-## Wo kein Umriss vorliegt, tritt ein Ring am **echten Radius** an seine
-## Stelle: `Wellen.radius_in()` ist der Kreis, den auch der Kegel trifft
-## (Zusage 28). Er behauptet damit nichts, was nicht stimmt - er zeigt genau
-## die Flaeche, die getroffen wird.
-var _kennung_steht := false
-
-
-## Die Kennung als Ring, wenn der Leib keinen Umriss gezogen hat.
-func _kennung_ersatz(p: Vector2, r: float) -> void:
-    if _kennung_steht:
+## **Sie laeuft am Rand des Leibes, nie als Kreis.** Hier stand ein Ring am
+## echten Radius, und die Begruendung klang gut - er zeigt genau die
+## Flaeche, die der Kegel trifft (Zusage 28), behauptet also nichts
+## Falsches. Im Bild war er trotzdem etwas anderes als bei allen uebrigen
+## Arten: ein Reifen um ein Tier statt seiner Silhouette. Eine Kennung, die
+## bei der einen Art die Form nachzieht und bei der naechsten ein Kreis ist,
+## sagt zweierlei - und der Spieler liest den Unterschied als Bedeutung.
+##
+## Die drei Faelle ohne `_kontur()`-Aufruf ziehen ihren Umriss deshalb jetzt
+## selbst: `_zellband()` hat ihn in `_band()` schon in der Hand, `_knapp()`
+## in seiner Raute, und die Laichwolke bekommt eine Huelle um ihre Traube
+## (`_traubenhuelle()`).
+func _kennung_zug(rund: PackedVector2Array) -> void:
+    if rund.size() < 3:
         return
-    draw_arc(p, r, 0.0, TAU, 20,
-        _gedeckt(Color(KENNUNG_ROT.r, KENNUNG_ROT.g, KENNUNG_ROT.b,
-            KENNUNG_DECKUNG)), KENNUNG_BREITE, true)
+    var zu := rund
+    if zu[0].distance_squared_to(zu[zu.size() - 1]) > 0.01:
+        zu = zu + PackedVector2Array([zu[0]])
+    draw_polyline(zu, _gedeckt(Color(KENNUNG_ROT.r, KENNUNG_ROT.g,
+        KENNUNG_ROT.b, KENNUNG_DECKUNG)), KENNUNG_BREITE, true)
+
+
+## Die **Huelle um eine Traube von Blasen** - der Umriss, den man sieht.
+##
+## Kein Kreis um den Schwerpunkt und keine konvexe Huelle: beide glaetten
+## genau die Beulen weg, an denen man eine Laichwolke erkennt. Fuer jede
+## Richtung wird deshalb der **weiteste Austritt** aus irgendeiner Blase
+## gesucht - ein Strahlschnitt, achtzehn Richtungen. Was dabei herauskommt,
+## folgt den Blasen am Rand und faellt zwischen ihnen ein.
+func _traubenhuelle(mitte: Vector2, orte: PackedVector2Array,
+        groessen: PackedFloat32Array) -> PackedVector2Array:
+    const RICHTUNGEN := 18
+    var rund := PackedVector2Array()
+    for i in RICHTUNGEN:
+        var w := TAU * float(i) / float(RICHTUNGEN)
+        var d := Vector2(cos(w), sin(w))
+        var weit := 0.0
+        for j in orte.size():
+            var zu_m: Vector2 = orte[j] - mitte
+            var f := zu_m.dot(d)
+            var quer2: float = zu_m.length_squared() - f * f
+            var g: float = groessen[j]
+            var rest := g * g - quer2
+            if rest <= 0.0:
+                continue
+            weit = maxf(weit, f + sqrt(rest))
+        if weit > 0.0:
+            rund.append(mitte + d * weit)
+    return rund
 
 
 ## Die Seitenkennung eines Raeubers. Siehe `_kontur()`; die beiden Zahlen
@@ -3909,7 +3959,6 @@ func _kontur(rund: PackedVector2Array, mitte: Vector2, zum_licht: Vector2,
     # Kennung, die beim Feind dicker ist als beim Freund, liest sich als
     # Bedeutung, wo keine ist.
     draw_polyline_colors(zu, kennung, KENNUNG_BREITE, true)
-    _kennung_steht = true
 
 
 func _zellband(ruecken: PackedVector2Array, profil: PackedFloat32Array,
@@ -3998,6 +4047,13 @@ func _zellband(ruecken: PackedVector2Array, profil: PackedFloat32Array,
     if hell_weg.size() >= 2:
         draw_polyline(hell_weg, _gedeckt(Color(1.0, 0.99, 0.96,
             0.55 + 0.35 * hitze)), 1.8, true)
+
+    # Und die Seitenkennung auf dem **Rand des Bandes**. `_band()` baut
+    # denselben geschlossenen Umriss, aus dem auch die Fuellung faellt -
+    # aussen herum und innen zurueck. Beim Kreiser und beim Ringmaul heisst
+    # das: die Kennung laeuft um den Ring und durch sein Loch, so wie das
+    # Tier aussieht.
+    _kennung_zug(_band(ruecken, profil, -1.0, 1.0))
 
 
 ## Eine **Kugel** in Zellschattierung, aus vier Kreisen.
