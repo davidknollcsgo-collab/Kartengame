@@ -1454,33 +1454,50 @@ zeichnet — Flossen, Fangarme, Beine, Segel und Zangen lagen außerhalb. Bei de
 Lichtscheuen, deren halbe Fläche aus Armen besteht, war die Kennung ein Oval
 mitten im Tier.
 
-**Also wird gesammelt statt gewählt.** Jeder Leib- und Gliedhelfer trägt ein,
-was er wirklich zeichnet (`_huelle_umriss()`), und am Ende von `_zeichne()`
-steht daraus **ein** Zug um alles. Zwei Folgen, beide gewollt: die Linie
-reagiert auf jede Bewegung von allein — Ausschlag, Biegung, die Welle in einem
-Fangarm —, weil sie aus den Punkten dieses Bildes gebaut wird und nicht aus
-Entwurfsmaßen. Und ein Tier bekommt **einen** Zug und nicht einen je Teil: der
-Panzerkrebs hätte sonst acht rote Ringe, einen um jedes Bein.
+**Der erste Anlauf war ein Strahlenkranz, und er war Raten mit fester
+Schrittweite.** Jeder Leib- und Gliedhelfer trug seine Punkte ein,
+zweiundsiebzig Richtungen nahmen je den weitesten, daraus ein Zug. Das
+umschloss das ganze Tier und folgte der Animation — beides richtig —, aber es
+war eben ein Zweiundsiebzigeck. Am Kalkrochen sah man es sofort: Sehnen quer
+über die Flügel, ein Knick statt der Wölbung, der Schwanz von zwei geraden
+Linien begleitet. Die Rückmeldung traf genau das: *„Das sieht eher so aus, als
+würdest du Sachen raten — kannst du das einfach an die Form anpassen?"*
 
-Es ist ein **Strahlenkranz** (`HUELLE_FAECHER` Richtungen, je der weiteste
-Punkt) und keine konvexe Hülle: konvex gerechnet liefe eine Sehne von einer
-Armspitze zur nächsten, also ein Vieleck *um* das Tier statt einer Linie *an*
-ihm. So fällt die Hülle zwischen zwei Armen auf den Leib zurück.
+**Der Umriss lag die ganze Zeit vor.** Jeder Helfer kennt seinen eigenen, auf
+den Punkt genau und in der Haltung dieses Bildes. Das Problem war nie die
+Form, sondern die **Reihenfolge**: eine Linie auf dem Umriss eines Beines
+liegt mitten im Leib, wenn der Leib darunter schon steht.
 
-Zwei Dinge, die dabei zu lernen waren.
+**Deshalb wird zweimal gezeichnet.** Der erste Durchgang legt jeden Umriss als
+roten Zug hin, der zweite zeichnet das Tier darüber. Übrig bleibt genau das,
+was über den Rand hinausragt — an der echten Silhouette entlang, ohne eine
+einzige Sehne. Und das Schönste daran: **es gibt keine Vereinigung zu
+rechnen.** Innenliegende Umrisse verschwinden von selbst unter der Füllung,
+die über ihnen liegt. Die Laichwolke braucht damit auch keine
+`_traubenhuelle()` mehr — jede Blase legt ihren Kreis, und was in der
+Nachbarblase liegt, deckt deren Füllung zu.
 
-*Erstens: nur die Ecken zu nehmen reicht nicht.* Die Sparfassung ist eine
-Raute mit vier Ecken; zwischen zwei davon lagen zehn leere Fächer, und die
-Interpolation schnitt die Ecke ab. `_huelle_umriss()` setzt deshalb
-Zwischenpunkte auf jede Kante.
+Drei Dinge, die dabei zu wissen sind.
 
-*Zweitens — und das war im Bild ein Schreck: wer nichts einträgt, bekommt
-einen Kreis.* Der Schleier ging durch `_dunkelleib()`, und das war der eine
-Leibhelfer ohne Eintrag. Übrig blieben seine Fangarme, die radial nach außen
-zeigen und alle ungefähr gleich weit reichen — zwischen ihnen brückte die
-Interpolation auf derselben Weite, und heraus kam **genau der Kreis**, der
-einen Commit vorher abgeschafft worden war. Eine Lücke in der Erfassung sieht
-nicht aus wie eine Lücke, sondern wie eine Entwurfsentscheidung.
+*Erstens: die Breite ist eine Rechnung, keine Wahl.* Der Zug liegt mittig auf
+dem Umriss, also verschwindet die innere Hälfte unter der Füllung — und
+darüber läuft noch der Glättungszug in der Farbe der Fläche (`GLAETTUNG`,
+ebenfalls mittig), der weitere `GLAETTUNG / 2` nach außen zudeckt. Der erste
+Anlauf nahm das Doppelte der Kennungsbreite und ließ einen halben Bildpunkt
+Rot übrig: im Bild ein dunkler Hauch an der Kante, den man für einen
+Zeichenfehler hält. `KENNUNG_ZUG` ist deshalb `(KENNUNG_BREITE + GLAETTUNG /
+2) · 2`.
+
+*Zweitens: der Umrisspass muss stumm sein, und das geht an einer Stelle.* Die
+Leibhelfer kehren dort nach ihrem Zug sofort zurück — aber was eine Artfunktion
+an Zierat **selbst** zeichnet (Rillen, Augen, Leuchtpunkte, Fühler), kennt den
+Pass nicht. Statt das an fünfzig Stellen einzeln abzufragen, gibt `_gedeckt()`
+im Umrisspass durchsichtig zurück: eine Farbe ohne Deckung malt nichts.
+
+*Drittens: zwei Durchgänge kosten hier nichts.* Gemessen 2,50 gegen 2,57
+Bilder/s bei drei Stichproben je Stand — der zweite Durchgang bricht in jedem
+Leibhelfer nach einer Zeile ab, und die Füllungen, an denen dieser Behälter
+wirklich hängt, laufen nur einmal.
 
 **Und der Prüfer dafür musste ein anderer sein, als der erste Anlauf war.**
 Rote Bildpunkte zu zählen findet die Kennung nur über dunklem Wasser: auf dem
