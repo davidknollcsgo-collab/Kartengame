@@ -1006,6 +1006,40 @@ setzt mit dem Reiz ein und lässt danach nach. Damit zieht der Kegel eine Spur
 Zustand, nicht das Kleinzeug: vierhundertzwanzig Werte je Bild sind nichts,
 sechsundzwanzighundert wären spürbar.
 
+**Der Hintergrund trug die Farbe, und das ist genau verkehrt herum.** Die
+Rückmeldung lautete: *„Es soll klar erkennbar sein, was ein Gegner ist und
+was Hintergrund — im Hintergrund geht zu viel ab."* Nachgemessen stand das
+Spiel gegen seine eigene Regel. `wild.gd` schreibt über die Fischschwärme:
+*kühl und blass — die Räuber tragen die kräftigen Farben, und wer die beiden
+verwechselt, fährt in ein Maul statt an einem Fisch vorbei.* Die Fische
+halten sich daran (Sättigung 0,16). Der Bewuchs tat es nicht:
+
+| | Helligkeit | Sättigung |
+|---|---|---|
+| Gegner | 171–254 | 0,19–0,45 |
+| Bewuchs | 81–136 | **0,55–0,65** |
+
+Die Helligkeit stimmte, die **Farbe** lag beim Hintergrund — und Farbe ist das
+stärkere Signal. `FARBEN` hält jetzt den Farbton und fällt auf Sättigung
+**0,12**. 0,24 war der erste Anlauf und gemessen zu wenig: gezeichnet kam
+davon 0,33–0,48 an, also immer noch im Band der Gegner. Das Glühen zieht sie
+zusätzlich hoch — **was im Grundton steht, ist nicht, was im Bild ankommt.**
+
+**Und die zweite Hälfte war die Zahl, nicht die Fläche.** Ich hatte gemessen,
+wieviele Bildpunkte deutlich über dem Wasserton liegen (6,3 %), Bewuchs
+gedimmt und ausgedünnt — und die Zahl blieb **6,2 %**. Den ganzen Bewuchs
+stillgestellt ändert sie um **0,2 Prozentpunkte**. Er belegt also praktisch
+keine Fläche.
+
+Nebeneinandergelegt war es trotzdem sofort zu sehen: mit Bewuchs stehen rund
+sechzig kleine Sternchen im Bild, ohne ihn liest man Boot, Kegel, Begleiter
+und Räuber augenblicklich. **Was einen Hintergrund laut macht, ist die Zahl
+der getrennten Dinge darin, nicht ihre Fläche** — und dafür taugt kein
+Helligkeitsmaß. Die Zahl fällt von 300 auf 70; die Ruhedeckung von 0,16 auf
+0,11, das Aufblühen im Kegel bleibt als *Verhältnis* unberührt, denn dass der
+Grund auf das Licht antwortet, ist kein Schmuck. Nebenbei zahlt das ein Stück
+der Überabtastung zurück: 2,9 auf 3,2 Bilder/s.
+
 **Detail dort, wo man ist.** `KLEINZEUG` streut sechsundzwanzighundert
 Kleinigkeiten über das Feld — Kies, Schalen, Seesterne, Röhrchen —, gezeichnet
 aber nur in einem Umkreis von `KLEIN_SICHT` um die Bildmitte und zum Rand hin

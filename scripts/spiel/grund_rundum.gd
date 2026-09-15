@@ -39,12 +39,35 @@ const LAGEN_KRAFT: PackedFloat32Array = [0.14, 0.34, 0.62, 1.0]
 
 ## Die Farben des Riffs. Dieselbe Familie wie im Schlund, damit die beiden
 ## Schleifen wie derselbe Graben aussehen.
+## **Der Hintergrund traegt keine Farbe.**
+##
+## Die Rueckmeldung lautete, man erkenne nicht, was Gegner ist und was
+## Hintergrund - im Hintergrund gehe zuviel ab. Nachgemessen war es genau
+## umgekehrt zu dem, was das Spiel sich selbst vorschreibt: `wild.gd` sagt
+## ueber die Fischschwaerme *"kuehl und blass - die Raeuber tragen die
+## kraeftigen Farben, und wer die beiden verwechselt, faehrt in ein Maul
+## statt an einem Fisch vorbei"*, und die Fische halten sich daran (0,16).
+## Der Bewuchs tat es nicht:
+##
+## |              | Helligkeit | Saettigung |
+## |--------------|-----------|------------|
+## | Gegner       | 171-254   | 0,19-0,45  |
+## | Bewuchs      | 81-136    | **0,55-0,65** |
+##
+## Die Helligkeit stimmte, die **Farbe** lag beim Hintergrund - und Farbe ist
+## das staerkere Signal. Der Farbton bleibt (ein Riff aus einer Farbe waere
+## tot), die Saettigung faellt auf **0,12**, die Helligkeit bleibt unberuehrt.
+##
+## 0,24 war der erste Anlauf und gemessen zu wenig: die gezeichnete
+## Saettigung fiel damit nur auf 0,33 bis 0,48 und lag immer noch im Band der
+## Gegner (0,19 bis 0,45). Das Gluehen zieht sie zusaetzlich hoch - was im
+## Grundton steht, ist nicht, was im Bild ankommt.
 const FARBEN: PackedColorArray = [
-    Color(0.42, 0.86, 0.92),
-    Color(0.86, 0.52, 0.78),
-    Color(0.34, 0.70, 0.62),
-    Color(0.94, 0.68, 0.32),
-    Color(0.44, 0.52, 0.90),
+    Color(0.81, 0.91, 0.92),
+    Color(0.86, 0.76, 0.84),
+    Color(0.62, 0.70, 0.68),
+    Color(0.94, 0.89, 0.83),
+    Color(0.79, 0.81, 0.90),
 ]
 
 var zeit := 0.0
@@ -432,7 +455,7 @@ func _baue_bewuchs(rng: RandomNumberGenerator) -> void:
     # Horstes bleibt es dicht, weil sie sich ja sammeln; was wegfaellt, ist
     # die gleichmaessige Grundstreu, und die war gerade das Problem.
     var horst := _wuerfel_ort(rng)
-    for _i in 300:
+    for _i in 70:
         var lage := rng.randi() % TIEFE
         if rng.randf() < 0.34:
             horst = _wuerfel_ort(rng)
@@ -1150,7 +1173,13 @@ func _zeichne_bewuchs(lage: int) -> void:
         # muss, ist keine.
         # Das Nachleuchten steht hier statt der reinen Beleuchtung: es ist
         # ihr Hoechstwert der letzten Sekunden und faellt danach ab.
-        var a := (0.16 + 0.10 * atem) * kraft \
+        # **Und leiser.** Nicht die Farbe allein macht den Hintergrund laut,
+        # sondern wieviel Flaeche er belegt: gemessen lagen 6,3 % aller
+        # Bildpunkte deutlich ueber dem Wasserton, und das ist viel fuer
+        # Kulisse. Die Ruhedeckung faellt von 0,16 auf 0,11; das Aufbluehen
+        # im Kegel bleibt als **Verhaeltnis** unberuehrt, denn dass der Grund
+        # auf das Licht antwortet, ist kein Schmuck.
+        var a := (0.11 + 0.07 * atem) * kraft \
             * (1.0 + 3.0 * float(b[&"glut"]))
         match int(b[&"art"]):
             0:
