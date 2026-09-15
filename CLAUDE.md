@@ -2219,16 +2219,33 @@ rechnerisch etwas steht, misst wieder das ganze Feld.
 Damit war die Frage in einem Lauf beantwortet. Über fünfundvierzig Wellen,
 derselbe Lauf zweimal:
 
-| | Sicht | Hülle gesamt | Rückstand gesamt |
-|---|---|---|---|
-| ohne Zoom | 905 | 690 | 103,3 s |
-| `KAMERA_ZOOM` 1,18 | 767 | 688 | 128,3 s |
+| `KAMERA_ZOOM` | Sicht | Hülle gesamt | Rückstand gesamt | je Welle |
+|---|---|---|---|---|
+| **1,00** | **905** | **690** | **111,1 s** | **2,4 s** |
+| 1,18 | 767 | 688 | 128,3 s | 2,8 s |
+| 1,34 | 675 | 706 | 166,3 s | 3,6 s |
+| 1,50 | 603 | — | 198,1 s | 4,4 s |
 
-Die Hülle kostet es **nichts** (0,3 %, also Rauschen), der Rückstand steigt
-um rund eine halbe Sekunde je Welle und bleibt in der Spanne, die der Plan
-nennt. Die Tiere sind dafür linear 18 % größer — und auf zwölf bis
-fünfundzwanzig Pixeln ist das der Unterschied zwischen einer Silhouette und
-einem Fleck.
+**Die Zahl steht wieder auf eins, und das ist die Rückmeldung eines
+Spielers.** Sie war zweimal hochgezogen worden, beide Male mit derselben
+Begründung: die Tiere sind im Spiel klein (an Farbe liegt es nicht — die
+Sättigung ist dieselbe wie in der Tierschau, Median 0,45 gegen 0,37–0,45).
+Gesagt wurde dazu: *„Bildausschnitt mag keiner, weiß nicht mal für was das
+gedacht ist."* Genau darin liegt der Fehler — **ein Zoom hat für den Spieler
+keinen sichtbaren Zweck.** Er sieht nicht größere Tiere, er sieht weniger
+Feld, und was ihm der engere Ausschnitt einbringen soll, steht nirgends im
+Bild.
+
+Die Hülle ist über alle Stufen dieselbe (690 gegen 706 — der Pilot ist
+passiv, ihm nimmt weniger Sicht nichts weg); der **Rückstand** ist der ganze
+Unterschied und fällt von 1,34 auf 1,00 um ein Drittel. Der Zoom war damit
+reine Kosten.
+
+**Das Problem darunter bleibt offen und wird nicht durch Zuschneiden
+gelöst.** Wenn ein Tier auf zwanzig Bildpunkten nicht lesbar ist, ist die
+Antwort seine Zeichnung — und **nicht** sein Radius: der ist
+`Wellen.radius_in()`, also der Kreis, den auch der Kegel trifft (Zusage 28).
+Größer gezeichnet als getroffen wäre eine zweite Wahrheit.
 
 **Was der Wächter dabei nicht sagt:** der Pilot ist *passiv*, er lässt
 kommen. Er beantwortet „sind die Wellen noch zu räumen", nicht „hat ein

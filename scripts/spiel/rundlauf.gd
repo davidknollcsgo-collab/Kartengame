@@ -78,32 +78,47 @@ const DREH_TEMPO := 7.0
 ## Wer diese Zahl anfasst, laeuft die Fahrprobe noch einmal: sie haengt
 ## ueber `probe_sicht()` daran und meldet es.
 ##
-## **Und sie ist noch einmal angefasst worden, aus demselben Grund.** Die
-## Rueckmeldung war ein Stilbild - so soll das ganze Spiel aussehen -, und
-## nachgemessen lag der Unterschied zwischen Bild und Spiel **nicht** an
-## Farbe: ueber ganze Bilder verglichen ist die Saettigung dieselbe (Median
-## 0,45 gegen 0,37 bis 0,45, oberes Zehntel 0,65 gegen 0,65). Die Tiere
-## sehen im Spiel aus wie in der Schau - sie sind nur **klein**.
+## **Und dann ist sie zweimal hochgezogen worden und wieder auf eins.** Der
+## Grund fuer 1,18 und 1,34 war jedesmal derselbe: die Tiere sind im Spiel
+## klein. Nachgemessen lag das nicht an Farbe - ueber ganze Bilder verglichen
+## ist die Saettigung dieselbe wie in der Tierschau (Median 0,45 gegen 0,37
+## bis 0,45) -, sie sind schlicht klein.
 ##
-## Dieselbe Probe, drei Stufen ueber fuenfundvierzig Wellen:
+## Die Rueckmeldung dazu war eindeutig: *"Bildausschnitt mag keiner, weiss
+## nicht mal fuer was das gedacht ist."* Und genau das ist der Punkt - ein
+## Zoom hat fuer den Spieler keinen sichtbaren Zweck. Er sieht nicht groessere
+## Tiere, er sieht **weniger Feld**, und was ihm der engere Ausschnitt
+## einbringen soll, steht nirgends im Bild.
 ##
-## | Zoom | Sicht | Rueckstand gesamt | je Welle |
-## |---|---|---|---|
-## | 1,18 | 767 | 124,3 s | 2,8 s |
-## | 1,34 | 675 | 167,5 s | 3,7 s |
-## | 1,50 | 603 | 198,1 s | 4,4 s |
+## Dieselbe Probe ueber fuenfundvierzig Wellen, alle vier Stufen gemessen:
 ##
-## Alle drei tragen die fuenfundvierzig Wellen und bleiben in der Spanne,
-## die der Plan nennt. Gewaehlt ist die Mitte: ein Siebtel groessere Tiere
-## als bei 1,18, zwoelf Prozent weniger Sicht.
+## | Zoom | Sicht | Huelle gesamt | Rueckstand gesamt | je Welle |
+## |---|---|---|---|---|
+## | **1,00** | **905** | **690** | **111,1 s** | **2,4 s** |
+## | 1,18 | 767 | 688 | 128,3 s | 2,8 s |
+## | 1,34 | 675 | 706 | 166,3 s | 3,6 s |
+## | 1,50 | 603 | — | 198,1 s | 4,4 s |
+##
+## Die Huelle ist ueber alle Stufen dieselbe (690 gegen 706 - der Pilot ist
+## passiv, ihm nimmt weniger Sicht nichts weg), der **Rueckstand** ist der
+## ganze Unterschied: von 1,34 auf 1,00 faellt er um ein Drittel. Der Zoom
+## war damit reine Kosten, bezahlt fuer eine Wirkung, die niemand als solche
+## erkannt hat.
+##
+## **Das Problem darunter bleibt offen und wird hier nicht durch Zuschneiden
+## geloest.** Wenn ein Tier auf zwanzig Bildpunkten nicht lesbar ist, ist die
+## Antwort seine Zeichnung und nicht der Ausschnitt - und **nicht** sein
+## Radius: der ist `Wellen.radius_in()`, also der Kreis, den auch der Kegel
+## trifft (Zusage 28). Ein Tier groesser zu zeichnen, als es getroffen wird,
+## waere eine zweite Wahrheit.
 ##
 ## **Was diese Zahlen nicht sagen**, und das steht hier, damit es der
 ## naechste nicht vergisst: der Pilot ist passiv, er laesst kommen. Er
 ## beantwortet "sind die Wellen noch zu raeumen", nicht "hat ein Mensch
-## genug Reaktionszeit" - und weniger Sicht heisst weniger Vorwarnung. Wer
-## auf 1,50 gehen will, hat die Zahlen dafuer; die offene Frage bleibt
-## dieselbe.
-const KAMERA_ZOOM := 1.34
+## genug Reaktionszeit" - und weniger Sicht heisst weniger Vorwarnung. Das
+## ist der zweite Grund, warum die Zahl auf eins steht: der Waechter kann
+## die Frage gar nicht stellen, auf die es hier ankommt.
+const KAMERA_ZOOM := 1.0
 
 ## Wie traege die Kamera folgt und wie weit sie vorausschaut.
 ## **Straff, nicht traege.** Beim ersten Versuch lag die Kamera so weit
