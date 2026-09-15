@@ -346,7 +346,12 @@ func _baue_felsen(rng: RandomNumberGenerator) -> void:
         # Die hinterste Lage ist nicht nur blasser, sondern **groesser**.
         # Ein kleiner blasser Fels sieht aus wie ein kleiner Fels im Nebel;
         # ein grosser blasser sieht aus wie ein Berg in der Ferne.
-        var gross := rng.randf_range(26.0, 96.0) \
+        # **Viele kleine, wenige grosse.** Die Groesse war gleichverteilt
+        # zwischen 26 und 96 - im Bild lagen damit vierzig Steine derselben
+        # Groessenordnung nebeneinander, ohne Streu und ohne Wahrzeichen.
+        # Ein Geroellfeld ist andersherum aufgebaut: der Grund ist voller
+        # kleiner Brocken, und ein paar Bloecke ragen heraus.
+        var gross := lerpf(26.0, 96.0, pow(rng.randf(), 2.0)) \
             * (2.6 if lage == 0 else lerpf(0.55, 1.0,
                 float(lage - 1) / float(TIEFE - 2)))
         # **Die Form kommt aus `Riff`, nicht von hier.** Sie ist dieselbe,
@@ -933,7 +938,19 @@ func _kuppel(f: Dictionary, kraft: float) -> void:
     # der Woelbung ein Fuenftel uebrig, also nichts, und ein Massiv war eine
     # flache Scheibe. Ein Stein hat seine Kuppe auch in der Ferne - was mit
     # dem Abstand nachlaesst, ist wie stark er auf den Kegel antwortet.
-    var gewinn := 2.4 * (0.45 + 0.55 * kraft) + 3.0 * hell * kraft
+    # **Und wieviel er auf den Kegel antwortet, war nachzumessen.** Der
+    # Absatz darueber sagt seit Langem, der Stein stehe "auf rund zwei
+    # Dritteln des Wassers". Im Strahl gemessen stand er bei **45 %** (Rot
+    # 37,9 gegen 83,6 auf dem Sand daneben) - also da, wo man ihn als Loch
+    # im beleuchteten Boden liest und nicht als Block darauf. Im Dunkeln
+    # stimmt es dagegen: dort ist er *heller* als das Wasser (19,7 gegen
+    # 10,2), was das Auge nie vermutet haette.
+    #
+    # Der Verdacht, es sei sein eigener Schlagschatten, ist gemessen und
+    # widerlegt: `_zeichne_schatten()` stillgestellt gibt 38,3 statt 37,9.
+    # Es ist der Stein selbst, und es ist genau **eine** Zahl - die, mit der
+    # er auf den Kegel antwortet.
+    var gewinn := 2.4 * (0.45 + 0.55 * kraft) + 5.8 * hell * kraft
 
     var ecken := PackedVector2Array()
     var farben := PackedColorArray()
@@ -948,14 +965,14 @@ func _kuppel(f: Dictionary, kraft: float) -> void:
             (umriss[i] - mitte).normalized().dot(zum_licht))
         ecken.append(schulter[i])
         farben.append(_steinfarbe(dunkel,
-            ruhe + 9.0 * _hell_an(hell_ecke, i, hell) * kraft,
+            ruhe + 17.4 * _hell_an(hell_ecke, i, hell) * kraft,
             0.35 + 0.65 * zu_ihm))
     for i in n:
         var zu_ihm: float = maxf(0.0,
             (umriss[i] - mitte).normalized().dot(zum_licht))
         ecken.append(umriss[i])
         farben.append(_steinfarbe(dunkel,
-            (ruhe + 9.0 * _hell_an(hell_ecke, i, hell) * kraft) * 0.30,
+            (ruhe + 17.4 * _hell_an(hell_ecke, i, hell) * kraft) * 0.30,
             0.20 * zu_ihm))
     # **Ein Fels sitzt auf etwas.**
     #

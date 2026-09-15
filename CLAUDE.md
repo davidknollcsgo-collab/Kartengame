@@ -1857,6 +1857,55 @@ Streu auf Sediment. Was ich für Balken hielt, waren geglättete Linien von
 1,6 Pixeln, von der Vergrößerung auseinandergezogen. **Wer eine Form
 beurteilt, sieht sie in der Größe an, in der sie gespielt wird.**
 
+**Ein Fels war ein Kreis mit einer Welle darauf — vierzigmal derselbe.**
+Die Regel steht seit Langem in dieser Datei, aufgeschrieben für die Tiere:
+*Länge und Breite müssen sich um mehr als das Doppelte unterscheiden, oder
+der Umriss muss Ecken haben.* Für die Felsen hat sie nie jemand
+nachgerechnet. `Riff.radius()` war radialsymmetrisch — `gross` ist **eine**
+Zahl, dazu drei Sinus mit Amplituden bis 0,33 zusammen. Über 190 Felsen
+gemessen:
+
+| | Median | p90 | über 2,0 |
+|---|---|---|---|
+| vorher | 1,48 | 1,67 | **0 von 190** |
+| nachher | 2,23 | 3,85 | 106 von 190 |
+
+Ecken sind hier ausgeschlossen (`riff.gd` sagt selbst: *gerade Kanten wären
+ein Kristall*), also bleibt die **Streckung**, und sie gehört in `Riff` und
+nicht ins Zeichenskript — sonst hätte der Stein zwei Umrisse, einen
+gesehenen und einen angestoßenen. Sie ist eine reine Funktion des Winkels
+(Ellipsenradius), deshalb gelten `beruehrt()` und `abgestossen()`
+unverändert; `hoechster_radius()` nimmt `sqrt(dehn)` mit, sonst keult die
+Vorauswahl einen Fels weg, an dem man gerade anstößt. Und sie ist
+**flächentreu** — sonst wäre sie zugleich ein Größenregler und die Dichte
+des Feldes hinge an ihr. Dazu die Größe von gleichverteilt auf `pow(…, 2)`:
+ein Geröllfeld ist viel Kleinzeug mit ein paar Blöcken darin.
+
+**Und im Strahl stand er bei 45 % statt bei zwei Dritteln.** Der Absatz
+weiter unten behauptet seit Langem das eine, gemessen war das andere: Fels
+37,9 Rot gegen 83,6 auf dem Sand daneben — also ein Loch im beleuchteten
+Boden. Im *Dunkeln* stimmt es dagegen, und zwar andersherum, als das Auge
+vermutet: dort ist der Stein **heller** als das Wasser (19,7 gegen 10,2).
+Der naheliegende Verdacht, es sei sein eigener Schlagschatten, ist gemessen
+und widerlegt (`_zeichne_schatten()` stillgestellt: 38,3 statt 37,9). Es war
+genau eine Zahl — wie stark er auf den Kegel antwortet. Auf 0,57 gehoben,
+und der unbeleuchtete Fels bleibt unberührt (19,7 → 19,8).
+
+**Die teuerste Lehre dieser Runde ist aber über das Messen.** Ich hatte je
+einen Lauf verglichen, 4,6 gegen 5,2 Bilder/s, daraus „zehn Prozent
+Kosten" geschlossen und prompt eine Keulung am echten Radius gebaut, um
+sie hereinzuholen. Dann gaben **zwei Läufe desselben Standes 4,7 und 5,3**.
+Drei Stichproben je Stand: **5,0 / 5,1 / 5,0** gegen **5,1 / 5,0 / 5,2** —
+1,4 % Unterschied, also nichts. Die Optimierung ist wieder draußen; sie
+hätte einen Ruecken, der quer im Blick liegt, aufpoppen lassen können, für
+einen Gewinn, den es nicht gibt.
+
+Das ist dieselbe Lehre, die für den Kolonielauf schon in dieser Datei steht,
+nur an einem anderen Werkzeug: **eine Einzelmessung aus einer streuenden
+Verteilung ist ein Zug und kein Befund.** Die Bildrate hier streut um gut
+zehn Prozent zwischen zwei Läufen desselben Codes — wer damit eine Änderung
+von zehn Prozent beurteilen will, braucht mehr als einen Lauf je Seite.
+
 **Zwei Zahlen, die zueinander passen müssen, altern getrennt.** Gemessen im
 Spielbild: Fels (1 / 17 / 22), Wasser einen Zentimeter daneben (2 / 17 /
 22) — **identisch.** Übrig blieb die Umrisslinie, also wieder ein
