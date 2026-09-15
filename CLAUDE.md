@@ -2292,6 +2292,103 @@ sich die Regel bei den Tieren längst selbst gegeben: *volle Balken wären
 Rauschen, ein angeschlagener Gegner ist eine Entscheidung.* Sie blendet
 jetzt mit der ersten Kerbe auf.
 
+**Ein Raeuber schwamm auf der Stelle, und dahinter lagen drei Fehler.** Die
+Rueckmeldung lautete: *„Gegner sollen nicht random auf derselben Stelle
+schwimmen, sondern aktiv auf einen zu, wenn man in der Nähe von ihnen ist."*
+Nachgesehen war es nicht einer, sondern drei Gründe, und zwei davon sind
+schlichte Fehler:
+
+*Erstens: nach einem Biss fror das Tier ein und sprang dann quer über das
+Feld.* Die Bisssperre lief über `eintritt` (`_wellenzeit + BISS_SPERRE`);
+damit wurde `alter` negativ, und `_bewege()` überspringt alles mit negativem
+Alter — das Tier hing fast eine Sekunde **bewegungslos** 190 Einheiten vor dem
+Boot. Danach sah der Erste-Schritt-Zweig ein Tier, das eben noch nicht da
+war, und setzte es neu ein: am Feldrand, 980 Einheiten weg. Aus „prallt ab
+und kommt wieder" wurde „steht still und verschwindet". Die Sperre hat jetzt
+ein eigenes Feld (`Raeuber.biss_frei`), der Erste-Schritt-Zweig eine eigene
+Marke (`eingetreten`), und `eintritt` ist wieder der Eintritt.
+
+*Zweitens: der Kreiser wich aus, wenn man auf ihn zufuhr.* Der Term
+`- k * maxf(0, innen)` schiebt ihn nach außen, sobald das Boot **innerhalb**
+seines Rings steht — wer auf ihn zuhielt, trieb ihn vor sich her. Genau das
+sieht aus wie ein Tier, das nur herumschwimmt.
+
+*Drittens, und das ist keine Reparatur, sondern die eigentliche Änderung:*
+innerhalb von `BEGLEITER_REICHWEITE` fallen Pendeln und Drift weg, der
+Rückstoß des Kreisers mit ihnen, und das Tier zieht gerade durch.
+
+**Der Schub dazu ist gestrichen, und der Wächter hat ihn gestrichen.** Der
+erste Anlauf gab dem Angriff 50 % mehr Tempo;
+`_test_rundum_verfolgt_ohne_zu_beschleunigen` fiel sofort um, zu Recht.
+`Wellen.tempo_in()` ist die Obergrenze, an der jede Messung hier hängt —
+`tools/artenkosten.gd` rechnet Erreichbarkeit daraus. Gebraucht wird er auch
+nicht: ein Räuber gibt sein Tempo bisher zum Teil **quer** aus, und je näher
+er kommt, desto größer der Winkel. Auf fünfzig Einheiten bleiben von neunzig
+Grad Ausschlag dreiundvierzig, also knapp drei Viertel des Tempos. Fällt das
+Beiwerk weg, fällt der ganze Rest auf die Marschrichtung. **Der Angriff ist
+schneller, weil er gerade ist, und nicht, weil er tritt.**
+
+**Und der Radius ist gemessen, nicht gewählt — das war der teure Teil.** Der
+erste Anlauf nahm `WECK_RADIUS` (420), mit einer Begründung, die gut klang
+(„so nah, dass ein Räuber das Boot bemerkt"). Er ist aber größer als der Ring
+des Kreisers (260): damit kreiste der nie mehr, sondern zog von seinem Ring
+aus durch.
+
+| Stand | gefallene Sitzungen |
+|---|---|
+| vorher | 35 |
+| nur der Bissfehler, kein Angriff | 37 |
+| Angriff ab 420 (`WECK_RADIUS`) | **80** |
+| Angriff ab 210 (`BEGLEITER_REICHWEITE`) | 39 |
+
+Dieselbe Saat, viermal. **Die zwei Fehler kosten nichts, der Radius war
+alles** — und ohne die isolierte Messung hätte ich den ganzen Commit für zu
+teuer gehalten und das Falsche zurückgenommen.
+
+Linear statt quadratisch ist eine Entscheidung im Rauschen: quadratisch
+gemessen 37 statt 39, bei einer Fassung, die über die Saaten von 35 bis 144
+streut. Wo die Messung nichts unterscheidet, entscheidet das Bild — auf
+halbem Weg hat die quadratische Rampe nur die halbe Entschlossenheit.
+
+**Die Überabtastung richtet sich nach dem Gerät.** Sie stand fest auf 1,5 für
+alle. Das war auf dem Entwurfsgerät richtig und auf jedem heutigen Telefon
+Verschwendung: `stretch/mode="canvas_items"` zeichnet die Canvas in der
+**Fenster**auflösung, nicht in der Grundgröße von 720×1280 — ein Telefon mit
+1080×2400 rastert also ohnehin schon mit dem 1,5fachen je Achse und bekam
+obendrauf noch einmal 1,5.
+
+| 1080×2400 | Bilder/s |
+|---|---|
+| Überabtastung 1,5 (fest) | **1,50** |
+| Überabtastung 1,0 | 2,33 |
+| nach der Änderung | 2,37 |
+
+Drei Stichproben je Stand. **Ein gutes Drittel der Bildzeit für eine Glättung,
+die auf dem Gerät niemand mehr sieht.** Gezielt wird deshalb auf eine feste
+Abtastdichte *gegenüber dem Entwurf* (`ZIEL_DICHTE`) statt auf einen festen
+Faktor: was das Fenster schon mitbringt, wird angerechnet. Auf 720×1280
+bleibt es bei 1,5, auf 1080×2400 und darüber fällt es auf 1,0.
+
+**Und der Weg dorthin sagt, wo hier überhaupt die Zeit hingeht.** Jeden
+Weltknoten einzeln stillgestellt, bei 1080×2400 gegen eine Grundlinie von
+1,50:
+
+| ohne | Grund | Schwarm | Vorn | Kegel | Wild | Wasser |
+|---|---|---|---|---|---|---|
+| Bilder/s | 2,0 | 1,9 | 1,85 | 1,7 | 1,7 | 1,65 |
+
+**Kein einzelner Knoten ist der Posten — es ist Füllrate, über alles
+verteilt.** Deshalb ist die Zahl der Bildpunkte der Hebel und nicht eine
+Zeichnung. Das Glühen ist es hier übrigens *nicht*: mit `--flach` gemessen
+1,57 gegen 1,50, also nichts — anders als bei 720×1600, wo dieselbe Datei
+einmal ein Fünftel gemessen hat. Bei hoher Auflösung dominiert die Szene
+selbst.
+
+**Und die Bildrate ist nach oben offen** (`window/vsync/vsync_mode=1`, Swappy
+an, `Engine.max_fps` aus `KolonieStand.bildrate` mit 0 als Vorgabe). Was ein
+Gerät wirklich schafft, sagt dieser Behälter nicht — er hat keine
+Grafikkarte und rastert in Software.
+
 **Und die Werte des Bootes kommen aus der Kolonie**, nicht aus der Sollkurve.
 Das stand zuerst falsch: der Kegel rechnete mit
 `Ausbau.leistung_faktor(welle)`, also mit dem Stand, den ein Spieler auf

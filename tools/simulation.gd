@@ -141,6 +141,9 @@ class Tier extends RefCounted:
     var leben: float = 0.0
     var lebendig: bool = true
     var lauert: bool = false
+    ## Ab wann wieder gebissen werden darf. Eigenes Feld, nicht `eintritt` -
+    # sonst friert das Tier waehrend der Sperre ein, statt zu schwimmen.
+    var biss_frei: float = 0.0
     var ort := Vector2.ZERO
 
     ## Wie lange dieses Tier schon unterwegs ist. Der Weg wird Schritt fuer
@@ -423,7 +426,8 @@ static func welle(nummer: int, z: Zustand) -> Ergebnis:
                         z.lohn_rest -= float(lohn)
                         z.naehrstoffe += lohn
             elif t.ort.distance_to(boot) < Rundum.BOOT_RADIUS \
-                    + Wellen.radius_in(t.art, nummer) * 0.5:
+                    + Wellen.radius_in(t.art, nummer) * 0.5 \
+                    and zeit >= t.biss_frei:
                 # Zurueckwerfen statt entfernen: ein Raeuber, der beim
                 # Treffer verschwindet, macht aus dem Boot eine Wand.
                 e.treffer += 1
@@ -433,7 +437,7 @@ static func welle(nummer: int, z: Zustand) -> Ergebnis:
                 z.huelle = maxi(0, z.huelle - Arten.wucht(t.art))
                 t.ort = boot + (t.ort - boot).normalized() \
                     * (Rundum.BOOT_RADIUS + 190.0)
-                t.eintritt = zeit + Rundum.BISS_SPERRE
+                t.biss_frei = zeit + Rundum.BISS_SPERRE
                 t.alter = 0.0
 
     e.dauer = zeit

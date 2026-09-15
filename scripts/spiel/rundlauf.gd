@@ -1191,7 +1191,6 @@ func _bewege(delta: float) -> void:
     for t in _tiere:
         if not t.lebendig:
             continue
-        var vorher_alter := t.alter
         t.alter = _wellenzeit - t.eintritt
         if t.alter < 0.0:
             continue
@@ -1202,8 +1201,10 @@ func _bewege(delta: float) -> void:
                 continue
             _wecke(t)
             continue
-        if vorher_alter < 0.0:
-            # Erster Schritt: jetzt einsetzen, um das Boot herum.
+        if not t.eingetreten:
+            # Erster Schritt: jetzt einsetzen, um das Boot herum. **Genau
+            # einmal** - siehe `Raeuber.eingetreten`.
+            t.eingetreten = true
             t.ort = _ort + Rundum.eintritt(t.start_x)
             t.richtung = (_ort - t.ort).normalized()
         var art := Arten.art(t.art)
@@ -1226,7 +1227,8 @@ func _bewege(delta: float) -> void:
         # Angekommen: die Huelle nimmt Schaden, das Tier prallt ab und
         # kommt wieder. Ein Raeuber, der beim Treffer verschwindet, macht
         # aus dem Boot eine Wand.
-        if t.ort.distance_to(_ort) < BOOT_RADIUS + Wellen.radius_in(t.art, t.welle) * 0.5:
+        if t.ort.distance_to(_ort) < BOOT_RADIUS + Wellen.radius_in(t.art, t.welle) * 0.5 \
+                and _wellenzeit >= t.biss_frei:
             if lage == Lage.SPIEL:
                 huelle = maxi(0, huelle - Arten.wucht(t.art))
             # Ein Treffer bricht die Kette. Das ist der Preis, der sie zur
@@ -1239,9 +1241,16 @@ func _bewege(delta: float) -> void:
             Klang.spiele(Klang.Ton.BRUT_FAELLT, 1.0, 0.8)
             Tastsinn.gib(Tastsinn.Art.TREFFER)
             _funken.platzen(t.ort, Color(1.0, 0.42, 0.34), 22.0)
-            # Zurueckwerfen statt entfernen.
+            # **Zurueckwerfen statt entfernen - und weiterschwimmen.**
+            # `eintritt` bleibt der Eintritt; die Sperre steht in
+            # `biss_frei`. Der Bahnzeiger faengt trotzdem von vorn an, damit
+            # ein Kreiser seinen Ring neu aufzieht statt beim naechsten
+            # Schritt wieder am Boot zu kleben - genauso rechnet es
+            # `tools/simulation.gd` (`alter = 0`).
             t.ort = _ort + (t.ort - _ort).normalized() * (BOOT_RADIUS + 190.0)
-            t.eintritt = _wellenzeit + BISS_SPERRE
+            t.biss_frei = _wellenzeit + BISS_SPERRE
+            t.eintritt = _wellenzeit
+            t.alter = 0.0
 
 
 ## Wieviele Junge ein Brutstock hoechstens gleichzeitig im Feld haelt.
@@ -2730,7 +2739,27 @@ func _spiele_vor() -> void:
 ## Die Welt haengt dafuer in einem `SubViewport`, das Bedienbild **nicht** -
 ## Schrift und Tafeln werden ohnehin scharf gezeichnet und wuerden vom
 ## Herunterrechnen nur weicher.
-const UEBERABTASTUNG := 1.5
+## **Und sie richtet sich nach dem Geraet, statt fest zu stehen.**
+##
+## Hier stand 1,5 fuer alle. Das war auf dem Entwurfsgeraet richtig und auf
+## jedem heutigen Telefon Verschwendung: `stretch/mode="canvas_items"`
+## zeichnet die Canvas in der **Fenster**aufloesung, nicht in der Grundgroesse
+## von 720x1280. Ein Telefon mit 1080x2400 rastert also ohnehin schon mit dem
+## 1,5fachen je Achse - und bekam obendrauf noch einmal 1,5, zusammen das
+## 2,25fache an Bildpunkten fuer eine Glaettung, die dort niemand mehr sieht.
+##
+## Gemessen bei 1080x2400 in diesem Behaelter: **1,50 gegen 2,33 Bilder/s**,
+## drei Stichproben je Stand. Ein gutes Drittel der Bildzeit fuer nichts.
+##
+## Gezielt wird deshalb auf eine feste **Abtastdichte gegenueber dem
+## Entwurf** und nicht auf einen festen Faktor: was das Fenster schon
+## mitbringt, wird angerechnet. Auf 720x1280 bleibt es bei 1,5; auf
+## 1080x2400 und allem darueber faellt der Faktor auf 1,0.
+const ZIEL_DICHTE := 1.5
+
+## Wieviel darueber hinaus hoechstens gerastert wird. Deckel, damit ein sehr
+## kleines Fenster nicht in eine Rasterung laeuft, die keiner bezahlt.
+const UEBERABTASTUNG_HOECHSTENS := 1.5
 
 var _weltpuffer: SubViewport = null
 var _weltbild: TextureRect = null
@@ -2787,8 +2816,11 @@ func _stelle_welt_ein() -> void:
         ProjectSettings.get_setting("display/window/size/viewport_width", 720),
         ProjectSettings.get_setting("display/window/size/viewport_height", 1280))
     var s := maxf(0.001, minf(float(f.x) / grund.x, float(f.y) / grund.y))
-    _weltpuffer.size = Vector2i(int(round(f.x * UEBERABTASTUNG)),
-        int(round(f.y * UEBERABTASTUNG)))
+    # `s` ist die Dichte, die das Fenster schon mitbringt. Was fehlt, wird
+    # ergaenzt - mehr nicht.
+    var ueber := clampf(ZIEL_DICHTE / s, 1.0, UEBERABTASTUNG_HOECHSTENS)
+    _weltpuffer.size = Vector2i(int(round(f.x * ueber)),
+        int(round(f.y * ueber)))
     _weltpuffer.size_2d_override = Vector2i(int(round(f.x / s)),
         int(round(f.y / s)))
 

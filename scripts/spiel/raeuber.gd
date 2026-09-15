@@ -66,6 +66,29 @@ var rueckweg: Array[Vector2] = []
 ## Sekunden seit dem letzten abgesetzten Jungen. Nur beim Brutstock.
 var brut_uhr: float = 0.0
 
+## Ab wann dieses Tier wieder beissen darf - Sekunden ab Wellenbeginn.
+##
+## **Frueher lief die Sperre ueber `eintritt`, und das hatte zwei Folgen,
+## die beide niemand wollte.** Nach einem Treffer stand dort
+## `_wellenzeit + BISS_SPERRE`, `alter` wurde damit negativ, und die
+## Bewegungsschleife ueberspringt alles mit negativem Alter: das Tier hing
+## fast eine Sekunde **bewegungslos** hundertneunzig Einheiten vor dem Boot.
+## Und danach sah der erste Schritt ein Tier, das eben noch nicht da war,
+## und setzte es neu ein - am Feldrand, neunhundertachtzig Einheiten weg.
+##
+## Aus "prallt ab und kommt wieder" wurde damit "steht still und
+## verschwindet". Die Sperre hat jetzt ein eigenes Feld, `eintritt` bleibt
+## der Eintritt, und das Tier schwimmt die ganze Zeit.
+var biss_frei: float = 0.0
+
+## Ob das Tier schon einmal eingesetzt wurde.
+##
+## Der erste Schritt setzt ein Tier um das Boot herum - das darf genau
+## einmal geschehen. Vorher haing das an `alter`, und jedes Mal, wenn
+## `alter` aus irgendeinem Grund wieder bei null anfing, sprang das Tier
+## quer ueber das Feld.
+var eingetreten: bool = false
+
 ## Ob dieses Tier ein abgesetztes Junges ist.
 ##
 ## **Es zahlt dann nichts.** Kein Naehrstoff, keine Punkte - es stand in

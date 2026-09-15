@@ -114,6 +114,38 @@ static func schritt(ort: Vector2, ziel: Vector2, tempo: float,
     var k := zum_ziel / weite
     var quer := k.orthogonal()
 
+    # **Wer nah dran ist, kommt.**
+    #
+    # Ein Raeuber pendelte quer zu seiner Bahn, driftete seitlich und naeherte
+    # sich dabei mit `tempo`. Aus der Ferne ist das genau richtig - es ist der
+    # Grund, warum ein Schwarm lebendig aussieht. Direkt vor dem Boot war es
+    # falsch: das Pendeln ist dort so gross wie der Weg, den das Tier in
+    # derselben Zeit zurueckt, und im Bild schwamm es auf der Stelle herum,
+    # statt zuzustossen.
+    #
+    # Innerhalb von `BEGLEITER_REICHWEITE` faellt das Beiwerk deshalb weg und
+    # das Tier zieht gerade durch. **Derselbe Radius, auf dem die Begleiter
+    # schiessen**, und das ist keine Sparsamkeit: er ist der Schirm um das
+    # Boot, und wer ihn durchbrochen hat, ist nah.
+    #
+    # **Und der Radius ist gemessen, nicht gewaehlt.** Der erste Anlauf nahm
+    # `WECK_RADIUS` (420) - mit derselben Begruendung, die oben steht, nur am
+    # falschen Anker. Er ist groesser als der Ring des Kreisers (260): damit
+    # kreiste der nie mehr, sondern zog von seinem Ring aus durch, und der
+    # Kolonielauf sprang von **35 auf 80** gefallene Sitzungen. Auf 210 sind
+    # es 39, und der Ring bleibt ein Ring.
+    #
+    # Isoliert gemessen, weil in demselben Commit zwei Dinge stecken: nur der
+    # Bissfehler ohne den Angriff gibt **37** - er kostet also nichts, und
+    # die 80 gingen allein auf den Radius.
+    #
+    # Linear und nicht quadratisch: quadratisch gemessen 37 statt 39, also
+    # derselbe Wert im Rauschen (dieselbe Fassung streut ueber die Saaten von
+    # 35 bis 144), aber auf halbem Weg nur die halbe Entschlossenheit. Wo die
+    # Messung nichts unterscheidet, entscheidet das Bild.
+    var nah := clampf(1.0 - weite / BEGLEITER_REICHWEITE, 0.0, 1.0)
+    var angriff := nah
+
     # **Kreisen statt kommen.** Innerhalb des Umlaufabstands dreht sich die
     # Marschrichtung zur Seite; ausserhalb kommt das Tier weiter heran. Der
     # Uebergang ist weich, sonst schnappt es auf dem Ring hin und her.
@@ -148,8 +180,19 @@ static func schritt(ort: Vector2, ziel: Vector2, tempo: float,
         #
         # Richtig ist: auf dem Ring (`innen` nahe 0) quer, weit davon laengs.
         var ring := 1.0 - absf(innen)
-        k = (k * absf(innen) + herum * ring
-            - k * maxf(0.0, innen) * 1.2).normalized()
+        # **Und aus der Naehe wird aus dem Kreisen ein Zustoss.** Der Term
+        # `- k * maxf(0, innen)` schiebt das Tier nach **aussen**, sobald das
+        # Boot innerhalb seines Rings steht - wer auf einen Kreiser zufuhr,
+        # trieb ihn damit vor sich her, und genau das sah aus wie ein Tier,
+        # das nur herumschwimmt. Der Rueckstoss faellt jetzt mit der Naehe
+        # weg, und das Kreisen mit ihm.
+        #
+        # Auf Abstand bleibt beides, wie es war: der Kreiser haelt seinen
+        # Ring und zieht ihn langsam enger. Seine Regel ist nicht "er kommt
+        # nie an", sondern "er kommt nicht sofort".
+        var weg_vom_ring := maxf(0.0, innen) * 1.2 * (1.0 - angriff)
+        k = (k * maxf(absf(innen), angriff) + herum * ring * (1.0 - angriff)
+            - k * weg_vom_ring).normalized()
         quer = k.orthogonal()
     # **Zurueckweichen, solange es brennt.** `weichen` kommt aus der
     # Helligkeit, in der das Tier gerade steht - wer es anleuchtet, schiebt
@@ -163,6 +206,11 @@ static func schritt(ort: Vector2, ziel: Vector2, tempo: float,
         # so wie in `Schlund.bahn()` auch. Ein eigener Wuerfel dafuer waere
         # eine zweite Quelle fuer denselben Zufall.
         seitlich += drift * zeit * (1.0 if cos(phase) >= 0.0 else -1.0)
+    # Beides faellt beim Angriff weg - auch die Drift, obwohl sie die Regel
+    # des Treibankers ist ("rutscht seitlich weg, waehrend er naeher kommt").
+    # Sie bleibt seine Regel auf dem ganzen Anmarsch; was auf den letzten
+    # Metern zaehlt, ist, dass er sich entscheidet.
+    seitlich *= 1.0 - angriff
     # Gesteuert wird auf einen Punkt neben dem Ziel - bei Umlauf und Weichen
     # auf einen Punkt in Marschrichtung, weil "das Ziel" dann nicht mehr dort
     # liegt, wo das Tier hinwill.
@@ -220,6 +268,24 @@ const LAUER_ANTEIL := 0.25
 ## Ab welchem Abstand ein Lauerer erwacht. Kleiner als die Sicht: man soll
 ## ihn sehen koennen, bevor er kommt.
 const WECK_RADIUS := 420.0
+
+## **Und der Angriff ist schneller, ohne dass `tempo` steigt.**
+##
+## Der erste Anlauf gab dem Tier auf den letzten Metern einen Schub von 0,5
+## - und `_test_rundum_verfolgt_ohne_zu_beschleunigen` fiel sofort um, zu
+## Recht. `Wellen.tempo_in()` ist die Obergrenze der Geschwindigkeit; an ihr
+## haengt jede Messung, die es hier gibt (`tools/artenkosten.gd` rechnet
+## Erreichbarkeit daraus, und der Preis je Lebenspunkt haengt daran). Ein
+## Tier, das schneller sein darf als sein Tempo, macht aus der Zahl eine
+## Behauptung.
+##
+## Gebraucht wird der Schub auch nicht. Ein Raeuber gibt sein Tempo bisher
+## zum Teil **quer** aus: das Pendeln steht senkrecht auf der Marschrichtung,
+## und je naeher er kommt, desto groesser der Winkel - auf fuenfzig Einheiten
+## Abstand sind von neunzig Grad Pendelausschlag noch dreiundvierzig uebrig,
+## und damit kommt nur noch knapp drei Viertel des Tempos beim Boot an. Faellt
+## das Beiwerk weg, faellt der ganze Rest auf die Marschrichtung. Der Angriff
+## ist also schneller, weil er gerade ist, und nicht, weil er tritt.
 
 ## Wie weit vom Boot ein Lauerer gelegt wird. Nicht naeher als der
 ## Weckradius - sonst waere er schon wach, bevor die Welle laeuft.
