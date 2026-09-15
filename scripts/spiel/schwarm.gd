@@ -451,6 +451,9 @@ func _zeichne(t: Raeuber, stufe := 0) -> void:
     # wirkt. Verschoben werden Faerbung und Zierat innerhalb des Umrisses.
     var farbe: Color = _eigenfarbe(t, Arten.farbe(t.art))
     var r: float = Wellen.radius_in(t.art, t.welle)
+    # Ab hier sammelt jeder Leib- und Gliedhelfer seine Punkte ein; am Ende
+    # steht daraus die Kennung um das ganze Tier.
+    _huelle_beginne(p)
 
     # Wer im Licht steht, glueht auf. Das ist die einzige Rueckmeldung, die
     # der Spieler zum Zielen braucht - ohne sie sieht er nicht, wen er fasst.
@@ -559,10 +562,10 @@ func _zeichne(t: Raeuber, stufe := 0) -> void:
     # entlang des Umrisses. Nur die Sparfassung behaelt einen Kreis: bei
     # achtzig Tieren im Bild sieht niemand mehr die Form eines Hofs, wohl
     # aber, dass es ruckelt.
-    var klein := clampf(r / 18.0, 0.45, 1.0)
-    if stufe >= 2:
-        draw_circle(p, r * 1.6, Color(farbe.r, farbe.g, farbe.b,
-            (0.045 + 0.025 * hitze) * klein))
+    # **Und jetzt auch der letzte.** Der Hof der Sparfassung war der Rest
+    # davon: ein Kreis vom 1,6fachen Radius, blass, aber bei achtzig Tieren
+    # achtzigmal im Bild. Was ein Tier vom Wasser trennt, ist seine Kante -
+    # und die traegt seit diesem Commit die Kennung.
 
     # **Leuchtpunkte.** Eine Reihe kleiner Lichter laengs des Koerpers, die
     # als Welle von vorn nach hinten durchlaeuft.
@@ -595,6 +598,7 @@ func _zeichne(t: Raeuber, stufe := 0) -> void:
     # lesbar, die Zierde geht.
     if stufe >= 2:
         _knapp(p, r, farbe, t, hitze)
+        _kennung_zug(_huelle_zug())
         t.richtung = alte_richtung
         return
 
@@ -664,6 +668,13 @@ func _zeichne(t: Raeuber, stufe := 0) -> void:
     # Trefferkreis auch nicht: der ist ein **Kreis** um `t.ort`, und ein
     # Kreis hat keine Richtung. Genau deshalb ist der Schlag hier erlaubt
     # und eine Aenderung am Radius es nicht.
+    #
+    # **Und ganz zuletzt die Kennung**, um alles, was eingetragen wurde.
+    # Sie steht hier und nicht in den Leibhelfern, weil sie eine Aussage
+    # ueber das **Tier** ist und nicht ueber eines seiner Teile - und weil
+    # sie sonst so oft gezogen wuerde, wie eine Art Helfer aufruft: der
+    # Panzerkrebs haette acht rote Ringe, einen je Bein.
+    _kennung_zug(_huelle_zug())
     t.richtung = alte_richtung
 
 
@@ -704,67 +715,23 @@ func _knapp(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> voi
     draw_polyline(hell if hell.size() >= 2
         else leib + PackedVector2Array([leib[0]]),
         _gedeckt(Color(1.0, 0.99, 0.96, 0.50 + 0.35 * hitze)), 1.4, true)
-    # Auch die Sparfassung traegt die Kennung, und sie traegt sie auf ihrem
-    # eigenen Umriss: in einer **vollen** Welle ist das die Fassung, die man
-    # sieht, also genau dort, wo die Frage "Gegner oder Hintergrund" am
-    # dringendsten ist.
-    _kennung_zug(leib)
+    _huelle_umriss(leib)
 
 
-## Der **Schein um eine Form** - kein Kreis um einen Mittelpunkt.
+## **Der Schein ist weg - bei jedem Tier.**
 ##
-## **Der Unterschied, um den es geht.** Bisher bekam jedes Tier seinen Hof
-## von `_gluehen()`: drei Kreise um seinen Mittelpunkt, Radius 2,2 mal
-## Koerperradius. Ein Kreis weiss nichts von der Form, die in ihm steht -
-## bei einem langen Fisch leuchtete das Wasser links und rechts von ihm
-## genauso hell wie an seiner Schnauze, und bei einem Ring leuchtete sein
-## Loch. Das ist der Unterschied zwischen "Punktlichter an eine Form
-## haengen" und "die Form leuchtet": im ersten Fall sieht man die Kreise, im
-## zweiten die Form.
+## Hier stand `_schein()`: eine Schale entlang des Umrisses, an der Kante
+## voll und nach aussen auf null - technisch das Richtige (ein Aal leuchtete
+## laenglich, ein Ring als Ring, keiner in sein eigenes Loch) und trotzdem
+## eine Lage zuviel. Die Szene hat ein Gluehen mit HDR-Schwelle 0,62, und
+## was hell ist, blueht davon ohnehin. Zwei Hoefe uebereinander machen aus
+## einem Tier im Strahl wieder den weissen Klecks, gegen den in dieser Datei
+## seit Langem gearbeitet wird - und sie verwischen genau die Kante, die die
+## Kennung zeigen soll.
 ##
-## **Wie es richtig geht.** Das Verfahren stammt aus den 2D-Lichtsystemen:
-## fuer jedes Leuchtsegment wird ein Koerper aufgespannt, der die Strecke
-## **plus ihren Leuchtradius** umschliesst, und die Helligkeit faellt vom
-## Segment weg ab - nicht von einem Mittelpunkt. Gezeichnet wird nur diese
-## Flaeche, nicht der halbe Schirm; deshalb ist es billig.
-##
-## Hier ist die "Strecke" der geschlossene Umriss des Tieres. Der Schein ist
-## damit eine **Schale**, die den Umriss nach aussen fortsetzt: an der Kante
-## voll, am aeusseren Rand auf null. Ein Aal leuchtet dadurch laenglich, ein
-## Ring leuchtet als Ring, und keiner leuchtet in sein eigenes Loch.
-##
-## Die Aussennormale kommt aus den **beiden Nachbarkanten** und nicht aus der
-## Richtung zum Schwerpunkt: bei einer Einbuchtung zeigt die Schwerpunkt-
-## richtung nach innen, und die Schale stuelpt sich dort um.
-func _schein(rund: PackedVector2Array, farbe: Color, weite: float,
-        staerke: float) -> void:
-    var n := rund.size()
-    if n < 3 or staerke <= 0.004 or weite <= 0.5:
-        return
-    var innen := _gedeckt(Color(farbe.r, farbe.g, farbe.b, staerke))
-    var aussen := Color(farbe.r, farbe.g, farbe.b, 0.0)
-    var ecken := PackedVector2Array()
-    var farben := PackedColorArray()
-    for i in n:
-        var vor: Vector2 = rund[(i - 1 + n) % n]
-        var hier: Vector2 = rund[i]
-        var nach: Vector2 = rund[(i + 1) % n]
-        var norm := ((hier - vor).orthogonal().normalized()
-            + (nach - hier).orthogonal().normalized())
-        norm = norm.normalized() if norm.length_squared() > 0.001 \
-            else (nach - vor).orthogonal().normalized()
-        ecken.append(hier)
-        farben.append(innen)
-        ecken.append(hier + norm * weite)
-        farben.append(aussen)
-    var netz := PackedInt32Array()
-    for i in n:
-        var a := i * 2
-        var b := ((i + 1) % n) * 2
-        netz.append_array([a, b, b + 1, a, b + 1, a + 1])
-    RenderingServer.canvas_item_add_triangle_array(
-        get_canvas_item(), netz, ecken, farben)
-
+## Was er ausserdem tat, naemlich Anbauten und Leib zu **einem** Tier zu
+## binden, tut jetzt die rote Huelle, und zwar schaerfer: sie laeuft an den
+## Anbauten entlang, statt sie in einen Fleck zu huellen.
 
 ## Leib: gedaempfte Fuellung, heller Umriss. Bei additivem Zeichnen macht der
 ## Umriss die Form, nicht die Flaeche - eine hell gefuellte Flaeche waere ein
@@ -816,6 +783,12 @@ func _glied(von: Vector2, nach: Vector2, dick_von: float, dick_nach: float,
     if achse.length_squared() < 0.01:
         return
     var quer := achse.orthogonal().normalized()
+    # **Ein Glied gehoert in die Huelle.** Fangarme, Beine und Zangen sind
+    # der Grund, warum die Kennung nicht mehr auf dem Leib sitzt: bei der
+    # Lichtscheuen ist die halbe Flaeche des Tieres Arm.
+    _huelle_umriss(PackedVector2Array([
+        von + quer * dick_von, nach + quer * dick_nach,
+        nach - quer * dick_nach, von - quer * dick_von]))
     # **Auch ein Bein bekommt Zellschattierung.** Es war die letzte Stelle,
     # an der noch Strichkunst stand: eine durchscheinende Flaeche mit einer
     # hellen und einer dunklen Linie darauf. Neben einer flaechigen Assel
@@ -1013,6 +986,7 @@ func _dunkelleib(ruecken: PackedVector2Array, profil: PackedFloat32Array,
     var n := ruecken.size()
     if n < 2 or profil.size() != n:
         return
+    _huelle_umriss(_band(ruecken, profil, -1.0, 1.0))
     var mitte := Vector2.ZERO
     for v in ruecken:
         mitte += v
@@ -1029,25 +1003,11 @@ func _dunkelleib(ruecken: PackedVector2Array, profil: PackedFloat32Array,
     # Tier machte. Genau das ist der Preis der neuen Sprache: wenn der
     # Koerper dunkel ist, bindet er nichts mehr.
     #
-    # Was bindet, ist ein weicher Schein um den ganzen Umriss - dieselbe
-    # Schale wie `_schein()` sie um ein Tier legt, hier um das Rueckgrat.
-    # Er ist blass genug, dass der Leib dunkel bleibt, und weit genug, dass
-    # die Anbauten hineinreichen: was in demselben Schein liegt, gehoert
-    # zusammen.
-    var huelle := PackedVector2Array()
-    var gegen := PackedVector2Array()
-    for i in n:
-        var vor0: Vector2 = ruecken[maxi(0, i - 1)]
-        var nach0: Vector2 = ruecken[mini(n - 1, i + 1)]
-        var q0 := (nach0 - vor0)
-        q0 = q0.orthogonal().normalized() if q0.length() > 0.001 \
-            else Vector2.UP
-        # Weiter als der Leib: der Schein soll die Anbauten mitfassen.
-        var weit: float = profil[i] * 1.5 + 2.0
-        huelle.append(ruecken[i] + q0 * weit)
-        gegen.append(ruecken[i] - q0 * weit)
-    gegen.reverse()
-    _schein(huelle + gegen, farbe, 7.0 + 14.0 * hitze, 0.09 + 0.11 * hitze)
+    # **Das leistet jetzt die Kennung.** Hier lag ein weicher Schein um den
+    # ganzen Umriss, weiter als der Leib, damit die Anbauten hineinreichen:
+    # was in demselben Schein liegt, gehoert zusammen. Genau diese Aufgabe
+    # hat die rote Huelle uebernommen, und sie tut es schaerfer - sie laeuft
+    # *an* den Anbauten entlang, statt sie in einen Fleck zu huellen.
 
     # **Fast schwarz, und das ist der Punkt.** Ein Koerper in dieser Tiefe
     # reflektiert kaum etwas; was ihn zeigt, ist dass hinter ihm nichts mehr
@@ -1289,9 +1249,7 @@ func _koerper(punkte: PackedVector2Array, farbe: Color, hitze: float,
         rund = _rund(rund)
     rund = _gebogen(rund, achse)
 
-    # **Der Schein zuerst**, damit der Leib darauf liegt. Er folgt dem
-    # Umriss und nicht einem Kreis - siehe `_schein()`.
-    _schein(rund, farbe, 8.0 + 16.0 * hitze, 0.10 + 0.12 * hitze)
+    _huelle_umriss(rund)
     var mitte := _mitte(rund)
 
     # **Was brennt, wird dunkel in der Mitte und hell am Rand.**
@@ -1850,6 +1808,7 @@ func _schleier(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> 
         # gedacht, nicht fuer einen Koerperteil, der die Silhouette traegt.
         var kelchton := Color(farbe.r, farbe.g, farbe.b).lerp(
             Color(0.10, 0.20, 0.30), 0.42)
+        _huelle_umriss(kelch)
         draw_colored_polygon(kelch, _gedeckt(Color(kelchton.r, kelchton.g,
             kelchton.b, 0.62 + 0.24 * hitze)))
         _zug(kelch + PackedVector2Array([kelch[0]]),
@@ -2714,12 +2673,11 @@ func _laichwolke(p: Vector2, r: float, farbe: Color, t: Raeuber,
         groessen.append(r * lerpf(0.46, 0.24, u)
             * (0.92 + 0.16 * sin(t.alter * 3.4 + float(i) * 1.7)))
 
-    # **Die Haut zuerst**: ein weiter, sehr blasser Schleier um die ganze
-    # Traube. Er ist das, was aus fuenf Blasen *ein* Tier macht - ohne ihn
-    # sieht ein Schwarm aus wie verstreute Punkte.
-    for i in zahl:
-        draw_circle(orte[i], groessen[i] * 2.1,
-            Color(farbe.r, farbe.g, farbe.b, 0.05 + 0.05 * hitze))
+    # **Der Schleier um die Traube ist weg.** Er war das, was aus fuenf
+    # Blasen *ein* Tier machte - fuenf Kreise vom 2,1fachen Radius, und bei
+    # fuenfundvierzig Prozent aller Koerper im Feld war das der haeufigste
+    # Schein im ganzen Bild. Die Kennung um die Traube sagt dasselbe mit
+    # einer Linie.
 
     # **Eine Blase ist eine Kugel, kein Ring.**
     #
@@ -2748,11 +2706,11 @@ func _laichwolke(p: Vector2, r: float, farbe: Color, t: Raeuber,
             + quer * sin(w + welle)) * r * 0.42,
             Color(farbe.r, farbe.g, farbe.b, 0.26 + 0.20 * hitze), 1.0)
 
-    # **Die Kennung um die ganze Traube**, nicht um jede Blase. Sechs rote
-    # Kreise nebeneinander waeren sechs Tiere; was hier steht, ist eines.
-    # Die Huelle folgt den aeusseren Blasen und faellt zwischen ihnen ein -
-    # der beulige Umriss ist genau das, woran man eine Laichwolke erkennt.
-    _kennung_zug(_traubenhuelle(_mitte(orte), orte, groessen))
+    # Die Traube zaehlt als **ein** Umriss: sechs rote Kreise nebeneinander
+    # waeren sechs Tiere. `_traubenhuelle()` folgt den aeusseren Blasen und
+    # faellt zwischen ihnen ein - der beulige Umriss ist genau das, woran
+    # man eine Laichwolke erkennt.
+    _huelle_umriss(_traubenhuelle(_mitte(orte), orte, groessen))
 
 
 ## Kreiser: ein flacher Rumpf mit einem Ruderkranz, der zur Seite steht.
@@ -2986,11 +2944,8 @@ func _brutstock(p: Vector2, r: float, farbe: Color, t: Raeuber,
     # **Der Stamm verjuengt sich.** Er war ein Zug von vier Pixeln gleicher
     # Breite ueber die ganze Laenge - ein Stab. Ein Stock waechst von unten
     # dick nach oben duenn, und genau daran erkennt man, wo bei ihm oben ist.
-    # **Auch er hatte keinen Schein.** Wie der Spiegler zeichnet er seinen
-    # Leib selbst und ruft `_koerper()` nicht - damit fiel `_schein()` fuer
-    # ihn aus, und ein Leitwesen ohne Schein steht ohne Anschluss im Wasser.
-    # Der Umriss dafuer ist der Stamm, nach beiden Seiten auf seine eigene
-    # Dicke aufgezogen.
+    # Der Stamm zaehlt zur Huelle: er zeichnet seinen Leib selbst und geht
+    # nicht durch `_koerper()`, also traegt ihn kein anderer Helfer ein.
     var huelle := PackedVector2Array()
     var gegen := PackedVector2Array()
     for i in stamm.size():
@@ -3003,8 +2958,7 @@ func _brutstock(p: Vector2, r: float, farbe: Color, t: Raeuber,
         huelle.append(stamm[i] + q * d)
         gegen.append(stamm[i] - q * d)
     gegen.reverse()
-    _schein(huelle + gegen, farbe, 10.0 + 16.0 * hitze,
-        0.10 + 0.12 * hitze)
+    _huelle_umriss(huelle + gegen)
 
     for i in range(stamm.size() - 1):
         var u := float(i) / float(stamm.size() - 1)
@@ -3115,13 +3069,11 @@ func _spiegler(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> 
     zum_licht = zum_licht.normalized() if zum_licht.length_squared() > 1.0 \
         else Vector2.UP
 
-    # **Er war die einzige Art ohne Schein.** Weil er `_koerper()` nicht
-    # ruft - er zeichnet seine Facetten selbst -, fiel fuer ihn auch
-    # `_schein()` aus, und ohne den steht ein dunkles Vieleck ohne Anschluss
-    # im Wasser. Im Schuss war er ein grauer Umriss mit einem Auge darin,
-    # waehrend nebenan alles leuchtete. Der Schein gehoert zum Tier und
-    # nicht zur Fuellmethode.
-    _schein(ecken, farbe, 8.0 + 16.0 * hitze, 0.10 + 0.12 * hitze)
+    # **Er zeichnet seine Flaeche selbst** und ruft `_koerper()` nicht -
+    # also traegt ihn kein anderer Helfer in die Huelle ein, und die
+    # Kennung liefe an ihm vorbei. Dasselbe galt frueher fuer den Schein:
+    # wer den gemeinsamen Weg verlaesst, verliert alles, was an ihm haengt.
+    _huelle_umriss(ecken)
 
     # **Die Facetten allein decken den Leib nicht.** Jedes Dreieck laeuft
     # von einer Aussenkante zum *naeheren* der beiden Gratpunkte - der
@@ -3234,13 +3186,6 @@ func _spiegler(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> 
         rand.append(_gedeckt(Color(kante.r, kante.g, kante.b,
             0.30 + 0.70 * f)))
     draw_polyline_colors(zu_r, rand, 1.6, true)
-    # Und die Seitenkennung auf demselben Umriss. Der Spiegler zeichnet
-    # seine Flaeche selbst und geht nicht durch `_koerper()`, also holt ihn
-    # auch kein `_kontur()` ab - er stand als einzige Art ohne Kennung im
-    # Bild, so wie er vorher als einzige ohne Schein dastand. Dieselbe
-    # Lehre zum zweiten Mal: **wer den gemeinsamen Weg verlaesst, verliert
-    # alles, was an ihm haengt**, und man sieht es nur im Bild.
-    _kennung_zug(ecken)
     # Zwei Facettenkanten laengs - sie fangen das Licht und sagen, dass die
     # Oberflaeche aus Flaechen besteht und nicht aus Haut.
     # **Die frueheren Facettenzuege sind weg.** Es waren zwei Laengskanten
@@ -3731,8 +3676,7 @@ func _zellkoerper(punkte: PackedVector2Array, farbe: Color, hitze: float,
     if n < 3:
         return
 
-    # Der Schein zuerst, damit der Leib darauf liegt - wie in `_koerper()`.
-    _schein(rund, farbe, 8.0 + 16.0 * hitze, 0.10 + 0.12 * hitze)
+    _huelle_umriss(rund)
     var mitte := _mitte(rund)
     var zum_licht := lichtquelle - mitte
     zum_licht = zum_licht.normalized() if zum_licht.length_squared() > 1.0 \
@@ -3864,6 +3808,108 @@ func _zellkoerper(punkte: PackedVector2Array, farbe: Color, hitze: float,
 ## selbst: `_zellband()` hat ihn in `_band()` schon in der Hand, `_knapp()`
 ## in seiner Raute, und die Laichwolke bekommt eine Huelle um ihre Traube
 ## (`_traubenhuelle()`).
+## **Die Huelle um alles, was von einem Tier gezeichnet wurde.**
+##
+## Die Kennung sass bisher auf dem **Leib**, und ein Tier ist mehr als sein
+## Leib: Flossen, Fangarme, Beine, Segel und Zangen liegen ausserhalb und
+## standen damit ausserhalb der roten Linie. Bei der Lichtscheuen war der
+## rote Zug ein Oval mitten in einem Tier, dessen halbe Flaeche aus Armen
+## besteht.
+##
+## Gesammelt wird deshalb, was die Leib- und Gliedhelfer wirklich zeichnen,
+## und zwar **je Bild**: damit folgt die Linie jeder Bewegung von allein -
+## dem Ausschlag, der Biegung, der Welle in einem Fangarm. Eine Huelle, die
+## aus den Entwurfsmassen einer Art gerechnet waere, stuende still, waehrend
+## das Tier darunter schwimmt.
+##
+## Es ist ein **Strahlenkranz** und keine konvexe Huelle: fuer jede von
+## `HUELLE_FAECHER` Richtungen der weiteste Punkt. Konvex gerechnet waere
+## eine Sehne von einer Armspitze zur naechsten, also ein Vieleck um das
+## Tier statt einer Linie an ihm; so faellt die Huelle zwischen zwei Armen
+## auf den Leib zurueck.
+const HUELLE_FAECHER := 72
+
+## Wie weit die Kennung neben dem Leib laeuft. Ein Umriss *auf* der Kante
+## verschwindet zur Haelfte unter ihr.
+const HUELLE_ABSTAND := 1.6
+
+var _huelle_mitte := Vector2.ZERO
+var _huelle_radien := PackedFloat32Array()
+
+
+func _huelle_beginne(p: Vector2) -> void:
+    _huelle_mitte = p
+    if _huelle_radien.size() != HUELLE_FAECHER:
+        _huelle_radien.resize(HUELLE_FAECHER)
+    _huelle_radien.fill(0.0)
+
+
+func _huelle_punkt(v: Vector2) -> void:
+    var d := v - _huelle_mitte
+    var l := d.length()
+    if l < 0.01:
+        return
+    var i := int((d.angle() + PI) / TAU * float(HUELLE_FAECHER))         % HUELLE_FAECHER
+    if l > _huelle_radien[i]:
+        _huelle_radien[i] = l
+
+
+## Einen geschlossenen Umriss eintragen - **mit Zwischenpunkten auf den
+## Kanten**. Nur die Ecken zu nehmen reicht nicht: eine Raute hat vier, und
+## zwischen zwei Ecken lagen dann zehn leere Faecher, die sich die Huelle
+## hineininterpoliert haette. Eine abgeschnittene Ecke ist genau der Fehler,
+## gegen den diese Huelle gebaut ist.
+func _huelle_umriss(punkte: PackedVector2Array) -> void:
+    var n := punkte.size()
+    if n < 2:
+        if n == 1:
+            _huelle_punkt(punkte[0])
+        return
+    for i in n:
+        var a: Vector2 = punkte[i]
+        var b: Vector2 = punkte[(i + 1) % n]
+        _huelle_punkt(a)
+        var schritte := mini(8, int((b - a).length() / 3.0))
+        for j in range(1, schritte):
+            _huelle_punkt(a.lerp(b, float(j) / float(schritte)))
+
+
+## Aus den gesammelten Weiten den Zug bauen.
+##
+## Leere Faecher werden zwischen ihren naechsten besetzten Nachbarn
+## ueberbrueckt - ein Fach ohne Treffer heisst nicht "dort ist nichts",
+## sondern "dort lag keine Stuetzstelle".
+func _huelle_zug() -> PackedVector2Array:
+    var n := HUELLE_FAECHER
+    var voll := 0
+    for r in _huelle_radien:
+        if r > 0.0:
+            voll += 1
+    if voll < 3:
+        return PackedVector2Array()
+    var weit := PackedFloat32Array()
+    weit.resize(n)
+    for i in n:
+        if _huelle_radien[i] > 0.0:
+            weit[i] = _huelle_radien[i]
+            continue
+        var vor := 1
+        while vor < n and _huelle_radien[(i - vor + n) % n] <= 0.0:
+            vor += 1
+        var nach := 1
+        while nach < n and _huelle_radien[(i + nach) % n] <= 0.0:
+            nach += 1
+        var a: float = _huelle_radien[(i - vor + n) % n]
+        var b: float = _huelle_radien[(i + nach) % n]
+        weit[i] = lerpf(a, b, float(vor) / float(vor + nach))
+    var rund := PackedVector2Array()
+    for i in n:
+        var w := TAU * (float(i) + 0.5) / float(n) - PI
+        rund.append(_huelle_mitte
+            + Vector2(cos(w), sin(w)) * (weit[i] + HUELLE_ABSTAND))
+    return rund
+
+
 func _kennung_zug(rund: PackedVector2Array) -> void:
     if rund.size() < 3:
         return
@@ -3923,7 +3969,6 @@ func _kontur(rund: PackedVector2Array, mitte: Vector2, zum_licht: Vector2,
     var zu := rund + PackedVector2Array([rund[0]])
     var hell := PackedColorArray()
     var dunkel := PackedColorArray()
-    var kennung := PackedColorArray()
     var spitze := 0.62 + 0.30 * hitze
     for v in zu:
         var d := v - mitte
@@ -3935,30 +3980,16 @@ func _kontur(rund: PackedVector2Array, mitte: Vector2, zum_licht: Vector2,
         var f := pow(clampf(t, 0.0, 1.0), 0.8)
         var g := pow(clampf(-t, 0.0, 1.0), 0.9)
         hell.append(_gedeckt(Color(rand.r, rand.g, rand.b, spitze * f)))
-        kennung.append(_gedeckt(Color(KENNUNG_ROT.r, KENNUNG_ROT.g,
-            KENNUNG_ROT.b, KENNUNG_DECKUNG)))
         dunkel.append(_gedeckt(Color(schatten.r * 0.5, schatten.g * 0.5,
             schatten.b * 0.5, 0.9 * g)))
     draw_polyline_colors(zu, dunkel, 1.4, true)
     draw_polyline_colors(zu, hell, 1.7, true)
-    # **Und darueber die Seitenkennung: rot fuer einen Raeuber.**
-    #
-    # Das Randlicht darunter bleibt, was es ist - es erzaehlt die Form, und
-    # es traegt die Farbe des Tieres. Was hinzukommt, ist eine Aussage
-    # anderer Art, und sie beantwortet die Frage, die im Bild am haeufigsten
-    # falsch beantwortet wurde: *ist das ein Gegner oder Hintergrund?*
-    # Weiss ist man selbst (Boot und Begleiter in `rundlauf.gd`), rot ist
-    # ein Raeuber.
-    #
-    # Sie laeuft rundum mit gleicher Deckung - eine Kennung, die an manchen
-    # Stellen fehlt, ist keine. Das ist der eine Ort in diesem Spiel, an dem
-    # ein gleichmaessiger Ring richtig ist, und deshalb steht die Begruendung
-    # hier und nicht nur in `rundlauf.gd`.
-    #
-    # Deckung und Breite sind **dieselben Zahlen** wie beim Boot: eine
-    # Kennung, die beim Feind dicker ist als beim Freund, liest sich als
-    # Bedeutung, wo keine ist.
-    draw_polyline_colors(zu, kennung, KENNUNG_BREITE, true)
+    # **Die Kennung liegt nicht mehr hier.** Sie lief auf genau diesem
+    # Umriss, und das war ihr Fehler: ein Leib ist nicht das ganze Tier.
+    # Der Umriss geht deshalb in die Huelle ein (`_huelle_umriss`), und die
+    # rote Linie wird am Ende von `_zeichne()` um **alles** gezogen, was
+    # eingetragen wurde - Leib, Flossen, Arme, Zangen.
+    _huelle_umriss(rund)
 
 
 func _zellband(ruecken: PackedVector2Array, profil: PackedFloat32Array,
@@ -4048,12 +4079,7 @@ func _zellband(ruecken: PackedVector2Array, profil: PackedFloat32Array,
         draw_polyline(hell_weg, _gedeckt(Color(1.0, 0.99, 0.96,
             0.55 + 0.35 * hitze)), 1.8, true)
 
-    # Und die Seitenkennung auf dem **Rand des Bandes**. `_band()` baut
-    # denselben geschlossenen Umriss, aus dem auch die Fuellung faellt -
-    # aussen herum und innen zurueck. Beim Kreiser und beim Ringmaul heisst
-    # das: die Kennung laeuft um den Ring und durch sein Loch, so wie das
-    # Tier aussieht.
-    _kennung_zug(_band(ruecken, profil, -1.0, 1.0))
+    _huelle_umriss(_band(ruecken, profil, -1.0, 1.0))
 
 
 ## Eine **Kugel** in Zellschattierung, aus vier Kreisen.
@@ -4067,6 +4093,9 @@ func _zellband(ruecken: PackedVector2Array, profil: PackedFloat32Array,
 func _zellblase(wo: Vector2, g: float, farbe: Color, hitze: float) -> void:
     if g < 0.6:
         return
+    for i in 8:
+        var w := TAU * float(i) / 8.0
+        _huelle_punkt(wo + Vector2(cos(w), sin(w)) * g)
     var zum_licht := lichtquelle - wo
     zum_licht = zum_licht.normalized() if zum_licht.length_squared() > 1.0 \
         else Vector2.UP
@@ -4128,6 +4157,7 @@ func _zellflosse(punkte: PackedVector2Array, farbe: Color, hitze: float,
         tiefe := 0.82) -> void:
     if punkte.size() < 3:
         return
+    _huelle_umriss(punkte)
     var mitte := _mitte(punkte)
     var zum_licht := lichtquelle - mitte
     zum_licht = zum_licht.normalized() if zum_licht.length_squared() > 1.0 \

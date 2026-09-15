@@ -832,17 +832,13 @@ unter einer strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
    dreizehnte Art) und Zierat innerhalb des Umrisses: Zahl der Kammzacken,
    Zahl und Länge der Fäden.
 
-   **Und kleine Tiere bekommen weniger Hof.** Er wächst mit dem Radius, die
-   Nachbearbeitung nicht — bei einer Laichwolke von zwölf Einheiten lag der
-   Körper vollständig im eigenen Schein, und drei davon im Strahl waren drei
-   weiße Punkte. Was einen Schwarm lesbar macht, ist die Wiederholung
-   derselben Form; eine Form, die man nicht sieht, wiederholt sich nicht.
-
-   Und der handgezeichnete Hof ist seither **halbiert**. Die gestapelten
-   Kreise waren der Ersatz für ein Glühen, das es nicht gab; jetzt gibt es
-   eins, und beides zusammen machte aus einem Zahnkiefer im Strahl einen
-   weißen Klecks mit einer Flosse daran. Ganz weg darf er nicht: er trägt die
-   **Farbe** der Art nach außen, und die Nachbearbeitung kennt nur Helligkeit.
+   **Und der Hof ist inzwischen ganz weg** — bei jedem Tier. Er wuchs mit dem
+   Radius, die Nachbearbeitung nicht: bei einer Laichwolke von zwölf Einheiten
+   lag der Körper vollständig im eigenen Schein, und drei davon im Strahl
+   waren drei weiße Punkte. Halbiert half nur halb; was ihn überflüssig macht,
+   ist das Glühen der Szene (HDR-Schwelle 0,62), und was seine zweite Aufgabe
+   übernommen hat — Farbe und Zusammenhalt nach außen zu tragen —, ist die
+   rote Kennung. Die Begründung steht weiter unten beim Rundumlauf.
 
 29. **Die Wellenstärke ist durch `Rundum.DICHTE` geteilt.** Gespielt wird nie
    eine Welle allein: eine Fahrtrunde nimmt `DICHTE` Wellen auf einmal und
@@ -1451,21 +1447,40 @@ Unterschied, den man sieht, wird als Bedeutung gelesen, auch wenn keine da
 ist. Die Rückmeldung dazu war ein Satz: *„Die Linie soll immer am Rand des
 Körpers sein, es soll kein Kreis sein."*
 
-Die Umrisse lagen fast alle schon vor, man musste sie nur nehmen:
-`_zellband()` hat ihn in `_band()` (beim Kreiser läuft die Kennung damit außen
-herum **und durch sein Loch**, so wie das Tier aussieht), `_knapp()` in seiner
-Raute, der Spiegler in seinen Eckpunkten. Gebaut werden musste genau einer:
-`_traubenhuelle()` legt eine Hülle um die Blasen der Laichwolke — kein Kreis
-um den Schwerpunkt und keine konvexe Hülle, denn beide glätten die Beulen weg,
-an denen man sie erkennt, sondern achtzehn Strahlen und für jeden der
-weiteste Austritt aus irgendeiner Blase. Gemessen kostet das nichts (3,00
-gegen 3,03 Bilder/s, drei Stichproben je Stand).
+**Ein Leib ist aber nicht das ganze Tier, und das war der nächste Satz:**
+*„Die rote Outline soll um die ganzen Sprites herumgehen und auch auf die
+Animationen reagieren."* Der Zug saß auf dem Umriss, den ein Leibhelfer
+zeichnet — Flossen, Fangarme, Beine, Segel und Zangen lagen außerhalb. Bei der
+Lichtscheuen, deren halbe Fläche aus Armen besteht, war die Kennung ein Oval
+mitten im Tier.
 
-**Der Spiegler hatte gar keine** — und das zum zweiten Mal aus demselben
-Grund. Er zeichnet seine Facetten selbst und geht nicht durch `_koerper()`,
-also holt ihn auch kein `_kontur()` ab; genauso stand er vorher als einzige
-Art ohne `_schein()` da. **Wer den gemeinsamen Weg verlässt, verliert alles,
-was an ihm hängt**, und im Quelltext sieht man davon nichts.
+**Also wird gesammelt statt gewählt.** Jeder Leib- und Gliedhelfer trägt ein,
+was er wirklich zeichnet (`_huelle_umriss()`), und am Ende von `_zeichne()`
+steht daraus **ein** Zug um alles. Zwei Folgen, beide gewollt: die Linie
+reagiert auf jede Bewegung von allein — Ausschlag, Biegung, die Welle in einem
+Fangarm —, weil sie aus den Punkten dieses Bildes gebaut wird und nicht aus
+Entwurfsmaßen. Und ein Tier bekommt **einen** Zug und nicht einen je Teil: der
+Panzerkrebs hätte sonst acht rote Ringe, einen um jedes Bein.
+
+Es ist ein **Strahlenkranz** (`HUELLE_FAECHER` Richtungen, je der weiteste
+Punkt) und keine konvexe Hülle: konvex gerechnet liefe eine Sehne von einer
+Armspitze zur nächsten, also ein Vieleck *um* das Tier statt einer Linie *an*
+ihm. So fällt die Hülle zwischen zwei Armen auf den Leib zurück.
+
+Zwei Dinge, die dabei zu lernen waren.
+
+*Erstens: nur die Ecken zu nehmen reicht nicht.* Die Sparfassung ist eine
+Raute mit vier Ecken; zwischen zwei davon lagen zehn leere Fächer, und die
+Interpolation schnitt die Ecke ab. `_huelle_umriss()` setzt deshalb
+Zwischenpunkte auf jede Kante.
+
+*Zweitens — und das war im Bild ein Schreck: wer nichts einträgt, bekommt
+einen Kreis.* Der Schleier ging durch `_dunkelleib()`, und das war der eine
+Leibhelfer ohne Eintrag. Übrig blieben seine Fangarme, die radial nach außen
+zeigen und alle ungefähr gleich weit reichen — zwischen ihnen brückte die
+Interpolation auf derselben Weite, und heraus kam **genau der Kreis**, der
+einen Commit vorher abgeschafft worden war. Eine Lücke in der Erfassung sieht
+nicht aus wie eine Lücke, sondern wie eine Entwurfsentscheidung.
 
 **Und der Prüfer dafür musste ein anderer sein, als der erste Anlauf war.**
 Rote Bildpunkte zu zählen findet die Kennung nur über dunklem Wasser: auf dem
@@ -1475,7 +1490,27 @@ vorher im Bild gesehen hatte. Was es beantwortet hat, ist derselbe Griff wie
 überall hier: **einmal abschalten und noch einmal schießen.**
 `KENNUNG_DECKUNG` auf null, zweiter Schuss, Differenzbild — siebzehn
 Ballungen an siebzehn Plätzen, und damit ist die Frage beantwortet statt
-geschätzt.
+geschätzt. Genau dieser Lauf hat auch den Schleier gefunden.
+
+**Und der Schein ist weg, bei jedem Tier.** Die Rückmeldung nannte beides in
+einem Satz, und das ist kein Zufall: dieselbe Kante soll die Frage
+beantworten, die der Schein verwischte. Gestrichen sind `_schein()` (die
+Schale entlang des Umrisses), der Hof der Sparfassung (ein Kreis vom
+1,6fachen Radius — bei achtzig Tieren achtzigmal im Bild) und der Schleier um
+die Laichwolke (fünf Kreise vom 2,1fachen Radius, bei 45 % aller Körper im
+Feld der häufigste Schein überhaupt).
+
+Der Grund, aus dem sie einmal richtig waren, ist erfüllt: die Szene hat ein
+Glühen mit HDR-Schwelle 0,62, **was hell ist, blüht von selbst**. Zwei Höfe
+übereinander machen aus einem Tier im Strahl wieder den weißen Klecks, gegen
+den in dieser Datei seit Langem gearbeitet wird. Und was `_schein()`
+außerdem tat — Anbauten und Leib zu *einem* Tier binden —, tut jetzt die
+Hülle, und zwar schärfer: sie läuft an den Anbauten entlang, statt sie in
+einen Fleck zu hüllen.
+
+Gemessen kostet der Tausch nichts (2,73 gegen 2,80 Bilder/s, drei Stichproben
+je Stand): die Hülle ist ein Zug je Tier, der Schein war ein Dreiecksnetz je
+Tier.
 
 **Die Kontur war ein Ring — derselbe, den Boot und Fels längst hinter sich
 haben.** `_kontur()` teilte zwar in Licht- und Schattenseite, aber **binär**:
@@ -1778,9 +1813,10 @@ Dieselbe Art Fehler wie die verlorene Füllung bei einer Kerbe im Umriss:
 **wer eine Fläche aus Stücken zusammensetzt, prüft, dass die Stücke sie
 auch bedecken** — und man sieht es nicht im Code, sondern nur im Bild.
 
-Er war zudem die einzige Art **ohne Schein**, weil `_schein()` in
-`_koerper()` sitzt und er das nicht ruft. Der Schein gehört zum Tier und
-nicht zur Füllmethode.
+Er zeichnet seine Fläche selbst und ruft `_koerper()` nicht — und hat
+deshalb schon zweimal verloren, was daran hängt: erst den Schein, dann den
+Eintrag in die Hülle für die Kennung. **Wer den gemeinsamen Weg verlässt,
+verliert alles, was an ihm hängt**, und im Quelltext sieht man davon nichts.
 
 **Farbe je Ecke kommt auf den Bedienebenen sehr wohl an.** In
 `rund_hud.gd::_treffer` stand als Begründung für eine ganze
