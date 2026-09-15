@@ -1425,6 +1425,37 @@ Geometrie, nicht der Beleuchtung. Was Schaden nimmt, sagt weiterhin
 `t.licht`, und `_test_rundumlauf_brennt_mit_dem_gezeichneten_kegel` hält das
 fest.
 
+**Die Kontur war ein Ring — derselbe, den Boot und Fels längst hinter sich
+haben.** `_kontur()` teilte zwar in Licht- und Schattenseite, aber **binär**:
+jeder Punkt der Lichthälfte bekam das Randlicht in voller Stärke, jeder der
+anderen den Saum. Im Bild lag damit ein gleichmäßig helles Band um den halben
+Leib und brach am Äquator ab. Und `randlicht` stand auf (1,00 / 0,99 / 0,96),
+also fast **weiß, unabhängig von der Art**: auf einer rosa Schlundmutter und
+einem goldenen Kalkrochen saß derselbe weiße Saum. Dieselbe Regel wie beim
+Schatten, der farbig bleiben muss — **ein Randlicht ist die Farbe des Tieres,
+von der Lampe aufgehellt, und nicht die Farbe der Lampe.**
+
+Beides läuft jetzt je Punkt mit der Zuwendung zum Licht aus, dieselbe Rechnung
+wie beim Felsrand. Zwei geschlossene Züge statt Läufen mit Schnittstellen: wo
+ein Zug nicht hingehört, steht seine Deckung auf null.
+
+**Und der Begleiter war ein Donut.** Auf seinem Kelch lag ein dunkler
+*Vollkreis* bei `0,40 gr` — genau zwischen dem hellen Band außen und dem
+leuchtenden Kern innen, also schnitt er ihn in zwei Ringe. Dieselbe Wirkung
+wie die Nabe des Röhrenbewuchses, nur an dem Ding, das dauernd in der
+Bildmitte steht. Eine Mundöffnung sitzt nicht rundum, sondern auf der
+**abgewandten** Seite; als Bogen über ein Drittel des Umfangs sagt sie
+dasselbe und schneidet nichts durch. Dazu bekommt er eine Kontur wie jedes
+Tier — er hatte **gar keine**, seine Silhouette war die harte Kante des
+äußersten Kreises.
+
+Wie groß die drei Änderungen wirklich sind, gemessen an geänderten
+Bildpunkten: **Schlundmutter 5,6 %, Kalkrochen 4,4 %, Begleiter 25,9 %.** Die
+Kontur der Tiere ist also eine echte, aber schmale Änderung — sie ist so
+breit wie der Zug selbst. Der Begleiter ist die große. Wer nach einem
+weiteren Hebel am Umriss sucht: der breite helle Saum an diesen Tieren ist
+**nicht** die Kontur, sondern das hellste Tonband von `_zellkoerper()`.
+
 **Was schwimmt, schlägt.** Der Weg jedes Tieres pendelt seit jeher seitlich
 um seine Bahn (`Rundum.schritt()`), der **Leib** stand still dabei — jedes
 Tier war ein Bild, das durch das Wasser geschoben wird. Das ist der Grund,

@@ -3804,40 +3804,55 @@ func _zellkoerper(punkte: PackedVector2Array, farbe: Color, hitze: float,
 ## hier ueberall abgeschafft ist. Sie ist ein Randlicht auf der Lichtseite
 ## und ein dunkler Saum auf der abgewandten, an der Lichtscheide getrennt.
 ## Und sie steht **einmal** im Quelltext: zwei Konturen waeren zwei Stile.
+## Die Kontur eines Leibes.
+##
+## **Sie war ein Ring, und zwar derselbe, den Boot und Fels schon hinter sich
+## haben.** Die Teilung in Licht- und Schattenseite gab es, aber sie war
+## **binaer**: jeder Punkt der Lichthaelfte bekam das Randlicht in voller
+## Staerke, jeder der anderen den Saum. Im Bild lag damit ein gleichmaessig
+## helles Band um den halben Leib und brach am Aequator ab - ein Aufkleberrand
+## statt eines Streiflichts.
+##
+## Und `randlicht` stand auf (1,00 / 0,99 / 0,96), also **fast weiss,
+## unabhaengig von der Art**. Auf einer rosa Schlundmutter und einem goldenen
+## Kalkrochen sass derselbe weisse Saum, und er zog beiden die Farbe vom
+## Rand. Dieselbe Regel wie beim Schatten, der farbig bleiben muss: ein
+## Randlicht ist die Farbe des Tieres, von der Lampe aufgehellt, und nicht die
+## Farbe der Lampe.
+##
+## Jetzt laeuft beides **je Punkt** mit der Zuwendung zum Licht aus - dieselbe
+## Rechnung wie `grund_rundum.gd::_kantenzug()` sie fuer den Fels bekommen
+## hat. Zwei geschlossene Zuege statt Laeufen mit Schnittstellen: wo ein Zug
+## nicht hingehoert, steht seine Deckung auf null, und dann ist er auch nicht
+## da. Zwei Zeichenaufrufe wie vorher.
 func _kontur(rund: PackedVector2Array, mitte: Vector2, zum_licht: Vector2,
         schatten: Color, hitze: float) -> void:
     var n := rund.size()
     if n < 3:
         return
-    var tmin := INF
-    var tmax := -INF
-    var start := 0
-    for i in n:
-        var t := (rund[i] - mitte).dot(zum_licht)
-        if t < tmin:
-            tmin = t
-            start = i
-        tmax = maxf(tmax, t)
-    var gm := (tmin + tmax) * 0.5
-    var randlicht := _gedeckt(Color(1.0, 0.99, 0.96, 0.55 + 0.35 * hitze))
-    var saum := _gedeckt(Color(schatten.r * 0.5, schatten.g * 0.5,
-        schatten.b * 0.5, 0.9))
-    var lauf := PackedVector2Array()
-    var lauf_hell := false
-    for j in n + 1:
-        var v: Vector2 = rund[(start + j) % n]
-        var hier_hell := (v - mitte).dot(zum_licht) >= gm
-        if lauf.size() > 0 and hier_hell != lauf_hell:
-            lauf.append(v)
-            draw_polyline(lauf, randlicht if lauf_hell else saum,
-                1.8 if lauf_hell else 1.4, true)
-            lauf = PackedVector2Array()
-        if lauf.size() == 0:
-            lauf_hell = hier_hell
-        lauf.append(v)
-    if lauf.size() >= 2:
-        draw_polyline(lauf, randlicht if lauf_hell else saum,
-            1.8 if lauf_hell else 1.4, true)
+    # Der Farbton des Tieres, aus dem Schattenton hochgezogen: der ist seine
+    # Farbe, nur dunkler und blauer, und sein Ton reicht als Anhalt.
+    var hoch := maxf(0.001, maxf(schatten.r, maxf(schatten.g, schatten.b)))
+    var ton := Color(schatten.r / hoch, schatten.g / hoch, schatten.b / hoch)
+    var rand := ton.lerp(Color(1.0, 0.99, 0.96), 0.52)
+    var zu := rund + PackedVector2Array([rund[0]])
+    var hell := PackedColorArray()
+    var dunkel := PackedColorArray()
+    var spitze := 0.62 + 0.30 * hitze
+    for v in zu:
+        var d := v - mitte
+        var t: float = 0.0 if d.length_squared() < 0.001 \
+            else d.normalized().dot(zum_licht)
+        # Hoch 0,8 statt linear: ein Streiflicht sitzt breit auf der
+        # Lichtseite und laeuft dann zuegig aus, es ist kein Farbverlauf
+        # ueber den halben Leib.
+        var f := pow(clampf(t, 0.0, 1.0), 0.8)
+        var g := pow(clampf(-t, 0.0, 1.0), 0.9)
+        hell.append(_gedeckt(Color(rand.r, rand.g, rand.b, spitze * f)))
+        dunkel.append(_gedeckt(Color(schatten.r * 0.5, schatten.g * 0.5,
+            schatten.b * 0.5, 0.9 * g)))
+    draw_polyline_colors(zu, dunkel, 1.4, true)
+    draw_polyline_colors(zu, hell, 1.7, true)
 
 
 func _zellband(ruecken: PackedVector2Array, profil: PackedFloat32Array,

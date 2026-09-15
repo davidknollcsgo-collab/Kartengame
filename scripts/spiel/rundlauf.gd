@@ -2378,11 +2378,40 @@ func _zeichne_begleiter() -> void:
             grund.lerp(Color(1.0, 0.98, 0.94), 0.34))
         _vorn.draw_circle(p + zum_licht * kelch * 0.54, kelch * 0.19,
             Color(1.0, 0.99, 0.96, 0.9))
-        # Die Mundoeffnung: eine dunkle Rille mit heller Lippe zur
-        # Lichtseite - dieselbe Sprache wie `_rille()` bei den Tieren.
-        _vorn.draw_arc(p, gr * 0.40, 0.0, TAU, 16,
+        # **Der Kelch war ein Ring mit einem Loch.** Hier lag ein dunkler
+        # *Vollkreis* bei 0,40 gr - also genau zwischen dem hellen Band
+        # aussen und dem leuchtenden Kern innen. Im Bild zerschnitt er den
+        # Begleiter in zwei Ringe, und uebrig blieb ein Donut: dieselbe
+        # Wirkung wie die Nabe des Roehrenbewuchses, nur an dem Ding, das
+        # dauernd in der Bildmitte steht.
+        #
+        # Eine Mundoeffnung sitzt nicht rundum, sondern auf der **abgewandten**
+        # Seite, wo der Kelch sich wegdreht. Als Bogen ueber ein Drittel des
+        # Umfangs sagt sie dasselbe und schneidet nichts durch.
+        var mund := zum_licht.angle() + PI
+        _vorn.draw_arc(p, gr * 0.36, mund - 1.0, mund + 1.0, 10,
             Color(schatten.r * 0.7, schatten.g * 0.7, schatten.b * 0.7,
-            0.9), 1.6, true)
+            0.75), 1.5, true)
+        # **Und er bekommt eine Kontur wie jedes Tier.** Er hatte gar keine:
+        # seine Silhouette war die Kante des aeussersten Kreises, also eine
+        # harte Fuellkante. Randlicht auf der Lichtseite, dunkler Saum auf
+        # der anderen, je Punkt auslaufend - dieselbe Rechnung wie
+        # `schwarm.gd::_kontur()`, damit Begleiter und Raeuber nicht zwei
+        # Konturstile haben.
+        var ring := PackedVector2Array()
+        var kante_hell := PackedColorArray()
+        var kante_saum := PackedColorArray()
+        var randton := grund.lerp(Color(1.0, 0.99, 0.96), 0.45)
+        for j in 21:
+            var e := Vector2.RIGHT.rotated(TAU * float(j) / 20.0)
+            ring.append(p + e * kelch)
+            var zu := e.dot(zum_licht)
+            kante_hell.append(Color(randton.r, randton.g, randton.b,
+                (0.66 + 0.22 * atem) * pow(clampf(zu, 0.0, 1.0), 0.8)))
+            kante_saum.append(Color(schatten.r * 0.5, schatten.g * 0.5,
+                schatten.b * 0.5, 0.9 * pow(clampf(-zu, 0.0, 1.0), 0.9)))
+        _vorn.draw_polyline_colors(ring, kante_saum, 1.4, true)
+        _vorn.draw_polyline_colors(ring, kante_hell, 1.7, true)
         # Der Kern - der einzige Fleck, der wirklich leuchtet.
         _vorn.draw_circle(p, gr * (0.15 + 0.04 * atem),
             Color(0.86, 1.0, 0.94, 0.95))
