@@ -1710,19 +1710,43 @@ func _zeichne_funde() -> void:
             else Color(1.0, 0.84, 0.52)
         var a := 0.22 if geholt else (0.55 + 0.35 * puls)
         var r := 26.0 if geholt else 24.0 + 4.0 * puls
-        var sechseck := PackedVector2Array()
-        for i in 7:
-            sechseck.append(p + Vector2.RIGHT.rotated(
-                dreh + TAU * float(i) / 6.0) * r)
-        draw_polyline(sechseck, Color(farbe.r, farbe.g, farbe.b, a), 1.6, true)
+        # **Ein Fund war ein regelmaessiges Sechseck.** Gerade Kanten,
+        # scharfe Ecken, exakt `TAU / 6` - das Einzige in der ganzen Welt,
+        # das so gebaut war, und der Absatz zwanzig Zeilen tiefer beklagt
+        # genau das eine Stufe schwaecher: *eine mathematisch runde Linie in
+        # einer Welt aus unrunden Formen faellt als Bedienoberflaeche auf.*
+        # Eine mathematisch **gerade** faellt staerker auf.
+        #
+        # Jetzt eine unrunde Schale, deren Saum nicht rundum gleich hell ist
+        # - dieselbe Machart wie der Fels und der Kegelrand: wo ein Uebergang
+        # hingehoert, wird keine Kante gezeichnet. Die Unrundheit kommt aus
+        # `dreh`, ist also fest je Fundstelle; ein Keim, der jede Sekunde
+        # anders aussieht, waere ein Flackern.
+        const SCHALE := 15
+        var schale := PackedVector2Array()
+        var toene := PackedColorArray()
+        for i in SCHALE + 1:
+            var w := dreh + TAU * float(i) / float(SCHALE)
+            var rr := r * (1.0 + 0.14 * sin(3.0 * w + dreh * 2.1)
+                + 0.07 * sin(5.0 * w - dreh))
+            schale.append(p + Vector2.RIGHT.rotated(w) * rr)
+            toene.append(Color(farbe.r, farbe.g, farbe.b,
+                a * (0.40 + 0.60 * (0.5 + 0.5 * sin(2.0 * w + dreh * 1.3)))))
+        draw_polyline_colors(schale, toene, 1.6, true)
         if geholt:
             continue
-        # Drei Speichen nach innen und ein Kern - er ist das, was man
-        # anfaehrt, und muss im Dunkeln aus der Ferne zu sehen sein.
-        for i in 3:
-            var w := dreh + TAU * float(i) / 3.0
-            draw_line(p + Vector2.RIGHT.rotated(w) * r * 0.42,
-                p + Vector2.RIGHT.rotated(w) * r * 0.86,
+        # Faeden vom Kern nach aussen - er ist das, was man anfaehrt, und
+        # muss im Dunkeln aus der Ferne zu sehen sein. **Fuenf in ungleichen
+        # Winkeln und keiner beruehrt die Schale**: drei auf exakt `TAU / 3`
+        # waren ein Rad mit Nabe, und ein Faden, der den Saum trifft,
+        # schliesst eine Masche (dieselbe Regel wie bei den Rippen in
+        # `schwarm.gd::_inneres()`).
+        for i in 5:
+            var w := dreh * 1.7 + TAU * float(i) / 5.0 \
+                + sin(float(i) * 2.3 + dreh) * 0.42
+            var lang := 0.70 + 0.14 * sin(float(i) * 1.7 + dreh * 2.0)
+            draw_line(p + Vector2.RIGHT.rotated(w) * r * 0.34,
+                p + Vector2.RIGHT.rotated(w + 0.18) * r * lang,
                 Color(farbe.r, farbe.g, farbe.b, a * 0.7), 1.2, true)
         draw_circle(p, 4.0 + 1.6 * puls,
             Color(farbe.r, farbe.g, farbe.b, 0.30 + 0.30 * puls))
