@@ -1096,86 +1096,149 @@ func _zeichne_bewuchs(lage: int) -> void:
                 _schopf(p, gr, farbe, a, dreh, arme, atem)
 
 
-## Ein Faecher: Rippen aus einem Punkt, aussen durch einen Bogen verbunden.
+## **Der Bewuchs war das letzte Drahtgitter.**
+##
+## Jede Tierart, das Boot, die Begleiter, die Felsen und die Fischschwaerme
+## sind laengst gefuellte Koerper; der Bewuchs war noch aus `draw_line` und
+## `draw_polyline` gebaut, und er steht in jedem Bild ueber die ganze
+## Flaeche verteilt. Beim Heranzoomen brach jede der drei Formen an einer
+## Regel, die in dieser Datei schon steht:
+##
+## * **Der Faecher schloss Maschen.** Speichen aus einem Punkt, aussen durch
+##   einen Bogen verbunden, dazu Gabeln, die den Bogen treffen - jede Luecke
+##   war eine geschlossene Zelle, also ein Drahtkorb. Genau der Fehler, der
+##   bei `schwarm.gd::_inneres()` schon notiert ist: *eine Rippe, die den
+##   Umriss beruehrt, schliesst eine Masche.*
+## * **Die Roehren trugen Perlen.** Der Kopf war `r * 0,15` im Radius, also
+##   `0,30 r` breit, auf einem Arm von `0,17 r` Wurzelbreite - eine Marke,
+##   die breiter ist als das, was sie traegt. Dieselbe Regel wie bei der
+##   Grabnatter und der Schleppe, und dasselbe Bild: ein Molekuelmodell.
+## * **Der Schopf trug sie auch.** Ein Halm von einem Pixel Breite mit einer
+##   Scheibe von 2,4 Pixeln obendrauf, und die bei `a * 1,8` - die Spitze
+##   war heller *und* dicker als der Halm, im Bild eine Hand mit Naegeln.
+##
+## Alle drei sind jetzt aus verjuengten, gebogenen Baendern in *einem* Netz
+## gebaut (`_astband`), und keine Spitze ist mehr breiter als der Halm, der
+## sie traegt.
+
+
+## Ein gebogenes, sich verjuengendes Band als Teil eines Netzes.
+##
+## Die Querschnitte werden zwischen zwei Punkten **geteilt**, sonst steht
+## auf der Aussenseite jeder Biegung eine Kerbe - dieselbe Ueberlegung wie
+## bei `schwarm.gd::_streifen()`.
+##
+## Gibt die Spitze zurueck; die Richtung dort ist `w0 + dreh_ges`.
+func _astband(ecken: PackedVector2Array, farben: PackedColorArray,
+        netz: PackedInt32Array, start: Vector2, w0: float, dreh_ges: float,
+        laenge: float, b0: float, b1: float, unten: Color,
+        oben: Color) -> Vector2:
+    const STUECKE := 4
+    var punkte := PackedVector2Array([start])
+    var ort := start
+    for j in STUECKE:
+        var t := (float(j) + 0.5) / float(STUECKE)
+        ort += Vector2.RIGHT.rotated(w0 + dreh_ges * t) \
+            * (laenge / float(STUECKE))
+        punkte.append(ort)
+    var k := ecken.size()
+    for j in punkte.size():
+        var t := float(j) / float(punkte.size() - 1)
+        var vor := punkte[maxi(j - 1, 0)]
+        var nach := punkte[mini(j + 1, punkte.size() - 1)]
+        var quer := (nach - vor).orthogonal().normalized() * lerpf(b0, b1, t)
+        var c := unten.lerp(oben, t)
+        ecken.append(punkte[j] + quer)
+        ecken.append(punkte[j] - quer)
+        farben.append_array([c, c])
+        if j > 0:
+            var v := k + j * 2
+            netz.append_array([v - 2, v - 1, v, v - 1, v + 1, v])
+    return punkte[punkte.size() - 1]
+
+
+## Eine weiche Scheibe als Teil eines Netzes: hell in der Mitte, am Rand auf
+## null. Ein `draw_circle` waere hier eine Flaeche in *einer* Farbe mit
+## harter Kante - im Bild eine Nabe, und eine Nabe macht aus einem Busch
+## ein Rad.
+func _fussscheibe(ecken: PackedVector2Array, farben: PackedColorArray,
+        netz: PackedInt32Array, p: Vector2, radius: float,
+        farbe: Color, a: float) -> void:
+    const KEILE := 9
+    var k := ecken.size()
+    ecken.append(p)
+    farben.append(Color(farbe.r, farbe.g, farbe.b, a))
+    for j in KEILE + 1:
+        var w := TAU * float(j) / float(KEILE)
+        ecken.append(p + Vector2.RIGHT.rotated(w) * radius)
+        farben.append(Color(farbe.r, farbe.g, farbe.b, 0.0))
+        if j > 0:
+            netz.append_array([k, k + j, k + j + 1])
+
+
+## Ein Faecher: eine Gorgonie aus gegabelten Aesten.
+##
+## **Der Saum ist weg, und das ist die eigentliche Aenderung.** Solange ein
+## Bogen die Spitzen verband, war jede Luecke zwischen zwei Rippen eine
+## geschlossene Zelle - und geschlossene Zellen sind die Definition eines
+## Drahtgitters. Die Aeste enden jetzt frei; was den Faecher zusammenhaelt,
+## ist das Gewebe darunter, und das reicht nur bis zu den Gabeln.
 func _faecher(p: Vector2, r: float, farbe: Color, a: float, dreh: float,
         arme: PackedFloat32Array, atem: float) -> void:
-    var saum := PackedVector2Array()
-    var spitzen: Array[Vector2] = []
-    var winkel := PackedFloat32Array()
-    for i in arme.size():
-        var t := float(i) / float(maxi(1, arme.size() - 1))
+    var n := arme.size()
+    if n < 1:
+        return
+    var unten := Color(farbe.r * 0.66, farbe.g * 0.74, farbe.b * 0.80, a)
+    var oben := Color(farbe.r, farbe.g, farbe.b, a * 1.05)
+    var ecken := PackedVector2Array()
+    var farben := PackedColorArray()
+    var netz := PackedInt32Array()
+    var gabeln := PackedVector2Array()
+    var dick := maxf(0.7, r * 0.075)
+    for i in n:
+        var t := float(i) / float(maxi(1, n - 1))
         var w := dreh + lerpf(-1.05, 1.05, t)
         var laenge := r * arme[i] * (0.92 + 0.08 * atem)
-        var spitze := p + Vector2.RIGHT.rotated(w) * laenge
-        spitzen.append(spitze)
-        winkel.append(w)
-        saum.append(spitze)
-
-    # **Erst die Haut, dann die Rippen.** Ein Faecher aus lauter Speichen ist
-    # ein Sternchen; was ihn zur Gorgonie macht, ist das Gewebe dazwischen.
-    # Es liegt unter den Rippen, damit die Rippen es teilen und nicht
-    # umgekehrt.
-    #
-    # **Und die Haut hat einen Verlauf.** Sie war eine Flaeche in einer
-    # Farbe: am Fuss so deckend wie an der Kante, und damit ein Papierfaecher
-    # mit Speichen darauf. Gewebe zwischen zwei Rippen ist dort dicht, wo es
-    # ansetzt, und laeuft zur Kante hin aus - ein Faecher, der an seinem
-    # Rand endet, statt dort abgeschnitten zu sein.
-    if spitzen.size() > 2:
+        # **Ein Ast ist gebogen, und zwar nach aussen.** Gerade Speichen aus
+        # einem Punkt sind ein Rad; was eine Gorgonie ausmacht, ist dass sie
+        # sich vom Fuss weg oeffnet. Die Kruemmung kommt aus dem Platz im
+        # Faecher, es wird nichts gewuerfelt.
+        var bogen := (t - 0.5) * 0.85
+        var gabel := _astband(ecken, farben, netz, p, w, bogen * 0.62,
+            laenge * 0.62, dick, dick * 0.55, unten, oben)
+        gabeln.append(gabel)
+        # Zwei freie Enden statt eines: was sich gabelt, waechst; was in
+        # einem Punkt endet, ist eine Nadel.
+        for seite: float in [-0.34, 0.30]:
+            _astband(ecken, farben, netz, gabel, w + bogen * 0.62 + seite,
+                bogen * 0.4, laenge * 0.42, dick * 0.52, dick * 0.16,
+                unten, oben)
+    # **Das Gewebe liegt unter den Aesten und reicht nur bis zu den
+    # Gabeln.** Ein Netz bis an die Spitzen waere wieder eine geschlossene
+    # Flaeche mit Streben darauf; eine Gorgonie ist am Fuss dicht und
+    # aussen offen.
+    if gabeln.size() > 2:
         var haut := PackedVector2Array([p])
         var toene := PackedColorArray([
-            Color(farbe.r, farbe.g, farbe.b, a * 0.52)])
-        for sp in spitzen:
-            haut.append(sp)
-            toene.append(Color(farbe.r, farbe.g, farbe.b, a * 0.10))
+            Color(farbe.r, farbe.g, farbe.b, a * 0.46)])
+        for g in gabeln:
+            haut.append(g)
+            toene.append(Color(farbe.r, farbe.g, farbe.b, a * 0.07))
         draw_polygon(haut, toene)
-
-    for i in spitzen.size():
-        # **Auch die Rippe laeuft aus.** Mit einer Farbe gezogen hat sie an
-        # der Spitze eine Kappe, und zehn Kappen auf einem Bogen sind ein
-        # Zahnrad. Zwei Farben auf demselben Zug kosten nichts weiter.
-        draw_polyline_colors(PackedVector2Array([p, spitzen[i]]),
-            PackedColorArray([
-                Color(farbe.r, farbe.g, farbe.b, a),
-                Color(farbe.r, farbe.g, farbe.b, a * 0.34)]), 1.1, true)
-        # **Und jede zweite Rippe gabelt sich.** Eine Koralle waechst
-        # verzweigt; gerade Speichen sind ein Rad. An jeder Rippe gemessen
-        # kostete es acht Prozent Bildrate (6,5 auf 6,0) - bei bis zu zehn
-        # Rippen sind das zwanzig zusaetzliche Striche je Faecher. An jeder
-        # zweiten ist im Bild kein Unterschied zu sehen, und die Haelfte ist
-        # wieder da.
-        if i % 2 == 0:
-            var ast := p.lerp(spitzen[i], 0.68)
-            for seite: float in [-0.55, 0.55]:
-                draw_line(ast, ast + Vector2.RIGHT.rotated(winkel[i] + seite)
-                    * r * 0.22, Color(farbe.r, farbe.g, farbe.b, a * 0.8),
-                    1.0, true)
-
-    if saum.size() > 2:
-        draw_polyline(saum, Color(farbe.r, farbe.g, farbe.b, a * 0.7),
-            1.0, true)
+    RenderingServer.canvas_item_add_triangle_array(
+        get_canvas_item(), netz, ecken, farben)
 
 
-## Roehren: kurze Stiele mit einem Ring obendrauf.
 ## Roehrenbewuchs: ein Buschel aus Polypenroehren.
 ##
-## **Er war ein Zahnrad.** Die Arme standen in exakt gleichen Winkeln
-## (`TAU * i / n`), alle gleich gebaut, jeder aus einer Linie, einem Kreis,
-## einem Bogen und zwei Zacken - im Bild ein perfekt radialsymmetrisches
-## Rad mit zehn Speichen. Das ist das Einzige im ganzen Spiel, das so
-## gebaut war; die Regel hier heisst seit jeher, dass es keine geraden
-## Kanten und keine perfekten Formen gibt, und perfekte Radialsymmetrie ist
-## dieselbe Sorte Fehler in rund.
-##
-## Zwei Aenderungen, beide aus Zahlen, die schon dastehen:
-##
-## * **Die Winkel sind ungleich.** `arme[i]` ist die Laenge des Arms und
-##   war die einzige Stelle, an der sich zwei Arme unterschieden; sie
-##   verschiebt jetzt auch seinen Winkel. Gewuerfelt wird nichts - ein
-##   Busch, der jede Sekunde anders steht, waere ein Flackern.
-## * **Ein Arm ist ein Koerper.** Verjuengte Baender in einem Netz statt
-##   Strichen, dieselbe Sprache wie die Polypenarme und die Fischschwaerme.
-##   Fuenf Zeichenaufrufe je Arm werden zu einem je Busch.
+## **Er war ein Molekuelmodell.** Die Arme standen in exakt gleichen Winkeln
+## (`TAU * i / n`) - das ist behoben, der Versatz kommt aus `arme[i]`. Was
+## blieb, war der Kopf: eine Scheibe von `0,30 r` Breite auf einem Arm von
+## `0,17 r`. Eine Marke, die breiter ist als ihr Traeger, ist ein Stecknadelkopf,
+## und zehn davon um eine Nabe sind ein Modellbaukasten. Der Kelch ist jetzt
+## die **Fortsetzung** der Roehre: sie verjuengt sich zur Mitte und blueht am
+## Ende wieder auf `dick * 1,15` auf, mit einem Mund von weniger als der
+## halben Kelchbreite und drei kurzen Tentakeln.
 func _roehren(p: Vector2, r: float, farbe: Color, a: float, dreh: float,
         arme: PackedFloat32Array, atem: float) -> void:
     var n := arme.size()
@@ -1185,69 +1248,87 @@ func _roehren(p: Vector2, r: float, farbe: Color, a: float, dreh: float,
     var farben := PackedColorArray()
     var netz := PackedInt32Array()
     var koepfe: Array[Vector2] = []
+    var richtungen := PackedFloat32Array()
     var dick := maxf(0.8, r * 0.085)
+    var unten := Color(farbe.r * 0.62, farbe.g * 0.70, farbe.b * 0.76, a * 0.9)
+    var oben := Color(farbe.r, farbe.g, farbe.b, a * 1.1)
+    # **Zuerst der Fuss, denn er liegt unter den Armen.** Er stand vorher
+    # als letzter Aufruf *ueber* ihren Wurzeln: die Arme steckten in einer
+    # Platte, statt aus ihr zu wachsen.
+    _fussscheibe(ecken, farben, netz, p, r * 0.30, farbe, a * 0.75)
     for i in n:
         # Der Versatz kommt aus der Laenge des Arms: fest je Busch, und
         # gross genug, dass die Speichen aufhoeren, Speichen zu sein.
         var schief := (arme[i] - 0.85) * 1.30
         var w := dreh + TAU * float(i) / float(n) + schief
-        var fuss := p + Vector2.RIGHT.rotated(w) * r * 0.34
-        var kopf := fuss + Vector2.RIGHT.rotated(w + 0.3) \
-            * r * arme[i] * (0.7 + 0.06 * atem)
+        var fuss := p + Vector2.RIGHT.rotated(w) * r * 0.26
+        var lang := r * arme[i] * (0.7 + 0.06 * atem)
+        # **Eine Roehre ist gebogen.** Gerade Stiele sind Speichen; der
+        # Bogen kommt wieder aus `arme[i]`, also gewuerfelt wird nichts.
+        var bogen := 0.30 + schief * 0.5
+        var hals := _astband(ecken, farben, netz, fuss, w, bogen, lang * 0.80,
+            dick, dick * 0.62, unten, oben)
+        # Der Kelch ist das letzte Fuenftel derselben Roehre und blueht auf.
+        var kopf := _astband(ecken, farben, netz, hals, w + bogen,
+            bogen * 0.25, lang * 0.20, dick * 0.62, dick * 1.15, oben, oben)
         koepfe.append(kopf)
-        var quer := (kopf - fuss).orthogonal().normalized() * dick
-        var k := ecken.size()
-        ecken.append(fuss + quer)
-        ecken.append(fuss - quer)
-        ecken.append(kopf + quer * 0.35)
-        ecken.append(kopf - quer * 0.35)
-        var unten := Color(farbe.r * 0.62, farbe.g * 0.70, farbe.b * 0.76,
-            a * 0.9)
-        var oben := Color(farbe.r, farbe.g, farbe.b, a * 1.15)
-        farben.append_array([unten, unten, oben, oben])
-        netz.append_array([k, k + 1, k + 2, k + 1, k + 3, k + 2])
+        richtungen.append(w + bogen * 1.25)
     RenderingServer.canvas_item_add_triangle_array(
         get_canvas_item(), netz, ecken, farben)
-    # **Ein Polypenkopf ist ein Becher, kein Ring.**
-    #
-    # Der erste Anlauf liess vom Kopf einen hellen Bogen um eine fast leere
-    # Scheibe uebrig - im Bild ein Lutscher am Stiel. Ein Polyp ist ein
-    # gefuellter Kelch mit einem dunklen Mund darin; das ist dieselbe
-    # Gliederung wie ueberall sonst hier, Flaeche traegt, Kante begleitet.
-    for kopf in koepfe:
-        draw_circle(kopf, r * 0.15, Color(farbe.r, farbe.g, farbe.b, a * 1.1),
-            true, -1.0, true)
-        draw_circle(kopf, r * 0.07, Color(farbe.r * 0.35, farbe.g * 0.42,
-            farbe.b * 0.50, a * 1.2), true, -1.0, true)
-    # Und ein Fuss, an dem das Buschel sitzt: die Arme beginnen bei 0,34 r,
-    # also stand dort vorher ein Loch.
-    draw_circle(p, r * 0.30, Color(farbe.r * 0.50, farbe.g * 0.58,
-        farbe.b * 0.64, a * 0.85), true, -1.0, true)
+    # Der Mund und drei Tentakel. Der Mund ist kleiner als der halbe Kelch -
+    # sonst ist der Kelch ein Ring, und ein Ring ist wieder eine Roehre von
+    # der Seite.
+    for i in koepfe.size():
+        var kopf: Vector2 = koepfe[i]
+        draw_circle(kopf, dick * 0.48, Color(farbe.r * 0.30, farbe.g * 0.38,
+            farbe.b * 0.46, a * 1.1), true, -1.0, true)
+        for s: float in [-0.7, 0.0, 0.7]:
+            draw_line(kopf, kopf + Vector2.RIGHT.rotated(
+                richtungen[i] + s) * dick * 1.5,
+                Color(farbe.r, farbe.g, farbe.b, a * 0.8), 1.0, true)
 
 
+## Ein Schopf: Halme aus einem Punkt, die im Wasser wiegen.
+##
+## **Seine Spitzen waren Naegel.** Ein Halm von einem Pixel Breite trug eine
+## Scheibe von 1,2 Pixeln Radius bei `a * 1,8` - breiter und heller als das,
+## was sie traegt, im Bild eine Hand mit Naegeln. Sie kleiner zu machen war
+## eine halbe Sache: gemessen fielen die hellsten Bildpunkte um ein Viertel
+## (191 auf 145), der Spitzenwert blieb bei 164, und im Bild war kein
+## Unterschied. Was blieb, war die **Kappe** des Zuges - `draw_polyline`
+## setzt an jedes Ende einen runden Abschluss, und der ist so breit wie der
+## Zug.
+##
+## Der Halm ist deshalb jetzt dasselbe verjuengte Band wie Ast und Roehre.
+## Ein Band hat keine Kappe: es laeuft auf eine Spitze zu und hoert dort
+## auf. Was leuchtet, ist die Spitze des Bandes selbst - bei einem
+## Hydroiden sitzt das Licht im Halm und nicht als Perle darauf.
 func _schopf(p: Vector2, r: float, farbe: Color, a: float, dreh: float,
         arme: PackedFloat32Array, atem: float) -> void:
-    for i in arme.size():
-        var w := dreh + lerpf(-0.9, 0.9, float(i) / float(maxi(1,
-            arme.size() - 1)))
-        var wiege := sin(zeit * 0.7 + float(i) * 0.8 + p.x * 0.01) * 0.22
-        var halm := PackedVector2Array()
-        for j in 6:
-            var t := float(j) / 5.0
-            halm.append(p + Vector2.RIGHT.rotated(w + wiege * t * t)
-                * r * arme[i] * t)
-        # **Unten dick, oben duenn.** Alles hier war einen Pixel breit, und
-        # ein Halm von gleicher Staerke ueber die ganze Laenge ist ein
-        # Strich. `draw_polyline` kann nicht verjuengen - zwei Zuege
-        # koennen es: die unteren zwei Drittel breiter, der Rest schmal.
-        draw_polyline(halm.slice(0, 4),
-            Color(farbe.r, farbe.g, farbe.b, a), 2.0, true)
-        draw_polyline(halm.slice(3, 6),
-            Color(farbe.r, farbe.g, farbe.b, a * 0.85), 1.0, true)
-        # Eine leuchtende Spitze. Viele Hydroiden der Tiefsee tragen sie,
-        # und im Bild ist sie das, was aus einem Grashalm etwas Lebendiges
-        # macht.
-        draw_circle(halm[5], 1.2, Color(farbe.r, farbe.g, farbe.b, a * 1.8))
+    var n := arme.size()
+    if n < 1:
+        return
+    var ecken := PackedVector2Array()
+    var farben := PackedColorArray()
+    var netz := PackedInt32Array()
+    # Ein Halm, der zu duenn anfaengt, ist wieder ein Strich: der erste
+    # Anlauf lief von `r * 0,055` auf ein Sechstel davon aus, und damit war
+    # das obere Drittel schmaler als ein Bildpunkt - die leuchtende Spitze
+    # war rechnerisch da und im Bild nicht.
+    var dick := maxf(0.8, r * 0.075)
+    var unten := Color(farbe.r * 0.70, farbe.g * 0.78, farbe.b * 0.84, a)
+    var oben := Color(farbe.r, farbe.g, farbe.b, a * 1.45)
+    for i in n:
+        var w := dreh + lerpf(-0.9, 0.9, float(i) / float(maxi(1, n - 1)))
+        # Das Wiegen ist jetzt die Biegung des Bandes und nicht mehr ein
+        # Knick in einer Punktkette - dieselbe Bewegung, eine Rechnung
+        # weniger.
+        var wiege := sin(zeit * 0.7 + float(i) * 0.8 + p.x * 0.01) * 0.30
+        var lang := r * arme[i] * (0.94 + 0.06 * atem)
+        _astband(ecken, farben, netz, p, w, wiege, lang,
+            dick, dick * 0.24, unten, oben)
+    RenderingServer.canvas_item_add_triangle_array(
+        get_canvas_item(), netz, ecken, farben)
 
 
 ## Wie weit ein Schatten hinter seinem Fels liegt, als Vielfaches der

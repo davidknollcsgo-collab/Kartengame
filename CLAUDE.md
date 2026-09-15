@@ -1508,6 +1508,44 @@ Laichwolke mit zwölf Einheiten Radius zog denselben Faden wie ein
 Leitwesen mit sechzig. Dieselbe Regel wie beim Hof: was ein Tier hinter
 sich herzieht, wächst mit ihm.
 
+**Der Bewuchs war das letzte Drahtgitter — und alle drei Formen brachen
+eine Regel, die eine Seite weiter oben schon steht.** Tiere, Boot,
+Begleiter, Felsen und Fischschwärme sind längst gefüllte Körper; der
+Bewuchs stand noch als `draw_line` und `draw_polyline` über die ganze
+Fläche verteilt. Beim Heranzoomen:
+
+* *Der Fächer schloss Maschen.* Speichen aus einem Punkt, außen durch einen
+  Bogen verbunden, dazu Gabeln, die den Bogen treffen — jede Lücke eine
+  geschlossene Zelle. Genau der Drahtkorb aus `schwarm.gd::_inneres()`.
+  **Was es gelöst hat, war nicht mehr Zeichnung, sondern den Saum
+  wegzulassen:** Äste, die frei enden, können nichts einschließen.
+* *Die Röhren trugen Perlen.* Kopf `0,30 r` breit auf einem Arm von
+  `0,17 r` — eine Marke, die breiter ist als ihr Träger, also dieselbe
+  Regel wie oben, und im Bild ein Molekülmodell. Der Kelch ist jetzt die
+  **Fortsetzung** der Röhre.
+* *Der Schopf trug sie auch*, bei `a · 1,8` obendrauf.
+
+**Und beim Schopf hätte fast eine halbe Reparatur als ganze gegolten.** Die
+Perle kleiner zu machen (Radius 1,2 → 0,45) senkte die hellsten Bildpunkte
+um ein Viertel (191 → 145), ließ den Spitzenwert bei 164 und war im Bild
+**nicht zu sehen**. Übrig war die *Kappe*: `draw_polyline` schließt jedes
+Ende rund ab, und zwar so breit wie der Zug. Ein verjüngtes Band hat keine.
+
+**Zwei Messungen, die eine Vermutung von mir widerlegt haben.** Die Nabe
+des Röhrenbuschs sah aus wie ein Loch im Grund, und ich hatte sie schon
+einmal mit dieser Begründung angefasst. Nachgemessen ist sie **heller** als
+der Grund (Rot 35 gegen 7) — ein radiales Profil zeigt eine Scheibe von
+sechzehn Pixeln mit *völlig flachem* Wert und harter Kante. Was sie zur
+Nabe macht, ist nicht Dunkelheit, sondern dass sie flach ist; und sie stand
+als **letzter** Aufruf über den Wurzeln der Arme, die Arme steckten also in
+einer Platte, statt aus ihr zu wachsen. Jetzt ein Verlaufskeil im selben
+Netz, vor den Armen. **Eine Fläche in einer Farbe mit harter Kante ist ein
+Stempel** — dieselbe Regel wie bei den Tafeln des Bedienbilds.
+
+Gekostet hat das nichts messbares (3,7 gegen 3,9 Bilder/s, also im
+Rauschen), obwohl die Zeichenaufrufe deutlich fallen — dieser Behälter
+hängt an der Füllrate.
+
 **Eine Schleppe kann kein Tier überholen.** Im Schuss von Welle 1 lief ein
 kerzengerader violetter Balken über den halben Schirm. Gemessen war das
 **ein** Segment von 1058 Einheiten in der Farbe des Schleiers — die
