@@ -129,6 +129,19 @@ const KAMERA_ZOOM := 1.0
 const KAMERA_TRAEGHEIT := 6.5
 const KAMERA_VORAUS := 0.16
 
+## **Die Seitenkennung: weiss ist man selbst, rot ist ein Raeuber.**
+##
+## Sie liegt als gleichmaessiger Zug ueber dem Randlicht, das die Form
+## erzaehlt - zwei verschiedene Aussagen, deshalb zwei Zuege. Eine Kennung,
+## die an manchen Stellen fehlt, ist keine; das ist der eine Ort in diesem
+## Spiel, an dem ein Ring rundum richtig ist.
+##
+## Das Gegenstueck steht in `schwarm.gd::_kontur()` und muss dieselben zwei
+## Zahlen benutzen - eine Kennung, die beim Freund duenner ist als beim
+## Feind, liest sich als Bedeutung, wo keine ist.
+const KENNUNG_DECKUNG := 0.42
+const KENNUNG_BREITE := 1.5
+
 const BEGLEITER_TRAEGHEIT := 3.4
 const BEGLEITER_TAKT := 0.9
 
@@ -1920,6 +1933,17 @@ func _zeichne_rumpf(umriss: PackedVector2Array, k: Vector2, r: float) -> void:
             saum.append(Color(_haut.r * 0.16, _haut.g * 0.20,
                 _haut.b * 0.24, 0.40 + 0.50 * d))
     _vorn.draw_polyline_colors(ring, saum, 1.7, true)
+    # **Und darueber die Seitenkennung: weiss fuer das eigene Boot.**
+    #
+    # Das Randlicht darunter bleibt, was es ist - es erzaehlt die Form (vorn
+    # der Rueckwurf des eigenen Strahls, hinten ein dunkler Saum). Was
+    # hinzukommt, ist eine Aussage anderer Art: **weiss ist man selbst, rot
+    # ist ein Raeuber** (`schwarm.gd::_kontur()`). Sie laeuft deshalb rundum
+    # mit gleicher Deckung, denn eine Kennung, die an manchen Stellen fehlt,
+    # ist keine - das ist der eine Ort, an dem ein gleichmaessiger Ring
+    # richtig ist.
+    _vorn.draw_polyline(ring, Color(1.0, 1.0, 1.0, KENNUNG_DECKUNG),
+        KENNUNG_BREITE, true)
 
 
 ## Spanten und Kiellinie - die Linien, die aus einem Umriss einen Koerper
@@ -2401,7 +2425,8 @@ func _zeichne_begleiter() -> void:
         var ring := PackedVector2Array()
         var kante_hell := PackedColorArray()
         var kante_saum := PackedColorArray()
-        var randton := grund.lerp(Color(1.0, 0.99, 0.96), 0.45)
+        # Weiss wie das Boot: die Begleiter gehoeren zum Spieler.
+        var randton := Color(1.0, 1.0, 1.0)
         for j in 21:
             var e := Vector2.RIGHT.rotated(TAU * float(j) / 20.0)
             ring.append(p + e * kelch)
@@ -2412,6 +2437,8 @@ func _zeichne_begleiter() -> void:
                 schatten.b * 0.5, 0.9 * pow(clampf(-zu, 0.0, 1.0), 0.9)))
         _vorn.draw_polyline_colors(ring, kante_saum, 1.4, true)
         _vorn.draw_polyline_colors(ring, kante_hell, 1.7, true)
+        _vorn.draw_polyline(ring, Color(1.0, 1.0, 1.0, KENNUNG_DECKUNG),
+            KENNUNG_BREITE, true)
         # Der Kern - der einzige Fleck, der wirklich leuchtet.
         _vorn.draw_circle(p, gr * (0.15 + 0.04 * atem),
             Color(0.86, 1.0, 0.94, 0.95))

@@ -1425,6 +1425,35 @@ Geometrie, nicht der Beleuchtung. Was Schaden nimmt, sagt weiterhin
 `t.licht`, und `_test_rundumlauf_brennt_mit_dem_gezeichneten_kegel` hält das
 fest.
 
+**Weiß ist man selbst, rot ist ein Räuber.** Auf die Frage, die im Bild am
+häufigsten falsch beantwortet wurde — *ist das ein Gegner oder Hintergrund?* —
+liegt jetzt eine **Seitenkennung** über dem Randlicht: ein Zug in Weiß um Boot
+und Begleiter (`rundlauf.gd`), einer in Rot um jeden Räuber
+(`schwarm.gd::_kontur()`).
+
+Sie liegt **über** dem Randlicht und ersetzt es nicht: das Randlicht erzählt
+die Form und trägt die Farbe des Tieres, die Kennung sagt, auf welcher Seite
+es steht. Zwei verschiedene Aussagen, deshalb zwei Züge. Und sie läuft rundum
+mit **gleicher Deckung** — eine Kennung, die an manchen Stellen fehlt, ist
+keine. Das ist der eine Ort in diesem Spiel, an dem ein gleichmäßiger Ring
+richtig ist.
+
+`KENNUNG_DECKUNG` und `KENNUNG_BREITE` stehen in beiden Dateien auf denselben
+Zahlen: eine Kennung, die beim Feind dicker ist als beim Freund, liest sich
+als Bedeutung, wo keine ist.
+
+**Und sie darf an keiner Art fehlen — `_kontur()` läuft aber nur bei zwei von
+fünf Leibhelfern.** Laichwolke (`_zellblase`), Bänder (`_zellband`),
+Membranen (`_zellflosse`) und vor allem die Sparfassung `_knapp()` ziehen
+keinen Umriss: ausgerechnet die häufigste Art im Spiel und die Fassung, die
+man in einer **vollen** Welle sieht, also genau dort, wo die Frage am
+dringendsten ist. Wo kein Umriss vorliegt, tritt deshalb ein Ring am
+**echten Radius** an seine Stelle. `Wellen.radius_in()` ist der Kreis, den
+auch der Kegel trifft (Zusage 28) — der Ring behauptet damit nichts, was
+nicht stimmt, er zeigt genau die Fläche, die getroffen wird. Im Bild sieht
+man den Unterschied: die meisten Arten tragen die Kennung auf ihrer
+Silhouette, einige wenige als Kreis.
+
 **Die Kontur war ein Ring — derselbe, den Boot und Fels längst hinter sich
 haben.** `_kontur()` teilte zwar in Licht- und Schattenseite, aber **binär**:
 jeder Punkt der Lichthälfte bekam das Randlicht in voller Stärke, jeder der

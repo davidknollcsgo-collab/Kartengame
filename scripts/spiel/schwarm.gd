@@ -451,6 +451,7 @@ func _zeichne(t: Raeuber, stufe := 0) -> void:
     # wirkt. Verschoben werden Faerbung und Zierat innerhalb des Umrisses.
     var farbe: Color = _eigenfarbe(t, Arten.farbe(t.art))
     var r: float = Wellen.radius_in(t.art, t.welle)
+    _kennung_steht = false
 
     # Wer im Licht steht, glueht auf. Das ist die einzige Rueckmeldung, die
     # der Spieler zum Zielen braucht - ohne sie sieht er nicht, wen er fasst.
@@ -595,6 +596,7 @@ func _zeichne(t: Raeuber, stufe := 0) -> void:
     # lesbar, die Zierde geht.
     if stufe >= 2:
         _knapp(p, r, farbe, t, hitze)
+        _kennung_ersatz(p, r)
         t.richtung = alte_richtung
         return
 
@@ -664,6 +666,7 @@ func _zeichne(t: Raeuber, stufe := 0) -> void:
     # Trefferkreis auch nicht: der ist ein **Kreis** um `t.ort`, und ein
     # Kreis hat keine Richtung. Genau deshalb ist der Schlag hier erlaubt
     # und eine Aenderung am Radius es nicht.
+    _kennung_ersatz(p, r)
     t.richtung = alte_richtung
 
 
@@ -3825,6 +3828,38 @@ func _zellkoerper(punkte: PackedVector2Array, farbe: Color, hitze: float,
 ## hat. Zwei geschlossene Zuege statt Laeufen mit Schnittstellen: wo ein Zug
 ## nicht hingehoert, steht seine Deckung auf null, und dann ist er auch nicht
 ## da. Zwei Zeichenaufrufe wie vorher.
+## Ob die Kennung an diesem Tier schon am Umriss haengt.
+##
+## **Sie darf an keiner Art fehlen, und `_kontur()` laeuft nur bei zweien von
+## fuenf Leibhelfern.** Laichwolke (`_zellblase`), Baender (`_zellband`),
+## Membranen (`_zellflosse`) und vor allem die Sparfassung `_knapp()` ziehen
+## keinen Umriss - ausgerechnet die haeufigste Art im Spiel und die Fassung,
+## die man in einer **vollen** Welle sieht, also genau dort, wo die Frage
+## "Gegner oder Hintergrund" am dringendsten ist.
+##
+## Wo kein Umriss vorliegt, tritt ein Ring am **echten Radius** an seine
+## Stelle: `Wellen.radius_in()` ist der Kreis, den auch der Kegel trifft
+## (Zusage 28). Er behauptet damit nichts, was nicht stimmt - er zeigt genau
+## die Flaeche, die getroffen wird.
+var _kennung_steht := false
+
+
+## Die Kennung als Ring, wenn der Leib keinen Umriss gezogen hat.
+func _kennung_ersatz(p: Vector2, r: float) -> void:
+    if _kennung_steht:
+        return
+    draw_arc(p, r, 0.0, TAU, 20,
+        _gedeckt(Color(KENNUNG_ROT.r, KENNUNG_ROT.g, KENNUNG_ROT.b,
+            KENNUNG_DECKUNG)), KENNUNG_BREITE, true)
+
+
+## Die Seitenkennung eines Raeubers. Siehe `_kontur()`; die beiden Zahlen
+## sind dieselben wie `rundlauf.gd::KENNUNG_DECKUNG` und `KENNUNG_BREITE`.
+const KENNUNG_ROT := Color(1.0, 0.26, 0.22)
+const KENNUNG_DECKUNG := 0.42
+const KENNUNG_BREITE := 1.5
+
+
 func _kontur(rund: PackedVector2Array, mitte: Vector2, zum_licht: Vector2,
         schatten: Color, hitze: float) -> void:
     var n := rund.size()
@@ -3838,6 +3873,7 @@ func _kontur(rund: PackedVector2Array, mitte: Vector2, zum_licht: Vector2,
     var zu := rund + PackedVector2Array([rund[0]])
     var hell := PackedColorArray()
     var dunkel := PackedColorArray()
+    var kennung := PackedColorArray()
     var spitze := 0.62 + 0.30 * hitze
     for v in zu:
         var d := v - mitte
@@ -3849,10 +3885,31 @@ func _kontur(rund: PackedVector2Array, mitte: Vector2, zum_licht: Vector2,
         var f := pow(clampf(t, 0.0, 1.0), 0.8)
         var g := pow(clampf(-t, 0.0, 1.0), 0.9)
         hell.append(_gedeckt(Color(rand.r, rand.g, rand.b, spitze * f)))
+        kennung.append(_gedeckt(Color(KENNUNG_ROT.r, KENNUNG_ROT.g,
+            KENNUNG_ROT.b, KENNUNG_DECKUNG)))
         dunkel.append(_gedeckt(Color(schatten.r * 0.5, schatten.g * 0.5,
             schatten.b * 0.5, 0.9 * g)))
     draw_polyline_colors(zu, dunkel, 1.4, true)
     draw_polyline_colors(zu, hell, 1.7, true)
+    # **Und darueber die Seitenkennung: rot fuer einen Raeuber.**
+    #
+    # Das Randlicht darunter bleibt, was es ist - es erzaehlt die Form, und
+    # es traegt die Farbe des Tieres. Was hinzukommt, ist eine Aussage
+    # anderer Art, und sie beantwortet die Frage, die im Bild am haeufigsten
+    # falsch beantwortet wurde: *ist das ein Gegner oder Hintergrund?*
+    # Weiss ist man selbst (Boot und Begleiter in `rundlauf.gd`), rot ist
+    # ein Raeuber.
+    #
+    # Sie laeuft rundum mit gleicher Deckung - eine Kennung, die an manchen
+    # Stellen fehlt, ist keine. Das ist der eine Ort in diesem Spiel, an dem
+    # ein gleichmaessiger Ring richtig ist, und deshalb steht die Begruendung
+    # hier und nicht nur in `rundlauf.gd`.
+    #
+    # Deckung und Breite sind **dieselben Zahlen** wie beim Boot: eine
+    # Kennung, die beim Feind dicker ist als beim Freund, liest sich als
+    # Bedeutung, wo keine ist.
+    draw_polyline_colors(zu, kennung, KENNUNG_BREITE, true)
+    _kennung_steht = true
 
 
 func _zellband(ruecken: PackedVector2Array, profil: PackedFloat32Array,
