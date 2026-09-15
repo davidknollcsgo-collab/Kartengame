@@ -3106,15 +3106,38 @@ func _spiegler(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> 
     draw_colored_polygon(ecken, _gedeckt(Color(grundton.r * 0.45,
         grundton.g * 0.45, grundton.b * 0.45, 0.94)))
 
+    # **Der Grat ist eine Strecke, kein Paar von Punkten.**
+    #
+    # Jede Facette lief bisher auf den *naeheren* von `first_v` und
+    # `first_h` zu - also auf einen von zwei Punkten. Der Streifen zwischen
+    # den beiden gehoert damit zu keiner Facette; an dieser Stelle steht
+    # eine Notiz, ein Grundton darunter schliesse ihn. Er schliesst ihn
+    # geometrisch, aber er steht auf **45 % eines schon entsaettigten
+    # Tons**, und im Bild war die groesste Flaeche des Tieres eine dunkle
+    # Platte mit hellen Facetten am Rand.
+    #
+    # Jetzt bekommt **jede Ecke** ihren eigenen Punkt auf der Gratstrecke,
+    # und eine Facette ist das Viereck zwischen zwei Ecken und ihren beiden
+    # Gratpunkten. Benachbarte Facetten teilen sich dadurch ihre Gratkante -
+    # die Stuecke bedecken die Flaeche wirklich, statt sie fast zu bedecken.
+    # Dieselbe Lehre wie beim Faecherbewuchs: **wer eine Flaeche aus
+    # Stuecken zusammensetzt, prueft, dass die Stuecke sie auch bedecken.**
     var n := ecken.size()
+    var achse := first_h - first_v
+    var achse_q := maxf(0.0001, achse.length_squared())
+    var grate := PackedVector2Array()
+    for i in n:
+        grate.append(first_v + achse * clampf(
+            (ecken[i] - first_v).dot(achse) / achse_q, 0.0, 1.0))
     for i in n:
         var a1: Vector2 = ecken[i]
         var b1: Vector2 = ecken[(i + 1) % n]
+        var ga: Vector2 = grate[i]
+        var gb: Vector2 = grate[(i + 1) % n]
         var mitte_f := (a1 + b1) * 0.5
-        # Welcher Punkt des Grats zu dieser Facette gehoert: der naehere.
-        var grat: Vector2 = first_v if (mitte_f - first_v).length() \
-            < (mitte_f - first_h).length() else first_h
-        var norm := (mitte_f - grat).normalized()
+        var grat := (ga + gb) * 0.5
+        var norm := (mitte_f - grat)
+        norm = norm.normalized() if norm.length() > 0.001 else zum_licht
         var zu := maxf(0.0, norm.dot(zum_licht))
         # **Der Sprung muss gross sein, sonst ist es kein Schliff.** Mit
         # 0,24 bis 1,24 lagen alle sieben Facetten dicht beieinander und das
@@ -3143,13 +3166,22 @@ func _spiegler(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> 
         # damit auch bei seitlichem Licht helle neben dunklen liegen. Und
         # der Wert wird auf vier Stufen gerastert: ein Spiegel hat Flecken,
         # keinen Verlauf.
+        # **Offen: das Muster liest sich schachbrettartig.** `sin(i * 2,39)`
+        # ist bei elf Facetten fast eine Alternation, und seit die Facetten
+        # die Flaeche wirklich bedecken, sieht man das. Eine zweite,
+        # unpassende Frequenz darueberzulegen ist versucht und **gemessen
+        # wirkungslos**: `stufe` ist auf vier Stufen gerastert, ±0,16 schiebt
+        # kaum eine Facette ueber eine Stufengrenze - 85 von 10450
+        # Bildpunkten haben sich geaendert, also 0,8 %. Wer das angeht, muss
+        # die Facetten **verschieden gross** machen, nicht ihre Toene
+        # umverteilen.
         var kipp := 0.5 + 0.5 * sin(float(i) * 2.39 + t.phase * 0.7)
         var stufe := floorf(clampf(zu * 0.55 + kipp * 0.45, 0.0, 0.999)
             * 4.0) / 3.0
         var st := 0.40 + 1.55 * stufe
         var ton := Color(farbe.r, farbe.g, farbe.b).lerp(
             Color(0.12, 0.30, 0.44), 0.34 * (1.0 - stufe))
-        draw_colored_polygon(PackedVector2Array([grat, a1, b1]),
+        draw_colored_polygon(PackedVector2Array([ga, a1, b1, gb]),
             _gedeckt(Color(minf(1.0, ton.r * st), minf(1.0, ton.g * st),
                 minf(1.0, ton.b * st), 0.94)))
         # **Der Glanz** sitzt nur auf der Facette, die dem Licht am naechsten
@@ -3161,7 +3193,7 @@ func _spiegler(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> 
                 a1.lerp(mitte_f, 0.46), b1.lerp(mitte_f, 0.46)]),
                 _gedeckt(Color(1.0, 1.0, 0.98, 0.28 + 0.42 * hitze)))
         # Die Facettenkante macht den Sprung sichtbar.
-        draw_line(grat, a1, _gedeckt(Color(farbe.r, farbe.g, farbe.b,
+        draw_line(ga, a1, _gedeckt(Color(farbe.r, farbe.g, farbe.b,
             0.22 + 0.34 * stufe)), 1.0, true)
 
     var zu_r := ecken + PackedVector2Array([ecken[0]])
