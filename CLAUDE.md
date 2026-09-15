@@ -54,12 +54,19 @@ godot --headless --path . --script tools/mutationskosten.gd   # was ein Zug wirk
 godot --headless --path . --script tools/mutationskosten.gd -- --zug Plated
 ```
 
-> **Der Wellenprüfer meldet zwei gefallene Sitzungen von achtundvierzig**,
-> die erste Wand bei Welle 164. Er war einmal bei fünfunddreißig; der Weg
+> **Der Wellenprüfer meldet drei gefallene Sitzungen von achtundvierzig**,
+> die erste Wand bei Welle 100. Er war einmal bei fünfunddreißig; der Weg
 > dorthin steht unten, weil jeder Schritt eine Lehre ist und keiner geraten
 > war.
 >
-> Die zwei Reste sind ein **offener Balance-Posten** und kein Anlass, eine
+> **Die dritte ist bezahlt und nicht gerutscht.** Sie kam mit dem Angriff aus
+> der Nähe (siehe unten beim Rundumlauf): Sitzung 20, Wellen 96–100,
+> Zermürbung über fünf Wellen. Gemessen ist auch, dass die *Form* der Rampe
+> daran nichts ändert — linear und quadratisch geben beide drei Sitzungen und
+> dieselbe Wand bei 100, nur fällt eine andere Sitzung (33 gegen 48). Die
+> Kosten hängen am Angriff selbst, nicht an seiner Kurve.
+>
+> Die drei Reste sind ein **offener Balance-Posten** und kein Anlass, eine
 > Schranke zu lockern — siehe Zusage 26.
 >
 > | Schritt | Fälle | Wand |
@@ -71,7 +78,8 @@ godot --headless --path . --script tools/mutationskosten.gd -- --zug Plated
 > | Simulator nimmt die Hülle aus `Ausbau.huelle()` | 18 | 85 |
 > | Spiegler-Aufwand 1,30 → 2,2 | 14 | 95 |
 > | `Schlund.SPIEGEL_REST` 0,45 → 0,58 | 12 | 161 |
-> | **Mutationsstärken gemessen und gesenkt** | **2** | **164** |
+> | Mutationsstärken gemessen und gesenkt | 2 | 164 |
+> | **Angriff aus der Nähe** (gewollt, siehe unten) | **3** | **100** |
 >
 > **Drei Lehren, die sich jedes Mal wiederholt haben.**
 >
