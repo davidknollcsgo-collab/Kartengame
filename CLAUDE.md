@@ -1485,6 +1485,46 @@ proportioniert und trotzdem wirkungslos), dann trugen drei dicke Rippen
 die Form und sahen aus wie Schnurrhaare. Was es gelöst hat, war eine
 **Außenkante**, die zu den Enden ausläuft.
 
+**Beide großen Leitwesen hatten eine gerade Hinterkante — und zwar
+buchstäblich dieselbe.** Kalkrochen und Schlundmutter waren nach demselben
+Muster gebaut: ein Bogen über die Vorderhälfte, und danach **ein** Punkt
+(`p - k * r * 0,62` bzw. `0,72`). Von jedem Ende des Bogens führt damit eine
+**Gerade** zu diesem Punkt — die halbe Silhouette jedes der beiden größten
+Tiere im Spiel bestand aus zwei geraden Linien, in einem Spiel, dessen erste
+Regel lautet, dass es keine geraden Kanten gibt. Im Bild war der Kalkrochen
+ein Lampenschirm und die Schlundmutter eine Platte.
+
+Dazu bei beiden dieselbe zweite Hälfte des Fehlers: die Panzerplatten waren
+**gerade Sehnen quer durch den Leib**, parallel und gleich gestuft — die
+Streifen eines Lampenschirms. Sie folgen jetzt der Wölbung und sind Fugen
+(`_rille`) statt heller Striche.
+
+Drei Dinge, die dabei zu lernen waren, und zwei davon standen schon da:
+
+*Eine Fläche aus zwei Kanten braucht eine Dicke, die nie negativ wird.* Der
+erste Anlauf gab der Hinterkante eine eigene Formel; sie verfehlte die
+Flügelspitzen, der Umriss schnitt sich selbst, **vier `triangulation
+failed` je Lauf** — stumm, das Tier fehlt dann einfach. Jetzt ist die
+Hinterkante die Vorderkante *minus* `dicke`, und `dicke` ist an beiden
+Spitzen konstruktionsbedingt null.
+
+*Ein doppelter Eckpunkt fällt genauso.* Die Hinterkante lief bis `u = −1`,
+wo schon der erste Punkt der Vorderkante liegt: zwei weitere Meldungen. Eine
+Stützstelle weniger, und es ist still.
+
+*Und die Platten habe ich Zeichen für Zeichen falsch gemacht, obwohl die
+Antwort beim Kalkrochen danebenstand.* Dort steht seit Langem: **die Breite
+kommt aus derselben Kurve wie der Rumpf**, sonst ragen die Platten heraus.
+Ich gab der Schlundmutter trotzdem eigene Halbachsen, und im Bild liefen
+graue Drähte quer über das Tier und aus ihm heraus. Der Fix ist kein neuer
+Gedanke, sondern derselbe Satz: es gibt nur **eine** Beschreibung der Form —
+der Mantelpunkt, zur Mitte hin verkleinert.
+
+Der Exponent der Konkavität geht übrigens andersherum, als man denkt: je
+*größer*, desto weiter zieht die Hinterkante nach vorn. Mit 0,75 lag sie
+0,09 Radien vor ihrer Sehne — ein paar Bildpunkte, also nicht da; mit 1,4
+sind es 0,38.
+
 **Eine Perlenkette ist kein Leib, und ein Faden ist keine Schleppe.** Zwei
 Stellen, dieselbe Ursache: runde Marken auf einem Weg, deren Durchmesser
 größer ist als ihr Abstand. Der Rückweg setzt alle neun Einheiten einen

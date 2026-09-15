@@ -2331,23 +2331,55 @@ func _schlundmutter(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float
         _fangarm(wurzel, -k, r * 2.4, r * 0.075, wehen, farbe,
             0.18 + 0.10 * hitze)
 
+    # **Ihr Hinterteil waren zwei gerade Linien** - derselbe Fehler wie beim
+    # Kalkrochen, und zwar Zeichen fuer Zeichen: ein Bogen ueber die
+    # Vorderhaelfte und danach *ein* Punkt (`p - k * r * 0,72`), also von
+    # jedem Ende des Bogens eine Gerade dorthin. Der Saum bekommt jetzt seine
+    # eigene Kurve; sie trifft die Bogenenden genau, damit kein Knick und
+    # kein doppelter Eckpunkt entsteht.
     var mantel := PackedVector2Array()
     for i in 17:
         var w := lerpf(-PI * 0.72, PI * 0.72, float(i) / 16.0)
         var buchtung := 1.0 + 0.07 * sin(float(i) * 2.3 + t.alter * 1.4)
         mantel.append(p + (k * cos(w) * 0.96 + quer * sin(w) * 1.22)
             * r * atem * buchtung)
-    mantel.append(p - k * r * 0.72)
+    var rand_k := cos(PI * 0.72) * 0.96
+    var rand_q := sin(PI * 0.72) * 1.22
+    for i in range(1, 12):
+        var v := lerpf(1.0, -1.0, float(i) / 12.0)
+        # Der Saum einer Glocke ist gewellt - dieselbe `buchtung` wie oben,
+        # damit beide Haelften desselben Tieres denselben Puls haben.
+        var welle := 1.0 + 0.06 * sin(v * 7.0 + t.alter * 1.4)
+        mantel.append(p + (k * (rand_k - 0.30 * (1.0 - v * v))
+            + quer * v * rand_q) * r * atem * welle)
     _zellkoerper(mantel, farbe, hitze, t.richtung)
 
     # Panzerrippen ueber dem Mantel - dieselbe Sprache wie bei der
     # Schildkoralle, weil beide dieselbe Eigenschaft haben.
+    # **Als Boegen und als Fugen, nicht als gerade helle Sehnen.** Vier
+    # parallele Striche quer ueber eine Glocke lesen sich als Lampenschirm -
+    # genau die Streifen, die beim Kalkrochen abgeschafft wurden. Eine Platte
+    # auf einer Woelbung folgt der Woelbung, und sie hat einen Schatten.
+    # **Und zwar als Anteil desselben Mantels, nicht als eigene Kurve.** Der
+    # erste Anlauf gab ihnen eigene Halbachsen - und stand damit an den
+    # Flanken ueber den Umriss hinaus: im Bild liefen graue Draehte quer
+    # ueber das Tier und aus ihm heraus. Genau dieser Fehler steht beim
+    # Kalkrochen eine Seite tiefer schon angeschrieben, und ich habe ihn
+    # Zeichen fuer Zeichen wiederholt. **Zwei Beschreibungen derselben Form
+    # laufen auseinander, immer** - also gibt es nur eine: der Mantelpunkt,
+    # zur Mitte hin verkleinert.
     for i in 4:
-        var f := float(i) / 3.0
-        var y := lerpf(0.62, -0.42, f)
-        var halb := lerpf(r * 0.46, r * 1.02, f)
-        draw_line(p + k * r * y + quer * halb, p + k * r * y - quer * halb,
-            Color(1.0, 0.96, 0.92, 0.16 + 0.34 * hitze), 2.0)
+        var eng := lerpf(0.88, 0.44, float(i) / 3.0)
+        var bogen := PackedVector2Array()
+        # Dreizehn Stuetzstellen und nicht neun: ueber hundertzwanzig Grad
+        # sind neun ein Vieleck, und eine Platte mit sichtbaren Ecken ist
+        # wieder eine gezeichnete Linie statt einer Woelbung.
+        for j in 13:
+            var w := lerpf(-PI * 0.60, PI * 0.60, float(j) / 12.0)
+            bogen.append(p + (k * cos(w) * 0.96 + quer * sin(w) * 1.22)
+                * r * atem * eng)
+        _rille(bogen, Color(0.06, 0.02, 0.04, 0.50),
+            Color(1.0, 0.96, 0.92, 0.20 + 0.36 * hitze), k * 2.0)
 
     # Ein Kranz aus Augen. Kein einzelnes grosses - viele kleine wirken auf
     # einem Telefon groesser als eines, das man fuer einen Reflex haelt.
@@ -2398,13 +2430,49 @@ func _kalkrochen(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -
 
     # Der Schild: breit quer zur Bahn, vorn stumpf, hinten spitz. Die
     # Wellenkante an den Flanken ist das, woran ein Rochen erkannt wird.
+    # **Seine hintere Haelfte waren zwei gerade Linien.** Die Vorderkante ist
+    # eine Parabel ueber die ganze Spannweite, und danach ging es mit *einem*
+    # Punkt (`p - k * r * 0,62`) zurueck: von jeder Fluegelspitze eine Gerade
+    # zu einer Heckspitze. Im Bild war der Kalkrochen deshalb ein Dreieck -
+    # ein Lampenschirm mit Streifen -, und zwar in einem Spiel, dessen erste
+    # Regel lautet, dass es keine geraden Kanten gibt.
+    #
+    # Die Hinterkante bekommt jetzt ihre eigene Kurve, und sie ist **konkav**:
+    # das ist das, woran man einen Rochen von hinten erkennt. Der Schwanz
+    # tritt aus ihrer Mitte aus, statt ihre Spitze zu sein.
     var schild := PackedVector2Array()
     for i in 19:
         var u := lerpf(-1.0, 1.0, float(i) / 18.0)
         var laengs := (1.0 - u * u) * 0.86 - 0.14
         var flatter := 0.08 * sin(u * 5.4 + t.alter * 2.2)
         schild.append(p + k * r * laengs + quer * r * u * (1.36 + flatter))
-    schild.append(p - k * r * 0.62)
+    # **Die Hinterkante wird als Dicke unter der Vorderkante gebaut, nicht
+    # als eigene Kurve.** Der erste Anlauf gab ihr eine eigene Formel und
+    # traf die Fluegelspitzen nicht: der Umriss schnitt sich selbst, vier Mal
+    # `triangulation failed` je Lauf, und das Tier fehlte im Bild. Wer eine
+    # Flaeche aus zwei Kanten baut, sorgt dafuer, dass die eine nie ueber die
+    # andere laeuft - hier, indem `dicke` konstruktionsbedingt nie negativ
+    # wird und an beiden Spitzen genau null ist.
+    #
+    # Der Exponent macht die Kante konkav, und er geht **andersherum, als
+    # man denkt**: je *groesser* er ist, desto kleiner wird `dicke` abseits
+    # der Mitte, desto weiter zieht die Hinterkante nach vorn. Mit 0,75
+    # gemessen lag sie nur 0,09 Radien vor ihrer Sehne - auf diesem Tier ein
+    # paar Bildpunkte, also nicht da. Mit 1,4 sind es 0,38: der Fluegel wird
+    # zur Spitze hin duenn und der Leib bleibt in der Mitte tief, und genau
+    # das ist die Silhouette eines Rochens.
+    # **Bis 11 und nicht bis 12.** Bei `i = 12` waere `u = -1`, und dort
+    # liegt schon der erste Punkt der Vorderkante: ein doppelter Eckpunkt,
+    # und die Zerlegung faellt darueber (zwei `triangulation failed` je Lauf,
+    # stumm - das Tier fehlt dann einfach). An den Spitzen ist `dicke` genau
+    # null, die beiden Kanten treffen sich dort also ohnehin.
+    for i in range(1, 12):
+        var u := lerpf(1.0, -1.0, float(i) / 12.0)
+        var flatter := 0.08 * sin(u * 5.4 + t.alter * 2.2)
+        var vorn := (1.0 - u * u) * 0.86 - 0.14
+        var dicke := 1.34 * pow(1.0 - absf(u), 1.4)
+        schild.append(p + k * r * (vorn - dicke)
+            + quer * r * u * (1.36 + flatter))
     _zellkoerper(schild, farbe, hitze, t.richtung)
 
     # **Die Platten sind seine Regel.** Dieselbe Bildsprache wie bei der
@@ -2419,15 +2487,29 @@ func _kalkrochen(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -
     # eine eigene Interpolation, und die stand an den Flanken ueber den
     # Umriss hinaus - im Bild ragten die Platten aus dem Tier heraus wie
     # Speichen. Zwei Beschreibungen derselben Form laufen auseinander, immer.
+    # **Und die Platten waren fuenf gerade Sehnen quer durch das Tier.**
+    # Parallel, gleich lang gestuft, von Flanke zu Flanke - im Bild die
+    # Streifen eines Lampenschirms. Eine Platte auf einem gewoelbten Schild
+    # folgt aber seiner Woelbung; gerade Sehnen sagen "flach", und genau das
+    # soll dieses Tier nicht sein. Sie laufen jetzt auf derselben
+    # `(1 - u²)`-Kurve wie der Umriss, also parallel zur Vorderkante, und
+    # `_rille()` zeichnet sie wie jede Fuge hier: dunkel mit heller Lippe
+    # auf der Lichtseite.
+    # Sie liegen als Anteil der **oertlichen Dicke** zwischen Vorder- und
+    # Hinterkante, nicht auf einer eigenen Tiefe: so faechern sie ueber den
+    # ganzen Leib auf, statt sich an der Vorderkante zu draengen, und keine
+    # Platte kann aus dem Tier herausragen.
     for i in 5:
-        var u := lerpf(0.26, 0.94, float(i) / 4.0)
-        var y := (1.0 - u * u) * 0.86 - 0.14
-        var halb := r * u * 1.30
-        var a := p + k * r * y + quer * halb
-        var b := p + k * r * y - quer * halb
-        draw_line(a, b, Color(0.05, 0.04, 0.03, 0.55), 3.4)
-        draw_line(a - k * 2.0, b - k * 2.0,
-            Color(1.0, 0.98, 0.92, 0.30 + 0.40 * hitze), 1.8)
+        var tief := lerpf(0.16, 0.86, float(i) / 4.0)
+        var bogen := PackedVector2Array()
+        for j in 11:
+            var u := lerpf(-0.92, 0.92, float(j) / 10.0)
+            var vorn := (1.0 - u * u) * 0.86 - 0.14
+            var dicke := 1.34 * pow(1.0 - absf(u), 1.4)
+            bogen.append(p + k * r * (vorn - dicke * tief)
+                + quer * r * u * 1.30)
+        _rille(bogen, Color(0.05, 0.04, 0.03, 0.55),
+            Color(1.0, 0.98, 0.92, 0.30 + 0.40 * hitze), -k * 2.0)
 
     for seite: float in SEITEN:
         _auge(p + k * r * 0.44 + quer * r * seite * 0.30, r * 0.11, hitze, farbe)
