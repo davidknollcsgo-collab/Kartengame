@@ -2042,12 +2042,43 @@ zeichnet. Gemessen an harten Sprüngen zwischen Nachbarpixeln:
 Rund neun Prozent weniger, und es kostet nichts messbares (5,35 gegen 5,45
 Bilder/s, zwei Stichproben je Stand).
 
-**Der eigentliche Hebel ist Überabtastung, und er ist gemessen.** Dieselbe
-Szene bei 1440×3200 gerendert und auf 720×1600 heruntergerechnet — also genau
-das, was ein SubViewport bei 2× täte — ist im Bild deutlich glatter als der
-direkte Lauf: Rumpf, Flossen, Bandgrenzen und Bullaugenring sind sauber statt
-gestuft. Der Preis ist die vierfache Füllrate, und genau die ist hier der
-Engpass.
+**Der eigentliche Hebel ist Überabtastung, und sie ist jetzt eingebaut.**
+Die Welt hängt in einem `SubViewport`, der **feiner rastert als das Fenster**;
+ein `TextureRect` rechnet ihn herunter. Das Bedienbild bleibt draußen —
+Schrift und Tafeln werden ohnehin scharf gezeichnet und würden vom
+Herunterrechnen nur weicher.
+
+`size_2d_override_stretch` hält die Weltkoordinaten dort, wo sie waren:
+gerastert wird feiner, **gerechnet wird in denselben Einheiten**. Ohne das
+wäre jede Zahl in diesem Spiel um den Faktor daneben und Zusage 23 gebrochen.
+Der Maßstab wird aus `stretch/mode="canvas_items"` mit `aspect="expand"`
+nachgebaut, also `min(W/720, H/1280)`.
+
+Gemessen, harte Sprünge zwischen Nachbarpixeln am Boot, und der Preis dazu:
+
+| Überabtastung | harte Sprünge | Bilder/s |
+|---|---|---|
+| 1,0 (nur der Zug) | 4,65 % | 5,35 |
+| **1,5** | **3,02 %** | **2,9** |
+| 2,0 | 2,98 % | 2,15 |
+
+**1,5 ist genauso glatt wie 2,0 und kostet ein Drittel weniger** — deshalb
+steht dort 1,5 und nicht die runde Zahl. Gegenüber dem bloßen Zug sind es
+**36 % weniger harte Sprünge**, also viermal so viel, wie der Zug allein
+gebracht hat.
+
+Zwei Dinge, die dabei zu wissen sind. **Der Puffer wird zur Laufzeit gebaut
+und die Weltknoten werden umgehängt**, nicht in der Szene verschoben: so
+bleiben alle `@onready`-Referenzen gültig und `_takte_geschwister()` findet
+seine Knoten. Und **der Fingerpunkt fragt jetzt den Puffer**, nicht das
+Fenster — dort hängt die Kamera.
+
+**Und das Bild wird dabei heller (Mitte 35,9 → 45,4), das ist kein Fehler.**
+Bei feinerer Abtastung überleben dünne helle Dinge, die vorher zwischen zwei
+Bildpunkte fielen; ein dunkles Bild voller kleiner Lichter wird davon heller.
+Der Verdacht, es sei der HDR-Pfad, ist gemessen und erklärt nur einen Teil
+(ohne HDR im Puffer: 41,4 statt 45,4) — und HDR muss an bleiben, weil das
+Glühen daran hängt.
 
 **Aber der Behälter misst schlechter als jedes Telefon.** `stretch/mode` steht
 auf `canvas_items`, und in diesem Modus zeichnet Godot die Canvas in der

@@ -393,6 +393,7 @@ func _ready() -> void:
         # waere.
         Fortschritt.stand.naehrstoffe = \
             Kammern.rundenkosten(_stufen_ab) * 0.5
+    _baue_ueberabtastung()
     karte = Karte.new(Rundum.FELD_RADIUS)
     _grund.karte = null if _offene_karte else karte
     karte.decke_auf(_ort)
@@ -1530,7 +1531,13 @@ func _unhandled_input(ereignis: InputEvent) -> void:
 
 
 func _welt(bild: Vector2) -> Vector2:
-    return get_viewport().get_canvas_transform().affine_inverse() * bild
+    # **Die Kamera haengt im Weltpuffer**, also gilt dessen Abbildung und
+    # nicht die des Fensters. Mit `size_2d_override_stretch` rechnet der
+    # Puffer in denselben Einheiten wie das Bedienbild, der Fingerpunkt
+    # kommt also unveraendert an - nur der Knoten, den man fragt, ist ein
+    # anderer.
+    var sicht: Viewport = _weltpuffer if _weltpuffer != null else get_viewport()
+    return sicht.get_canvas_transform().affine_inverse() * bild
 
 
 # --- Zeichnen ---------------------------------------------------------------
@@ -2651,6 +2658,84 @@ func _spiele_vor() -> void:
 ## keiner** - dieselbe Lehre wie bei `tools/artenkosten.gd`, das Anmarsch
 ## als Kegelzeit zählte. Der Vorlauf treibt jetzt jeden Knoten, der ein
 ## eigenes `_process` führt.
+
+## --- Ueberabtastung ---------------------------------------------------------
+##
+## **Gefuellte Flaechen sind in Godot nicht kantengeglaettet**, und MSAA-2D
+## kann der Kompatibilitaets-Renderer nicht (4.5 meldet beim Start "2D MSAA is
+## not yet supported for GLES3"). Ein Zug derselben Farbe um jede Fuellkante
+## nimmt rund neun Prozent der harten Spruenge - gemessen, aber eben nur neun.
+##
+## Was es wirklich loest, ist die Welt **feiner zu rastern als das Fenster**
+## und das Ergebnis herunterzurechnen. Gemessen im Vergleich 1440x3200 auf
+## 720x1600: Rumpf, Flossen, Bandgrenzen und Bullaugenring sauber statt
+## gestuft.
+##
+## Die Welt haengt dafuer in einem `SubViewport`, das Bedienbild **nicht** -
+## Schrift und Tafeln werden ohnehin scharf gezeichnet und wuerden vom
+## Herunterrechnen nur weicher.
+const UEBERABTASTUNG := 1.5
+
+var _weltpuffer: SubViewport = null
+var _weltbild: TextureRect = null
+
+
+func _baue_ueberabtastung() -> void:
+    _weltpuffer = SubViewport.new()
+    _weltpuffer.name = "Welt"
+    _weltpuffer.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+    _weltpuffer.transparent_bg = false
+    _weltpuffer.handle_input_locally = false
+    # `size_2d_override` haelt die Weltkoordinaten dort, wo sie vorher waren:
+    # gerastert wird feiner, gerechnet wird in denselben Einheiten. Ohne das
+    # waere jede Zahl in diesem Spiel um den Faktor daneben.
+    _weltpuffer.size_2d_override_stretch = true
+    _weltpuffer.use_hdr_2d = true
+    add_child(_weltpuffer)
+
+    var lage := CanvasLayer.new()
+    lage.name = "Weltbild"
+    lage.layer = -20
+    add_child(lage)
+    _weltbild = TextureRect.new()
+    _weltbild.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+    _weltbild.stretch_mode = TextureRect.STRETCH_SCALE
+    _weltbild.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+    _weltbild.set_anchors_preset(Control.PRESET_FULL_RECT)
+    _weltbild.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    lage.add_child(_weltbild)
+
+    for kind: String in ["Wasser", "Leuchten", "Kamera", "Grund", "Saum",
+            "Wild", "Kegel", "Funken", "Schwarm", "Vorn"]:
+        var k := get_node_or_null(NodePath(kind))
+        if k != null:
+            remove_child(k)
+            _weltpuffer.add_child(k)
+    _stelle_welt_ein()
+    _weltbild.texture = _weltpuffer.get_texture()
+    get_tree().root.size_changed.connect(_stelle_welt_ein)
+
+
+## Die Groesse des Weltpuffers dem Fenster nachfuehren.
+##
+## `size` ist die Rasterung, `size_2d_override` die Rechnung. Der Massstab
+## ist derselbe, den `stretch/mode="canvas_items"` mit `aspect="expand"` auf
+## das Fenster legt - sonst zeigte die Welt einen anderen Ausschnitt als
+## bisher, und Zusage 23 (der Eintrittsrand darf nie ins Bild) waere
+## gebrochen.
+func _stelle_welt_ein() -> void:
+    if _weltpuffer == null:
+        return
+    var f := get_window().size
+    var grund := Vector2(
+        ProjectSettings.get_setting("display/window/size/viewport_width", 720),
+        ProjectSettings.get_setting("display/window/size/viewport_height", 1280))
+    var s := maxf(0.001, minf(float(f.x) / grund.x, float(f.y) / grund.y))
+    _weltpuffer.size = Vector2i(int(round(f.x * UEBERABTASTUNG)),
+        int(round(f.y * UEBERABTASTUNG)))
+    _weltpuffer.size_2d_override = Vector2i(int(round(f.x / s)),
+        int(round(f.y / s)))
+
 func _takte_geschwister(takt: float) -> void:
     # Das Bedienbild gehoert dazu: es fuehrt eigene Zustaende, die von der
     # Fahrt abhaengen - der Geisterbalken der Huelle zum Beispiel. Ohne
