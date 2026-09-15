@@ -1832,6 +1832,31 @@ das Vorhandene. Der Schaden schrie, die Hülle flüsterte. Eine ruhige
 Anzeige zeigt, was **da** ist; wo nichts ist, ist eine Lücke, und eine
 Lücke braucht keine Farbe.
 
+**Der helle Rand des Felsens war ein Ring, und die Antwort stand schon in
+dieser Datei.** Er lief mit *einer* Deckung über sein ganzes Stück und brach
+dort ab — im Bild ein gleichmäßig heller Zug um den Stein, das Lauteste im
+ganzen Ausschnitt, und er umriss eine Form, die man ohnehin sieht. Der
+Absatz darüber hatte für die *Fläche* schon abgeschafft, was er für die
+*Kante* stehen ließ: `glanz_hell` war das Höchste über den ganzen Zug und
+galt dann für jeden seiner Punkte.
+
+Stillgestellt gemessen bleibt der Fels vollständig lesbar — Wölbung und
+Saum tragen ihn. Weg darf der Zug trotzdem nicht: die vorderste Lage ist
+die, an der das Boot anstößt. Er läuft jetzt aus, je Punkt so hell, wie
+sich dieser Punkt dem Licht zuwendet, und damit an beiden Enden auf null.
+Gemessen im Umriss eines Steins, Bildpunkte über 175: **167 mit dem alten
+Zug, 110 ganz ohne ihn, 116 mit dem auslaufenden** — er gibt neun Zehntel
+seiner Lautstärke ab und bleibt da.
+
+**Und eine Warnung zum Messstand selbst.** Der Bodenschmuck sah in einer
+Fünffach-Vergrößerung aus wie weißes Konfetti: harte Rechtecke und
+Dreiecke, heller als der Sand. Nachgemessen ist er **nicht** heller (Sand
+113, Röhrchen 135 und 89, Scherbe 110 im Median), und bei zweifacher
+Vergrößerung — der Größe, in der ein Spieler ihn sieht — liest er sich als
+Streu auf Sediment. Was ich für Balken hielt, waren geglättete Linien von
+1,6 Pixeln, von der Vergrößerung auseinandergezogen. **Wer eine Form
+beurteilt, sieht sie in der Größe an, in der sie gespielt wird.**
+
 **Zwei Zahlen, die zueinander passen müssen, altern getrennt.** Gemessen im
 Spielbild: Fels (1 / 17 / 22), Wasser einen Zentimeter daneben (2 / 17 /
 22) — **identisch.** Übrig blieb die Umrisslinie, also wieder ein

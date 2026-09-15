@@ -1021,19 +1021,27 @@ func _kuppel(f: Dictionary, kraft: float) -> void:
     # Alles-oder-nichts wie bei der Flaeche, nur leichter ausgeloest. Der
     # Zug wird deshalb mit der Helligkeit seines eigenen Stuecks gezogen.
     var grundrand := 0.11 if bool(f.get(&"fest", false)) else 0.04
+    # **Und die Staerke steht je Punkt, nicht je Stueck.** `glanz_hell` war
+    # das Hoechste ueber den ganzen Zug und galt dann fuer jeden seiner
+    # Punkte - also dasselbe Alles-oder-nichts, das der Absatz darueber fuer
+    # den Fels abgeschafft hat, nur eine Stufe feiner. Der Kamm laeuft
+    # zusaetzlich mit der Zuwendung zum Licht aus, damit der Zug an beiden
+    # Enden auf null geht statt abzubrechen.
     var glanz := PackedVector2Array()
-    var glanz_hell := 0.0
+    var staerken := PackedFloat32Array()
     for i in n:
-        if (umriss[i] - mitte).normalized().dot(zum_licht) > 0.10:
+        var zu := (umriss[i] - mitte).normalized().dot(zum_licht)
+        if zu > 0.10:
             glanz.append(umriss[i])
-            glanz_hell = maxf(glanz_hell, _hell_an(hell_ecke, i, hell))
+            staerken.append((grundrand + 0.52 * _hell_an(hell_ecke, i, hell))
+                * kraft * clampf((zu - 0.10) / 0.62, 0.0, 1.0))
         else:
             if glanz.size() > 1:
-                _kantenzug(glanz, (grundrand + 0.52 * glanz_hell) * kraft)
+                _kantenzug(glanz, staerken)
             glanz = PackedVector2Array()
-            glanz_hell = 0.0
+            staerken = PackedFloat32Array()
     if glanz.size() > 1:
-        _kantenzug(glanz, (grundrand + 0.52 * glanz_hell) * kraft)
+        _kantenzug(glanz, staerken)
 
     # Risse nur, wo das Licht sie findet. Ein Riss, den man auch im Dunkeln
     # sieht, ist aufgemalt.
@@ -1052,10 +1060,28 @@ func _hell_an(ecke: PackedFloat32Array, i: int, ganz: float) -> float:
     return ecke[i] if i < ecke.size() else ganz
 
 
-func _kantenzug(punkte: PackedVector2Array, staerke: float) -> void:
-    draw_polyline(punkte, Color(0.42, 0.68, 0.74,
-        staerke * 0.22), 5.0, true)
-    draw_polyline(punkte, Color(0.72, 0.90, 0.94, staerke), 1.4, true)
+## **Der Rand ist ein Streiflicht, kein Ring.**
+##
+## Er lief mit *einer* Deckung von einem Ende seines Stuecks zum anderen und
+## brach dort ab - im Bild ein gleichmaessig heller Zug um den Stein, das
+## Lauteste im ganzen Ausschnitt, und er umriss eine Form, die man ohnehin
+## sieht. Stillgestellt gemessen bleibt der Fels vollstaendig lesbar: die
+## Woelbung und der Saum tragen ihn.
+##
+## Weg darf er trotzdem nicht - die vorderste Lage ist die, an der das Boot
+## anstoesst. Er laeuft jetzt aber aus: je Punkt so hell, wie dieser Punkt
+## sich dem Licht zuwendet, und damit an beiden Enden auf null. Dieselbe
+## Regel wie ueberall hier - wo ein Uebergang hingehoert, wird keine Kante
+## gezeichnet.
+func _kantenzug(punkte: PackedVector2Array,
+        staerken: PackedFloat32Array) -> void:
+    var hof := PackedColorArray()
+    var kern := PackedColorArray()
+    for s: float in staerken:
+        hof.append(Color(0.42, 0.68, 0.74, s * 0.22))
+        kern.append(Color(0.72, 0.90, 0.94, s))
+    draw_polyline_colors(punkte, hof, 5.0, true)
+    draw_polyline_colors(punkte, kern, 1.4, true)
 
 
 ## Der Ton eines Steins bei gegebener Zuwendung zum Licht.
