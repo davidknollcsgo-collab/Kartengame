@@ -159,7 +159,7 @@ func _fuellung(punkte: PackedVector2Array, farbe: Color) -> void:
         var st := 0.62 + 0.60 * zu * zu
         toene.append(Color(farbe.r * 0.30 * st, farbe.g * 0.30 * st,
             farbe.b * 0.32 * st, minf(1.0, farbe.a * 1.9)))
-    draw_polygon(punkte, toene)
+    _d_polygon(punkte, toene)
 
 
 ## Ein Linienzug. Bei Leuchtroehren zweimal: ein weiter blasser Hof und ein
@@ -185,9 +185,9 @@ func _zug(punkte: PackedVector2Array, farbe: Color, dicke: float) -> void:
     if punkte.size() < 2:
         return
     farbe = _gedeckt(farbe)
-    draw_polyline(punkte, Color(farbe.r, farbe.g, farbe.b,
+    _d_polyline(punkte, Color(farbe.r, farbe.g, farbe.b,
         farbe.a * 0.22), minf(dicke * 3.4, HOF_HOECHSTENS), true)
-    draw_polyline(punkte, Color(minf(1.0, farbe.r * 1.5),
+    _d_polyline(punkte, Color(minf(1.0, farbe.r * 1.5),
         minf(1.0, farbe.g * 1.5), minf(1.0, farbe.b * 1.5),
         minf(1.0, farbe.a * 1.7)), maxf(1.0, dicke * 0.9), true)
 
@@ -195,9 +195,9 @@ func _zug(punkte: PackedVector2Array, farbe: Color, dicke: float) -> void:
 ## Dasselbe fuer eine einzelne Strecke.
 func _strich(a: Vector2, b: Vector2, farbe: Color, dicke: float) -> void:
     farbe = _gedeckt(farbe)
-    draw_line(a, b, Color(farbe.r, farbe.g, farbe.b, farbe.a * 0.22),
+    _d_line(a, b, Color(farbe.r, farbe.g, farbe.b, farbe.a * 0.22),
         minf(dicke * 3.4, HOF_HOECHSTENS), true)
-    draw_line(a, b, Color(minf(1.0, farbe.r * 1.5),
+    _d_line(a, b, Color(minf(1.0, farbe.r * 1.5),
         minf(1.0, farbe.g * 1.5), minf(1.0, farbe.b * 1.5),
         minf(1.0, farbe.a * 1.7)), maxf(1.0, dicke * 0.9), true)
 
@@ -239,11 +239,11 @@ func _leuchtpunkte(p: Vector2, r: float, farbe: Color, t: Raeuber,
             # tragen die Farbe der Art nach aussen und laufen aus. Das ist
             # dieselbe Machart wie bei jeder anderen Leuchtstelle hier -
             # aussen die Art, innen das Licht.
-            draw_circle(wo, gr * 3.2, Color(farbe.r, farbe.g, farbe.b,
+            _d_circle(wo, gr * 3.2, Color(farbe.r, farbe.g, farbe.b,
                 minf(1.0, a) * 0.13))
-            draw_circle(wo, gr * 1.45, Color(farbe.r, farbe.g, farbe.b,
+            _d_circle(wo, gr * 1.45, Color(farbe.r, farbe.g, farbe.b,
                 minf(1.0, a) * 0.34))
-            draw_circle(wo, gr * 0.55,
+            _d_circle(wo, gr * 0.55,
                 Color(hell.r, hell.g, hell.b, minf(1.0, a)))
 
 
@@ -326,10 +326,10 @@ const GLAETTUNG := 1.7
 
 
 func _weiche_flaeche(punkte: PackedVector2Array, f: Color) -> void:
-    draw_colored_polygon(punkte, f)
+    _d_colored_polygon(punkte, f)
     if punkte.size() < 3:
         return
-    draw_polyline(punkte + PackedVector2Array([punkte[0]]), f, GLAETTUNG, true)
+    _d_polyline(punkte + PackedVector2Array([punkte[0]]), f, GLAETTUNG, true)
 
 
 func _gedeckt(farbe: Color) -> Color:
@@ -367,7 +367,27 @@ func _draw() -> void:
         _zeichne_bluete(bluete)
 
     for t in tiere:
-        if not t.lebendig:
+        # **Ein Tier, das noch nicht eingetreten ist, wird nicht gezeichnet.**
+        #
+        # Jede andere Schleife in `rundlauf.gd` fragt `alter < 0.0` ab -
+        # `_bewege()`, der Biss, das Stosslicht, die Zielwahl, die
+        # Uebersichtskarte. Diese hier fragte nur nach `lebendig`, und
+        # `lebendig` steht ab dem Wellenbau. Gezeichnet wurde damit **die
+        # ganze Welle ab dem ersten Bild**, samt der Tiere, deren Auftritt
+        # noch dreissig Sekunden entfernt ist - an dem Ort, an dem sie
+        # angelegt wurden, weil `_bewege()` sie ja ueberspringt.
+        #
+        # Gesehen hat es niemand, weil `_zeichne()` sie uebereinander an
+        # denselben Punkt legt. Gekostet hat es alles: Godot keult in 2D je
+        # **Knoten**, und dieser eine Knoten deckt das ganze Feld ab, also
+        # wird nichts weggekeult. Gemessen bei Welle 40, wo elf Tiere im
+        # Bild stehen: `_laichwolke()` lief sechsundsiebzigmal je Bild und
+        # `_zellblase()` dreihundertsechsundsiebzigmal.
+        #
+        # Genau dieselbe Zahl, die zwei Absaetze weiter oben als `sichtbar`
+        # schon gerechnet wird - sie ging nur in die Sparstufe und nicht in
+        # die Schleife.
+        if not t.lebendig or t.alter < 0.0:
             continue
         deckung = LAUER_DECKUNG if t.lauert else 1.0
         if not t.lauert:
@@ -396,9 +416,9 @@ func _zeichne_bluete(b: Bluete) -> void:
         var w := TAU * float(i) / 10.0 + b.alter * 0.35
         var weit := r * (1.5 + 0.5 * sin(b.alter * 1.7 + float(i)))
         var spitze := p + Vector2(cos(w), sin(w) * 0.8) * weit
-        draw_line(p, spitze, Color(warm.r, warm.g, warm.b,
+        _d_line(p, spitze, Color(warm.r, warm.g, warm.b,
             0.18 + 0.20 * hell + 0.08 * puls), 1.8)
-        draw_circle(spitze, 2.8 + 1.6 * b.hitze,
+        _d_circle(spitze, 2.8 + 1.6 * b.hitze,
             Color(1.0, 0.94, 0.72, 0.52 + 0.4 * hell))
 
     # Die Huelle. Sie oeffnet sich, waehrend die Bluete brennt - das ist die
@@ -406,14 +426,14 @@ func _zeichne_bluete(b: Bluete) -> void:
     for i in 6:
         var w := TAU * float(i) / 6.0 + b.alter * 0.2
         var mitte := p + Vector2(cos(w), sin(w) * 0.82) * r * (0.5 + 0.5 * offen)
-        draw_circle(mitte, r * 0.36,
+        _d_circle(mitte, r * 0.36,
             Color(warm.r, warm.g, warm.b, 0.26 + 0.26 * hell + 0.1 * b.hitze))
 
-    draw_circle(p, r * 1.5, Color(warm.r, warm.g, warm.b, 0.05 + 0.07 * hell))
-    draw_circle(p, r * 0.9, Color(warm.r, warm.g, warm.b, 0.12 + 0.14 * hell))
-    draw_circle(p, r * (0.30 + 0.05 * puls),
+    _d_circle(p, r * 1.5, Color(warm.r, warm.g, warm.b, 0.05 + 0.07 * hell))
+    _d_circle(p, r * 0.9, Color(warm.r, warm.g, warm.b, 0.12 + 0.14 * hell))
+    _d_circle(p, r * (0.30 + 0.05 * puls),
         Color(1.0, 0.90, 0.62, 0.75 + 0.25 * b.hitze))
-    draw_circle(p, r * 0.14, Color(1.0, 1.0, 0.92, 0.95))
+    _d_circle(p, r * 0.14, Color(1.0, 1.0, 0.92, 0.95))
 
 
 ## Ein Wert zwischen 0 und 1, der zu diesem einen Tier gehoert und sich nie
@@ -637,9 +657,9 @@ func _zeichne(t: Raeuber, stufe := 0) -> void:
         var breite := r * 1.5
         var y := p.y - r - 9.0
         var links := p.x - breite * 0.5
-        draw_line(Vector2(links, y), Vector2(links + breite, y),
+        _d_line(Vector2(links, y), Vector2(links + breite, y),
             Color(0.0, 0.0, 0.0, 0.42), 3.0)
-        draw_line(Vector2(links, y), Vector2(links + breite * anteil, y),
+        _d_line(Vector2(links, y), Vector2(links + breite * anteil, y),
             farbe.lerp(Color(1.0, 0.46, 0.38), 1.0 - anteil), 2.6)
 
     # **Der Schlag ist eine Zeichenrichtung, keine Fahrtrichtung.** Er wird
@@ -721,13 +741,13 @@ func _knapp(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> voi
     var schatten := grund.lerp(Color(0.10, 0.20, 0.34), ZELL_BLAU) \
         * Color(ZELL_SCHATTEN, ZELL_SCHATTEN, ZELL_SCHATTEN, 1.0)
     schatten = schatten.lerp(grund, 0.40 * hitze)
-    draw_colored_polygon(leib,
+    _d_colored_polygon(leib,
         _gedeckt(Color(schatten.r, schatten.g, schatten.b, 1.0)))
     var hell := _schnitt(leib, mitte, zum_licht, -r * 0.10, true)
     if hell.size() >= 3:
-        draw_colored_polygon(hell,
+        _d_colored_polygon(hell,
             _gedeckt(Color(grund.r, grund.g, grund.b, 1.0)))
-    draw_polyline(hell if hell.size() >= 2
+    _d_polyline(hell if hell.size() >= 2
         else leib + PackedVector2Array([leib[0]]),
         _gedeckt(Color(1.0, 0.99, 0.96, 0.50 + 0.35 * hitze)), 1.4, true)
     _kennung_umriss(leib)
@@ -770,9 +790,9 @@ func _zug_farben(punkte: PackedVector2Array, farben: PackedColorArray,
     var kern := PackedColorArray()
     for c in farben:
         kern.append(_gedeckt(c))
-    draw_polyline_colors(punkte, hof,
+    _d_polyline_colors(punkte, hof,
         minf(dicke * 3.4, HOF_HOECHSTENS), true)
-    draw_polyline_colors(punkte, kern, dicke, true)
+    _d_polyline_colors(punkte, kern, dicke, true)
 
 
 ## Ein **Gliedmass**: verjuengt, mit Gelenk und Lichtkante.
@@ -836,11 +856,11 @@ func _glied(von: Vector2, nach: Vector2, dick_von: float, dick_nach: float,
     # deshalb den Lichtton und keine Stufen.
     var duenn := maxf(dick_von, dick_nach)
     if duenn < 1.5:
-        draw_colored_polygon(PackedVector2Array([
+        _d_colored_polygon(PackedVector2Array([
             von + quer * dick_von, nach + quer * dick_nach,
             nach - quer * dick_nach, von - quer * dick_von]),
             _gedeckt(Color(licht.r, licht.g, licht.b, a)))
-        draw_line(von, nach, _gedeckt(Color(1.0, 0.99, 0.96,
+        _d_line(von, nach, _gedeckt(Color(1.0, 0.99, 0.96,
             minf(1.0, deckung * 1.2) * 0.42)), 0.8, true)
         return
 
@@ -848,7 +868,7 @@ func _glied(von: Vector2, nach: Vector2, dick_von: float, dick_nach: float,
     # zwischen ihnen ist die Form, und eine Grenze, an der sich zwei
     # Flaechen ueberlappen, ist eine Naht.
     var streifen := func(u0: float, u1: float, ton: Color) -> void:
-        draw_colored_polygon(PackedVector2Array([
+        _d_colored_polygon(PackedVector2Array([
             von + quer * dick_von * u0, nach + quer * dick_nach * u0,
             nach + quer * dick_nach * u1, von + quer * dick_von * u1]),
             _gedeckt(Color(ton.r, ton.g, ton.b, a)))
@@ -862,20 +882,20 @@ func _glied(von: Vector2, nach: Vector2, dick_von: float, dick_nach: float,
     # vom Nachbarglied. Beide halten sich an `deckung`: eine Zierde, die
     # heller strahlt als der Leib, an dem sie haengt, kehrt die Rangfolge
     # um.
-    draw_line(von - quer * dick_von * seit, nach - quer * dick_nach * seit,
+    _d_line(von - quer * dick_von * seit, nach - quer * dick_nach * seit,
         _gedeckt(Color(1.0, 0.99, 0.96, minf(1.0, deckung * 1.2) * 0.75)),
         1.2, true)
-    draw_line(von + quer * dick_von * seit, nach + quer * dick_nach * seit,
+    _d_line(von + quer * dick_von * seit, nach + quer * dick_nach * seit,
         _gedeckt(Color(schatten.r * 0.5, schatten.g * 0.5, schatten.b * 0.5,
         a * 0.85)), 1.0, true)
 
     # **Das Gelenk ist eine Kugel, keine Scheibe.** Ein deckender Knoten und
     # ein kleineres Glanzlicht darauf zur Lichtseite - dieselben zwei Toene
     # wie am Glied, damit das Bein an der Beuge nicht flach wird.
-    draw_circle(von, dick_von * 0.95,
+    _d_circle(von, dick_von * 0.95,
         _gedeckt(Color(grund.r, grund.g, grund.b, a)))
     if dick_von > 1.6:
-        draw_circle(von - quer * dick_von * 0.34 * seit, dick_von * 0.40,
+        _d_circle(von - quer * dick_von * 0.34 * seit, dick_von * 0.40,
             _gedeckt(Color(licht.r, licht.g, licht.b, a * 0.9)))
 
 
@@ -1081,7 +1101,7 @@ func _dunkelleib(ruecken: PackedVector2Array, profil: PackedFloat32Array,
             var f := maxf(0.0, quer.dot(zum_licht) * seite)
             toene.append(_gedeckt(Color(farbe.r, farbe.g, farbe.b,
                 (0.10 + 0.50 * f) * (0.55 + 0.45 * hitze))))
-        draw_polyline_colors(weg, toene, 1.3, true)
+        _d_polyline_colors(weg, toene, 1.3, true)
 
 
 ## Eine Reihe Leuchtorgane auf einem Weg, durch die ein Puls laeuft.
@@ -1114,18 +1134,18 @@ func _organe(weg: PackedVector2Array, farbe: Color, gross: float,
         # wird nicht gezeichnet. Die Schwelle steht am Radius und nicht an
         # der Tierzahl, weil ein Organ von einem Pixel bei zwei Tieren
         # genauso unsichtbar ist wie bei achtzig.
-        draw_circle(weg[i], r * 2.4,
+        _d_circle(weg[i], r * 2.4,
             _gedeckt(Color(farbe.r, farbe.g, farbe.b, 0.10 * kraft)))
         if r < 1.6:
             # Ein einziger Kreis, aber in der Kernfarbe: was uebrig bleibt,
             # soll der helle Punkt sein und nicht der blasse Koerper.
-            draw_circle(weg[i], r,
+            _d_circle(weg[i], r,
                 _gedeckt(Color(hell.r, hell.g, hell.b,
                     0.55 + 0.35 * kraft)))
             continue
-        draw_circle(weg[i], r,
+        _d_circle(weg[i], r,
             _gedeckt(Color(farbe.r, farbe.g, farbe.b, 0.55 * kraft)))
-        draw_circle(weg[i], r * 0.46,
+        _d_circle(weg[i], r * 0.46,
             _gedeckt(Color(hell.r, hell.g, hell.b, 0.60 + 0.40 * kraft)))
 
 
@@ -1241,7 +1261,7 @@ func _leib(ruecken: PackedVector2Array, profil: PackedFloat32Array,
             var f := 0.34 + 0.66 * maxf(0.0, quer.dot(zum_licht) * seite)
             toene.append(_gedeckt(Color(kante.r, kante.g, kante.b,
                 (0.62 + 0.38 * hitze) * f)))
-        draw_polyline_colors(weg, toene, 1.5 + 0.7 * hitze, true)
+        _d_polyline_colors(weg, toene, 1.5 + 0.7 * hitze, true)
 
 
 ## Rueckgrat und Profil eines Fisches: ein Bogen mit Schlag, und eine Breite,
@@ -1339,7 +1359,7 @@ func _koerper(punkte: PackedVector2Array, farbe: Color, hitze: float,
         var hell := 0.25 + 0.75 * st
         toene.append(Color(tief.r * hell, tief.g * hell, tief.b * hell,
             (0.86 + 0.12 * zu) * kern))
-    draw_polygon(rund, toene)
+    _d_polygon(rund, toene)
 
     # **Der Umriss hat eine Lichtseite.**
     #
@@ -1374,7 +1394,7 @@ func _koerper(punkte: PackedVector2Array, farbe: Color, hitze: float,
         var f: float = seite[i % seite.size()]
         hof.append(_gedeckt(Color(farbe.r, farbe.g, farbe.b,
             (0.20 + 0.26 * hitze) * f)))
-    draw_polyline_colors(geschlossen, hof, 4.2, true)
+    _d_polyline_colors(geschlossen, hof, 4.2, true)
     # **Der Umriss traegt die Farbe der Art, nicht Weiss.**
     #
     # Er stand im Ruhezustand schon auf 45 % Weiss, und darueber liegt die
@@ -1391,7 +1411,7 @@ func _koerper(punkte: PackedVector2Array, farbe: Color, hitze: float,
         var f: float = seite[i % seite.size()]
         kern_farben.append(_gedeckt(Color(kante.r, kante.g, kante.b,
             0.30 + 0.70 * f)))
-    draw_polyline_colors(geschlossen, kern_farben, 1.5 + 0.7 * hitze, true)
+    _d_polyline_colors(geschlossen, kern_farben, 1.5 + 0.7 * hitze, true)
 
     _inneres(rund, mitte, achse, farbe, hitze)
 
@@ -1538,13 +1558,13 @@ func _rille(weg: PackedVector2Array, dunkel: Color, hell: Color,
         lippe: Vector2) -> void:
     if weg.size() < 2:
         return
-    draw_polyline(weg, _gedeckt(dunkel), 2.2, true)
+    _d_polyline(weg, _gedeckt(dunkel), 2.2, true)
     if lippe == Vector2.ZERO:
         return
     var oben := PackedVector2Array()
     for v in weg:
         oben.append(v + lippe)
-    draw_polyline(oben, _gedeckt(hell), 1.0, true)
+    _d_polyline(oben, _gedeckt(hell), 1.0, true)
 
 
 ## Die Laengsachse eines Umrisses: die Richtung zur weitesten Ecke.
@@ -1601,9 +1621,9 @@ func _mitte(punkte: PackedVector2Array) -> Vector2:
 ## ueberall gleich, und was es umgibt, gehoert dem Tier.
 func _auge(p: Vector2, r: float, hitze: float,
         farbe := Color(0.30, 0.52, 0.60)) -> void:
-    draw_circle(p, r * 2.4, Color(farbe.r, farbe.g, farbe.b, 0.16))
-    draw_circle(p, r * 1.5, Color(farbe.r, farbe.g, farbe.b, 0.30))
-    draw_circle(p, r, Color(1.0, 0.94, 0.78, 0.75 + 0.25 * hitze))
+    _d_circle(p, r * 2.4, Color(farbe.r, farbe.g, farbe.b, 0.16))
+    _d_circle(p, r * 1.5, Color(farbe.r, farbe.g, farbe.b, 0.30))
+    _d_circle(p, r, Color(1.0, 0.94, 0.78, 0.75 + 0.25 * hitze))
 
 
 ## Der Zahnkiefer: **Kopf, Maul, Angel** - in dieser Reihenfolge.
@@ -1720,7 +1740,7 @@ func _zahnkiefer(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -
             var u := lerpf(0.30, 0.88, float(i) / 2.0)
             var wo := gelenk.lerp(ecke, u)
             var tief: float = r * (0.20 - 0.05 * float(i)) * seite
-            draw_colored_polygon(PackedVector2Array([
+            _d_colored_polygon(PackedVector2Array([
                 wo - k * r * 0.09, wo + k * r * 0.09, wo - quer * tief]),
                 Color(0.96, 1.0, 1.0, 0.60 + 0.30 * hitze))
 
@@ -1739,8 +1759,8 @@ func _zahnkiefer(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -
         var u := float(i) / 6.0
         bogen.append(wurzel.lerp(mitte, u).lerp(mitte.lerp(spitze, u), u))
     _zug(bogen, Color(farbe.r, farbe.g, farbe.b, 0.34 + 0.22 * hitze), 1.0)
-    draw_circle(spitze, r * 0.34, Color(farbe.r, farbe.g, farbe.b, 0.16))
-    draw_circle(spitze, r * 0.17,
+    _d_circle(spitze, r * 0.34, Color(farbe.r, farbe.g, farbe.b, 0.16))
+    _d_circle(spitze, r * 0.17,
         Color(0.94, 1.0, 0.98, 0.75 + 0.25 * hitze))
 
 
@@ -1832,7 +1852,7 @@ func _schleier(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> 
         var kelchton := Color(farbe.r, farbe.g, farbe.b).lerp(
             Color(0.10, 0.20, 0.30), 0.42)
         _kennung_umriss(kelch)
-        draw_colored_polygon(kelch, _gedeckt(Color(kelchton.r, kelchton.g,
+        _d_colored_polygon(kelch, _gedeckt(Color(kelchton.r, kelchton.g,
             kelchton.b, 0.62 + 0.24 * hitze)))
         _zug(kelch + PackedVector2Array([kelch[0]]),
             Color(farbe.r, farbe.g, farbe.b, 0.20 + 0.24 * hitze), 1.0)
@@ -1840,11 +1860,11 @@ func _schleier(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> 
     # **Die Gasblase vorn** - das Einzige an ihr, was hell ist, und der
     # Grund, warum sie oben schwimmt.
     var blase := stamm[0] + k * r * 0.18
-    draw_circle(blase, r * 0.68,
+    _d_circle(blase, r * 0.68,
         _gedeckt(Color(farbe.r, farbe.g, farbe.b, 0.13 + 0.14 * hitze)))
-    draw_circle(blase, r * 0.46,
+    _d_circle(blase, r * 0.46,
         _gedeckt(Color(farbe.r, farbe.g, farbe.b, 0.26 + 0.26 * hitze)))
-    draw_circle(blase, r * 0.22,
+    _d_circle(blase, r * 0.22,
         _gedeckt(Color(farbe.r, farbe.g, farbe.b, 0.46 + 0.34 * hitze)))
 
     # **Das Leuchtmuster ist die Art.** Eine Reihe Organe am Stamm, durch
@@ -1958,7 +1978,7 @@ func _panzerkrebs(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) 
     for i in 3:
         var s := lerpf(0.30, -0.60, float(i) / 2.0)
         var halb := lerpf(0.86, 0.52, float(i) / 2.0)
-        draw_line(p + k * r * s + quer * r * halb, p + k * r * s - quer * r * halb,
+        _d_line(p + k * r * s + quer * r * halb, p + k * r * s - quer * r * halb,
             Color(farbe.r, farbe.g, farbe.b, 0.30), 1.2)
 
     # Scheren: Oberarm, Unterarm, zwei Klauenhaelften.
@@ -1966,19 +1986,19 @@ func _panzerkrebs(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) 
         var schulter := p + k * r * 0.45 + quer * r * 0.70 * seite
         var gelenk := schulter + k * r * 0.72 + quer * r * 0.52 * seite
         var klaue := gelenk + k * r * 0.62 + quer * r * 0.10 * seite
-        draw_line(schulter, gelenk, Color(farbe.r, farbe.g, farbe.b, 0.60), 4.2)
-        draw_line(gelenk, klaue, Color(farbe.r, farbe.g, farbe.b, 0.55), 3.4)
+        _d_line(schulter, gelenk, Color(farbe.r, farbe.g, farbe.b, 0.60), 4.2)
+        _d_line(gelenk, klaue, Color(farbe.r, farbe.g, farbe.b, 0.55), 3.4)
         var spreizung := (0.26 + 0.18 * rudern) * seite
-        draw_line(klaue, klaue + (k * 0.9 + quer * (0.5 + spreizung) * seite) * r * 0.58,
+        _d_line(klaue, klaue + (k * 0.9 + quer * (0.5 + spreizung) * seite) * r * 0.58,
             farbe.lightened(0.35), 2.4)
-        draw_line(klaue, klaue + (k * 0.9 - quer * (0.2 - spreizung) * seite) * r * 0.58,
+        _d_line(klaue, klaue + (k * 0.9 - quer * (0.2 - spreizung) * seite) * r * 0.58,
             farbe.lightened(0.35), 2.4)
 
     # Stielaugen, wie bei echten Tiefseekrebsen nach vorn gerichtet.
     for seite: float in SEITEN:
         var stiel := p + k * r * 0.55 + quer * r * 0.26 * seite
         var kopf := stiel + k * r * 0.34
-        draw_line(stiel, kopf, Color(farbe.r, farbe.g, farbe.b, 0.5), 1.6)
+        _d_line(stiel, kopf, Color(farbe.r, farbe.g, farbe.b, 0.5), 1.6)
         _auge(kopf, r * 0.17, hitze, farbe)
 
 
@@ -2161,9 +2181,9 @@ func _glutqualle(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -
         _fangarm(wurzel, -k, r * 1.5, r * 0.085, wehen, farbe, 0.26)
 
     var glut := 0.5 + 0.5 * sin(t.alter * 3.0 + t.phase)
-    draw_circle(p, r * (0.40 + 0.06 * glut), Color(1.0, 0.86, 0.72,
+    _d_circle(p, r * (0.40 + 0.06 * glut), Color(1.0, 0.86, 0.72,
         0.55 + 0.45 * hitze))
-    draw_circle(p, r * 0.22, Color(1.0, 0.98, 0.94, 0.85))
+    _d_circle(p, r * 0.22, Color(1.0, 0.98, 0.94, 0.85))
 
 
 func _treibanker(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> void:
@@ -2256,9 +2276,9 @@ func _treibanker(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -
         var von := wurzel_a.lerp(wurzel_b, u)
         var bis := von.lerp(aussen[idx], 0.88)
         var quer_s := (bis - von).orthogonal().normalized() * 0.7
-        draw_line(von, bis, _gedeckt(Color(0.05, 0.10, 0.16,
+        _d_line(von, bis, _gedeckt(Color(0.05, 0.10, 0.16,
             0.52 - 0.20 * hitze)), 1.4, true)
-        draw_line(von + quer_s, bis + quer_s,
+        _d_line(von + quer_s, bis + quer_s,
             _gedeckt(farbe.lerp(Color(1.0, 0.98, 0.94),
             0.24 + 0.40 * hitze) * Color(1, 1, 1, 0.42)), 0.9, true)
 
@@ -2313,7 +2333,7 @@ func _sprungaal(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) ->
 
     # Ein heller Blitz entlang des Leibes, wenn er gerade schiesst.
     if schub > 0.45:
-        draw_line(p - k * r * 1.2, p + k * r * 1.1 * laenge,
+        _d_line(p - k * r * 1.2, p + k * r * 1.1 * laenge,
             Color(1.0, 0.98, 0.92, 0.28 * (schub - 0.45) / 0.55), 2.4)
 
     _auge(p + k * r * 0.48 * laenge, r * 0.17, hitze, farbe)
@@ -2428,7 +2448,7 @@ func _kalkrochen(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -
     var spitz: Vector2 = schwanz[schwanz.size() - 1]
     var vor: Vector2 = schwanz[schwanz.size() - 2]
     var richt := (spitz - vor).normalized()
-    draw_colored_polygon(PackedVector2Array([
+    _d_colored_polygon(PackedVector2Array([
         spitz - richt * r * 0.34 + richt.orthogonal() * r * 0.045,
         spitz - richt * r * 0.34 - richt.orthogonal() * r * 0.045,
         spitz + richt * r * 0.20]),
@@ -2573,7 +2593,7 @@ func _schwarmherz(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) 
     RenderingServer.canvas_item_add_triangle_array(
         get_canvas_item(), netz, ecken, farben)
     for wo in kerne:
-        draw_circle(wo, r * 0.045,
+        _d_circle(wo, r * 0.045,
             Color(0.92, 1.0, 0.96, 0.55 + 0.35 * hitze), true, -1.0, true)
 
     var kern := PackedVector2Array()
@@ -2616,7 +2636,7 @@ func _randlicht(p: Vector2, r: float, farbe: Color, t: Raeuber) -> void:
     # Wasser, der zu nichts gehoert. Die Lichtseite macht jetzt `_koerper()`
     # auf dem echten Umriss; was hier bleibt, ist ein Schein im Wasser
     # davor, und der darf rund sein, weil er keine Kante behauptet.
-    draw_circle(p + (lichtquelle - p).normalized() * r * 0.55,
+    _d_circle(p + (lichtquelle - p).normalized() * r * 0.55,
         r * 0.75, Color(farbe.r, farbe.g, farbe.b, 0.10 * staerke))
     var _b := bogen
 
@@ -2638,7 +2658,7 @@ func _kielwasser(p: Vector2, r: float, farbe: Color, t: Raeuber) -> void:
     for i in 3:
         var f := float(i + 1) / 3.0
         var wo := p + zurueck * r * (0.9 + 2.4 * f) * kraft
-        draw_circle(wo, r * (0.62 - 0.17 * float(i)),
+        _d_circle(wo, r * (0.62 - 0.17 * float(i)),
             Color(farbe.r, farbe.g, farbe.b, (0.16 - 0.045 * float(i)) * kraft))
 
 
@@ -2716,7 +2736,7 @@ func _laichwolke(p: Vector2, r: float, farbe: Color, t: Raeuber,
         # genau in der Mitte ist ein Ziel, keine Zelle.
         var keim: Vector2 = orte[i] + quer * groessen[i] * 0.26 \
             - k * groessen[i] * 0.18
-        draw_circle(keim, groessen[i] * 0.26,
+        _d_circle(keim, groessen[i] * 0.26,
             _gedeckt(Color(1.0, 0.96, 0.88, 0.55 + 0.40 * atem)))
 
     # Ein paar Wimpern am vordersten Rand, in einer Welle. Sie sagen, wohin
@@ -2725,7 +2745,7 @@ func _laichwolke(p: Vector2, r: float, farbe: Color, t: Raeuber,
         var w := lerpf(-0.9, 0.9, float(j) / 3.0)
         var wurzel := orte[0] + (k * cos(w) + quer * sin(w)) * groessen[0]
         var welle := sin(t.alter * 7.0 + float(j) * 1.4 + t.phase) * 0.34
-        draw_line(wurzel, wurzel + (k * cos(w + welle)
+        _d_line(wurzel, wurzel + (k * cos(w + welle)
             + quer * sin(w + welle)) * r * 0.42,
             Color(farbe.r, farbe.g, farbe.b, 0.26 + 0.20 * hitze), 1.0)
 
@@ -2932,13 +2952,13 @@ func _ringmaul(p: Vector2, r: float, farbe: Color, t: Raeuber,
         var aussen := p + strahl * r * 0.76
         var spitze := p + strahl * r * lang
         var breit := strahl.orthogonal() * r * 0.075
-        draw_colored_polygon(PackedVector2Array([
+        _d_colored_polygon(PackedVector2Array([
             aussen + breit, aussen - breit, spitze]),
             _gedeckt(Color(1.0, 0.96, 0.90, 0.62 + 0.28 * hitze)))
         # Eine Kante am Zahn, damit er nicht flach auf dem Ring liegt.
-        draw_line(aussen + breit, spitze,
+        _d_line(aussen + breit, spitze,
             _gedeckt(Color(1.0, 1.0, 0.98, 0.34 + 0.30 * hitze)), 1.0, true)
-    draw_circle(p, r * (0.20 + 0.05 * atem),
+    _d_circle(p, r * (0.20 + 0.05 * atem),
         Color(farbe.r, farbe.g, farbe.b, 0.55))
     _auge(p + k * r * 0.1, r * 0.16, hitze, farbe)
 
@@ -3027,14 +3047,14 @@ func _brutstock(p: Vector2, r: float, farbe: Color, t: Raeuber,
         var gross := r * (0.10 + 0.08 * reif * (1.0 - u))
         var beere := Color(minf(1.0, farbe.r * 1.3), minf(1.0, farbe.g * 1.3),
             minf(1.0, farbe.b * 1.3))
-        draw_circle(spitze, gross * 1.6, _gedeckt(Color(beere.r, beere.g,
+        _d_circle(spitze, gross * 1.6, _gedeckt(Color(beere.r, beere.g,
             beere.b, 0.07 + 0.07 * reif)))
-        draw_circle(spitze, gross, _gedeckt(Color(beere.r * 0.62,
+        _d_circle(spitze, gross, _gedeckt(Color(beere.r * 0.62,
             beere.g * 0.62, beere.b * 0.62, 0.62 + 0.30 * reif)))
-        draw_circle(spitze + zum_licht * gross * 0.34, gross * 0.55,
+        _d_circle(spitze + zum_licht * gross * 0.34, gross * 0.55,
             _gedeckt(Color(beere.r, beere.g, beere.b, 0.55 + 0.35 * reif)))
     # Der Ring am Kopf schliesst sich, bis das naechste Junge faellt.
-    draw_arc(p + k * r * 0.62, r * 0.34, -PI * 0.5,
+    _d_arc(p + k * r * 0.62, r * 0.34, -PI * 0.5,
         -PI * 0.5 + TAU * reif, 20,
         Color(1.0, 0.92, 0.98, 0.55 + 0.35 * hitze), 2.0, true)
     _auge(p + k * r * 0.62, r * 0.16, hitze, farbe)
@@ -3199,7 +3219,7 @@ func _spiegler(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> 
                 a1.lerp(mitte_f, 0.46), b1.lerp(mitte_f, 0.46)]),
                 _gedeckt(Color(1.0, 1.0, 0.98, 0.28 + 0.42 * hitze)))
         # Die Facettenkante macht den Sprung sichtbar.
-        draw_line(ga, a1, _gedeckt(Color(farbe.r, farbe.g, farbe.b,
+        _d_line(ga, a1, _gedeckt(Color(farbe.r, farbe.g, farbe.b,
             0.22 + 0.34 * stufe)), 1.0, true)
 
     var zu_r := ecken + PackedVector2Array([ecken[0]])
@@ -3209,7 +3229,7 @@ func _spiegler(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> 
         var kante := farbe.lerp(Color(1.0, 0.99, 0.96), 0.30 + 0.50 * hitze)
         rand.append(_gedeckt(Color(kante.r, kante.g, kante.b,
             0.30 + 0.70 * f)))
-    draw_polyline_colors(zu_r, rand, 1.6, true)
+    _d_polyline_colors(zu_r, rand, 1.6, true)
     # Zwei Facettenkanten laengs - sie fangen das Licht und sagen, dass die
     # Oberflaeche aus Flaechen besteht und nicht aus Haut.
     # **Die frueheren Facettenzuege sind weg.** Es waren zwei Laengskanten
@@ -3228,14 +3248,14 @@ func _spiegler(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -> 
         / 0.45, 0.0, 1.0)
     if blenden > 0.01:
         var glanz := p + k * r * 0.20
-        draw_circle(glanz, r * (0.30 + 0.85 * blenden),
+        _d_circle(glanz, r * (0.30 + 0.85 * blenden),
             Color(0.86, 0.94, 1.0, 0.14 * blenden))
-        draw_circle(glanz, r * (0.16 + 0.34 * blenden),
+        _d_circle(glanz, r * (0.16 + 0.34 * blenden),
             Color(1.0, 1.0, 1.0, 0.42 * blenden))
         # Ein kurzer Strahl zurueck zur Lampe - das Licht kommt von dort,
         # also geht es auch dorthin zurueck.
         var heim := (lichtquelle - p).normalized()
-        draw_line(glanz, glanz + heim * r * (0.8 + 1.6 * blenden),
+        _d_line(glanz, glanz + heim * r * (0.8 + 1.6 * blenden),
             Color(0.92, 0.98, 1.0, 0.30 * blenden), 1.6)
 
     _auge(p + k * r * 0.46, r * 0.13, hitze, farbe)
@@ -3454,9 +3474,9 @@ func _n_glutqualle(p: Vector2, r: float, farbe: Color, t: Raeuber,
     # **Klein.** Er stand auf einem Drittel des Radius, und deckend
     # gezeichnet war das ein weisser Klecks, der den halben Leib einnahm -
     # der eine helle Punkt soll ein Ziel sein, nicht die Art.
-    draw_circle(kern, r * (0.20 + 0.05 * glut),
+    _d_circle(kern, r * (0.20 + 0.05 * glut),
         _gedeckt(Color(1.0, 0.86, 0.72, 0.18 + 0.22 * hitze)))
-    draw_circle(kern, r * (0.10 + 0.03 * glut),
+    _d_circle(kern, r * (0.10 + 0.03 * glut),
         _gedeckt(Color(1.0, 0.94, 0.86, 0.75 + 0.25 * hitze)))
 
 
@@ -3579,7 +3599,7 @@ func _zellleib(ruecken: PackedVector2Array, profil: PackedFloat32Array,
     for w in profil:
         breit = maxf(breit, w)
     if breit < 2.2:
-        draw_colored_polygon(_band(ruecken, profil, -1.0, 1.0),
+        _d_colored_polygon(_band(ruecken, profil, -1.0, 1.0),
             _gedeckt(Color(grund.r, grund.g, grund.b, 1.0)))
         _zellkante(ruecken, profil, seit, schatten, hitze)
         return
@@ -3593,11 +3613,11 @@ func _zellleib(ruecken: PackedVector2Array, profil: PackedFloat32Array,
     # dieselbe Optik bei 40 % weniger Fuellung - und weil die Baender an
     # ihren Grenzen stossen statt sich zu decken, bleibt die Kante scharf,
     # auf die es hier ankommt.
-    draw_colored_polygon(_band(ruecken, profil, -1.0 * seit, -0.44 * seit),
+    _d_colored_polygon(_band(ruecken, profil, -1.0 * seit, -0.44 * seit),
         _gedeckt(Color(licht.r, licht.g, licht.b, 1.0)))
-    draw_colored_polygon(_band(ruecken, profil, -0.44 * seit, 0.16 * seit),
+    _d_colored_polygon(_band(ruecken, profil, -0.44 * seit, 0.16 * seit),
         _gedeckt(Color(grund.r, grund.g, grund.b, 1.0)))
-    draw_colored_polygon(_band(ruecken, profil, 0.16 * seit, 1.0 * seit),
+    _d_colored_polygon(_band(ruecken, profil, 0.16 * seit, 1.0 * seit),
         _gedeckt(Color(schatten.r, schatten.g, schatten.b, 1.0)))
 
     # **Das Glanzlicht.** Eine kleine harte Flaeche im vorderen Drittel,
@@ -3615,7 +3635,7 @@ func _zellleib(ruecken: PackedVector2Array, profil: PackedFloat32Array,
         kurz.append(ruecken[i])
         kurz_p.append(profil[i])
     if kurz.size() >= 2:
-        draw_colored_polygon(_band(kurz, kurz_p, -0.88 * seit, -0.62 * seit),
+        _d_colored_polygon(_band(kurz, kurz_p, -0.88 * seit, -0.62 * seit),
             _gedeckt(Color(1.0, 0.99, 0.96, 0.72 + 0.28 * hitze)))
 
     _zellkante(ruecken, profil, seit, schatten, hitze)
@@ -3735,13 +3755,13 @@ func _zellkoerper(punkte: PackedVector2Array, farbe: Color, hitze: float,
         mitte, zum_licht, g2, true)
     var dunkel_teil := _schnitt(rund, mitte, zum_licht, g2, false)
     if hell_teil.size() >= 3:
-        draw_colored_polygon(hell_teil,
+        _d_colored_polygon(hell_teil,
             _gedeckt(Color(licht.r, licht.g, licht.b, 1.0)))
     if mitte_teil.size() >= 3:
-        draw_colored_polygon(mitte_teil,
+        _d_colored_polygon(mitte_teil,
             _gedeckt(Color(grund.r, grund.g, grund.b, 1.0)))
     if dunkel_teil.size() >= 3:
-        draw_colored_polygon(dunkel_teil,
+        _d_colored_polygon(dunkel_teil,
             _gedeckt(Color(schatten.r, schatten.g, schatten.b, 1.0)))
 
     # **Das Glanzlicht ist eine Flaeche mit scharfem Rand**, kein Schimmer.
@@ -3750,7 +3770,7 @@ func _zellkoerper(punkte: PackedVector2Array, farbe: Color, hitze: float,
     var glanz := _schnitt(rund, mitte, zum_licht,
         lerpf(tmax, tmin, 0.13), true)
     if glanz.size() >= 3:
-        draw_colored_polygon(glanz,
+        _d_colored_polygon(glanz,
             _gedeckt(Color(1.0, 0.99, 0.96, 0.62 + 0.34 * hitze)))
 
     # **Die Kontur, in zwei Laeufen statt in einem Farbverlauf.** Auf
@@ -3862,6 +3882,85 @@ func _zellkoerper(punkte: PackedVector2Array, farbe: Color, hitze: float,
 var _umriss_pass := false
 
 
+## **Ein Durchgang, der nichts zeichnet, darf auch nichts aufrufen.**
+##
+## Der Umrisspass lief bisher durch jede Artfunktion und gab ueber
+## `_gedeckt()` durchsichtige Farben aus. Durchsichtig kostet in der
+## Fuellrate nichts - deshalb war er in Bildern je Sekunde gemessen gratis
+## (2,50 gegen 2,57) und galt hier lange als umsonst. In **Zeichenaufrufen**
+## kostet er den vollen Preis: eine Flaeche mit Deckung null ist ein Aufruf
+## wie jede andere, und ein Telefon-Grafikchip stolpert genau darueber.
+##
+## Nachgemessen, was der Zaehler ueberhaupt zaehlt (eine Flaeche, ein
+## Primitivtyp, N Aufrufe):
+##
+## | Aufruf | Zeichenaufrufe |
+## |---|---|
+## | `draw_colored_polygon` | **1 je Stueck, auch mit Deckung null** |
+## | `draw_polyline` geglaettet | **3 je Zug**, unabhaengig von der Laenge |
+## | `draw_polyline` ungeglaettet | 1 |
+## | `draw_circle` | 1 je Stueck, kein Zusammenfassen |
+## | `draw_line` geglaettet | **50 Stueck = 1 Aufruf** |
+##
+## Damit ist auch die alte Vermutung erledigt, eine geglaettete Polylinie
+## koste einen Aufruf je *Segment*: sie kostet drei, ganz gleich wieviele
+## Punkte sie hat. Die Umstellung auf Dreiecksnetze sparte deshalb genau
+## 869 Aufrufe (rund 290 Zuege mal drei) und nicht die erhofften 1900 - die
+## Zahl ging damals auf, aber aus dem falschen Grund.
+##
+## Diese Huelle ist die Antwort darauf. Jeder Zeichenbefehl dieser Datei
+## laeuft ueber sie und faellt im Umrisspass aus; die einzige Ausnahme ist
+## der Zug in `_kennung_umriss()`, der ruft `draw_polyline` roh auf. Es ist
+## bewusst eine reine Umbenennung des Aufrufnamens - **nicht** ein Ersetzen
+## ganzer Aufrufe: die Tafelumstellung im Bedienbild hat einmal mehrzeilige
+## Aufrufe zerrissen, und der Testlauf blieb dabei gruen.
+func _d_circle(wo: Vector2, radius: float, farbe: Color, gefuellt := true,
+        breite := -1.0, glatt := false) -> void:
+    if _umriss_pass:
+        return
+    draw_circle(wo, radius, farbe, gefuellt, breite, glatt)
+
+
+func _d_line(von: Vector2, nach: Vector2, farbe: Color, breite := -1.0,
+        glatt := false) -> void:
+    if _umriss_pass:
+        return
+    draw_line(von, nach, farbe, breite, glatt)
+
+
+func _d_colored_polygon(punkte: PackedVector2Array, farbe: Color) -> void:
+    if _umriss_pass:
+        return
+    draw_colored_polygon(punkte, farbe)
+
+
+func _d_polyline(punkte: PackedVector2Array, farbe: Color, breite := -1.0,
+        glatt := false) -> void:
+    if _umriss_pass:
+        return
+    draw_polyline(punkte, farbe, breite, glatt)
+
+
+func _d_polyline_colors(punkte: PackedVector2Array, farben: PackedColorArray,
+        breite := -1.0, glatt := false) -> void:
+    if _umriss_pass:
+        return
+    draw_polyline_colors(punkte, farben, breite, glatt)
+
+
+func _d_polygon(punkte: PackedVector2Array, farben: PackedColorArray) -> void:
+    if _umriss_pass:
+        return
+    draw_polygon(punkte, farben)
+
+
+func _d_arc(wo: Vector2, radius: float, von: float, bis: float, stufen: int,
+        farbe: Color, breite := -1.0, glatt := false) -> void:
+    if _umriss_pass:
+        return
+    draw_arc(wo, radius, von, bis, stufen, farbe, breite, glatt)
+
+
 ## **Wie breit der Zug im Umrisspass sein muss, ist eine Rechnung und keine
 ## Wahl.** Er liegt mittig auf dem Umriss, also verschwindet die innere
 ## Haelfte unter der Fuellung. Und darueber laeuft noch der Glaettungszug in
@@ -3924,8 +4023,8 @@ func _kontur(rund: PackedVector2Array, mitte: Vector2, zum_licht: Vector2,
         hell.append(_gedeckt(Color(rand.r, rand.g, rand.b, spitze * f)))
         dunkel.append(_gedeckt(Color(schatten.r * 0.5, schatten.g * 0.5,
             schatten.b * 0.5, 0.9 * g)))
-    draw_polyline_colors(zu, dunkel, 1.4, true)
-    draw_polyline_colors(zu, hell, 1.7, true)
+    _d_polyline_colors(zu, dunkel, 1.4, true)
+    _d_polyline_colors(zu, hell, 1.7, true)
     # **Die Kennung liegt nicht mehr hier.** Sie lief auf genau diesem
     # Umriss, und das war ihr Fehler: ein Leib ist nicht das ganze Tier.
     # Der Umriss geht deshalb an `_kennung_umriss()`, und die rote Linie
@@ -4002,7 +4101,7 @@ func _zellband(ruecken: PackedVector2Array, profil: PackedFloat32Array,
             laengs = laengs.normalized() if laengs.length() > 0.001 \
                 else Vector2.RIGHT
             weg.append(ruecken[i] + laengs.orthogonal() * profil[i] * s)
-        draw_polyline(weg, _gedeckt(Color(schatten.r * 0.5,
+        _d_polyline(weg, _gedeckt(Color(schatten.r * 0.5,
             schatten.g * 0.5, schatten.b * 0.5, 0.85)), 1.3, true)
     # Das Randlicht nur auf dem lichtnahen Stueck - ein Ring, der rundum
     # eine helle Kante hat, ist wieder eine Roehre.
@@ -4019,7 +4118,7 @@ func _zellband(ruecken: PackedVector2Array, profil: PackedFloat32Array,
         var aus := quer if quer.dot(zum_licht) > 0.0 else -quer
         hell_weg.append(ruecken[i] + aus * profil[i])
     if hell_weg.size() >= 2:
-        draw_polyline(hell_weg, _gedeckt(Color(1.0, 0.99, 0.96,
+        _d_polyline(hell_weg, _gedeckt(Color(1.0, 0.99, 0.96,
             0.55 + 0.35 * hitze)), 1.8, true)
 
     _kennung_umriss(_band(ruecken, profil, -1.0, 1.0))
@@ -4060,9 +4159,9 @@ func _zellblase(wo: Vector2, g: float, farbe: Color, hitze: float) -> void:
     # umsonst da: ohne ihn ist eine Blase ein Treppenkreis - und die
     # Laichwolke ist die haeufigste Art im ganzen Bild, also die Kante, die
     # man am oeftesten sieht.
-    draw_circle(wo, g, _gedeckt(Color(schatten.r, schatten.g, schatten.b,
+    _d_circle(wo, g, _gedeckt(Color(schatten.r, schatten.g, schatten.b,
         1.0)), true, -1.0, true)
-    draw_circle(wo + zum_licht * g * 0.17, g * 0.90,
+    _d_circle(wo + zum_licht * g * 0.17, g * 0.90,
         _gedeckt(Color(grund.r, grund.g, grund.b, 1.0)), true, -1.0, true)
     # Und eine Kontur wie bei jedem anderen Leib: Randlicht zum Licht hin,
     # dunkler Saum davon weg. Ein Kreis ist dafuer die einfachste Form -
@@ -4077,18 +4176,18 @@ func _zellblase(wo: Vector2, g: float, farbe: Color, hitze: float) -> void:
     if g < 2.0:
         return
     var winkel := zum_licht.angle()
-    draw_arc(wo, g, winkel - PI * 0.5, winkel + PI * 0.5, 12,
+    _d_arc(wo, g, winkel - PI * 0.5, winkel + PI * 0.5, 12,
         _gedeckt(Color(1.0, 0.99, 0.96, 0.55 + 0.35 * hitze)), 1.5, true)
-    draw_arc(wo, g, winkel + PI * 0.5, winkel + PI * 1.5, 12,
+    _d_arc(wo, g, winkel + PI * 0.5, winkel + PI * 1.5, 12,
         _gedeckt(Color(schatten.r * 0.5, schatten.g * 0.5,
             schatten.b * 0.5, 0.9)), 1.2, true)
     # Unter drei Pixeln waeren Lichtton und Glanz zusammen ein Punkt - dann
     # lieber zwei saubere Toene als vier verwaschene.
     if g < 3.0:
         return
-    draw_circle(wo + zum_licht * g * 0.36, g * 0.52,
+    _d_circle(wo + zum_licht * g * 0.36, g * 0.52,
         _gedeckt(Color(licht.r, licht.g, licht.b, 1.0)), true, -1.0, true)
-    draw_circle(wo + zum_licht * g * 0.54, g * 0.19,
+    _d_circle(wo + zum_licht * g * 0.54, g * 0.19,
         _gedeckt(Color(1.0, 0.99, 0.96, 0.85 + 0.15 * hitze)),
         true, -1.0, true)
 
@@ -4117,7 +4216,7 @@ func _zellflosse(punkte: PackedVector2Array, farbe: Color, hitze: float,
         Color(0.10, 0.20, 0.34), 0.42) \
         * Color(0.72, 0.72, 0.72, 1.0)
     haut = haut.lerp(Color(1.0, 0.98, 0.94), 0.34 * hitze)
-    draw_colored_polygon(punkte,
+    _d_colored_polygon(punkte,
         _gedeckt(Color(haut.r, haut.g, haut.b, tiefe)))
     # Die Kante: hell, wo sie zum Licht zeigt, sonst nur ein Saum. Ein
     # gleichmaessig heller Rand macht aus der Membran wieder einen Umriss.
@@ -4129,7 +4228,7 @@ func _zellflosse(punkte: PackedVector2Array, farbe: Color, hitze: float,
         var f: float = 0.18 + 0.82 * maxf(0.0, aussen.dot(zum_licht))
         toene.append(_gedeckt(Color(kante.r, kante.g, kante.b,
             (0.22 + 0.62 * f) * (0.8 + 0.2 * hitze))))
-    draw_polyline_colors(zu, toene, 1.4, true)
+    _d_polyline_colors(zu, toene, 1.4, true)
 
 
 ## Ein Stueck Rueckgrat als **Dreiecksstreifen**, ein Aufruf.
