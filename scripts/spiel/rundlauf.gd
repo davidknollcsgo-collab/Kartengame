@@ -2629,6 +2629,12 @@ func _stelle_tierschau_auf() -> void:
             t.welle = 60
         t.alter = 3.0
         t.eintritt = 0.0
+        # **Sonst versetzt der erste Schritt sie an den Feldrand.** Die
+        # Schau stellt jedes Tier von Hand auf seinen Platz; `_bewege()`
+        # haelt ein Tier ohne diese Marke fuer neu und setzt es um das Boot
+        # herum ein - neunhundertachtzig Einheiten weg, also aus dem Bild.
+        # Gefunden hat es ein Schuss, in dem alle siebzehn Arten fehlten.
+        t.eingetreten = true
         t.phase = float(a) * 0.7
         t.leben_voll = 100.0
         t.leben = 100.0
@@ -3041,6 +3047,13 @@ func _miss_bildrate() -> void:
 
     var bilder := 0
     var schlimmstes := 0.0
+    # **Zeichenaufrufe gehoeren dazu, und zwar aus einem Grund.** Die
+    # Bilderzahl dieses Behaelters misst Fuellrate - er rastert in Software.
+    # Ein Telefon hat dafuer einen Grafikchip und stolpert statt dessen ueber
+    # die *Zahl* der Aufrufe: jeder ist ein Zustandswechsel, und 2D-Batching
+    # bricht an jedem Materialwechsel. Das ist die Groesse, die von hier auf
+    # ein Geraet uebertraegt, und sie stand nie in der Ausgabe.
+    var aufrufe := 0.0
     var beginn := Time.get_ticks_usec()
     var letztes := beginn
     while float(Time.get_ticks_usec() - beginn) / 1e6 < _messen:
@@ -3049,12 +3062,15 @@ func _miss_bildrate() -> void:
         var schritt := float(jetzt - letztes) / 1e6
         letztes = jetzt
         bilder += 1
+        aufrufe += float(Performance.get_monitor(
+            Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))
         if bilder > 5:
             schlimmstes = maxf(schlimmstes, schritt)
     var verstrichen := float(Time.get_ticks_usec() - beginn) / 1e6
-    print("Welle %d: %d Raeuber im Bild, %d aufgedeckt, %.1f Bilder/s, schlimmstes Bild %.1f ms"
+    print("Welle %d: %d Raeuber im Bild, %d aufgedeckt, %.1f Bilder/s, schlimmstes Bild %.1f ms, %d Zeichenaufrufe je Bild"
         % [welle_nummer, lebende, int(round(karte.anteil() * 100.0)),
-        float(bilder) / verstrichen, schlimmstes * 1000.0])
+        float(bilder) / verstrichen, schlimmstes * 1000.0,
+        int(round(aufrufe / maxf(1.0, float(bilder))))])
     get_tree().quit()
 
 

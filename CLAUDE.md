@@ -2397,6 +2397,55 @@ an, `Engine.max_fps` aus `KolonieStand.bildrate` mit 0 als Vorgabe). Was ein
 Gerät wirklich schafft, sagt dieser Behälter nicht — er hat keine
 Grafikkarte und rastert in Software.
 
+**Deshalb meldet `--messen` jetzt auch die Zeichenaufrufe je Bild, und das
+ist die Zahl, die überträgt.** Die Bilderzahl hier misst Füllrate; ein
+Telefon hat dafür einen Grafikchip und stolpert stattdessen über die *Zahl*
+der Aufrufe — jeder ist ein Zustandswechsel, und das 2D-Batching bricht an
+jedem davon. Gemessen bei 1080×2400, Welle 40, sieben Tieren im Bild:
+
+| | Zeichenaufrufe je Bild |
+|---|---|
+| **gesamt** | **9754** |
+| davon Schwarm (die Tiere) | 6800 |
+| davon Grund | 2190 |
+| Kegel / Vorn / Funken / Wild / Saum | zusammen ~760 |
+
+**Rund 970 Aufrufe je Tier**, und ein Handy-Grafikchip will unter tausend
+für das ganze Bild. Das ist mit Abstand der größte offene Posten der
+Leistung, und er ist jetzt zum ersten Mal messbar.
+
+**Die naheliegende Erklärung ist gemessen und hält nicht.** Sie lautete:
+`draw_polyline` mit `antialiased` kostet einen Aufruf je *Segment*. Die Zahl
+ging auf den Punkt auf — der Umrisspass kostete 1939 Aufrufe für sieben
+Tiere, also 277 je Tier, und ein Tier trägt rund sieben Umrisse zu je
+vierzig Punkten ein. Also habe ich die heißen Züge (`_kennung_umriss`,
+`_kontur`, `_weiche_flaeche`, `_zug`, `_zug_farben`) auf ein Dreiecksnetz in
+*einem* Aufruf umgestellt, so wie es bei den Felsen längst steht.
+
+**Ergebnis: 9754 → 8885, also neun Prozent.** Wäre die Erklärung richtig
+gewesen, hätten allein die Umrisse 1900 gebracht. Die Bildrate fiel dabei
+sogar (2,6 gegen 2,8), weil ein Netz mit weichem Saum mehr Fläche füllt als
+eine Polylinie, und der Schwanz des Kalkrochen stufte an den spitzen Ecken.
+Die Umstellung ist deshalb **wieder draußen** — neun Prozent für ein
+schlechteres Bild ist kein Handel.
+
+**Woher die 9754 wirklich kommen, ist damit offen** und der nächste Schritt
+für jeden, der hier weitermacht: selbst die Sparfassung `_knapp()` kostet
+gemessen rund hundert Aufrufe je Tier bei vier Zeichenbefehlen. Die
+Zuordnung „ein Befehl, ein Aufruf" stimmt also nicht, und bevor wieder
+jemand eine Umstellung baut, gehört geklärt, was dieser Zähler im
+Kompatibilitäts-Renderer tatsächlich zählt.
+
+**Und der Messstand hat dabei einen echten Fehler gefunden — in einem
+Commit von zwei Stunden vorher.** Ein Schuss der Tierschau war **leer**:
+siebzehn Arten, keine im Bild. Kein Skriptfehler, keine Meldung. Schuld war
+die neue Marke `Raeuber.eingetreten`: die Schau stellt jedes Tier von Hand
+auf seinen Platz, `_bewege()` hielt jedes ohne Marke für neu und setzte es
+um das Boot herum ein — neunhundertachtzig Einheiten weg, also aus dem
+Bild. Im Spiel ist es folgenlos (dort ist jedes Tier wirklich neu), im
+Messstand war es alles. **Wer ein Feld einführt, das „schon dagewesen"
+bedeutet, sucht jede Stelle, die ein Tier von Hand hinstellt.**
+
 **Und die Werte des Bootes kommen aus der Kolonie**, nicht aus der Sollkurve.
 Das stand zuerst falsch: der Kegel rechnete mit
 `Ausbau.leistung_faktor(welle)`, also mit dem Stand, den ein Spieler auf
