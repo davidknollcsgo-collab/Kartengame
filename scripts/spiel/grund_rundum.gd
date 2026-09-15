@@ -418,12 +418,34 @@ func abgestossen(ort: Vector2, dick: float) -> Vector2:
 ## Grund reich macht, ist nicht die Zahl der Arten, sondern dass sie in
 ## Gruppen stehen und verschieden gross sind.
 func _baue_bewuchs(rng: RandomNumberGenerator) -> void:
-    for _i in 420:
+    # **Und die eigene Ueberschrift stimmte zur Haelfte nicht.** Sie sagt,
+    # was den Grund reich mache, sei dass der Bewuchs *in Gruppen* stehe -
+    # gestreut wurde er aber ueber `_wuerfel_ort()`, also gleichmaessig ueber
+    # das ganze Feld. Ein Riff waechst in Horsten: dort, wo schon etwas
+    # waechst, waechst mehr. Jeder dritte Bewuchs setzt deshalb einen neuen
+    # Horst, die anderen sammeln sich um den zuletzt gesetzten.
+    # **Horste kosten, und sie bezahlen sich selbst.** Gemessen fiel die
+    # Bildrate von 5,35 auf 4,55 (zwei Stichproben je Stand), und die neuen
+    # Laeufe streuten dabei (4,8 und 4,3), waehrend die alten eng lagen -
+    # genau das Muster, das ein Horst erzeugt: mal steht man mittendrin, mal
+    # daneben. Die Zahl faellt deshalb von 420 auf 300. Innerhalb eines
+    # Horstes bleibt es dicht, weil sie sich ja sammeln; was wegfaellt, ist
+    # die gleichmaessige Grundstreu, und die war gerade das Problem.
+    var horst := _wuerfel_ort(rng)
+    for _i in 300:
         var lage := rng.randi() % TIEFE
-        var ort := _wuerfel_ort(rng)
+        if rng.randf() < 0.34:
+            horst = _wuerfel_ort(rng)
+        var ort := horst + Vector2.RIGHT.rotated(rng.randf_range(0.0, TAU)) \
+            * sqrt(rng.randf()) * 120.0
         var arme := PackedFloat32Array()
+        # **Gleich lange Arme sind Speichen.** Sie lagen zwischen 0,55 und
+        # 1,0, der laengste war also hoechstens das 1,8fache des kuerzesten -
+        # zu wenig, um das Rad zu brechen, und die Winkel allein schaffen es
+        # nicht. Mit 0,30 bis 1,0 ist es das 3,3fache, und aus dem Stern wird
+        # ein Buschel.
         for _a in rng.randi_range(5, 10):
-            arme.append(rng.randf_range(0.55, 1.0))
+            arme.append(rng.randf_range(0.30, 1.0))
         _bewuchs.append({
             &"lage": lage,
             &"ort": ort,
@@ -1303,7 +1325,15 @@ func _roehren(p: Vector2, r: float, farbe: Color, a: float, dreh: float,
         # Der Versatz kommt aus der Laenge des Arms: fest je Busch, und
         # gross genug, dass die Speichen aufhoeren, Speichen zu sein.
         var schief := (arme[i] - 0.85) * 1.30
-        var w := dreh + TAU * float(i) / float(n) + schief
+        # **Ein Busch hat eine Seite, an der er festsitzt.** Der Grundwinkel
+        # stand auf exakt `TAU * i / n` - perfekte Radialsymmetrie, und der
+        # Versatz aus `arme[i]` legte nur ein Zittern darueber. Im Bild blieb
+        # es ein Rad mit Speichen, weil das Auge das gleichmaessige Raster
+        # darunter trotzdem liest. Die Arme faechern jetzt ueber knapp drei
+        # Viertel des Kreises und lassen den Rest frei: das ist der Fuss, mit
+        # dem der Bewuchs am Grund haengt, und er gibt dem Busch ein Oben.
+        var lage := 0.0 if n < 2 else float(i) / float(n - 1)
+        var w := dreh + lerpf(-2.35, 2.35, lage) + schief
         var fuss := p + Vector2.RIGHT.rotated(w) * r * 0.26
         var lang := r * arme[i] * (0.7 + 0.06 * atem)
         # **Eine Roehre ist gebogen.** Gerade Stiele sind Speichen; der
