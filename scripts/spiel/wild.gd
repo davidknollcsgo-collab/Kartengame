@@ -27,7 +27,13 @@ const JE_SCHWARM := 18
 ## Wie weit ein Fisch um die Mitte seines Schwarms streut - laengs mehr als
 ## quer. Ein runder Fleck aus Fischen ist ein Fleck; ein Zug, der laenger ist
 ## als er breit, ist ein Schwarm.
-const STREUUNG := 118.0
+## **Und die Dichte entscheidet, ob es einer ist.** Die eigene Begruendung
+## zwei Zeilen hoeher sagt "lieber wenige grosse als viele kleine" - sie gilt
+## fuer den *Abstand* genauso. Achtzehn Fische auf ±118 Einheiten laengs sind
+## rund vierzig Einheiten Luecke bei vierzehn Einheiten Fischlaenge: im Bild
+## kein Zug, sondern verstreute Blaetter, und wo zwei Schwaerme einander
+## ueberlappen, zeigen sie in zwei Richtungen und man sieht gar keinen mehr.
+const STREUUNG := 74.0
 const STREUUNG_QUER := 0.44
 
 ## Farben. Kuehl und blass - die Raeuber tragen die kraeftigen Farben, und
@@ -133,8 +139,12 @@ func _fuehre_glieder(delta: float) -> void:
             # Im Schreck laufen die Plaetze auseinander - und quer mehr als
             # laengs, weil ein Schwarm zur Seite ausbricht und nicht in die
             # Laenge zieht.
+            # **Ein Schwarm, der stiebt, bleibt ein Schwarm.** Quer mal
+            # 4,4 loeste ihn genau dann auf, wenn der Spieler daneben steht
+            # - also in dem einzigen Augenblick, in dem er ihn wirklich
+            # ansieht. Er weicht aus, er zerfaellt nicht.
             var soll := mitte + blick * platz.x * (1.0 + schreck * 0.8) \
-                + quer * platz.y * (1.0 + schreck * 3.4)
+                + quer * platz.y * (1.0 + schreck * 1.6)
             g[&"ort"] = Vector2(g[&"ort"]).lerp(soll,
                 clampf((2.2 + schreck * 4.0) * delta, 0.0, 1.0))
             # Die Blickrichtung kommt vom Zug, nicht vom eigenen Weg. Ein
