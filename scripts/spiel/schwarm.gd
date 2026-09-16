@@ -1230,121 +1230,6 @@ func _organe(weg: PackedVector2Array, farbe: Color, gross: float,
             _gedeckt(Color(hell.r, hell.g, hell.b, 0.60 + 0.40 * kraft)))
 
 
-## Ein Leib als **Roehre auf einem Rueckgrat** - nicht als Kugel.
-##
-## **Der strukturelle Fehler, den das behebt.** `_koerper()` faerbt jede Ecke
-## nach der Richtung vom Schwerpunkt zu ihr: das ist die Beleuchtung einer
-## **Kugel**. Ein Fisch ist aber ein Schlauch. An einer Kugel wandert der
-## Glanz zum Rand, an einem Schlauch laeuft er als Band **laengs** mit -
-## und genau daran erkennt das Auge einen Koerper statt einer Scheibe. Es
-## ist derselbe Fehler wie der runde Hof um eine unrunde Form, nur eine
-## Ebene tiefer: in der Fuellung, wo er am meisten wiegt.
-##
-## **Wie hier beleuchtet wird.** Von oben gesehen zeigt die Oberflaeche eines
-## Schlauchs in der Mitte aus dem Bild heraus und an den Flanken zur Seite.
-## Die Lampe steht nicht in der Bildebene - sie steht darueber und daneben.
-## Also hat das Licht zwei Anteile, und die Helligkeit quer ueber den Leib
-## ist `0,62·sqrt(1−v²) + 0,55·v·(quer·zumLicht)`: ein breites Band in der
-## Mitte, zur Lichtseite verschoben, und eine dunkle Flanke gegenueber.
-##
-## **Der Saum gehoert dazu.** Aussen zwei Reihen mit Deckung null - ein Leib
-## mit harter Kante ist ausgeschnittenes Papier, und in truebem Wasser hat
-## nichts eine Schnittkante. Und ein **Randlicht** auf der Lichtflanke:
-## das ist der Griff, mit dem jede Tiefsee-Zeichnung ihre Silhouette aus dem
-## Schwarz holt.
-func _leib(ruecken: PackedVector2Array, profil: PackedFloat32Array,
-        farbe: Color, hitze: float) -> void:
-    var n := ruecken.size()
-    if n < 2 or profil.size() != n:
-        return
-    var mitte := Vector2.ZERO
-    for v in ruecken:
-        mitte += v
-    mitte /= float(n)
-    var zum_licht := lichtquelle - mitte
-    zum_licht = zum_licht.normalized() if zum_licht.length_squared() > 1.0 \
-        else Vector2.UP
-
-    # Neun Reihen: zwei Saumreihen aussen, sieben fuer den Koerper.
-    var reihen := PackedFloat32Array([-1.07, -1.0, -0.66, -0.33, 0.0,
-        0.33, 0.66, 1.0, 1.07])
-    # **Was brennt, wird dunkel in der Mitte und hell an der Kante** - wie in
-    # `_koerper()`, und aus demselben Grund: ein durchleuchteter Koerper wird
-    # zur Silhouette, und ein rundum aufgehelltes Tier ist ein weisser Fleck
-    # genau in dem Augenblick, in dem man hinsieht.
-    var kern := 1.0 - 0.30 * hitze
-    var ecken := PackedVector2Array()
-    var farben := PackedColorArray()
-    for i in n:
-        var vor: Vector2 = ruecken[maxi(0, i - 1)]
-        var nach: Vector2 = ruecken[mini(n - 1, i + 1)]
-        var laengs := (nach - vor)
-        laengs = laengs.normalized() if laengs.length() > 0.001 \
-            else Vector2.RIGHT
-        var quer := laengs.orthogonal()
-        var seit := quer.dot(zum_licht)
-        var halb: float = profil[i]
-        for v in reihen:
-            var rand := absf(v) > 1.001
-            var vv := clampf(v, -1.0, 1.0)
-            var woelbung: float = sqrt(maxf(0.0, 1.0 - vv * vv))
-            var hell := clampf(0.62 * woelbung + 0.55 * vv * seit, 0.0, 1.4)
-            # Die Schattenseite kippt ins Blaue, nicht ins Graue - dieselbe
-            # Regel wie in `_koerper()`.
-            var tief := Color(farbe.r, farbe.g, farbe.b).lerp(
-                Color(0.14, 0.34, 0.48), 0.50 * (1.0 - clampf(hell, 0.0, 1.0)))
-            # **Die Flaeche bleibt unter ihrer Kontur.** Mit 0,26 + 0,92
-            # lag der Leib bei bis zu 1,34 der Artfarbe - heller als die
-            # Kante, die ihn umreisst, und damit war die Silhouette weg. Ein
-            # Umriss liest sich nur, wenn die Flaeche dunkler ist als er.
-            # Volumen kommt aus dem *Verhaeltnis* hell zu dunkel, nicht aus
-            # der absoluten Helligkeit.
-            var st := 0.16 + 0.60 * hell
-            # **Randlicht, kein Schweissbrenner.** Mit 0,85 als Zuschlag
-            # stand auf der Lichtflanke eine ausgebrannte weisse Kante, und
-            # die frisst genau das, wofuer sie da ist: die Silhouette. Ein
-            # Randlicht ist ein Streifen, an dem das Licht die Rundung
-            # gerade noch erwischt - es ist heller als die Flanke und
-            # dunkler als eine Lampe.
-            if absf(vv) > 0.99 and vv * seit > 0.0:
-                st += (0.30 + 0.30 * hitze) * absf(seit)
-            ecken.append(ruecken[i] + quer * halb * v)
-            farben.append(_gedeckt(Color(minf(1.0, tief.r * st),
-                minf(1.0, tief.g * st), minf(1.0, tief.b * st),
-                0.0 if rand else kern)))
-    var netz := PackedInt32Array()
-    var m := reihen.size()
-    for i in n - 1:
-        for j in m - 1:
-            var a := i * m + j
-            var b := a + m
-            netz.append_array([a, b, b + 1, a, b + 1, a + 1])
-    RenderingServer.canvas_item_add_triangle_array(
-        get_canvas_item(), netz, ecken, farben)
-
-    # **Und eine Kontur darauf.** Der Verlauf allein laesst den Leib ins
-    # Wasser ausfransen; was ihn als *ein* Ding zusammenhaelt, ist eine
-    # schmale Kante. Sie traegt die Farbe der Art und nicht Weiss - zwoelf
-    # Arten mit weissem Umriss sind zwoelfmal dasselbe Leuchten - und sie
-    # ist auf der Lichtseite kraeftiger als auf der abgewandten.
-    var kante := farbe.lerp(Color(1.0, 0.98, 0.94), 0.20 + 0.55 * hitze)
-    for seite: float in SEITEN:
-        var weg := PackedVector2Array()
-        var toene := PackedColorArray()
-        for i in n:
-            var vor: Vector2 = ruecken[maxi(0, i - 1)]
-            var nach: Vector2 = ruecken[mini(n - 1, i + 1)]
-            var laengs := (nach - vor)
-            laengs = laengs.normalized() if laengs.length() > 0.001 \
-                else Vector2.RIGHT
-            var quer := laengs.orthogonal()
-            weg.append(ruecken[i] + quer * profil[i] * seite)
-            var f := 0.34 + 0.66 * maxf(0.0, quer.dot(zum_licht) * seite)
-            toene.append(_gedeckt(Color(kante.r, kante.g, kante.b,
-                (0.62 + 0.38 * hitze) * f)))
-        _d_polyline_colors(weg, toene, 1.5 + 0.7 * hitze, true)
-
-
 ## Rueckgrat und Profil eines Fisches: ein Bogen mit Schlag, und eine Breite,
 ## die vorn stumpf ist und hinten auslaeuft.
 ##
@@ -1803,7 +1688,7 @@ func _zahnkiefer(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -
     # Vorher zehn Ecken durch `_koerper()`, und das faerbt nach der Richtung
     # vom Schwerpunkt - die Beleuchtung einer Kugel. Ein Drachenfisch ist ein
     # Schlauch; sein Glanz laeuft als Band laengs mit, nicht radial nach
-    # aussen. `_leib()` rechnet das, und der Umriss faellt dabei aus dem
+    # aussen. `_zellleib()` rechnet das, und der Umriss faellt dabei aus dem
     # Profil statt aus einer Liste: vorn stumpf, hinter dem Kopf am
     # breitesten, zum Stiel auf ein Zehntel auslaufend.
     var ruecken := _ruecken(p, k, r * 1.42, r * 1.16, 13)
@@ -1815,7 +1700,20 @@ func _zahnkiefer(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -
         # waere ein Blatt.
         var b: float = sin(PI * pow(u, 0.52))
         profil.append(r * (0.05 + 0.52 * pow(b, 0.85)))
-    _leib(ruecken, profil, farbe, hitze)
+    # **Und er war die einzige Art, die noch am alten Helfer hing.**
+    #
+    # Fuenf Schlauchkoerper gehen laengst durch `_zellleib()` - Toenung
+    # quer zum Rueckgrat, Randlicht, Glanz -, dieser hier durch `_leib()`,
+    # den Helfer von davor. Im Bild war er deshalb ein glatter, blasser
+    # Spindelkoerper ohne Licht- und Schattenseite: das Tier, das man in
+    # Welle 1 trifft und das als **Massstab** fuer jede Balance-Zahl dient,
+    # sah aus wie ein Blatt.
+    #
+    # Gefunden hat es kein Bild, sondern das Nachzaehlen der Aufrufe. Wer
+    # einen gemeinsamen Weg einfuehrt, zaehlt nach, wer ihn noch nicht
+    # geht - im Quelltext sieht man einen Nachzuegler nicht, im Bild nur,
+    # wenn man weiss, wonach man sucht.
+    _zellleib(ruecken, profil, farbe, hitze)
 
     # **Der Rueckensaum ist weg.** Er stand als offener Linienzug ueber dem
     # Rumpf und sollte "Flosse" sagen; auf fuenfunddreissig Pixeln sagte er
@@ -1828,9 +1726,39 @@ func _zahnkiefer(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -
     # Fuellen mit sich selbst schneiden lassen. Zwei kraeftige helle Zuege
     # vom Gelenk zur Schnauze sagen dasselbe - das Auge liest die Flaeche
     # dazwischen als offenes Maul.
+    # **Ein Maul ist ein Loch, und ein Loch ist dunkel.**
+    #
+    # Hier standen zwei *helle* Zuege vom Gelenk zur Schnauze, und die
+    # Flaeche dazwischen sollte das Auge als offenes Maul lesen. Auf einem
+    # Leib, der selbst hell ist, lesen sich zwei helle Striche aber als gar
+    # nichts: gemessen war der Zahnkiefer im Bild ein glatter, blasser
+    # Spindelkoerper - Maul, Zaehne, Auge und Angel waren allesamt
+    # hell-auf-hell gezeichnet und keines davon zu sehen.
+    #
+    # Der Grund, aus dem es einmal richtig war, ist laengst weg: solange
+    # **additiv** gezeichnet wurde, gab es kein Dunkel, mit dem man ein Loch
+    # haette malen koennen. Seit die Szene mischt, gibt es eines - und diese
+    # Datei sagt es selbst: *ein Leib darf eine Schattenseite haben, ein
+    # Auge eine Pupille, eine Platte eine Fuge.* Ein Maul gehoert in
+    # dieselbe Liste.
+    #
+    # Jetzt: die Rachenflaeche dunkel, die Kiefer als helle Kante darauf,
+    # die Zaehne hell **in** dem Dunkel. Erst dadurch haben die Zaehne
+    # ueberhaupt einen Hintergrund, vor dem sie stehen koennen.
     var gelenk := p + k * r * 0.62
     var weit := 0.30 + 0.26 * beiss
     var hell := farbe.lerp(Color(1.0, 0.98, 0.94), 0.34 + 0.46 * hitze)
+    var ecke_a := p + k * r * 1.40 + quer * r * weit
+    var ecke_b := p + k * r * 1.40 - quer * r * weit
+    # **Als Dreieck und nicht als Viereck.** Der erste Anlauf nahm
+    # `[gelenk, ecke_a, mitte_vorn, ecke_b]` - ein **konkaves** Viereck, und
+    # `draw_colored_polygon` trianguliert das stumm nicht. Im Bild aenderte
+    # sich nichts, und ohne Nachmessen haette ich den ganzen Gedanken fuer
+    # falsch gehalten statt die Form. Dieselbe Falle wie die Kerbe im
+    # Umriss, die `_koerper()` einmal 1159 Mal `triangulation failed` hat
+    # melden lassen.
+    _d_colored_polygon(PackedVector2Array([gelenk, ecke_a, ecke_b]),
+        _gedeckt(Color(0.05, 0.10, 0.15, 0.88)))
     for seite: float in SEITEN:
         var ecke := p + k * r * 1.40 + quer * r * weit * seite
         _zug(PackedVector2Array([gelenk, ecke]), hell, 1.7)
@@ -2432,7 +2360,7 @@ func _sprungaal(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) ->
     # ist beim Zustossen ueber drei Radien lang. Das ist die ganze Aussage
     # dieser Art - sie schnellt vor -, und sie steht damit im Umriss statt in
     # einer Bewegung, die man verpassen kann.
-    # **Als Roehre auf einem Rueckgrat** (siehe `_leib()`). Ein Aal ist der
+    # **Als Roehre auf einem Rueckgrat** (siehe `_zellleib()`). Ein Aal ist der
     # Schlauch schlechthin - und er ist die Art, an der das am meisten
     # traegt, weil sein ganzer Umriss aus Laenge besteht. Der Ruecken
     # schlaengelt dabei ueber seine eigene Laenge: ein Aal, der als starre
@@ -2970,7 +2898,7 @@ func _lichtscheu(p: Vector2, r: float, farbe: Color, t: Raeuber,
     # hinten auf eine Spitze auslaufend, 2,5 lang zu 1,0 breit. Und die
     # Kapuze ist ihre Regel als Bild - ein Tier, das vor dem eigenen Licht
     # zurueckweicht, sieht aus, als duckte es sich unter etwas weg.
-    # **Als Roehre auf einem Rueckgrat** (siehe `_leib()`), wie Zahnkiefer
+    # **Als Roehre auf einem Rueckgrat** (siehe `_zellleib()`), wie Zahnkiefer
     # und Sprungaal. Das Profil bleibt dasselbe - es war schon vorher aus
     # einer Breitenfunktion gebaut und nicht aus einer Eckenliste; was sich
     # aendert, ist die Beleuchtung: sie folgt jetzt der Woelbung quer zum
@@ -3607,7 +3535,7 @@ func _n_glutqualle(p: Vector2, r: float, farbe: Color, t: Raeuber,
 # dieser Datei ist aus *Linien* gebaut: ein duenner heller Zug auf einer
 # Flaeche mit zehn bis dreissig Prozent Deckung. Das ergibt Umrisse, die im
 # Dunkeln leuchten - und genau das ist ein Strichmaennchen, egal wie gut die
-# Anatomie darunter stimmt. Auch der Verlauf in `_koerper()` und `_leib()`
+# Anatomie darunter stimmt. Auch der Verlauf in `_koerper()`
 # aendert daran nichts: ein weicher Verlauf **ist** keine Form, er ist ein
 # Farbwechsel.
 #
@@ -3627,7 +3555,7 @@ func _n_glutqualle(p: Vector2, r: float, farbe: Color, t: Raeuber,
 #      Saum auf der Lichtseite, dunkler Ton auf der anderen.
 #
 # `_zellleib()` macht alle vier auf einmal, aus derselben Darstellung wie
-# `_leib()`: Rueckgrat plus Profil. Die Toene werden als **getrennte
+# `_zellleib()`: Rueckgrat plus Profil. Die Toene werden als **getrennte
 # Flaechen** gezeichnet und nicht als Verlauf - nur so bekommt die Grenze
 # eine Kante.
 
