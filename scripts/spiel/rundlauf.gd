@@ -1770,6 +1770,13 @@ const FLOSSE_AUSSCHLAG := 0.24
 ## (HECK + NASE)`, also gut ein Drittel vor der Mitte.
 const FORM_NASE := 0.52
 const FORM_HECK := 1.30
+## **Woher das Licht in dieser Welt kommt.** Von oben, ein Hauch von
+## rechts - dieselbe Annahme wie beim Verlauf in den Tafeln des Bedienbilds
+## und beim Sediment um einen Fels. In Weltkoordinaten, damit sie nicht mit
+## dem Boot mitdreht: ein Koerper, dessen Licht immer auf derselben Flanke
+## sitzt, ist ein Aufkleber.
+const WELTLICHT := Vector2(0.35, -0.94)
+
 const RUMPF_LANG := 1.85
 const RUMPF_BREIT := 0.50
 
@@ -1878,19 +1885,43 @@ func _zeichne_rumpf(umriss: PackedVector2Array, k: Vector2, r: float) -> void:
     # aneinanderstossende Stuecke - dieselbe Regel wie dort, dieselbe
     # Begruendung, und das Boot steht nicht laenger in einer anderen
     # Bildsprache als alles, was es beleuchtet.
+    # **Und die Baender laufen quer, nicht laengs.**
+    #
+    # Sie liefen von Bug zu Heck, und `st` fiel aus der Laengslage: das
+    # hinterste Band deckte alles hinter der Mitte und stand auf 0,32, der
+    # Bug auf 0,80. Im Bild war das kein Koerper, sondern ein Verlauf - eine
+    # helle Spitze an einer dunklen Flaeche, und zwei Drittel des Bootes
+    # lagen knapp ueber dem Wasser.
+    #
+    # Die Antwort steht seit Langem zwei Absaetze tiefer, bei der Kiellinie:
+    # *von oben gesehen hat ein Rumpf dort keine Kante, sondern seinen
+    # Ruecken - die hellste Stelle.* Der Kiel wurde deshalb gestrichen; die
+    # Schattierung, die das haette tragen sollen, kam nie. Jetzt liegen die
+    # drei Toene **ueber die Breite**: die dem Licht zugewandte Flanke hell,
+    # der Ruecken mittel, die abgewandte Flanke dunkel. Dasselbe, was
+    # `schwarm.gd::_zellleib()` fuer jedes Tier tut.
+    #
+    # Die Lichtrichtung ist die der Welt (von oben, ein Hauch von rechts) -
+    # dieselbe Annahme wie beim Verlauf in den Tafeln des Bedienbilds und
+    # beim Sediment. Sie steht in **Welt**koordinaten, also wandert das
+    # Licht ueber den Rumpf, wenn das Boot dreht: genau das laesst ihn als
+    # festen Koerper lesen und nicht als Aufkleber.
+    var breit := maxf(1.0, r * RUMPF_BREIT)
+    var quer_achse := k.orthogonal()
+    var quer_licht := quer_achse if quer_achse.dot(WELTLICHT) >= 0.0 \
+        else -quer_achse
     var stufen := 3
     for stufe in stufen:
-        var u0 := float(stufe) / float(stufen)
-        var u1 := float(stufe + 1) / float(stufen)
-        var laenge := maxf(1.0, r * RUMPF_LANG)
-        # Das hinterste Stueck reicht beliebig weit nach achtern: der
-        # Umriss beginnt **hinter** dem Bezugspunkt, und ein Band, das bei
-        # null anfaengt, laesst das Heck als Loch stehen.
-        var teil := _laengs_stueck(umriss, k,
-            -laenge * 4.0 if stufe == 0 else u0 * laenge, u1 * laenge)
+        var v0 := lerpf(-1.0, 1.0, float(stufe) / float(stufen))
+        var v1 := lerpf(-1.0, 1.0, float(stufe + 1) / float(stufen))
+        # Aussen beliebig weit: ein Band, das genau an der Kante endet,
+        # laesst dort eine Fuge stehen.
+        var teil := _laengs_stueck(umriss, quer_licht,
+            -breit * 6.0 if stufe == 0 else v0 * breit,
+            breit * 6.0 if stufe == stufen - 1 else v1 * breit)
         if teil.size() < 3:
             continue
-        var mitte_u := (u0 + u1) * 0.5
+        var mitte_u := (v0 + v1) * 0.5 * 0.5 + 0.5
         # **Ein Rumpf, den man fuer Wasser haelt, ist ein Drahtgitter.**
         #
         # Mit 0,24 bis 0,54 lagen die drei Toene dicht beieinander und nur
@@ -1908,7 +1939,19 @@ func _zeichne_rumpf(umriss: PackedVector2Array, k: Vector2, r: float) -> void:
         # der Bug im Schuss auf (189 / 254 / 255) - zwei Kanaele am Anschlag,
         # also eine weisse Kuppe statt eines hellen Blechs. Die Spreizung
         # bleibt (Faktor 1,5 und 1,67 zwischen den Baendern), die Spitze faellt.
-        var st := 0.30 + 0.72 * mitte_u * mitte_u
+        # **Drei Toene, Faktor 1,6 bis 1,7 zwischen benachbarten.** Weniger
+        # ist ein Ton (das stand hier schon einmal und galt fuer die
+        # Laengsrichtung). Die Spitze bleibt bei 0,85 und nicht hoeher:
+        # gemessen stand der Bug bei 0,34 + 1,05 auf (189 / 254 / 255), also
+        # zwei Kanaele am Anschlag - eine weisse Kuppe statt eines Blechs.
+        # Die Spitze ist gerechnet und nicht gewaehlt: bei 0,85 steht die
+        # Lichtflanke auf (142 / 205 / 222) und damit unter dem Anschlag.
+        # Der erste Anlauf lief auf 1,06 hinaus - gemessen (176 / 252 /
+        # 255), also zwei Kanaele am Anschlag, und das ist woertlich der
+        # Fehler, vor dem der Absatz hier schon einmal gewarnt hat. Man
+        # macht ihn wieder, wenn man die Formel umbaut und die Decke nicht
+        # nachrechnet.
+        var st := 0.30 + 0.79 * mitte_u * mitte_u
         _weiche_flaeche(_vorn, teil, Color(_haut.r * st + 0.030,
             _haut.g * st + 0.055, _haut.b * st + 0.070, 1.0))
     # **Das Heck war einmal dunkler als das Wasser.** Mit 0,10 als Sockel
@@ -2078,8 +2121,32 @@ func _zeichne_flossen(k: Vector2, quer: Vector2, r: float,
             kante.append(wurzel_vorn * (g * g)
                 + (wurzel_vorn + quer * seite * r * 0.30 * s) * (2.0 * g * t)
                 + spitze_vorn * (t * t))
-        kante.append(spitze_hinten)
-        kante.append(wurzel_hinten)
+        # **Und die hintere Haelfte waren zwei gerade Linien.**
+        #
+        # Von `spitze_vorn` ging es geradeaus auf `spitze_hinten` und von
+        # dort geradeaus auf `wurzel_hinten` - also bestand die halbe
+        # Silhouette des Ruders aus Geraden, in einem Spiel, dessen erste
+        # Regel lautet, dass es keine geraden Kanten gibt. Im Bild war es
+        # ein Blech. Es ist woertlich derselbe Fehler, den Kalkrochen und
+        # Schlundmutter hatten, und er steht in CLAUDE.md schon
+        # beschrieben - nur hat ihn hier niemand nachgerechnet.
+        #
+        # Die Aussenkante woelbt sich nach aussen, die Hinterkante nach
+        # innen: ein Ruder ist gepfeilt, es laeuft nicht spitz zusammen.
+        var aussen := (spitze_vorn + spitze_hinten) * 0.5 \
+            + quer * seite * r * 0.09 * s
+        for j in range(1, 5):
+            var t := float(j) / 4.0
+            var g := 1.0 - t
+            kante.append(spitze_vorn * (g * g) + aussen * (2.0 * g * t)
+                + spitze_hinten * (t * t))
+        var hinten := (spitze_hinten + wurzel_hinten) * 0.5 \
+            + k * r * 0.13
+        for j in range(1, 7):
+            var t := float(j) / 6.0
+            var g := 1.0 - t
+            kante.append(spitze_hinten * (g * g) + hinten * (2.0 * g * t)
+                + wurzel_hinten * (t * t))
 
         # **Eine Flosse ist kein Loch.** Sie war einfarbig (0,016 / 0,042 /
         # 0,058) gefuellt - gemessen dunkler als das Wasser daneben, und im
@@ -2091,14 +2158,24 @@ func _zeichne_flossen(k: Vector2, quer: Vector2, r: float,
         # Der Verlauf laeuft von der Wurzel am Rumpf zur Spitze - eine
         # Flosse ist am Ansatz dick und laeuft aus, und genau das sagt ein
         # Verlauf, den eine einzelne Farbe nicht sagen kann.
+        # **Und der Ton laeuft quer, wie am Rumpf.**
+        #
+        # Er lief von der Wurzel zur Spitze, also laengs - und ein Verlauf
+        # laengs einer Flaeche, die man von oben sieht, sagt nichts ueber
+        # ihre Form. Dieselbe Weltlichtrichtung wie beim Rumpf: das Ruder
+        # auf der Lichtseite steht hell, das andere dunkel, und wenn das
+        # Boot dreht, tauschen sie. Zwei gleich helle Ruder waeren zwei
+        # Aufkleber.
+        #
+        # Es bleibt trotzdem unter dem Rumpf: ein Ruder liegt in dessen
+        # Schatten, und es soll die Silhouette ergaenzen und nicht mit ihr
+        # um Aufmerksamkeit streiten.
+        var quer_flosse := quer if quer.dot(WELTLICHT) >= 0.0 else -quer
         var toene := PackedColorArray()
         for punkt in kante:
-            var weg := clampf((_ort - punkt).dot(k) / maxf(1.0, r * 1.6),
-                0.0, 1.0)
-            # Ein Ruder liegt im Schatten des Rumpfes, aber es ist kein
-            # anderes Material: es bleibt knapp unter dem hinteren
-            # Rumpfband (0,30) statt darunter zu verschwinden.
-            var st := 0.30 - 0.09 * weg
+            var zu := clampf((punkt - _ort).dot(quer_flosse)
+                / maxf(1.0, r * 0.86) * 0.5 + 0.5, 0.0, 1.0)
+            var st := 0.22 + 0.34 * zu * zu
             toene.append(Color(_haut.r * st + 0.030, _haut.g * st + 0.060,
                 _haut.b * st + 0.075, 1.0))
         _weiche_flaeche_bunt(_vorn, kante, toene)
@@ -3217,7 +3294,16 @@ func _fuge(von: Vector2, nach: Vector2, quer: Vector2) -> void:
     # Auf hellem Grund traegt die **Rille**. Die Lippe bleibt als Hauch, weil
     # eine Fuge ohne sie flach ist - aber sie ist jetzt leiser als der Rumpf
     # und nicht lauter.
-    _vorn.draw_line(von, nach, Color(0.02, 0.05, 0.08, 0.66), 2.1, true)
+    # **Und sie ist so dunkel wie der Rumpf hell ist, nicht schwarz.**
+    #
+    # Sie stand auf fast Schwarz bei 0,66 Deckung - richtig, solange der
+    # Rumpf selbst dunkel war. Seit die Baender quer laufen und die
+    # Lichtflanke auf (142 / 205 / 222) steht, sind das drei schwarze
+    # Balken auf einem hellen Blech: die Fuge war lauter als die Form, die
+    # sie beschreiben soll. Sie faellt jetzt aus `_haut`, also mit dem
+    # Anstrich, und bleibt ein Schatten statt eines Schlitzes.
+    _vorn.draw_line(von, nach, Color(_haut.r * 0.10, _haut.g * 0.14,
+        _haut.b * 0.18, 0.46), 1.9, true)
     _vorn.draw_line(von + quer * 1.3, nach + quer * 1.3,
         Color(1.0, 0.99, 0.96, 0.10), 0.8, true)
 
