@@ -2617,9 +2617,30 @@ Dieselbe Falle, die hier für die Grabnatter und die Schleppe schon
 beschrieben steht — *runde Marken auf einem Weg, deren Durchmesser größer
 ist als ihr Abstand* —, nur aus einer anderen Richtung. **Was über die
 Streckenkette entscheidet, ist nicht die Breite des Zuges, sondern wie
-viele Gelenke hintereinander man sieht.** Die Umstellung ist deshalb wieder
-draußen; der Weg für den Felsrand ist das Dreiecksnetz, wie beim Körper des
-Steins, und er hat noch niemand gemacht.
+viele Gelenke hintereinander man sieht.**
+
+**Und das Dreiecksnetz ist dort auch nicht die Antwort — drei Anläufe
+gemessen.** Es hat keine Gelenke, also keine Perlen; das Hindernis ist ein
+anderes und liegt tiefer. Eine geglättete `draw_polyline_colors` zeichnet
+nicht das Band, das ihre Breite angibt, sondern eine **Glocke**: gemessen
+quer durch den Zug liegen die Helligkeiten bei 84 / 159 / 196 / 166 / 84
+über sieben Bildpunkte, obwohl Hof und Kern mit 5,0 und 1,4 angegeben sind.
+Ein Netz gibt, was man hineinschreibt:
+
+| Fassung | Querschnitt | helle Bildpunkte |
+|---|---|---|
+| `draw_polyline_colors` (heute) | Glocke über 7 px | **1820** |
+| Netz, 5 Reihen schmal | Spitze über 1 px | 1314 |
+| Netz, 8 Reihen mit harter Stufe | **Plateau** 201/204/202 | 2097 |
+| Netz, 5 Reihen breit | flache Glocke | 1023 |
+
+Keine der drei trifft die Glocke. Die dritte Zeile ist am nächsten und
+zeichnet trotzdem genau das, wogegen diese Datei sonst argumentiert: ein
+Plateau mit harten Schultern statt eines Übergangs. **Wer den Felsrand ins
+Netz holt, baut eine Näherung an das Glättungsverhalten der Engine** — und
+das ist dieselbe Sorte Konstruktion wie die verworfene Notiz über
+`draw_polygon` auf der HUD-Ebene. 744 Aufrufe von 3037 sind das nicht wert,
+solange niemand einen Weg hat, der die Glocke wirklich trifft.
 
 **Der größere Posten lag ohnehin woanders, und gefunden hat ihn eine Zahl,
 die nicht zusammenpasste.** Alle Messungen dieser Datei stehen auf Welle 40
@@ -2670,11 +2691,13 @@ dreihundert Zeichenaufrufe, die daran hängen.
 knapp siebzig Prozent, und bei Welle 140 sind es 4360 statt 6141 gegenüber
 einem Stand, der die Welle noch gar nicht keulte.
 
-Was offen bleibt und jetzt beziffert ist: **Felsen 744** (Dreiecksnetz für
-den Rand, nicht Streckenkette — siehe oben), **Rest des Kleinzeugs rund
-450** (Flächen und geglättete Kreise, die sich nicht zusammenfassen
-lassen). Und ein geglätteter Kreis kostet **zwei** Aufrufe statt einem: wo
-die Glättung nichts zeigt, ist sie geschenktes Geld.
+Was offen bleibt und jetzt beziffert ist: **Felsen 744** — und dort sind
+Streckenkette *und* Dreiecksnetz gemessen und beide verworfen, siehe oben;
+wer das aufgreift, braucht einen dritten Gedanken und nicht einen vierten
+Parametersatz. Dazu der **Rest des Kleinzeugs, rund 450** (Flächen, die
+sich nicht zusammenfassen lassen). Und ein geglätteter Kreis kostet
+**zwei** Aufrufe statt einem: wo die Glättung nichts zeigt, ist sie
+geschenktes Geld.
 
 **Und die erste Fassung der Hülle war ein Lehrstück.** Sie benannte die
 Aufrufe nach `_d_circle` um und die Funktionen nach `_dcircle`. Der
