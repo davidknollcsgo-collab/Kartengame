@@ -84,6 +84,15 @@ class Ergebnis extends RefCounted:
     ## teuer machte, war die **Auswahl** (`Schlund.brennende()` nimmt ihn im
     ## Kern des Kegels nicht), und das sieht man nur hier.
     var verlust_je_art: Dictionary = {}
+
+    ## Die drei Sekundenposten, aufsummiert **nur ueber die Tiere, die das
+    ## Boot erreicht haben**. Siehe `Simulation.buchfuehrung`.
+    var sek_fern: float = 0.0
+    var sek_uebersehen: float = 0.0
+    var sek_zaeh: float = 0.0
+    var sek_wartend: float = 0.0
+    var sek_brennt: float = 0.0
+    var durchkommer: int = 0
     var dauer: float = 0.0
     var naehrstoffe: int = 0
 
@@ -166,6 +175,15 @@ class Tier extends RefCounted:
     ## der auch ihr Schaden faellt.
     var licht: float = 0.0
 
+    ## **Wofuer ein Tier seine Sekunden ausgibt.** Nur gefuehrt, wenn
+    ## `Simulation.buchfuehrung` an ist - siehe dort.
+    var sek_fern: float = 0.0
+    var sek_uebersehen: float = 0.0
+    var sek_zaeh: float = 0.0
+    var sek_wartend: float = 0.0
+    var sek_brennt: float = 0.0
+    var biss: int = 0
+
 
 ## Die Tiere einer Fahrtrunde aufstellen.
 ##
@@ -210,6 +228,95 @@ static func stelle_auf(nummer: int) -> Array[Tier]:
 
 ## Eine Fahrtrunde durchrechnen: `Rundum.DICHTE` Wellen ab `nummer`,
 ## ineinander. `z` wird dabei fortgeschrieben.
+## **Buchfuehrung: wofuer ein Tier seine Sekunden ausgibt.**
+##
+## Die Verteilung des Huellenverlusts ueber die Wellen ist zweigipflig - der
+## Median kostet null, ein Zehntel traegt die Haelfte (siehe
+## `tools/ausreisser.gd`). Drei Erklaerungen dafuer sind gemessen und
+## gefallen: der Anteil schneller Tiere, die Panzerklippe und der Andrang
+## gegen die Zahl der Ziele. Alle drei waren **Eigenschaften**, aus denen
+## man auf einen Mechanismus schliessen wollte.
+##
+## Das hier fragt stattdessen den Mechanismus direkt. Fuer jedes Tier, das
+## das Boot erreicht, wird aufgeschrieben, womit es die Zeit bis dahin
+## verbracht hat:
+##
+##   * **stumpf** - es stand im Feld, aber `schaden_an()` gab null: zu weit,
+##     zu dunkel, oder der Panzer frass alles. Ein Tier in diesem Zustand
+##     ist unantastbar, und `brennende()` waehlt es folgerichtig nie.
+##   * **wartend** - es waere zu treffen gewesen, aber der Kegel fasst nur
+##     `ziele` Stueck, und andere waren wirksamer. Das ist die Schwelle, an
+##     der Gleichzeitigkeit weh tut.
+##   * **brennt** - es war gewaehlt und hat Schaden genommen, nur nicht
+##     genug.
+##
+## Welcher Posten ueberwiegt, sagt, welcher Hebel ueberhaupt greifen kann:
+## bei *stumpf* die Eigenschaften, bei *wartend* die Zahl der Ziele oder die
+## Verteilung der Auftritte, bei *brennt* die Leistung selbst. Ohne diese
+## Unterscheidung raet man, und dreimal geraten ist teuer genug gewesen.
+##
+## Aus statt an, weil es je Tier und Takt einen Zweig kostet und der
+## Kolonielauf ihn nicht braucht.
+static var buchfuehrung := false
+
+
+## **Der Daumen zielt auf das, was zuerst ankommt - nicht auf das
+## naechste.**
+##
+## Hier stand `Rundum.naechstes_ziel(boot, orte, INF)`: stur das naechste
+## Tier, ohne Reichweite und ohne Ruecksicht darauf, wer gerade beisst.
+## Gemessen mit `tools/durchkommer.gd`, ueber die zwoelf teuersten Wellen
+## und alle 62 Tiere, die das Boot erreicht haben:
+##
+## | wofuer die Zeit draufging | Anteil |
+## |---|---|
+## | **uebersehen** - in Reichweite, Kegel zeigte woanders | **63 %** |
+## | brennt - gewaehlt, nur nicht genug | 37 % |
+## | zaeh - im Licht und trotzdem unverwundbar | 1 % |
+## | wartend - kein Zielplatz frei | **0 %** |
+## | fern - ausser Reichweite | **0 %** |
+##
+## Kein einziges Tier kam durch, weil es ausser Reichweite war, und keines,
+## weil die Zielplaetze belegt waren. Zwei Drittel der Zeit stand es **in
+## Reichweite und unbeleuchtet** - der Kegel haette es fassen koennen. Das
+## ist kein Befund ueber das Spiel, sondern ueber den Daumen.
+##
+## Zusage 1 sagt: der einzige erlaubte Unterschied zwischen Spiel und
+## Pruefer ist, **wer zielt** - dort eine Rechnung, hier ein Daumen. Also
+## darf und soll dieser Daumen die Regel benutzen, die jeder Spieler
+## benutzt: auf das schiessen, was als naechstes ankommt. Die Entfernung
+## allein sagt das nicht - ein Schleier auf 400 Einheiten ist frueher da
+## als ein Panzerruecken auf 250.
+##
+## **Am Budget aendert das nichts.** `staerke()` kennt diese Funktion
+## nicht, und keine Balance-Zahl wird angefasst. Was sich aendert, ist die
+## **untere Schranke**, die der Pruefer meldet - und sie war mit der alten
+## Regel nicht "ein Spieler ohne Ausweichen", sondern "ein Spieler, der
+## den Falschen anleuchtet".
+##
+## Ausser Reichweite bleibt es beim naechsten Tier: dann ist nichts zu
+## treffen, und der Daumen faehrt hin.
+static func _ziel_nach_gefahr(lebende: Array[Tier], orte: Array[Vector2],
+        boot: Vector2, reichweite: float, nummer: int) -> int:
+    var wahl := -1
+    var frueheste := INF
+    var naechst := -1
+    var naechste := INF
+    for i in orte.size():
+        var weg: float = orte[i].distance_to(boot)
+        if weg < naechste:
+            naechste = weg
+            naechst = i
+        if weg > reichweite:
+            continue
+        var tempo: float = maxf(1.0, Wellen.tempo_in(lebende[i].art, nummer))
+        var bis_dahin: float = maxf(0.0, weg - Rundum.BOOT_RADIUS) / tempo
+        if bis_dahin < frueheste:
+            frueheste = bis_dahin
+            wahl = i
+    return wahl if wahl >= 0 else naechst
+
+
 static func welle(nummer: int, z: Zustand) -> Ergebnis:
     var e := Ergebnis.new()
     e.welle = nummer
@@ -286,7 +393,7 @@ static func welle(nummer: int, z: Zustand) -> Ergebnis:
                 orte.append(t.ort)
 
         var abtrieb := Regeln.stroemung(nummer, zeit)
-        var n := Rundum.naechstes_ziel(boot, orte, INF)
+        var n := _ziel_nach_gefahr(lebende, orte, boot, z.reichweite(), nummer)
         if n >= 0:
             var soll := Schlund.zielrichtung(boot, orte[n], blick)
             blick = Schlund.gedreht(blick, soll.rotated(-abtrieb),
@@ -329,8 +436,42 @@ static func welle(nummer: int, z: Zustand) -> Ergebnis:
                 Wellen.mindest_licht_in(lebende[i].art, nummer),
                 Wellen.hoechst_licht_in(lebende[i].art, nummer))
 
-        for i in Schlund.brennende(wirkung, z.ziele()):
+        var gewaehlt := Schlund.brennende(wirkung, z.ziele())
+        for i in gewaehlt:
             lebende[i].leben -= wirkung[i] * TAKT
+
+        if buchfuehrung:
+            var brennt := {}
+            for i in gewaehlt:
+                brennt[i] = true
+            for i in lebende.size():
+                if brennt.has(i):
+                    lebende[i].sek_brennt += TAKT
+                elif wirkung[i] <= 0.0:
+                    # **Zwei sehr verschiedene Nullen.** Im Dunkeln zu
+                    # stehen ist normal - der Kegel ist ein Strahl und
+                    # nicht eine Kuppel, und wer gerade nicht angeleuchtet
+                    # wird, nimmt selbstverstaendlich nichts. *Zaeh* ist das
+                    # andere: das Tier steht **im Licht** und nimmt
+                    # trotzdem null, weil Mindesthelligkeit, Panzer oder
+                    # Obergrenze alles wegnehmen. Nur das zweite ist ein
+                    # Hebel; das erste ist die Spielregel.
+                    if hell[i] > 0.0:
+                        lebende[i].sek_zaeh += TAKT
+                    elif orte[i].distance_to(boot) > z.reichweite():
+                        # Ausser Reichweite. Daran kann kein Daumen etwas
+                        # aendern, ohne hinzufahren - das ist die Groesse
+                        # des Feldes und nicht die Guete des Zielens.
+                        lebende[i].sek_fern += TAKT
+                    else:
+                        # **In Reichweite und trotzdem dunkel.** Der Kegel
+                        # haette es fassen koennen und stand woanders. Das
+                        # ist der einzige Posten, der an der *Zielpolitik*
+                        # haengt - und der simulierte Daumen nimmt stur das
+                        # naechste Tier, waehrend ein Mensch schwenkt.
+                        lebende[i].sek_uebersehen += TAKT
+                else:
+                    lebende[i].sek_wartend += TAKT
 
         # 3b. Das Stosslicht. Derselbe Ring wie im Spiel: er laeuft nach
         #     aussen und trifft jedes Tier genau einmal, mit derselben
@@ -431,6 +572,7 @@ static func welle(nummer: int, z: Zustand) -> Ergebnis:
                 # Zurueckwerfen statt entfernen: ein Raeuber, der beim
                 # Treffer verschwindet, macht aus dem Boot eine Wand.
                 e.treffer += 1
+                t.biss += 1
                 var kostet := mini(z.huelle, Arten.wucht(t.art))
                 e.verlust_je_art[t.art] = \
                     int(e.verlust_je_art.get(t.art, 0)) + kostet
@@ -439,6 +581,17 @@ static func welle(nummer: int, z: Zustand) -> Ergebnis:
                     * (Rundum.BOOT_RADIUS + 190.0)
                 t.biss_frei = zeit + Rundum.BISS_SPERRE
                 t.alter = 0.0
+
+    if buchfuehrung:
+        for t in tiere:
+            if t.biss <= 0:
+                continue
+            e.durchkommer += 1
+            e.sek_fern += t.sek_fern
+            e.sek_uebersehen += t.sek_uebersehen
+            e.sek_zaeh += t.sek_zaeh
+            e.sek_wartend += t.sek_wartend
+            e.sek_brennt += t.sek_brennt
 
     e.dauer = zeit
     e.huelle_nachher = z.huelle

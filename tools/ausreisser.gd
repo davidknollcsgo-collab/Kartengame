@@ -46,6 +46,11 @@ const BIS := 210
 const SCHNELL_AB := 120.0
 
 ## Wieviele der teuersten Wellen einzeln aufgeschluesselt werden.
+## Ueber welches Fenster der Andrang gemessen wird. Grob die Zeit, die ein
+## gewoehnliches Tier vom Bildrand bis zum Boot braucht - laenger gemessen
+## verschmiert die Spitze, kuerzer misst man den Wurf.
+const DRANG_FENSTER := 6.0
+
 const SPITZE := 12
 
 
@@ -75,11 +80,32 @@ func _init() -> void:
         var leben := 0.0
         # Ein Eintrag ist **ein** Tier - `auftritte()` fuehrt keine Zahl je
         # Gruppe, sie steht schon aufgeloest in der Liste.
+        var zeiten := PackedFloat32Array()
         for a in Wellen.auftritte(nummer):
             tiere += 1
             leben += Wellen.leben_in(int(a[&"art"]), nummer)
+            zeiten.append(float(a[&"zeit"]))
             if Wellen.tempo_in(int(a[&"art"]), nummer) >= SCHNELL_AB:
                 schnelle += 1
+
+        # **Der Andrang.** Wieviele Tiere treten im dichtesten Fenster von
+        # `DRANG_FENSTER` Sekunden ein - geteilt durch die Zahl der Ziele,
+        # die der Kegel auf dieser Welle gleichzeitig fasst.
+        #
+        # Das ist die Groesse, die `aufwand` nicht ausdruecken kann:
+        # `Schlund.brennende()` nimmt hoechstens `ziele` Tiere auf einmal,
+        # und was darueber hinaus gleichzeitig ankommt, laeuft ungebrannt
+        # durch. Eine Schwelle erzeugt genau die zweigipflige Verteilung,
+        # die dieses Werkzeug misst - also wird sie hier nachgesehen und
+        # nicht vermutet.
+        zeiten.sort()
+        var drang := 0
+        var j := 0
+        for i in zeiten.size():
+            while zeiten[i] - zeiten[j] > DRANG_FENSTER:
+                j += 1
+            drang = maxi(drang, i - j + 1)
+        var plaetze := maxi(1, Ausbau.ziele(nummer))
         # Wer den Verlust wirklich verursacht hat. `verlust_je_art` gibt es
         # seit dem Spiegler - eine gefallene Sitzung sagt sonst nur, dass
         # sie gefallen ist.
@@ -93,6 +119,8 @@ func _init() -> void:
         zeilen.append({
             &"welle": nummer, &"anteil": anteil, &"tiere": tiere,
             &"schnelle": schnelle, &"dauer": e.dauer,
+            &"drang": float(drang) / float(plaetze),
+            &"ziele": plaetze,
             &"leit": Wellen.hat_leitwesen(nummer),
             &"leben": leben, &"huelle": z.huelle_voll,
             &"umgebung": Wellen.umgebung(nummer), &"schuld": schuld})
@@ -130,13 +158,12 @@ func _init() -> void:
 
 
 func _tafel(zeilen: Array[Dictionary], von: int, bis: int) -> void:
-    print(" Welle | Verlust | Tiere | schnell | Leben | Umgeb | Leit | woran")
+    print(" Welle | Verlust | Tiere | schnell | Leben | Umgeb | Andrang | woran")
     for i in range(von, bis):
         var r := zeilen[i]
-        print("%6d | %6.0f %% | %5d | %5.0f %% | %5.0f | %5.2f | %4s | %s" % [
+        print("%6d | %6.0f %% | %5d | %5.0f %% | %5.0f | %5.2f | %7.2f | %s" % [
             r[&"welle"], float(r[&"anteil"]) * 100.0, r[&"tiere"],
             float(r[&"schnelle"]) / maxf(1.0, float(r[&"tiere"])) * 100.0,
-            r[&"leben"], r[&"umgebung"],
-            "ja" if r[&"leit"] else "-", r[&"schuld"]])
+            r[&"leben"], r[&"umgebung"], r[&"drang"], r[&"schuld"]])
 
 

@@ -54,10 +54,11 @@ godot --headless --path . --script tools/mutationskosten.gd   # was ein Zug wirk
 godot --headless --path . --script tools/mutationskosten.gd -- --zug Plated
 godot --headless --path . --script tools/ausreisser.gd       # die Verteilung einer Welle, ~6 min
 godot --headless --path . --script tools/ausreisser.gd -- --saat 1
+godot --headless --path . --script tools/durchkommer.gd   # warum ein Raeuber durchkommt, ~2 min
 ```
 
-> **Der Wellenprüfer meldet drei gefallene Sitzungen von achtundvierzig**,
-> die erste Wand bei Welle 100. Er war einmal bei fünfunddreißig; der Weg
+> **Der Wellenprüfer meldet eine gefallene Sitzung von achtundvierzig**,
+> die erste Wand bei Welle 176. Er war einmal bei fünfunddreißig; der Weg
 > dorthin steht unten, weil jeder Schritt eine Lehre ist und keiner geraten
 > war.
 >
@@ -81,7 +82,8 @@ godot --headless --path . --script tools/ausreisser.gd -- --saat 1
 > | Spiegler-Aufwand 1,30 → 2,2 | 14 | 95 |
 > | `Schlund.SPIEGEL_REST` 0,45 → 0,58 | 12 | 161 |
 > | Mutationsstärken gemessen und gesenkt | 2 | 164 |
-> | **Angriff aus der Nähe** (gewollt, siehe unten) | **3** | **100** |
+> | **Angriff aus der Nähe** (gewollt, siehe unten) | 3 | 100 |
+> | **der Daumen zielt nach Gefahr** (siehe unten) | **1** | **176** |
 >
 > **Drei Lehren, die sich jedes Mal wiederholt haben.**
 >
@@ -159,16 +161,74 @@ godot --headless --path . --script tools/ausreisser.gd -- --saat 1
 > Wehrpolyp kratzt an einer Schildkoralle, der Kegel nicht"* — der Kegel tut
 > es sehr wohl, überall außer in seiner Mitte.
 >
-> Eine Klippe, auf deren Seiten der Wurf entscheidet, ist genau die Form,
-> die eine zweigipflige Verteilung erzeugt. **Gemessen ist sie trotzdem
-> nicht.** Ein erster Versuch — Panzer von der Leistung abziehen,
-> `maxf(0, leistung - panzer) * helligkeit`, Testlauf 96/96 grün, weil alle
-> drei Zusicherungen von `_test_haut_schluckt_schwache_quellen` bei voller
-> Helligkeit stehen und dort unverändert gelten — ließ das obere Zehntel
-> unverändert (17,4 → 17,0 %) und machte Welle 176 **schlimmer** (83 →
-> 100 %). Plausibler Grund: gepanzerte Tiere nehmen am Rand jetzt Schaden,
-> belegen damit die knappen Zielplätze von `brennende()`, und andere laufen
-> durch. Wer das aufgreift, misst es an drei Saaten und nicht an einer.
+> **Und dieser Verdacht ist inzwischen gemessen und gefallen.** Ein erster
+> Versuch — Panzer von der Leistung abziehen statt vom Strahl an dieser
+> Stelle — ließ das obere Zehntel unverändert (17,4 → 17,0 %) und machte
+> Welle 176 schlimmer. Und `tools/durchkommer.gd` sagt warum: von der Zeit,
+> die ein Tier verbringt, bevor es das Boot erreicht, entfällt **ein
+> Prozent** darauf, im Licht zu stehen und trotzdem unverwundbar zu sein.
+> Der Panzer ist nicht der Grund.
+>
+> Dass die gepanzerten Arten trotzdem in `verlust_je_art` oben stehen, ist
+> dieselbe Auswahlfalle wie bei der Trefferliste des Kolonielaufs: sie sind
+> **langsam**, stehen also lange im Feld, und wer lange da ist, ist öfter
+> dabei, wenn etwas schiefgeht.
+>
+> **Und dann ist zum ersten Mal der Mechanismus gefragt worden statt einer
+> Eigenschaft.** Drei Erklärungen waren gemessen und gefallen — Anteil
+> schneller Tiere, Panzerklippe, und der **Andrang** (die dichteste Zahl
+> Eintritte je sechs Sekunden, geteilt durch die Zielplätze des Kegels:
+> Welle 210 hat den *niedrigsten* Andrang von allen und 47 % Verlust, Welle
+> 56 den höchsten und null). Alle drei waren Eigenschaften, aus denen auf
+> einen Mechanismus geschlossen werden sollte.
+>
+> `tools/durchkommer.gd` schaltet `Simulation.buchfuehrung` an und liest
+> aus, **womit ein Tier die Zeit verbracht hat, bevor es das Boot
+> erreichte**. Über die zwölf teuersten Wellen, alle 62 Durchkommer:
+>
+> | wofür die Zeit draufging | Anteil |
+> |---|---|
+> | **übersehen** — in Reichweite, Kegel zeigte woanders | **63 %** |
+> | brennt — gewählt, nur nicht genug | 37 % |
+> | zäh — im Licht und trotzdem unverwundbar | 1 % |
+> | wartend — kein Zielplatz frei | **0 %** |
+> | fern — außer Reichweite | **0 %** |
+>
+> **Kein einziges Tier kam durch, weil es außer Reichweite war, und keines,
+> weil die Zielplätze belegt waren.** Zwei Drittel der Zeit stand es in
+> Reichweite und unbeleuchtet. Das ist kein Befund über das Spiel, sondern
+> über den **Daumen**: er nahm stur das nächste Tier.
+>
+> Zusage 1 sagt, der einzige erlaubte Unterschied zwischen Spiel und Prüfer
+> sei, **wer zielt** — dort eine Rechnung, hier ein Daumen. Also darf und
+> soll dieser Daumen die Regel benutzen, die jeder Spieler benutzt: auf das
+> schießen, was als nächstes ankommt. Die Entfernung allein sagt das nicht —
+> ein Schleier auf 400 Einheiten ist früher da als ein Panzerrücken auf 250.
+>
+> | Saat | vorher | nach Gefahrenzielen |
+> |---|---|---|
+> | 0 | 39 | **27** (tragbar 29 — grün) |
+> | 1 | 62 | **32** |
+> | 2 | 147 | **78** |
+>
+> Knapp die Hälfte, und zwar in **jeder** Saat — das ist der Unterschied zu
+> jedem Preisversuch in dieser Datei, der immer nur eine Realisierung
+> verschob. Der Wellenprüfer fällt von drei gefallenen Sitzungen auf
+> **eine**, die Wand von Welle 100 auf **176**. Die Fahrprobe trägt
+> unverändert 45 Wellen.
+>
+> **Am Budget ändert das nichts.** `staerke()` kennt diese Funktion nicht,
+> keine Balance-Zahl ist angefasst. Was sich ändert, ist die **untere
+> Schranke**, die der Prüfer meldet — und sie war vorher nicht „ein Spieler
+> ohne Ausweichen", sondern „ein Spieler, der den Falschen anleuchtet".
+>
+> **Und was dagegen steht, gehört genauso hierher.** Das obere Zehntel
+> fällt von 17,4 auf 14,6 %, der **Höchstwert steigt** von 82,9 auf 100 %,
+> und zum ersten Mal kostet eine Welle die ganze Hülle: **Welle 176**,
+> dieselbe, die in dieser Datei seit Langem als offener Posten steht und
+> auf die jetzt auch die Wand des Wellenprüfers zeigt. Der bessere Daumen
+> räumt die Breite ab und lässt genau diese eine Welle stehen — damit ist
+> sie zum ersten Mal ein **einzelnes** Problem statt eines Symptoms.
 >
 > **Das Werkzeug meldet dazu absichtlich auch die zwölf günstigsten Wellen
 > mit denselben Spalten.** Wer ein Merkmal in der Spitze findet, muss

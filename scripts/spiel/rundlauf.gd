@@ -2988,8 +2988,26 @@ func probe_sicht() -> float:
     return maxf(120.0, bild.length() * 0.5 / z)
 
 
+## **Er zielt auf das, was zuerst ankommt - nicht auf das naechste.**
+##
+## Hier stand die kleinste Entfernung. Gemessen mit
+## `tools/durchkommer.gd` ueber die zwoelf teuersten Wellen und alle 62
+## Tiere, die im Simulator das Boot erreicht haben: **null Prozent** der
+## Zeit waren sie ausser Reichweite, **null Prozent** wartete einer auf
+## einen freien Zielplatz, ein Prozent stand unverwundbar im Licht - und
+## **dreiundsechzig Prozent** standen **in Reichweite und unbeleuchtet**.
+## Der Kegel haette sie fassen koennen und zeigte woanders hin.
+##
+## Die Entfernung allein sagt nicht, wer zuerst da ist: ein Schleier auf
+## 400 Einheiten kommt frueher an als ein Panzerruecken auf 250. Beide
+## Piloten dieses Repositoriums nehmen deshalb dieselbe Regel - der hier
+## und `tools/simulation.gd::_ziel_nach_gefahr()`. Zwei verschiedene
+## Spielermodelle waeren zwei untere Schranken, und die eine wuesste nicht,
+## was die andere misst.
 func _steuere_probe() -> void:
     var naechstes: Raeuber = null
+    var frueheste := INF
+    var ersatz: Raeuber = null
     var beste := INF
     var sicht := probe_sicht()
     var reicht := sicht * sicht
@@ -2997,9 +3015,20 @@ func _steuere_probe() -> void:
         if not t.lebendig or t.alter < 0.0:
             continue
         var d := t.ort.distance_squared_to(_ort)
-        if d < beste and d < reicht:
+        if d >= reicht:
+            continue
+        if d < beste:
             beste = d
+            ersatz = t
+        var weg := sqrt(d)
+        var tempo: float = maxf(1.0, Wellen.tempo_in(t.art, t.welle))
+        var bis_dahin: float = maxf(0.0, weg - Rundum.BOOT_RADIUS) / tempo
+        if bis_dahin < frueheste:
+            frueheste = bis_dahin
             naechstes = t
+    if naechstes == null:
+        naechstes = ersatz
+        frueheste = INF
     if naechstes == null:
         # **Was er nicht sieht, faehrt er nicht an.** Ein Pilot, der ins
         # Dunkle zieht, weil dort rechnerisch etwas steht, misst wieder das
@@ -3010,8 +3039,10 @@ func _steuere_probe() -> void:
         return
     var richtung := (naechstes.ort - _ort).normalized()
     # Innerhalb der Totzone zielt der Finger nur; darueber faehrt das Boot
-    # mit. Nah heisst also stehen und brennen, weit heisst hinfahren.
-    var weit := sqrt(beste) > 260.0
+    # mit. Nah heisst also stehen und brennen, weit heisst hinfahren -
+    # gemessen am **gewaehlten** Ziel und nicht am naechsten, sonst faehrt
+    # er auf das eine zu und leuchtet auf das andere.
+    var weit := _ort.distance_to(naechstes.ort) > 260.0
     _finger = _ort + richtung * (Rundum.TOTZONE
         + (150.0 if weit else -20.0))
     if stoss_bereit() and _offen > 12:
