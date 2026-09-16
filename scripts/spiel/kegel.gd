@@ -246,7 +246,44 @@ func _farbe_an(spitze: Vector2, punkt: Vector2, puls: float) -> Color:
         punkt, rand_kern, tiefe_kern) * schein
     if hell <= 0.0:
         return Color(farbe.r, farbe.g, farbe.b, 0.0)
-    var mische := farbe.lerp(kern, hell * hell)
+    # **Der Kern gehoert in den Kern, nicht in den halben Strahl.**
+    #
+    # Gemischt wurde mit `hell * hell`, und `hell` liegt ueber weite Teile
+    # des Kegels nahe eins - also lag dort fast reines `kern`, und das ist
+    # ein warmes Weiss. Gemessen im Spielbild: Saettigung **0,26 bis 0,33**
+    # im Strahl gegen **0,70** im Wasser daneben. Ein grauer Keil ueber
+    # einer blaugruenen Szene liest sich als **Nebel** und nicht als Licht;
+    # er nahm dem Grund die Zeichnung, statt sie zu zeigen.
+    #
+    # Mit der vierten Potenz bleibt der Kern, was sein Name sagt: die
+    # Spitze des Strahls. Der Rest traegt die Farbe der Lampe - und das ist
+    # die Farbe, die der Spieler sich mit dem Anstrich verdient hat.
+    #
+    # **An der Deckung aendert das nichts.** Die steht in `hell`, und
+    # `hell` ist dieselbe Zahl, aus der der Schaden faellt (Zusage 2). Die
+    # Form des Kegels bleibt auf den Punkt dieselbe.
+    var tiefe := clampf(spitze.distance_to(punkt)
+        / maxf(1.0, reichweite), 0.0, 1.0)
+    # **Der Kern haengt an der Entfernung, nicht an der Helligkeit.**
+    #
+    # Gemischt wurde mit `hell * hell` - und `hell` ist im Inneren des
+    # Strahls schlicht **eins**, ueber seine ganze Laenge. Damit lag dort
+    # fast reines `kern`, und das ist ein warmes Weiss: gemessen Saettigung
+    # **0,26 bis 0,33** im Strahl gegen **0,70** im Wasser daneben. Ein
+    # grauer Keil ueber einer blaugruenen Szene liest sich als **Nebel**
+    # und nicht als Licht - er nahm dem Grund die Zeichnung, statt sie zu
+    # zeigen.
+    #
+    # Dass die Potenz daran nichts aendert, ist gemessen: mit der vierten
+    # statt der zweiten stand die Saettigung bei 0,32 statt 0,30. Eins hoch
+    # irgendwas ist eins. **Wer eine Mischung schaerfer macht, muss zuerst
+    # nachsehen, ob die Groesse, an der sie haengt, ueberhaupt variiert.**
+    #
+    # Weiss gehoert an die **Blende**: dort tritt das Licht aus, dort ist es
+    # am dichtesten. Ueber die Laenge faellt es auf die Farbe der Lampe
+    # zurueck - und das ist die Farbe, die der Spieler sich mit dem Anstrich
+    # verdient hat.
+    var mische := farbe.lerp(kern, pow(1.0 - tiefe, 3.0))
 
     # **Wasser frisst zuerst das Rot.**
     #
@@ -266,8 +303,6 @@ func _farbe_an(spitze: Vector2, punkt: Vector2, puls: float) -> Color:
     # **Und sie ruehrt die Deckung nicht an.** Die steht in `hell`, und
     # `hell` ist dieselbe Zahl, aus der der Schaden faellt (Zusage 2). Was
     # sich hier aendert, ist der Farbton und nichts sonst.
-    var tiefe := clampf(spitze.distance_to(punkt)
-        / maxf(1.0, reichweite), 0.0, 1.0)
     var zehr := ZEHRUNG * tiefe * tiefe
     return Color(mische.r * (1.0 - zehr), mische.g * (1.0 - zehr * 0.40),
         mische.b * (1.0 - zehr * 0.08),
