@@ -340,9 +340,37 @@ func _gedeckt(farbe: Color) -> Color:
     # hier durch: eine Farbe ohne Deckung malt nichts.
     if _umriss_pass:
         return Color(farbe.r, farbe.g, farbe.b, 0.0)
+    # **Ein Tier im Dunkeln ist nicht so hell wie eines im Strahl.**
+    #
+    # Gemessen im Spielbild: Tiere am unteren Bildrand, weit ausserhalb des
+    # Kegels, standen auf **247** Helligkeit bei Saettigung 0,04 - also
+    # reines Weiss mit einem roten Rand darum. Der weisse Klecks, gegen den
+    # in dieser Datei seit Langem gearbeitet wird, und diesmal aus einem
+    # Grund, den keine Zeichnung beheben kann: die Toenung eines Leibes
+    # haengt nur an seiner **Geometrie**, nicht daran, wieviel Licht auf
+    # ihm liegt. Ein Tier war ueberall gleich hell.
+    #
+    # Damit hatte das Bild keine Rangordnung. Ein Raeuber am Bildrand
+    # schrie so laut wie der, den man gerade verbrennt, und der Kegel war
+    # optisch folgenlos - er sagte, wo Schaden entsteht, aber er
+    # **beleuchtete** nichts.
+    #
+    # Gerechnet wird mit `t.licht`, also mit genau der Zahl, aus der auch
+    # der Schaden faellt: Zusage 2 gilt damit staerker als vorher, nicht
+    # schwaecher. Was hell gezeichnet wird, brennt auch.
+    #
+    # Multipliziert, nicht ueberblendet: ein Ton, der zum Wasser hin
+    # gemischt wird, verliert seine Farbe, ein multiplizierter behaelt sie.
+    # Und die Kennung geht **nicht** hier durch (`_kennung_umriss()` ruft
+    # roh auf) - ein Tier im Dunkeln bleibt als Gegner erkennbar, es ist
+    # nur nicht mehr das Lauteste im Bild.
+    var t := farbe
+    if _tiefe < 1.0:
+        t = Color(farbe.r * _tiefe, farbe.g * _tiefe, farbe.b * _tiefe,
+            farbe.a)
     if deckung >= 1.0:
-        return farbe
-    return Color(farbe.r, farbe.g, farbe.b, farbe.a * deckung)
+        return t
+    return Color(t.r, t.g, t.b, t.a * deckung)
 
 
 ## Steht von diesem Tier ueberhaupt etwas im Bild?
@@ -536,6 +564,9 @@ func _zeichne(t: Raeuber, stufe := 0) -> void:
     # der Spieler zum Zielen braucht - ohne sie sieht er nicht, wen er fasst.
     var hitze := t.hitze
     var puls := 1.0 + 0.18 * hitze
+    # Wieviel Licht auf diesem Tier liegt - dieselbe Zahl wie beim Schaden.
+    _tiefe = lerpf(TIEFE_AUSSEN, 1.0,
+        clampf(t.licht / TIEFE_VOLL, 0.0, 1.0))
 
     # **Was brennt, zappelt.**
     #
@@ -3930,6 +3961,18 @@ func _zellkoerper(punkte: PackedVector2Array, farbe: Color, hitze: float,
 ## Zierat selbst zeichnet, faellt damit aus, ohne dass es jede einzelne
 ## Stelle wissen muss.
 var _umriss_pass := false
+
+## **Wieviel Farbe ein Tier gerade traegt** - siehe `_gedeckt()`.
+##
+## `AUSSEN` ist der Sockel fuer ein Tier ganz ohne Licht. Er ist nicht null
+## und auch nicht knapp darueber: ein Raeuber, den man nicht kommen sieht,
+## ist kein Hinterhalt, sondern ein Unfall - dieselbe Begruendung, aus der
+## kein Leitwesen lauert. `VOLL` ist die Helligkeit, ab der ein Tier seine
+## ganze Farbe traegt; darueber bringt mehr Licht nichts mehr, weil es sonst
+## im Kern des Kegels wieder ausbleicht.
+const TIEFE_AUSSEN := 0.58
+const TIEFE_VOLL := 0.42
+var _tiefe := 1.0
 
 
 ## **Ein Durchgang, der nichts zeichnet, darf auch nichts aufrufen.**
