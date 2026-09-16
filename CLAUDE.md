@@ -702,6 +702,34 @@ unter einer strengen Inhaltsrichtlinie läuft, die `data:` und `blob:` abweist.
    mehr Licht — Form und Reichweite des Kegels bleiben unberührt, und wo er
    hell ist, bleibt er hell. `_test_schlieren_bleiben_schmuck` hält die
    Grenze fest; alles darüber wäre wieder eine zweite Wahrheit.
+
+   **Und der Kegel war lange Nebel statt Licht.** Gemessen im Spielbild,
+   Sättigung je Bildpunkt: **0,26 bis 0,33** im Strahl gegen **0,70** im
+   Wasser daneben. Ein grauer Keil über einer blaugrünen Szene liest sich
+   als Nebel — er nahm dem Grund die Zeichnung, statt sie zu zeigen, und
+   das ausgerechnet dort, wo der Spieler hinsieht. Die Ursache war die
+   Mischung zum Kern (`farbe.lerp(kern, hell · hell)`, `kern` ein warmes
+   Weiß): **`hell` ist im Inneren des Strahls schlicht eins**, über seine
+   ganze Länge, also lag dort fast reines Weiß. Weiß gehört an die
+   **Blende** — dort tritt das Licht aus, dort ist es am dichtesten —, und
+   über die Länge fällt es jetzt auf die Farbe der Lampe zurück, also auf
+   die Farbe, die der Spieler sich mit dem Anstrich verdient hat.
+
+   | | Sättigung im Strahl | Punkt auf halber Länge |
+   |---|---|---|
+   | vorher | 0,30 | (98 / 128 / 132) |
+   | nachher | **0,50** | **(70 / 123 / 134)** |
+
+   **An der Deckung ändert das nichts** — die steht in `hell`, und `hell`
+   ist dieselbe Zahl, aus der der Schaden fällt; die Form des Kegels ist
+   auf den Punkt dieselbe geblieben. Genau das ist die Grenze dieser
+   Zusage: die Farbe darf zehren und mischen, die Deckung nie.
+
+   *Und der erste Anlauf ist die Lehre daneben.* Er hat die Potenz
+   geschärft (vierte statt zweite) und **nichts** bewirkt — Sättigung 0,32
+   statt 0,30. **Eins hoch irgendwas ist eins.** Wer eine Mischung schärfer
+   macht, sieht zuerst nach, ob die Größe, an der sie hängt, überhaupt
+   variiert.
 3. **Die Wellenstärke wird aus der Sollkurve abgeleitet, nicht frei gewählt.**
    `Wellen.staerke()` rechnet aus `Ausbau.durchsatz()`. Eine frei hochgezogene
    Wachstumszahl ergab 55 Wellen ohne einen einzigen Verlust und dann
@@ -1480,6 +1508,39 @@ hell ist — und die Ringe waren nur noch Ringe. Betroffen waren die
 Laichwolke (die häufigste Art im Spiel), die Begleiter und die
 Sparfassung.
 
+**Der Maßstab aller Arten hing noch am alten Helfer.** Der Zahnkiefer ist die
+Art, die man in Welle 1 trifft, und die, gegen die jede Balance-Zahl gemessen
+wird (`tools/artenkosten.gd` rechnet alles je Lebenspunkt gegen ihn). Im Bild
+war er ein glatter, blasser Spindelkörper — und die Ursache stand nicht in
+seiner Zeichnung, sondern in einer Zeile: er war die **einzige** Art, die noch
+`_leib()` rief. Fünf andere Schlauchkörper gehen längst durch `_zellleib()`,
+mit Tönung quer zum Rückgrat, Randlicht und Glanz.
+
+Gefunden hat es kein Bild, sondern das Nachzählen der Aufrufe. **Wer einen
+gemeinsamen Weg einführt, zählt nach, wer ihn noch nicht geht** — im Quelltext
+sieht man einen Nachzügler nicht. Damit hatte `_leib()` keinen Aufrufer mehr:
+neunzig Zeilen toter Code, der wie ein Weg aussieht, dieselbe Sorte, die hier
+schon einmal einen Einstieg unsichtbar gemacht hat (`Lehrpfad` aus `wache.gd`).
+
+**Und das Maul ist ein Loch.** Es stand als zwei *helle* Züge auf einem hellen
+Leib, die Zähne als weiße Dreiecke darauf — hell auf hell, also unsichtbar. Der
+Grund, aus dem das einmal richtig war, ist längst weg: solange **additiv**
+gezeichnet wurde, gab es kein Dunkel, mit dem man ein Loch hätte malen können.
+Jetzt ist die Rachenfläche dunkel, die Kiefer sind die helle Kante darauf, und
+die Zähne haben zum ersten Mal einen Hintergrund, vor dem sie stehen. Der erste
+Anlauf nahm dafür ein **konkaves** Viereck, und `draw_colored_polygon`
+trianguliert das stumm nicht — im Bild änderte sich nichts. Ohne Nachmessen
+hätte ich den Gedanken für falsch gehalten statt die Form.
+
+**Und eine Lehre über den Messstand selbst: die Tierschau hat einen
+Rauschboden, und er ist groß.** Zwischen zwei Schüssen desselben Standes
+weichen **23514** Bildpunkte ab — die Tiere animieren zwischen den Bildern. Die
+Löschung von `_leib()` gab 12833, also deutlich darunter und damit folgenlos,
+wie es sein muss. Meine Einzelvergleiche davor hatten diesen Boden nicht unter
+sich; die strukturellen Änderungen waren im Bild eindeutig, die feinen waren es
+nicht. **Dieselbe Regel wie beim Kolonielauf und bei der Bildrate** — eine
+Einzelmessung aus einer streuenden Verteilung ist ein Zug und kein Befund.
+
 **Der Stil darf nicht bei achtzig Tieren aussetzen.** `_knapp()` — die
 Sparfassung ab `DICHT_AB` — war eine durchscheinende Raute mit einem hellen
 Zug darum, und sie ist die Fassung, die man in einer vollen Welle am
@@ -1554,6 +1615,44 @@ Geometrie, nicht der Beleuchtung. Was Schaden nimmt, sagt weiterhin
 `t.licht`, und `_test_rundumlauf_brennt_mit_dem_gezeichneten_kegel` hält das
 fest.
 
+**Ein Tier im Dunkeln war so hell wie eines im Strahl.** Gemessen im
+Spielbild: Räuber am unteren Bildrand, weit außerhalb des Kegels, standen auf
+**248** Helligkeit bei Sättigung 0,04 — reines Weiß mit einem roten Rand
+darum. Der weiße Klecks, gegen den in dieser Datei seit Langem gearbeitet
+wird, diesmal aus einem Grund, den keine Zeichnung beheben kann: die Tönung
+eines Leibes hing nur an seiner **Geometrie**, nicht daran, wieviel Licht auf
+ihm liegt. Damit hatte das Bild keine Rangordnung — ein Räuber am Bildrand
+schrie so laut wie der, den man gerade verbrennt, und der Kegel war optisch
+folgenlos: er sagte, wo Schaden entsteht, aber er **beleuchtete** nichts.
+
+Gerechnet wird mit `t.licht`, also mit genau der Zahl, aus der auch der
+Schaden fällt (Zusage 2 gilt damit stärker als vorher). **Multipliziert statt
+überblendet** — ein Ton, der zum Wasser hin gemischt wird, verliert seine
+Farbe, ein multiplizierter behält sie. Die Kennung geht nicht durch
+`_gedeckt()`, ein Tier im Dunkeln bleibt also als Gegner erkennbar; es ist nur
+nicht mehr das Lauteste im Bild. Und der Sockel (`TIEFE_AUSSEN`, 0,58) ist aus
+demselben Grund kein kleinerer: **wen man nicht kommen sieht, der ist kein
+Hinterhalt, sondern ein Unfall.**
+
+| | hellster Punkt am Bildrand | Sättigung Median | fast weiß |
+|---|---|---|---|
+| vorher | 248 | 0,393 | 2,8 % |
+| nachher | **173** | **0,412** | **2,3 %** |
+
+**Gefunden hat es die Hausmethode, und sie hat vier Vermutungen erledigt.**
+Die hellen Streifen am Bildrand sahen aus wie Fischschwärme; `wild.gd`
+stillgestellt änderte **nichts** (247,0 gegen 247,7), Bewuchs, Funde, Schlote
+und Kleinzeug ebensowenig — und `schwarm.gd` stillgestellt ließ 59,7 übrig.
+Vier Schüsse statt einer Vermutung.
+
+**Dazu zwei Zahlen, die an beiden Enden Farbe gekostet haben.** Gemessen lag
+das Lichtband der Schildkoralle auf Sättigung **0,09** (also weiß) und die
+Schattenseite der rosa Art auf **0,17** (also grau) — beides Fehler, die in
+dieser Datei beschrieben stehen und zurückkamen, weil an den Zahlen nie jemand
+nachgemessen hat, was im Bild ankommt. `ZELL_LICHT` 0,34 → 0,20 und
+`ZELL_BLAU` 0,44 → 0,26. Die Tonspreizung bleibt, wie sie war: sie ist das,
+was Volumen macht.
+
 **Weiß ist man selbst, rot ist ein Räuber.** Auf die Frage, die im Bild am
 häufigsten falsch beantwortet wurde — *ist das ein Gegner oder Hintergrund?* —
 liegt jetzt eine **Seitenkennung** über dem Randlicht: ein Zug in Weiß um Boot
@@ -1624,8 +1723,11 @@ Zeichenfehler hält. `KENNUNG_ZUG` ist deshalb `(KENNUNG_BREITE + GLAETTUNG /
 *Zweitens: der Umrisspass muss stumm sein, und das geht an einer Stelle.* Die
 Leibhelfer kehren dort nach ihrem Zug sofort zurück — aber was eine Artfunktion
 an Zierat **selbst** zeichnet (Rillen, Augen, Leuchtpunkte, Fühler), kennt den
-Pass nicht. Statt das an fünfzig Stellen einzeln abzufragen, gibt `_gedeckt()`
-im Umrisspass durchsichtig zurück: eine Farbe ohne Deckung malt nichts.
+Pass nicht. Der erste Anlauf gab dafür `_gedeckt()` im Umrisspass durchsichtig
+zurück, und das war in Bildern je Sekunde umsonst — in **Zeichenaufrufen**
+kostet eine Fläche mit Deckung null den vollen Preis. Stumm ist der Pass jetzt
+über die Hülle (`_d_circle`, `_d_line`, …), die vor dem Zeichenbefehl abbricht;
+die Rechnung dazu steht weiter unten.
 
 *Drittens: zwei Durchgänge kosten hier nichts.* Gemessen 2,50 gegen 2,57
 Bilder/s bei drei Stichproben je Stand — der zweite Durchgang bricht in jedem
@@ -1641,6 +1743,49 @@ vorher im Bild gesehen hatte. Was es beantwortet hat, ist derselbe Griff wie
 `KENNUNG_DECKUNG` auf null, zweiter Schuss, Differenzbild — siebzehn
 Ballungen an siebzehn Plätzen, und damit ist die Frage beantwortet statt
 geschätzt. Genau dieser Lauf hat auch den Schleier gefunden.
+
+**Und dann hat sie ihre eigene Zusage nicht gehalten.** Über
+`_kennung_umriss()` steht seit jeher: *sie läuft rundum mit gleicher Deckung —
+eine Kennung, die an manchen Stellen fehlt, ist keine.* Sie tat es nicht, und
+das ist nachmessbar: über 747 rote Bildpunkte an **einem** Panzerkrebs lief die
+Deckung von **0,43 bis 0,76**, also Faktor 1,8 um dasselbe Tier herum.
+
+Der Grund liegt in der Zweipass-Konstruktion selbst. Ein Tier besteht aus
+vielen Teilstücken — Leib, Beine, Fühler, Flossen —, und **jedes** zieht seinen
+eigenen Zug. Wo zwei davon außerhalb des Leibes übereinander liegen, addiert
+sich Alpha: aus 0,42 werden 0,66, aus dreien 0,80. Im Bild eine Linie, die an
+einer Seite ein Faden und an der anderen ein Wulst ist, mit Klumpen an jedem
+Beinansatz.
+
+**Deckende Züge können das nicht** — deckend über deckend ist dieselbe Farbe.
+Der Ton ist deshalb gerechnet und nicht gewählt: 0,42 reines Rot über dunklem
+Wasser ergibt (113 / 43 / 43), und genau das steht jetzt als deckende Farbe da,
+einen Hauch kräftiger.
+
+| | p10 | Median | p90 | Spanne |
+|---|---|---|---|---|
+| vorher | 109 | 135 | 193 | **1,77** |
+| nachher | 116 | 170 | 178 | **1,53** |
+
+Der Rest der Spanne ist der Glättungssaum des Zuges und nicht mehr die
+Überlagerung: p90 zu Median fällt von 1,43 auf 1,05.
+
+**Und damit trat der zweite Fehler hervor: dünne Glieder wurden von ihrer
+eigenen Kennung gefressen.** Der Zug liegt mittig auf dem Umriss, frisst also
+die Hälfte nach innen. Bei einem Leib ist das gewollt — die Füllung deckt ihn
+wieder zu —, bei einem Bein von drei Bildpunkten ist es alles: der Panzerkrebs
+trug keine Beine, sondern einen **roten Kamm**, die Schlundmutter rote Balken
+statt Fangarmen, der Kalkrochen einen roten Stock statt eines Schwanzes.
+
+Der Zug wird deshalb an der Dicke der Form gemessen, die er umrundet:
+`4 · Fläche / Umfang` ist für ein langes schmales Stück gerade seine Breite —
+eine Zahl, die **aus dem Umriss selbst fällt** und nicht aus einer Tabelle, in
+der jemand jede Art von Hand eintragen müsste. Ein Leib bekommt den vollen Zug
+(`KENNUNG_ZUG`), ein Fangarm einen, der ihn stehen lässt (`KENNUNG_SCHMAL`).
+
+Die weiße Kennung am Boot bleibt unberührt: sie wird als **ein** Ring über dem
+fertigen Rumpf gezogen, hat also nie überlagert, und ihre sichtbare Breite ist
+dieselbe wie die des Räubers. Freund und Feind lesen sich weiter gleich.
 
 **Und der Schein ist weg, bei jedem Tier.** Die Rückmeldung nannte beides in
 einem Satz, und das ist kein Zufall: dieselbe Kante soll die Frage
@@ -1786,6 +1931,36 @@ verschwand), dann zu klein (1,35 Radien = neun Pixel: richtig
 proportioniert und trotzdem wirkungslos), dann trugen drei dicke Rippen
 die Form und sahen aus wie Schnurrhaare. Was es gelöst hat, war eine
 **Außenkante**, die zu den Enden ausläuft.
+
+**Und beide waren danach noch einmal dran — drei Fugen sind ein
+Streifenmuster, und ein Seil aus Luft ist eine Kette.** Zwei Arten, zwei
+Fehler, und beide sind gefunden worden, indem etwas stillgestellt und noch
+einmal geschossen wurde.
+
+*Die Schildkoralle war ein gestreifter Edelstein.* Drei Rillen quer über einen
+Leib von dreißig Bildpunkten liegen alle acht Pixel — und der erste Verdacht
+(die helle Lippe der Rille sei der Kratzer) war **falsch**: leiser gestellt
+änderte sie im Bild nichts. Die Fugen stillgestellt beantwortete es sofort —
+ohne sie las sich der Schild als dicke Schale mit zwei Tonstufen und doppelter
+Kontur, mit ihnen als Streifenmuster. **Was die Platte trägt, ist die Tönung;
+die Fuge sagt nur, wo die nächste darüberliegt, und dafür reicht eine Kante,
+die man zählen kann.** Jetzt zwei statt drei.
+
+*Der Treibanker hing an einem unsichtbaren Faden.* Sein Ankerseil war
+zweieinviertel Bildpunkte breit bei 0,46 Deckung und lief nach hinten auf
+weniger als einen. Zu sehen war davon nichts — zu sehen war die rote Kennung,
+die es umrundet, also eine **Kette** aus roten Gliedern um einen Faden aus
+Luft, und die las sich als Leiter. Der Anker, der dieser Art ihren Namen gibt,
+hing an nichts. Es ist dieselbe Regel, die einen Absatz weiter oben für das
+**Segel** derselben Art schon steht: *was die Silhouette trägt, kann nicht
+durchsichtig sein.* Sie galt für das Segel und nicht für das Seil, obwohl
+beides am selben Tier hängt und beides seine Regel erzählt.
+
+*Und die Lippe der Rille fällt jetzt trotzdem mit ihrer eigenen Helligkeit* —
+sie hat die Schildkoralle nicht gerettet, aber die Regel stimmt und steht beim
+Boot genauso (`rundlauf.gd::_fuge()`): auf einer deckenden hellen Fläche ist
+eine helle Linie ein Kratzer. Eine dunkle Lippe auf dunklem Leib bleibt, was
+sie war.
 
 **Beide großen Leitwesen hatten eine gerade Hinterkante — und zwar
 buchstäblich dieselbe.** Kalkrochen und Schlundmutter waren nach demselben
@@ -2076,6 +2251,44 @@ Strahls) und ein dunkler Saum am Heck.
 *Kiel und Spanten waren helle Linien.* Auf einer deckenden Fläche ist eine
 helle Linie ein Kratzer. `_fuge()` zieht sie als Rille mit heller Lippe —
 dieselbe Sprache wie `schwarm.gd::_rille()`.
+
+**Und das Boot hatte trotzdem keinen Rücken.** Die Antwort stand die ganze
+Zeit in derselben Datei, bei der gestrichenen Kiellinie: *von oben gesehen hat
+ein Rumpf dort keine Kante, sondern seinen Rücken — die hellste Stelle.* Der
+Kiel wurde deshalb entfernt; die Schattierung, die das hätte tragen sollen, kam
+nie. Die drei Tonbänder liefen **längs**, und `st` fiel aus der Längslage: das
+hinterste Band deckte alles hinter der Mitte und stand auf 0,32, der Bug auf
+0,80. Zwei Drittel des Bootes lagen damit knapp über dem Wasser, und im Bild
+war es kein Körper, sondern ein Verlauf — eine helle Spitze an einer dunklen
+Fläche, das blasseste Ding in einer Szene voller leuchtender Tiere.
+
+Jetzt liegen die Bänder **quer**: Lichtflanke hell, Rücken mittel,
+Schattenflanke dunkel, mit Faktor 1,55 und 1,71 dazwischen. Und die
+Lichtrichtung steht in **Welt**koordinaten (`WELTLICHT`) — das Licht wandert
+also über den Rumpf, wenn das Boot dreht, und genau das lässt ihn als festen
+Körper lesen statt als Aufkleber. Dasselbe, was `schwarm.gd::_zellleib()` für
+jedes Tier tut.
+
+**Und die Decke ist nachgerechnet, weil der erste Anlauf sie gerissen hat.**
+Mit `0,30 + 0,55 · u² · 2` stand die Lichtflanke auf (176 / 252 / 255), also
+zwei Kanäle am Anschlag — wörtlich der Fehler, vor dem der Kommentar daneben
+schon einmal warnt. Bei 0,79 statt 1,10 steht sie auf (142 / 205 / 222).
+
+**Die Ruder hatten dieselbe Krankheit wie einst die beiden Leitwesen.** Von
+`spitze_vorn` ging es geradeaus auf `spitze_hinten` und von dort geradeaus auf
+`wurzel_hinten`: die halbe Silhouette waren zwei Geraden, in einem Spiel,
+dessen erste Regel lautet, dass es keine geraden Kanten gibt. Im Bild ein Blech
+hinter dem Boot. Außenkante nach außen gewölbt, Hinterkante nach innen — ein
+Ruder ist gepfeilt. Und ihr Ton läuft ebenfalls quer, mit derselben
+Weltlichtrichtung: das Ruder auf der Lichtseite steht hell, das andere dunkel,
+und beim Drehen tauschen sie.
+
+**Die Fugen waren danach lauter als die Form.** Fast Schwarz bei 0,66 Deckung
+war richtig, solange der Rumpf dunkel war; auf einer Fläche von (142 / 205 /
+222) sind es drei schwarze Balken. Sie fällt jetzt aus `_haut`, also mit dem
+Anstrich, und bleibt ein Schatten statt eines Schlitzes. **Eine Zahl, die gegen
+einen Hintergrund eingestellt wurde, gilt nur, solange der Hintergrund gilt** —
+dieselbe Alterung wie beim Grundton des Felsens.
 
 **Und die Begleiter standen auf einem Kreisbogen.** `Rundum.begleiter_ziel`
 gab jedem denselben Abstand und gleiche Winkelabstände: im Bild sechs
