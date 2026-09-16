@@ -4046,16 +4046,75 @@ func _kennung_umriss(punkte: PackedVector2Array) -> void:
     # Nicht ueber `_gedeckt()`: das gibt im Umrisspass durchsichtig zurueck.
     # Die Deckung eines Lauerers gilt trotzdem - ein Tier, das im Dunkeln
     # liegt, traegt auch seine Kennung blass.
+    #
+    # **Und sie ist deckend, nicht durchscheinend - sonst haelt sie ihre
+    # eigene Zusage nicht.**
+    #
+    # Ueber der Funktion steht seit jeher: *sie laeuft rundum mit gleicher
+    # Deckung - eine Kennung, die an manchen Stellen fehlt, ist keine.* Sie
+    # tat es nicht. Ein Tier besteht aus vielen Teilstuecken (Leib, Beine,
+    # Fuehler, Flossen), und **jedes** zieht hier seinen eigenen Zug. Wo
+    # zwei davon ausserhalb des Leibes uebereinanderliegen, addiert sich
+    # Alpha: aus 0,42 werden 0,66, aus dreien 0,80.
+    #
+    # Gemessen an einem einzigen Panzerkrebs im Spielbild, ueber 747 rote
+    # Bildpunkte: die Deckung lief von **0,43 bis 0,76** - Faktor 1,8 um
+    # dasselbe Tier herum. Im Bild eine Linie, die an einer Seite ein Faden
+    # und an der anderen ein Wulst ist, mit Klumpen an jedem Beinansatz.
+    #
+    # Deckende Zuege koennen das nicht: deckend ueber deckend ist dieselbe
+    # Farbe. Der Ton ist deshalb der, den 0,42 ueber dunklem Wasser vorher
+    # ergeben hat, einen Hauch kraeftiger - die Linie sieht aus wie vorher,
+    # wo sie schon richtig war, und hoert auf, dort zu wuchern, wo sie es
+    # nicht war.
+    #
+    # Der Lauerer behaelt seine Blaesse: `deckung` steht weiter davor, und
+    # ein Tier, das im Dunkeln liegt, soll seine Kennung nur andeuten.
+    # **Und ein duennes Glied wird nicht von seiner eigenen Kennung
+    # gefressen.**
+    #
+    # Der Zug ist `KENNUNG_ZUG` breit und liegt **mittig** auf dem Umriss -
+    # er frisst also die Haelfte davon nach innen. Bei einem Leib ist das
+    # gewollt (dort deckt die Fuellung ihn wieder zu), bei einem Bein von
+    # drei Bildpunkten Dicke ist es alles: das Glied verschwindet
+    # vollstaendig unter seinem eigenen Umriss. Im Bild trug der
+    # Panzerkrebs deshalb keine Beine, sondern einen **roten Kamm**, und
+    # jedes duenne Anhaengsel im ganzen Feld sah aus wie ein Zacken.
+    #
+    # Also wird der Zug an der Dicke der Form gemessen, die er umrundet.
+    # `4 * Flaeche / Umfang` ist fuer ein langes schmales Stueck gerade
+    # seine Breite - eine Zahl, die aus dem Umriss selbst faellt und nicht
+    # aus einer Tabelle, in der jemand jede Art von Hand eintragen muesste.
+    # Ein Leib bekommt den vollen Zug, ein Fangarm einen, der ihn stehen
+    # laesst.
+    var flaeche := 0.0
+    var umfang := 0.0
+    for i in zu.size() - 1:
+        var a: Vector2 = zu[i]
+        var b: Vector2 = zu[i + 1]
+        flaeche += a.x * b.y - b.x * a.y
+        umfang += a.distance_to(b)
+    var dicke := 4.0 * absf(flaeche) * 0.5 / maxf(1.0, umfang)
+    var zug: float = minf(KENNUNG_ZUG, maxf(KENNUNG_SCHMAL, dicke * 0.70))
     draw_polyline(zu, Color(KENNUNG_ROT.r, KENNUNG_ROT.g, KENNUNG_ROT.b,
-        KENNUNG_DECKUNG * deckung), KENNUNG_ZUG, true)
+        deckung), zug, true)
 
 
 
 ## Die Seitenkennung eines Raeubers. Siehe `_kontur()`; die beiden Zahlen
 ## sind dieselben wie `rundlauf.gd::KENNUNG_DECKUNG` und `KENNUNG_BREITE`.
-const KENNUNG_ROT := Color(1.0, 0.26, 0.22)
+## **Der Ton ist gerechnet, nicht gewaehlt.** Vorher lag hier ein reines Rot
+## bei 0,42 Deckung; ueber dunklem Wasser (rund 10 / 26 / 33) ergibt das
+## (113 / 43 / 43). Genau das steht jetzt als **deckende** Farbe hier, einen
+## Hauch kraeftiger, damit die Linie auf hellen Arten nicht untergeht.
+const KENNUNG_ROT := Color(0.62, 0.17, 0.15)
 const KENNUNG_DECKUNG := 0.42
 const KENNUNG_BREITE := 1.5
+
+## Die schmalste Kennung, die noch eine ist. Darunter verschwindet sie
+## zwischen zwei Bildpunkten, und ein Anhaengsel ohne Kennung waere genau
+## die Luecke, gegen die diese Kennung eingefuehrt wurde.
+const KENNUNG_SCHMAL := 2.1
 
 
 func _kontur(rund: PackedVector2Array, mitte: Vector2, zum_licht: Vector2,
