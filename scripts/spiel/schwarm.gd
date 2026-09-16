@@ -345,7 +345,43 @@ func _gedeckt(farbe: Color) -> Color:
     return Color(farbe.r, farbe.g, farbe.b, farbe.a * deckung)
 
 
+## Steht von diesem Tier ueberhaupt etwas im Bild?
+##
+## Drei Dinge, und keines davon ist hier gewaehlt:
+##
+## * **Das Bild** - `Rundum.SICHT` plus `Rundum.zeichen_rand()`. Der Rand
+##   steht dort, weil er dorthin gehoert: er faellt aus `SICHT` und dem
+##   schmalsten Bild, das dieses Spiel tragen muss.
+## * **Der eigene Radius** - ein Tier, dessen Mittelpunkt knapp draussen
+##   steht, ragt mit seiner halben Breite herein. Doppelt genommen, weil
+##   Flossen, Fangarme und Segel ueber `radius_in()` hinausreichen.
+## * **Die Schleppe** - sie haengt bis zu `RUECKWEG_LAENGE` Punkte hinter
+##   dem Tier, und bei der Grabnatter **ist** sie der Leib. Geprueft wird
+##   deshalb jeder ihrer Punkte und nicht nur der aelteste: eine Bahn, die
+##   eine Kurve faehrt, kann mit ihrer Mitte im Bild stehen, waehrend beide
+##   Enden draussen sind. Zwoelf Abstandsfragen sind nichts gegen die
+##   dreihundert Zeichenaufrufe, die daran haengen.
+func _im_blick(t: Raeuber) -> bool:
+    var rand: float = Rundum.SICHT + Rundum.zeichen_rand() \
+        + 2.0 * Wellen.radius_in(t.art, t.welle)
+    var quadrat := rand * rand
+    if t.ort.distance_squared_to(_blickmitte) < quadrat:
+        return true
+    for punkt: Vector2 in t.rueckweg:
+        if punkt.distance_squared_to(_blickmitte) < quadrat:
+            return true
+    return false
+
+
+var _blickmitte := Vector2.ZERO
+
+
 func _draw() -> void:
+    # Die Kamera sagt, wo hingesehen wird - dieselbe Frage und derselbe Weg
+    # wie in `grund_rundum.gd`.
+    var kamera := get_parent().get_node_or_null("Kamera") as Camera2D
+    if kamera != null:
+        _blickmitte = kamera.position
     # Kein Rest vom letzten Bild: die Bluete geht durch dieselbe Datei, und
     # ein liegengebliebener Biegewert waere ein Tier, das sich erinnert.
     _biegung = 0.0
@@ -388,6 +424,20 @@ func _draw() -> void:
         # schon gerechnet wird - sie ging nur in die Sparstufe und nicht in
         # die Schleife.
         if not t.lebendig or t.alter < 0.0:
+            continue
+        # **Und was weit draussen steht, wird auch nicht gezeichnet.**
+        #
+        # Derselbe Fehler wie eine Zeile darueber, eine Ebene weiter: Godot
+        # keult in 2D je **Knoten**, und dieser eine Knoten deckt das ganze
+        # Feld ab. Der Grund fragt seit jeher `_im_blick()` - hundertneunzig
+        # Felsen von zweihundert fallen dort weg -, der Schwarm fragte gar
+        # nichts.
+        #
+        # Gesehen hat es der Messstand an einer Zahl, die nicht zusammenpasst:
+        # Welle 140 meldete **vier** Raeuber im Bild und mehr Zeichenaufrufe
+        # als Welle 90 mit elf. Eine Welle steht ueber das ganze Feld
+        # verteilt; was man sieht, ist ein Ausschnitt davon.
+        if not _im_blick(t):
             continue
         deckung = LAUER_DECKUNG if t.lauert else 1.0
         if not t.lauert:

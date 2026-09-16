@@ -73,6 +73,7 @@ const TESTS: PackedStringArray = [
     "_test_wellen_zeiten_sortiert",
     "_test_die_welle_hat_einen_bogen",
     "_test_rundum_haelt_das_feld",
+    "_test_zeichenrand_deckt_jedes_bild",
     "_test_felsen_sind_fest",
     "_test_karte_deckt_auf_was_befahren_wurde",
     "_test_rundum_verfolgt_ohne_zu_beschleunigen",
@@ -3058,6 +3059,35 @@ func _abtastung(strom: AudioStreamWAV) -> PackedFloat32Array:
 ## der Eintritt bleibt draussen, und auf dem Entwurfsbild aendert sich
 ## nichts, sonst waere der Deckel ein neuer Bildausschnitt und keine
 ## Absicherung.
+## **Was gekeult wird, darf nie im Bild stehen.**
+##
+## `schwarm.gd` zeichnet ein Tier nur noch, wenn es in `Rundum.SICHT` plus
+## `Rundum.zeichen_rand()` steht - vorher zeichnete es die ganze Welle,
+## quer ueber ein Feld von 1500 Einheiten, und Godot keult in 2D je Knoten,
+## also gar nicht.
+##
+## `SICHT` ist auf 720x1600 gerechnet (877 halbe Diagonale) und deckt das
+## knapp. Ein 21:9-Telefon liegt bei 914 und damit **darueber**: ohne den
+## Rand faellt genau dort die Bildecke weg, wo ohnehin schon
+## `Graben.kamera_y()` nachhelfen muss (Zusage 23).
+##
+## Geprueft wird dieselbe Spanne wie dort - 4:3 bis 21:9 -, und zwar so,
+## dass ein spaeteres Drehen an `SICHT` hier rot wird und nicht im Spiel.
+func _test_zeichenrand_deckt_jedes_bild() -> bool:
+    for v: float in [4.0 / 3.0, 16.0 / 9.0, 20.0 / 9.0, 21.0 / 9.0]:
+        var hoch := Rundum.BILD_BREITE * v
+        var halbe := sqrt(Rundum.BILD_BREITE * Rundum.BILD_BREITE
+            + hoch * hoch) * 0.5
+        if not _melde(Rundum.SICHT + Rundum.zeichen_rand() >= halbe,
+                "bei %.2f:1 reicht die Zeichensicht %.1f nicht fuer %.1f"
+                % [v, Rundum.SICHT + Rundum.zeichen_rand(), halbe]):
+            return false
+    # Und er darf nicht ins Uferlose wachsen: ein Rand so gross wie das Feld
+    # keult nichts mehr und die Messung oben waere folgenlos gruen.
+    return _melde(Rundum.zeichen_rand() < Rundum.SICHT * 0.5,
+        "der Zeichenrand %.1f ist kein Rand mehr" % Rundum.zeichen_rand())
+
+
 func _test_kamera_zeigt_den_eintritt_nie() -> bool:
     if not _melde(absf(Graben.kamera_y(1280.0) - 0.0) < 0.001,
             "auf dem Entwurfsbild muss die Kamera im Ursprung stehen, nicht bei %.1f"

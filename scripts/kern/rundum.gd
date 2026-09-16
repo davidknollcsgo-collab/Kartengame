@@ -40,6 +40,30 @@ const FELD_RADIUS := 1500.0
 ## alles andere nicht.
 const SICHT := 900.0
 
+## Wie weit **ueber** `SICHT` hinaus noch gezeichnet werden muss.
+##
+## `SICHT` ist auf 720x1600 gerechnet und deckt das mit dreiundzwanzig
+## Einheiten Luft. Es gibt aber Telefone mit 21:9, und dort liegt die halbe
+## Diagonale bei 914 - also **ausserhalb**. Wer mit `SICHT` keult, schneidet
+## dem Spieler dann die Bildecken weg, und zwar genau auf den Geraeten, auf
+## denen ohnehin schon `Graben.kamera_y()` nachhelfen muss (Zusage 23).
+##
+## Die Zahl ist deshalb abgeleitet und nicht gewaehlt: das schmalste Bild,
+## das dieses Spiel tragen muss, gegen `SICHT` gerechnet. Wer `SICHT`
+## anfasst, bekommt den Rand von allein mit.
+##
+## Was **nicht** darin steckt, ist der eigene Radius eines Tieres und seine
+## Schleppe - beides haengt am Tier und nicht am Bild, und beides fragt
+## `schwarm.gd::_im_blick()` einzeln ab.
+const SCHMALSTES_BILD := 21.0 / 9.0
+const BILD_BREITE := 720.0
+
+
+static func zeichen_rand() -> float:
+    var hoch := BILD_BREITE * SCHMALSTES_BILD
+    return maxf(0.0,
+        sqrt(BILD_BREITE * BILD_BREITE + hoch * hoch) * 0.5 - SICHT)
+
 ## Wo Raeuber eintreten: **um das Boot herum**, knapp ausserhalb der Sicht.
 ##
 ## Nicht mehr um die Feldmitte. Bei einem Feld von 1500 Einheiten haette ein

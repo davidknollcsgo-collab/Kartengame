@@ -2605,16 +2605,76 @@ An der gespielten Größe verschiebt sich nur der Glättungssaum; achtfach
 vergrößert sieht man die Gehrung. **Für breite Züge bleibt die Polylinie**,
 und der Helfer sagt das auch.
 
-Der nächste Schritt ist damit benannt und nicht mehr geraten: **die
-Felsen** (744) und der **Rest des Kleinzeugs** (rund 450 — Flächen und
-geglättete Kreise, die sich nicht zusammenfassen lassen). Beim Fels ist der
-Körper längst ein Netz; was drei von vier Aufrufen kostet, ist der
-auslaufende helle Rand als geglätteter Zug. **Vorsicht dabei:** genau diese
-Umstellung ist in `schwarm.gd` schon einmal zurückgenommen worden, weil das
-Netz an spitzen Ecken stufte. Ein Felsumriss hat keine spitzen Ecken — das
-ist der Unterschied, und er gehört im Bild nachgesehen und nicht behauptet.
-Und ein geglätteter Kreis kostet **zwei** statt einem: wo die Glättung
-nichts zeigt, ist sie geschenktes Geld.
+**Und am Felsrand geht derselbe Griff nicht — das ist gemessen.** Die
+beiden `draw_polyline_colors` in `_kantenzug()` als Streckenkette sparten
+weitere 558 Aufrufe (3499 → 2941), und im Bild war der Rand eine
+**Perlenkette**: zwei Strecken überlappen sich an ihrem Gelenk, und bei
+Deckung unter eins wird die Überlappung heller. Auf einem Seestern von
+zwölf hellen Bildpunkten sieht man das nicht, auf einem Zug aus
+sechsundzwanzig Stützstellen sieht man nichts anderes mehr.
+
+Dieselbe Falle, die hier für die Grabnatter und die Schleppe schon
+beschrieben steht — *runde Marken auf einem Weg, deren Durchmesser größer
+ist als ihr Abstand* —, nur aus einer anderen Richtung. **Was über die
+Streckenkette entscheidet, ist nicht die Breite des Zuges, sondern wie
+viele Gelenke hintereinander man sieht.** Die Umstellung ist deshalb wieder
+draußen; der Weg für den Felsrand ist das Dreiecksnetz, wie beim Körper des
+Steins, und er hat noch niemand gemacht.
+
+**Der größere Posten lag ohnehin woanders, und gefunden hat ihn eine Zahl,
+die nicht zusammenpasste.** Alle Messungen dieser Datei stehen auf Welle 40
+mit sieben Tieren im Bild — geruckelt wird aber bei vierzig. Nachgemessen:
+
+| Welle | Räuber im Bild | Zeichenaufrufe |
+|---|---|---|
+| 40 | 7 | 3557 |
+| 90 | 11 | 5243 |
+| 140 | **4** | **6141** |
+
+Welle 140 zeigt vier Tiere und kostet am meisten. `schwarm.gd` fragte
+nämlich nicht, ob ein Tier überhaupt im Bild steht — der Grund tut das seit
+jeher (`_im_blick()`, hundertneunzig Felsen von zweihundert fallen dort
+weg), der Schwarm gar nicht. **Godot keult in 2D je Knoten**, und dieser
+eine Knoten deckt ein Feld von 1500 Einheiten ab; gezeichnet wurde die
+ganze Welle, wo immer sie stand. Genau derselbe Fehler wie `alter < 0.0`
+eine Ebene darüber.
+
+| Welle | ohne Keulung | mit | |
+|---|---|---|---|
+| 40 | 3557 | **3037** | −15 % |
+| 90 | 5243 | **3735** | −29 % |
+| 140 | 6141 | **4360** | −29 % |
+
+Zwei Runden abwechselnd, die Zahlen wiederholen sich auf wenige Aufrufe
+genau. Der Kolonielauf steht unverändert auf 39 — an der Balance hat sich
+nichts bewegt.
+
+**Der Rand ist dabei abgeleitet und nicht gewählt**, und das ist der Teil,
+der beim nächsten Mal zählt. `Rundum.SICHT` ist auf 720×1600 gerechnet
+(877 halbe Diagonale) und deckt das mit dreiundzwanzig Einheiten Luft; ein
+21:9-Telefon liegt bei **914** und damit darüber. Wer mit `SICHT` keult,
+schneidet dem Spieler dort die Bildecken weg — auf genau den Geräten, auf
+denen ohnehin `Graben.kamera_y()` nachhelfen muss (Zusage 23).
+`Rundum.zeichen_rand()` rechnet den Rest aus dem schmalsten Bild aus, und
+`_test_zeichenrand_deckt_jedes_bild` prüft 4:3 bis 21:9. Gegen `SICHT`
+allein eingesetzt meldet er *„bei 2.33:1 reicht die Zeichensicht 900.0
+nicht für 913.9"*.
+
+Und die Schleppe wird **punktweise** geprüft, nicht nur an ihrem ältesten
+Ende: eine Bahn, die eine Kurve fährt, kann mit ihrer Mitte im Bild stehen,
+während beide Enden draußen sind — und bei der Grabnatter *ist* die
+Schleppe der Leib. Zwölf Abstandsfragen sind nichts gegen die
+dreihundert Zeichenaufrufe, die daran hängen.
+
+**Damit steht die Bilanz des Tages bei 9713 → 3037 auf Welle 40**, also
+knapp siebzig Prozent, und bei Welle 140 sind es 4360 statt 6141 gegenüber
+einem Stand, der die Welle noch gar nicht keulte.
+
+Was offen bleibt und jetzt beziffert ist: **Felsen 744** (Dreiecksnetz für
+den Rand, nicht Streckenkette — siehe oben), **Rest des Kleinzeugs rund
+450** (Flächen und geglättete Kreise, die sich nicht zusammenfassen
+lassen). Und ein geglätteter Kreis kostet **zwei** Aufrufe statt einem: wo
+die Glättung nichts zeigt, ist sie geschenktes Geld.
 
 **Und die erste Fassung der Hülle war ein Lehrstück.** Sie benannte die
 Aufrufe nach `_d_circle` um und die Funktionen nach `_dcircle`. Der
