@@ -1645,7 +1645,24 @@ func _rille(weg: PackedVector2Array, dunkel: Color, hell: Color,
     var oben := PackedVector2Array()
     for v in weg:
         oben.append(v + lippe)
-    _d_polyline(oben, _gedeckt(hell), 1.0, true)
+    # **Eine Lippe auf hellem Leib ist ein Kratzer.**
+    #
+    # Die Regel steht seit Langem hier - *auf einer deckenden Flaeche sieht
+    # eine helle Linie aus wie ein Kratzer* -, und sie wurde beim Boot schon
+    # einmal gezogen (`rundlauf.gd::_fuge()`). Bei den Tieren nicht: die
+    # Lippe lief mit voller Deckung, und auf einer hellen Art wie der
+    # Schildkoralle waren das drei weisse Striche quer ueber einen fast
+    # weissen Schild. Im Bild ein Edelstein mit Schrammen, kein Panzer.
+    #
+    # Sie faellt jetzt mit der eigenen Helligkeit: eine dunkle Lippe auf
+    # einem dunklen Leib bleibt, was sie war, eine fast weisse wird zum
+    # Schimmer. Was die Fuge traegt, ist die **Rille** - der Schatten
+    # darunter -, und die Lippe sagt nur, von welcher Seite das Licht
+    # kommt.
+    var l := (hell.r + hell.g + hell.b) / 3.0
+    var deck: float = hell.a * clampf(1.15 - l * 0.95, 0.24, 1.0)
+    _d_polyline(oben, _gedeckt(Color(hell.r, hell.g, hell.b, deck)),
+        1.0, true)
 
 
 ## Die Laengsachse eines Umrisses: die Richtung zur weitesten Ecke.
@@ -2208,10 +2225,20 @@ func _schildkoralle(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float
     var zum_licht := lichtquelle - p
     zum_licht = zum_licht.normalized() if zum_licht.length_squared() > 1.0 \
         else Vector2.UP
-    var fuge := Color(0.03, 0.07, 0.11, 0.52 + 0.16 * hitze)
+    # Und die Rille selbst traegt jetzt, was die Lippe abgegeben hat.
+    var fuge := Color(0.03, 0.07, 0.11, 0.70 + 0.12 * hitze)
     var lippe := farbe.lerp(Color(1.0, 0.98, 0.94), 0.22 + 0.40 * hitze)
-    for i in 3:
-        var u := lerpf(0.30, -0.54, float(i) / 2.0)
+    # **Zwei Fugen, nicht drei.**
+    #
+    # Drei Rillen quer ueber einen Leib von dreissig Bildpunkten liegen alle
+    # acht Pixel - im Bild ein Streifenmuster und kein Panzer. Stillgestellt
+    # gemessen war die Antwort sofort da: **ohne** die Fugen las sich der
+    # Schild als dicke Schale mit zwei Tonstufen und doppelter Kontur, mit
+    # ihnen als gestreifter Edelstein. Was die Platte traegt, ist die
+    # Toenung; die Fuge sagt nur, wo die naechste darueberliegt - und dafuer
+    # reicht eine Kante, die man zaehlen kann.
+    for i in 2:
+        var u := lerpf(0.22, -0.40, float(i))
         var halb := r * (1.14 - 0.34 * absf(u))
         var bogen := PackedVector2Array()
         for j2 in 7:
@@ -2286,18 +2313,31 @@ func _treibanker(p: Vector2, r: float, farbe: Color, t: Raeuber, hitze: float) -
     # einer Perle. Sie laeuft jetzt aus und traegt am Ende einen Anker aus
     # drei Armen: das ist die Form, die dieser Art ihren Namen gibt, und man
     # sieht sie auch dann, wenn sie nur acht Pixel gross ist.
+    # **Und das Seil war durchsichtig.**
+    #
+    # Zweieinviertel Bildpunkte breit bei 0,46 Deckung, nach hinten auf
+    # weniger als einen fallend: im Bild war davon nichts zu sehen. Was man
+    # sah, war die rote Kennung, die es umrundet - also eine **Kette** aus
+    # roten Gliedern um einen unsichtbaren Faden, und die las sich als
+    # Leiter. Der Anker, der dieser Art ihren Namen gibt, hing an nichts.
+    #
+    # Es ist dieselbe Regel, die zwei Absaetze tiefer fuer das Segel
+    # derselben Art schon steht: *was die Silhouette traegt, kann nicht
+    # durchsichtig sein.* Sie galt fuer das Segel und nicht fuer das Seil,
+    # obwohl beides am selben Tier haengt und beides seine Regel erzaehlt.
     for i in range(schleppe.size() - 1):
         var f := float(i) / float(schleppe.size() - 1)
-        _glied(schleppe[i], schleppe[i + 1], r * (0.075 - 0.045 * f),
-            r * (0.075 - 0.045 * (f + 0.2)), farbe, 0.46 - 0.14 * f)
+        _glied(schleppe[i], schleppe[i + 1], r * (0.130 - 0.070 * f),
+            r * (0.130 - 0.070 * (f + 0.2)), farbe, 0.88 - 0.20 * f)
     var ende: Vector2 = schleppe[schleppe.size() - 1]
     var davor: Vector2 = schleppe[schleppe.size() - 2]
     var laengs := (ende - davor).normalized()
     var seit := laengs.orthogonal()
+    # Der Anker ebenso: drei Arme von anderthalb Pixeln sind kein Anker.
     for arm: float in SEITEN:
-        _glied(ende, ende + (laengs * 0.5 + seit * arm).normalized() * r * 0.34,
-            r * 0.055, r * 0.02, farbe, 0.50)
-    _glied(ende, ende + laengs * r * 0.22, r * 0.05, r * 0.02, farbe, 0.50)
+        _glied(ende, ende + (laengs * 0.5 + seit * arm).normalized() * r * 0.38,
+            r * 0.095, r * 0.030, farbe, 0.92)
+    _glied(ende, ende + laengs * r * 0.26, r * 0.085, r * 0.030, farbe, 0.92)
 
     var leib := PackedVector2Array([
         p + k * r * 0.92 + zug * r * 0.28,
