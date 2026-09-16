@@ -687,6 +687,39 @@ func _zeichne_kleinzeug() -> void:
 
 
 ## Ein Kiesel: eine gefuellte, leicht unrunde Scheibe mit hellem Scheitel.
+## **Ein Zug aus Strecken, nicht als Polylinie.**
+##
+## Gemessen, was der Zeichenaufruf-Zaehler im Kompatibilitaets-Renderer
+## wirklich zaehlt - fuenfzig Stueck desselben Primitivs, Farbe und Ort je
+## Stueck verschieden:
+##
+## | Aufruf | Zeichenaufrufe |
+## |---|---|
+## | `draw_line` geglaettet | **1 fuer alle fuenfzig** |
+## | `draw_colored_polygon` | 1 je Stueck |
+## | `draw_circle` geglaettet | 2 je Stueck |
+## | `draw_arc` | 3 je Stueck |
+## | `draw_polyline` geglaettet | 3 je Zug |
+##
+## Strecken sind das einzige Primitiv, das Godot hier zusammenfasst. Ein
+## Seestern zog fuenf geglaettete Polylinien - fuenfzehn Aufrufe fuer ein
+## Ding von fuenf Bildpunkten, und er ist eine von sechs Sorten Kleinzeug,
+## von denen dreihundert gleichzeitig im Bild stehen.
+##
+## Bei einer Dicke von gut einem Bildpunkt und drei bis acht Abschnitten
+## sieht man den Unterschied nicht: eine Polylinie verbindet ihre Ecken auf
+## Gehrung, Strecken stossen stumpf aneinander, und beides ist auf einem
+## Ding dieser Groesse dasselbe Bild. Nachgeprueft am Differenzbild gegen
+## den Rauschboden zweier Schuesse desselben Standes.
+##
+## **Fuer breite Zuege gilt das nicht** - dort wird die Naht sichtbar, und
+## dafuer ist die Polylinie da.
+func _feiner_zug(punkte: PackedVector2Array, farbe: Color,
+        dicke: float) -> void:
+    for i in punkte.size() - 1:
+        draw_line(punkte[i], punkte[i + 1], farbe, dicke, true)
+
+
 func _kiesel(p: Vector2, gr: float, w: float, farbe: Color,
         zum_licht: Vector2, lick: float, saum: float) -> void:
     var rund := PackedVector2Array()
@@ -707,10 +740,13 @@ func _kiesel(p: Vector2, gr: float, w: float, farbe: Color,
         draw_colored_polygon(rund, Color(farbe.r, farbe.g, farbe.b,
             farbe.a * 0.55 * (lick - 0.5)))
     var scheitel := p + zum_licht * gr * 0.30
-    draw_arc(scheitel, gr * 0.66, zum_licht.angle() - 1.6,
-        zum_licht.angle() + 1.6, 8,
+    var bogen := PackedVector2Array()
+    for i in 9:
+        var wi: float = zum_licht.angle() - 1.6 + 3.2 * float(i) / 8.0
+        bogen.append(scheitel + Vector2.RIGHT.rotated(wi) * gr * 0.66)
+    _feiner_zug(bogen,
         Color(farbe.r, farbe.g, farbe.b, minf(1.0, farbe.a * 2.4 * lick)),
-        1.3, true)
+        1.3)
 
 
 ## Eine Schale: ein gefuellter Faecher mit Rippen, wie eine Muschel von oben.
@@ -747,8 +783,8 @@ func _seestern(p: Vector2, gr: float, w: float, farbe: Color,
             # Die Kruemmung haengt am Arm, nicht an der Zeit - er liegt still.
             var bieg := sin(t * 2.2) * 0.5 * sin(float(j) * 2.7 + w * 3.0)
             arm.append(p + Vector2.RIGHT.rotated(s + bieg) * gr * (0.25 + t))
-        draw_polyline(arm, Color(farbe.r, farbe.g, farbe.b,
-            minf(1.0, farbe.a * 1.3 * lick)), 1.2, true)
+        _feiner_zug(arm, Color(farbe.r, farbe.g, farbe.b,
+            minf(1.0, farbe.a * 1.3 * lick)), 1.2)
     draw_circle(p, gr * 0.30, Color(farbe.r, farbe.g, farbe.b, farbe.a * 0.7))
     var _egal := zum_licht
 
@@ -795,7 +831,7 @@ func _wurmspur(p: Vector2, gr: float, w: float, farbe: Color) -> void:
         var t := float(n) / 4.0
         spur.append(p + Vector2.RIGHT.rotated(w) * gr * 3.0 * (t - 0.5)
             + Vector2.RIGHT.rotated(w + PI * 0.5) * sin(t * 6.0) * gr * 0.6)
-    draw_polyline(spur, Color(0.030, 0.060, 0.070, farbe.a * 1.8), 1.8, true)
+    _feiner_zug(spur, Color(0.030, 0.060, 0.070, farbe.a * 1.8), 1.8)
 
 
 func _baue_staub(rng: RandomNumberGenerator) -> void:

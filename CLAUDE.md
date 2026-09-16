@@ -2558,15 +2558,63 @@ sich in 2573 Punkten, zwei Schüsse **desselben** Standes in 2117.
 | Funde / Schatten / Nebel / Rippel | zusammen ~0 (sind Netze) |
 | alles außer dem Grund | 2142 |
 
-Der nächste Schritt ist damit benannt und nicht mehr geraten: **Kleinzeug
-und Felsrand.** Beim Kleinzeug sind es rund dreihundert Stücke zu je drei
-bis vier Aufrufen — die Hausform dafür ist das Dreiecksnetz, wie bei
-Rippel, Druckwelle und Fels. Beim Fels ist der Körper längst ein Netz; was
-drei von vier Aufrufen kostet, ist der auslaufende helle Rand als
-geglätteter Zug. **Vorsicht dabei:** genau diese Umstellung ist in
-`schwarm.gd` schon einmal zurückgenommen worden, weil das Netz an spitzen
-Ecken stufte. Ein Felsumriss hat keine spitzen Ecken — das ist der
-Unterschied, und er gehört im Bild nachgesehen und nicht behauptet.
+**Und die Tabelle war noch nicht vollständig.** Nachgemessen mit
+wechselnder Farbe und wechselndem Ort je Aufruf — beides bricht Batching
+sonst gern:
+
+| Aufruf | Zeichenaufrufe |
+|---|---|
+| `draw_line`, auch geglättet | **50 Stück = 1 Aufruf** |
+| `draw_colored_polygon` | 1 je Stück |
+| `draw_circle` hart | 1 je Stück |
+| `draw_circle` **geglättet** | **2** je Stück |
+| `draw_arc` | **3** je Stück |
+| `draw_polyline` geglättet | 3 je Zug |
+
+**Die Strecke ist das einzige Primitiv, das Godot hier zusammenfasst**, und
+das Zusammenfassen überlebt auch, wenn Farbe und Ort wechseln — es braucht
+nur aufeinanderfolgende Aufrufe. Damit ist das Kleinzeug erklärt: ein
+Seestern zog **fünf geglättete Polylinien**, also fünfzehn Aufrufe für ein
+Ding von zwölf hellen Bildpunkten, und ein Kiesel einen `draw_arc` für drei.
+
+`_feiner_zug()` legt dieselben Punkte als Kette von Strecken hin. Gemessen,
+abwechselnd geschossen (drei Runden, je ein Lauf je Stand):
+
+| Stand | Zeichenaufrufe | Bilder/s |
+|---|---|---|
+| vorher | 4196 | 1,9 |
+| **Strecken statt Polylinien** | **3499** | **1,9** |
+
+Siebzehn Prozent, und die Bildrate ist dieselbe. **Die 3,2 aus der Tabelle
+darüber und die 1,9 hier sind derselbe Code** — der Behälter war später am
+Tag langsamer. Genau dafür wird abwechselnd gemessen und nicht gegen eine
+Zahl von vorhin.
+
+**Und ob man die Naht sieht, ist gemessen statt behauptet.** Ein Schuss der
+Szene taugt dafür nicht: sie ist nicht reproduzierbar genug (zwei Schüsse
+desselben Standes unterscheiden sich in 2708 Punkten, ohne Vorlauf sogar in
+8542 — das Boot steht schlicht woanders). Also dieselbe Geometrie zweimal
+nebeneinander, einmal als Polylinie und einmal als Streckenkette:
+
+| Zugbreite | abweichende Bildpunkte | hell insgesamt |
+|---|---|---|
+| 1,2 px (so wird es gezeichnet) | **9** | 12 |
+| 9,6 px (achtfach) | 92 von 1978 | 384 |
+
+An der gespielten Größe verschiebt sich nur der Glättungssaum; achtfach
+vergrößert sieht man die Gehrung. **Für breite Züge bleibt die Polylinie**,
+und der Helfer sagt das auch.
+
+Der nächste Schritt ist damit benannt und nicht mehr geraten: **die
+Felsen** (744) und der **Rest des Kleinzeugs** (rund 450 — Flächen und
+geglättete Kreise, die sich nicht zusammenfassen lassen). Beim Fels ist der
+Körper längst ein Netz; was drei von vier Aufrufen kostet, ist der
+auslaufende helle Rand als geglätteter Zug. **Vorsicht dabei:** genau diese
+Umstellung ist in `schwarm.gd` schon einmal zurückgenommen worden, weil das
+Netz an spitzen Ecken stufte. Ein Felsumriss hat keine spitzen Ecken — das
+ist der Unterschied, und er gehört im Bild nachgesehen und nicht behauptet.
+Und ein geglätteter Kreis kostet **zwei** statt einem: wo die Glättung
+nichts zeigt, ist sie geschenktes Geld.
 
 **Und die erste Fassung der Hülle war ein Lehrstück.** Sie benannte die
 Aufrufe nach `_d_circle` um und die Funktionen nach `_dcircle`. Der
