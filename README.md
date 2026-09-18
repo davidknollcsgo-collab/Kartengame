@@ -1,105 +1,67 @@
-# NEKTON
+# HUNDRED CUTS
 
-Eine biolumineszente Kolonie in einem Tiefseegraben. Ewige Dunkelheit, Druck,
-leuchtende Kreaturen — und ein Lichtkegel am Daumen.
+Ein Duell aus Linien. Tusche auf Papier, ein Daumen, ein Schwert.
 
-Godot 4.5 · Hochformat · Android · derzeit im Aufbau
+Godot 4.5 · Hochformat · Android · im Aufbau
 
 Die Spieloberfläche ist **englisch**; Bezeichner und Kommentare im Quelltext
 bleiben deutsch.
 
-## Die Kernschleife: Schlundwache
+## Die Schleife
 
-Am Eingang der Kolonie sitzt ein Wächter. Aus der Dunkelheit sinken Räuber in
-Wellen herab. Du ziehst mit **einem Finger** einen Lichtkegel über den Schlund —
-was darin liegt, wird verbrannt. Zwischen den Wellen tippst du auf freie
-Knospen an den Ranken und setzt dort Wehrpolypen.
+Ein Gegner holt aus. Seine Haltung sagt, welchen Schnitt er führt — Klinge
+über dem Kopf, an der Schulter, tief an der Hüfte, waagerecht hinter dem
+Rücken, oder die Spitze voran. Eine Zinnoberlinie bestätigt es und wächst;
+wenn sie voll ist, fällt der Hieb.
 
-Eine Welle dauert 40 bis 70 Sekunden. Der Kegel fasst nur wenige Räuber
-gleichzeitig; ein Schwarm lässt sich nicht wegleuchten, sondern muss sortiert
-werden.
+Der Daumen muss dieselbe Achse treffen, im Fenster um den Schlag:
 
-## Was schon steht
+* **wischen** entlang der Linie — das pariert,
+* **tippen** — das schlägt eine Spitze nieder,
+* noch ein Wisch auf den, der danach offen steht — das tötet.
 
-| Bereich | Stand |
+Wer daneben greift, steht einen Augenblick selbst offen. Drei bis sieben
+Wunden, dann ist die Ronde vorbei.
+
+**Es gibt keinen Schaden.** Ein Hieb tötet, wenn er sitzt, für beide Seiten,
+von der ersten Ronde bis zur hundertsten.
+
+## Dahinter: die Schule
+
+Vier Hallen, und jede greift genau eine Stelle des Duells an:
+
+| Halle | Was sie gibt |
 |---|---|
-| Rechenkern (`Schlund`) | Lichtkegel, Bahnen, Zielauswahl — 61 Tests grün |
-| Endloser Graben | die Wellen hören nicht auf; vier volle Umdrehungen sind durchgerechnet |
-| Neun Räuberarten | vier mit eigener Regel: Panzer, Mindestlicht, Querdrift, Schub |
-| Leitwesen | die Schlundmutter am Ende jedes Abschnitts — ein Höhepunkt alle zehn Wellen |
-| Mutationen | ab der zweiten Umdrehung tragen Wellen eigene Züge: gepanzert, lichtscheu, unstet, stoßweise, hastig, aufgedunsen |
-| Bestiarium | jede begegnete Art mit ihrer Regel; unbekannte zeigen nur, ab wann sie kommen |
-| Grafische Tiefe | offenes Wasser mit Tiefenverlauf, Staub und wandernde Schlieren im Lichtkegel, Randlicht auf jedem Tier, Schlick im Vordergrund |
-| Die Funkenblüte | treibt quer durchs Bild und geht wieder. Sie greift nichts an — wer sie will, muss den Kegel **weg** von der Bahn der Räuber nehmen. Zahlt Punkte und Kette, keinen Nährstoff, und nur der Kegel öffnet sie |
-| Die Kette | Abschüsse in Folge bauen eine Kette auf, jede Pause bricht sie. Sie zahlt **Punkte**, keinen Nährstoff — die Wirtschaft ist aus den Kammerkosten abgeleitet und verträgt keinen Multiplikator, der am Können hängt |
-| Das Stoßlicht | ein Ring, den der Wächter abstößt — er trifft alles, was er kreuzt, auch außerhalb des Kegels, und lädt sich selbst nach. Er steht in `Ausbau.durchsatz()`, ist also Teil der Sollkurve und kein Geschenk |
-| Der Einstieg | sieben Schritte mit Titel, Satz und einem Ring auf dem Ding, um das es geht — er schreitet an Ereignissen fort, nicht an einer Uhr |
-| Der Wächter | eigene Figur vor dem Kegel: Haftwurzeln, atmende Kiemen, Adernetz und ein Organ, das beim Feuern aufflammt. Er zuckt, wenn die Brut getroffen wird |
-| Die Brut | ein Gelege statt einer Punktreihe: die Eier stecken zwischen Bett und Lippe der Membran |
-| Leben im Wasser | treibende Quallen und Schwärmchen weit hinten — ausdrücklich keine Spielfiguren |
-| Rückmeldung | Zittern bei Treffern, farbiger Bildrand beim Verlust eines Eis, Zeitlupe auf das erlegte Leitwesen |
-| Sechs Grabenabschnitte | eigene Regel **und** eigene Farbe je Abschnitt: Strömung, Trübung, Dunkelphasen, Streulicht |
-| Grabentiefe | der Tiefenschacht öffnet die Abschnitte — abgeleitet aus der Sollkurve |
-| Kolonie | fünf Kammern mit Stufen, Kosten und Bauzeiten; 120 Tage gemessen, ohne Warte- und ohne Fortschrittsmauer |
-| Brutlinien | drei Linien, gezüchtet statt gezogen — kein Zufall, keine Kiste |
-| Tagesziel | drei Aufgaben, Anwesenheitszähler, Lohn wächst mit dem Fortschritt |
-| Ton | vollständig synthetisiert, keine Audiodatei |
-| Speichern | verschlüsselt, mit Prüfung jedes gelesenen Werts |
-| Android | Debug-APK baut in CI und lässt sich sideloaden |
+| **Eye** | längerer Ansatz — mehr Lesezeit |
+| **Wrist** | breiteres Fenster — mehr Nachsicht beim Zeitpunkt |
+| **Breath** | eine Wunde mehr |
+| **Edge** | der Parierte bleibt länger offen |
 
-## Was noch fehlt
+Alles davon ist **Nachsicht**, nichts davon ist Wucht. Eine Schule, die den
+Spieler härter zuschlagen ließe, machte aus einem Duell ein Rechenspiel.
 
-Geisterdaten und Bestenliste, Werbung und Käufe — alles drei braucht Konten
-und SDKs, die außerhalb dieses Repositorys eingerichtet werden. Der
-vollständige Bauplan steht im Projektplan.
+## Wie es aussieht
 
-## Auf dem Telefon spielen
-
-Bei jedem Push baut die CI (`Veroeffentlichung`) die App und hängt sie an eine
-**Vorabveröffentlichung** mit fester Marke — die Adresse bleibt also gleich,
-und dort liegt immer der neueste Stand:
-
-**Releases → `test-claude-delete-all-previous-44i1x5` → `nekton.apk`**
-
-Am Telefon reicht es, diesen Link im Browser zu öffnen und die
-heruntergeladene Datei anzutippen. Android fragt einmal nach der Erlaubnis,
-Apps aus dieser Quelle zu installieren — das ist der normale Weg für eine App,
-die nicht aus dem Store kommt.
-
-Die APK ist mit einem Debug-Schlüssel signiert und nur zum Sideloaden gedacht.
-Für den Play Store braucht es einen eigenen, dauerhaft aufbewahrten Schlüssel;
-geht der verloren, lässt sich die App nie wieder aktualisieren.
-
-### Ohne Installation nachsehen
-
-Derselbe Bau landet als Seite auf **GitHub Pages** — eine Adresse, dieselbe am
-Rechner und am Telefon. Zum schnellen Nachsehen ist das der kürzere Weg; die
-App auf dem Telefon bleibt die Fassung, um die es geht. Der Link steht im
-Actions-Lauf beim Schritt *Seite veröffentlichen*.
-
-Wer die Datei lieber selbst in der Hand hat: an derselben Veröffentlichung
-hängt `nekton.html` — das ganze Spiel in einer einzigen Datei, ohne Server.
+Ein Blatt in gebrochenem Weiß, Figuren als schwarze Pinselmassen, ein
+einziger Zinnoberton für die Gefahr. Kein Bild im Projekt und keine
+Tondatei: jeder Strich entsteht in `scripts/spiel/tusche.gd`, jeder Klang in
+`scripts/spiel/stahl.gd`. `ASSETS.md` ist der Nachweis.
 
 ## Bauen und prüfen
 
 ```bash
-godot --headless --import                                  # Registry aufbauen
-godot --headless --path . --script tests/run_tests.gd      # Tests
-godot --headless --path . --script tools/wellenpruefer.gd  # vier Umdrehungen
+godot --headless --import                               # class_name-Registry
+godot --headless --path . --script tests/run_tests.gd   # Tests
+godot --headless --path . --quit-after 180              # startet das Spiel wirklich
+godot --headless --path . --script tools/lizenzcheck.gd # Herkunft aller Dateien
 ```
 
-Weitere Werkzeuge, Screenshot-Schalter und die Zusicherungen, die nicht
-aufgeweicht werden dürfen, stehen in [`CLAUDE.md`](CLAUDE.md).
+Einen Blick auf das Bild:
 
-## Rechtliches
+```bash
+xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 720x1600 \
+  -- --schuss /tmp/bild.png --ronde 11 --stufen 6 --zeit 1.2
+```
 
-Vom Vorbild ist ausschließlich die **Struktur** übernommen — casual
-Kernschleife vorn, Aufbauspiel dahinter. Spielmechaniken sind nicht
-urheberrechtlich geschützt.
-
-Alles Sichtbare und Lesbare entsteht in diesem Repository: die Grafik
-prozedural im Code, der Ton synthetisiert, Namen und Texte selbst geschrieben.
-Es gibt **keine einzige Bild- oder Audiodatei** im Projekt. Die Herkunft jedes
-Bestandteils ist in [`ASSETS.md`](ASSETS.md) belegt.
-
-Engine: Godot 4 (MIT). Schriften: SIL OFL 1.1.
+`CLAUDE.md` hat die ausführliche Fassung, samt der Zusicherungen, die nicht
+aufgeweicht werden dürfen.

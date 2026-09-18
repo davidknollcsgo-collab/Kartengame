@@ -1,107 +1,89 @@
 extends SceneTree
 
-## Prueft, dass jede Datei im Projekt eine belegte Herkunft hat.
+## **Der Unterschied zwischen „wir haben nichts kopiert" und „wir koennen
+## beweisen, dass wir nichts kopiert haben".**
 ##
 ##     godot --headless --path . --script tools/lizenzcheck.gd
 ##
-## Der Plan sagt es so: der Unterschied zwischen "wir haben nichts kopiert" und
-## "wir koennen beweisen, dass wir nichts kopiert haben" ist dieses Werkzeug.
-## Bei einer Copyright-Beschwerde gegen eine Play-Store-App zaehlt nur das
-## Zweite - bis dahin ist die App offline.
+## Bei einer Copyright-Beschwerde gegen eine Ladenanwendung zaehlt nur das
+## Zweite. Dieses Werkzeug geht das Projekt durch und verlangt fuer **jede**
+## Datei, die kein selbst geschriebener Quelltext ist, einen Eintrag in
+## `ASSETS.md`. Es prueft nicht, ob der Eintrag stimmt - das kann kein
+## Programm -, sondern dass keiner fehlt.
 ##
-## Geprueft wird: jede Datei, die kein selbst geschriebener Quelltext ist, muss
-## in `ASSETS.md` stehen. Exitcode 1, sobald eine fehlt.
+## Der eigentliche Wert liegt im Zeitpunkt: er faellt auf, wenn jemand eine
+## Datei hinzufuegt, und nicht Monate spaeter, wenn die App offline ist.
 
-## Was als eigener Quelltext gilt und deshalb keinen Eintrag braucht.
+## Was als Quelltext gilt und deshalb keinen Eintrag braucht.
 const QUELLTEXT: PackedStringArray = [
-    ".gd", ".gdshader", ".tscn", ".tres", ".godot", ".cfg", ".md", ".py",
-    ".yml", ".yaml", ".json", ".gitignore", ".uid", ".txt", ".mjs", ".js",
-    # Ein Schalenskript ist Quelltext wie jedes andere. Es fehlte hier nur,
-    # weil es bis `tools/ladenbilder.sh` keines gab - und der Pruefer hat das
-    # zu Recht gemeldet, statt still durchzuwinken.
-    ".sh",
-    # `.import` erzeugt Godot selbst aus der Datei daneben. Sie traegt keinen
-    # fremden Inhalt, und der Eintrag der Datei daneben deckt sie mit ab.
-    ".import",
+    "gd", "tscn", "godot", "uid", "md", "cfg", "sh", "py", "yml", "yaml",
+    "gitignore", "gdshader", "json", "txt", "import", "mjs", "js",
 ]
 
-## Verzeichnisse, die nicht zum ausgelieferten Projekt gehoeren - Ergebnisse
-## des Baus und Entwicklungswerkzeug.
+## Ordner, die nicht zum Projekt gehoeren - und **warum**, denn eine
+## Ausnahmeliste ohne Begruendung waechst, bis der Pruefer nichts mehr
+## prueft:
+##
+##   * `node_modules` ist eine Entwicklungsabhaengigkeit und wird nie
+##     ausgeliefert. Ihre Lizenzen stehen in `THIRD_PARTY_LICENSES.md`.
+##   * `docs` ist der **gebaute** Web-Export. Er enthaelt nichts, was nicht
+##     aus diesem Projekt kaeme; ihn zu registrieren hiesse, das Ergebnis
+##     als seine eigene Herkunft zu fuehren.
+##   * `build` und `.godot` sind Zwischenstaende.
 const AUSSEN: PackedStringArray = [
-    "res://.git", "res://.godot", "res://docs", "res://build", "res://android",
+    ".git", ".github", ".godot", "build", "docs", "node_modules",
 ]
-
-## Verzeichnisnamen, die auf jeder Ebene uebersprungen werden. `node_modules`
-## steht hier, weil es zum Browsertest gehoert und nie mit ausgeliefert wird -
-## an der Wurzel zu suchen reichte nicht, es liegt unter tools/browsertest/.
-const AUSSEN_NAMEN: PackedStringArray = ["node_modules"]
-
-## Lizenztexte muessen mitgeliefert werden, stehen aber als Text neben der
-## Datei, auf die sie sich beziehen - der Eintrag dort deckt beide ab.
-const LIZENZDATEIEN: PackedStringArray = ["OFL.txt", "LICENSE", "LICENSE.txt"]
 
 
 func _init() -> void:
-    var register := FileAccess.get_file_as_string("res://ASSETS.md")
-    if register.is_empty():
-        print("FEHLER: ASSETS.md fehlt oder ist leer.")
+    var register := ""
+    var datei := FileAccess.open("res://ASSETS.md", FileAccess.READ)
+    if datei == null:
+        print("ASSETS.md fehlt - ohne Register gibt es keinen Nachweis.")
         quit(1)
         return
-
-    var gefunden := PackedStringArray()
-    _sammle("res://", gefunden)
+    register = datei.get_as_text()
+    datei.close()
 
     var fehlend := PackedStringArray()
-    for pfad in gefunden:
-        var name := pfad.get_file()
-        if LIZENZDATEIEN.has(name):
+    var geprueft := 0
+    for pfad in _alle_dateien("res://"):
+        var endung := pfad.get_extension().to_lower()
+        if QUELLTEXT.has(endung):
             continue
-        # Der Eintrag darf den vollen Pfad oder den Dateinamen nennen.
-        var kurz := pfad.trim_prefix("res://")
-        if register.contains(kurz) or register.contains(name):
-            continue
-        fehlend.append(kurz)
+        geprueft += 1
+        # Der Dateiname genuegt: das Register fuehrt Pfade, aber ein
+        # verschobener Eintrag ist kein fehlender.
+        if not register.contains(pfad.get_file()):
+            fehlend.append(pfad)
 
-    print("Lizenzcheck: %d Dateien geprueft, die kein Quelltext sind"
-        % gefunden.size())
-    for pfad in gefunden:
-        print("  " + pfad.trim_prefix("res://"))
-
+    print("%d Dateien ohne Quelltext-Endung geprueft." % geprueft)
     if fehlend.is_empty():
-        print("")
-        print("Alle Herkuenfte belegt.")
+        print("Jede davon steht in ASSETS.md.")
         quit(0)
         return
-
-    print("")
-    for pfad in fehlend:
-        print("FEHLER: %s steht nicht in ASSETS.md" % pfad)
-    print("")
-    print("Jede Datei, die kein selbst geschriebener Quelltext ist, braucht")
-    print("dort einen Eintrag mit Herkunft, Autor, Lizenz und Datum.")
+    for p in fehlend:
+        print("  FEHLT im Register: %s" % p)
     quit(1)
 
 
-func _sammle(verzeichnis: String, hinein: PackedStringArray) -> void:
-    for aussen in AUSSEN:
-        if verzeichnis.begins_with(aussen):
-            return
-
-    var d := DirAccess.open(verzeichnis)
+func _alle_dateien(wurzel: String) -> PackedStringArray:
+    var liste := PackedStringArray()
+    var d := DirAccess.open(wurzel)
     if d == null:
-        return
-
+        return liste
     d.list_dir_begin()
     var name := d.get_next()
     while name != "":
         if name.begins_with("."):
             name = d.get_next()
             continue
-        var pfad := verzeichnis.path_join(name)
+        var voll := wurzel.path_join(name)
         if d.current_is_dir():
-            if not AUSSEN_NAMEN.has(name):
-                _sammle(pfad, hinein)
-        elif not QUELLTEXT.has("." + pfad.get_extension()):
-            hinein.append(pfad)
+            if not AUSSEN.has(name):
+                liste.append_array(_alle_dateien(voll))
+        else:
+            liste.append(voll)
         name = d.get_next()
     d.list_dir_end()
+    return liste

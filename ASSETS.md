@@ -7,23 +7,25 @@ Zweck ist nicht Ordnungsliebe. Bei einer Copyright-Beschwerde gegen eine
 Play-Store-App ist dieses Dokument der Nachweis der Herkunft. Ohne es steht
 Aussage gegen Aussage, und die App ist in der Zwischenzeit offline.
 
-## Herkunft von NEKTON
+## Herkunft von HUNDRED CUTS
 
-Vom Vorbild (Kingshot, Century Games) ist **ausschließlich die Struktur**
-übernommen: casual Kernschleife vorn, Aufbauspiel dahinter, Kammern mit
-Bauzeiten, gestufte Monetarisierung. Spielmechaniken und Regeln sind nicht
-urheberrechtlich geschützt — geschützt ist die Ausdrucksform.
+Das Spiel ist **vollständig in diesem Repository entstanden**. Es gibt kein
+Vorbild, von dem etwas übernommen wurde — weder Code noch Grafik, Ton,
+Figuren, Namen, Texte, Titel oder Store-Material.
 
-Aus dem Vorbild stammt **nichts** von Folgendem, und es darf auch nie
-hineingelangen: Code, entpackte Dateien, Grafik, Modelle, Icons, UI-Layouts,
-Animationen, Musik, Geräusche, Figuren, Namen, Story, Texte, Titel, Logo,
-Schriftzug, Store-Grafiken oder Videomaterial. Kein Reverse Engineering, kein
-Asset-Rip, kein Nachzeichnen nach Vorlage — auch das Abmalen erzeugt eine
-Bearbeitung und ist ohne Zustimmung unzulässig.
+Das gilt ausdrücklich auch für die Bildsprache. Tuschemalerei ist eine
+jahrhundertealte Technik und als solche gemeinfrei; was hier auf dem Blatt
+steht, ist trotzdem keine Kopie irgendeines Blattes, sondern das Ergebnis von
+`Tusche.band()` — ein Dreiecksnetz mit wandernder Breite und Deckung. Es gibt
+kein Original in einem Grafikprogramm, weil es keines gibt.
 
-Das Setting sichert die Grenze zusätzlich ab: Tiefseebiologie ist Natur und
-nicht schützbar, es gibt keine anthropomorphen Figuren, und die Kategorie
-spielt sonst in Mittelalter oder Schneewüste.
+**Kein Reverse Engineering, kein Asset-Rip, kein Nachzeichnen nach Vorlage.**
+Auch das Abmalen erzeugt eine Bearbeitung und ist ohne Zustimmung unzulässig.
+
+Vorgänger dieses Repositories war NEKTON, ein Tiefsee-Spiel desselben Autors.
+Es ist gelöscht; aus ihm stammen weder Assets noch Zeichnungen. Was aus ihm
+weitergilt, sind gemessene Eigenschaften der Engine und der Umgebung, und
+die stehen in `CLAUDE.md`.
 
 ## Regeln
 
@@ -39,28 +41,26 @@ spielt sonst in Mittelalter oder Schneewüste.
 
 ## Grafik
 
-Derzeit **keine Bilddateien im Projekt**. Die gesamte Darstellung entsteht zur
-Laufzeit aus `_draw()`-Aufrufen und eigenen GDShadern:
+Derzeit **keine Bilddateien im Projekt** (außer dem App-Symbol, siehe unten).
+Die gesamte Darstellung entsteht zur Laufzeit aus `_draw()`-Aufrufen. Es gibt
+keinen Shader mehr — Tusche braucht keinen:
 
 | Was | Wo |
 |---|---|
-| Wasser, Meeresschnee, Tiefenverlauf | `shaders/graben.gdshader` |
-| Alle siebzehn Räuberarten | `scripts/spiel/schwarm.gd` |
-| Lichtkegel und Staub im Strahl | `scripts/spiel/kegel.gd` |
-| Funken und Trefferstrahlen | `scripts/spiel/funken.gd` |
-| Meeresgrund, Felsen, Bewuchs, Schlote, Nebel und Fundstellen | `scripts/spiel/grund_rundum.gd` |
-| Boot, Begleiter, Schleppe und Übersichtskarte | `scripts/spiel/rundlauf.gd` |
-| Fischschwärme, die nicht angreifen | `scripts/spiel/wild.gd` |
+| Der Pinsel selbst: Strich, Strang, Klecks, Wisch | `scripts/spiel/tusche.gd` |
+| Die Fechter: Skelett, Haltungen, Gewand, Klinge | `scripts/spiel/fechter.gd` |
+| Das Blatt: Sonnenscheibe, Dunst, Bodenstrich, Gräser, Faser | `scripts/spiel/buehne.gd` |
+| Führungslinien, Spritzer, Wischspur, Bühnenbild | `scripts/spiel/schnitt_lauf.gd` |
+| Bedienbild, Knöpfe, Wundenstriche, Schulschirm | `scripts/spiel/schnitt_hud.gd` |
 
 Das ist Absicht und nicht nur eine Frage der Dateigröße: prozedural erzeugte
 Optik hat genau eine Quelle — dieses Repository. Diese Dateien sind selbst
 geschriebener Quelltext und stehen deshalb nicht in der Tabelle unten.
 
-Die einzige Bilddatei im Projekt ist das App-Symbol. Auch das ist gerechnet
-und nicht gemalt: `tools/symbol.gd` erzeugt es aus derselben
-`Schlund.beleuchtung()`, die im Spiel den Lichtkegel zeichnet. Wer es neu
-bauen will, ruft das Werkzeug auf — es gibt kein Original in einem
-Grafikprogramm, weil es keines braucht.
+Die einzigen Bilddateien im Projekt sind die App-Symbole. Sie stammen noch aus
+dem Vorgängerspiel und sind **offen**: `tools/symbol.gd` zeichnet den alten
+Lichtkegel und gehört ersetzt, bevor irgendetwas in einen Laden geht. Auch das
+Symbol ist gerechnet und nicht gemalt.
 
 | Datei | Herkunft | Autor | Lizenz | Quelle | Datum |
 |---|---|---|---|---|---|
@@ -79,10 +79,11 @@ entstehen aus demselben Werkzeug und derselben `Schlund.beleuchtung()`.
 ## Ton
 
 **Keine einzige Audiodatei im Projekt.** Alles entsteht zur Laufzeit in
-`scripts/spiel/klang.gd` als `AudioStreamWAV` mit von Hand gefüllten Puffern:
-Treffer, Tod, Fall der Brut, Wehrpolyp, fertige Kammer, Wellenbeginn, Tippen —
-und der Grundton des Grabens, sechs Sekunden in Schleife, je Abschnitt ein
-eigener.
+`scripts/spiel/stahl.gd` als `AudioStreamWAV` mit von Hand gefüllten Puffern:
+der Holzschlag des Ansatzes, Stahl auf Stahl bei der Parade, das Zischen des
+Schnitts, der dumpfe Schlag einer Wunde, der Fall, der Trommelschlag zur Ronde
+und das Tippen im Menü. Metall entsteht dabei aus **unharmonischen**
+Teiltönen — ganzzahlige Vielfache klingen nach Ton, krumme nach Blech.
 Null Audiodateien heißt null Lizenzrisiko.
 
 | Datei | Herkunft | Autor | Lizenz | Quelle | Datum |

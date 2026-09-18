@@ -10,112 +10,32 @@ extends SceneTree
 ##    Laufzeitfehler nur die betroffene Funktion ab, nicht das Programm. Ein
 ##    Test, der mittendrin stirbt, gaebe sonst `null` zurueck und der Laeufer
 ##    meldete gruen.
-## 2. **Jede Testfunktion steht in `TESTS`.** Ein Wachter vergleicht die
-##    Methodenliste mit dieser Tabelle. Bei HYPHA lief ein Test ueber mehrere
-##    Commits schlicht nicht mit, weil er beim Eintragen vergessen wurde - und
-##    kein Abbruchschutz der Welt faengt einen Test, der nie aufgerufen wird.
+## 2. **Jede Testfunktion steht in `TESTS`.** Ein Waechter vergleicht die
+##    Methodenliste mit dieser Tabelle - kein Abbruchschutz der Welt faengt
+##    einen Test, der nie aufgerufen wird.
 
 const TESTS: PackedStringArray = [
-    "_test_beleuchtung_mitte",
-    "_test_beleuchtung_ausserhalb",
-    "_test_beleuchtung_faellt_zum_rand",
-    "_test_beleuchtung_faellt_in_die_tiefe",
-    "_test_beleuchtung_entartet",
-    "_test_getroffen_stimmt_mit_beleuchtung",
-    "_test_brennende_nimmt_die_hellsten",
-    "_test_brennende_laesst_dunkles_aus",
-    "_test_brennende_entartet",
-    "_test_kegel_wird_nicht_staerker_durch_masse",
-    "_test_schlieren_bleiben_schmuck",
-    "_test_zielrichtung",
-    "_test_gelege_bleibt_im_rahmen",
-    "_test_takt_deckelt_den_sprung",
-    "_test_speichern_ist_unteilbar",
-    "_test_kegel_waehlt_nach_wirkung",
-    "_test_kurve_haengt_nicht_an_der_abschnittszahl",
-    "_test_jeder_abschnitt_ist_vollstaendig",
-    "_test_jede_brutlinie_tut_etwas",
-    "_test_lehrpfad_zeigt_auf_alles",
-    "_test_nischen_liegen_auf_den_ranken",
-    "_test_kamera_zeigt_den_eintritt_nie",
-    "_test_jede_art_hat_ein_sinnbild",
-    "_test_sichtbares_bleibt_englisch",
-    "_test_spiegler_brennt_nur_im_randlicht",
-    "_test_drehung_begrenzt",
-    "_test_drehung_erreicht_ziel",
-    "_test_bahn_endet_an_der_brut",
-    "_test_laufzeit",
-    "_test_arten_tabelle_vollstaendig",
-    "_test_arten_erst_ab_ihrer_welle",
-    "_test_arten_verhalten_bleibt_im_rahmen",
-    "_test_bahn_bleibt_im_bild_und_sinkt",
-    "_test_haut_schluckt_schwache_quellen",
-    "_test_leitwesen_stehen_an_den_abschnittsenden",
-    "_test_gepanzertes_leitwesen_nie_im_dunkeln",
-    "_test_stosslicht_steht_in_der_sollkurve",
-    "_test_kette_zahlt_punkte_und_keinen_naehrstoff",
-    "_test_bluete_bleibt_ausserhalb_der_wirtschaft",
-    "_test_stroemung_wird_nur_einmal_gerechnet",
-    "_test_mutationszwang_bleibt_im_werkzeug",
-    "_test_artensperre_bleibt_im_werkzeug",
-    "_test_anstrich_faerbt_und_leuchtet_nicht",
-    "_test_keine_art_kostet_ein_vielfaches",
-    "_test_kein_leitwesen_steht_zu_lange",
-    "_test_toene_sind_hoerbar_und_sauber",
-    "_test_grundton_schliesst_die_schleife",
-    "_test_mutationen_tabelle_vollstaendig",
-    "_test_mutationen_erst_ab_der_zweiten_umdrehung",
-    "_test_mutationen_sind_reproduzierbar",
-    "_test_mutierte_werte_bleiben_im_rahmen",
-    "_test_wellen_wachsen",
-    "_test_wellen_sind_reproduzierbar",
-    "_test_wellen_bleiben_im_feld",
-    "_test_wellen_zeiten_sortiert",
-    "_test_die_welle_hat_einen_bogen",
-    "_test_rundum_haelt_das_feld",
-    "_test_zeichenrand_deckt_jedes_bild",
-    "_test_felsen_sind_fest",
-    "_test_karte_deckt_auf_was_befahren_wurde",
-    "_test_rundum_verfolgt_ohne_zu_beschleunigen",
-    "_test_schwaerme_fliehen_und_bleiben_im_feld",
-    "_test_rundumlauf_brennt_mit_dem_gezeichneten_kegel",
-    "_test_rundum_begleiter_bleiben_hinten",
-    "_test_leitwesen_tritt_zuletzt_ein",
-    "_test_wellen_dauer_im_rahmen",
-    "_test_wellen_treffen_ihr_budget",
-    "_test_zaehigkeit_steigt",
-    "_test_druck_steigt_und_bleibt_im_rahmen",
-    "_test_ausbau_verschlechtert_nie",
-    "_test_kammern_treffen_die_sollkurve",
-    "_test_kammern_tabelle_vollstaendig",
-    "_test_kammerkosten_und_zeiten_steigen",
-    "_test_einkommen_haelt_mit_den_kosten_schritt",
-    "_test_bau_passt_zwischen_zwei_besuche",
-    "_test_grosse_zahlen_bleiben_lesbar",
-    "_test_erste_woche_ohne_wartemauer",
-    "_test_schacht_deckelt_die_kolonie",
-    "_test_grabentiefe_folgt_der_sollkurve",
-    "_test_grabentiefe_deckelt_den_fortschritt",
-    "_test_tagesstroemung_ist_je_tag_gedeckelt",
-    "_test_stand_uebersteht_das_sichern",
-    "_test_zuchtkalender_laeuft_einmal_und_endet_auf_einer_linie",
-    "_test_kammerausbau_verschlechtert_nie",
-    "_test_jeder_abschnitt_hat_namen_und_hinweis",
-    "_test_erster_abschnitt_bleibt_ruhig",
-    "_test_regeln_bleiben_in_ihren_grenzen",
-    "_test_regeln_sind_reproduzierbar",
-    "_test_wirkungsgrad_faellt_mit_den_regeln",
-    "_test_wellenstaerke_folgt_dem_wirkungsgrad",
-    "_test_geister_stehen_gestaffelt",
-    "_test_geisterleiter_beginnt_frueh",
-    "_test_eigener_platz_folgt_der_tiefe",
-    "_test_polyp_kosten_steigen",
-    "_test_abschnitt",
-    "_test_erste_wellen_sind_ueberstehbar",
-    "_test_staerkeres_boot_ist_nie_langsamer",
+    "_test_schnitte_tabelle_vollstaendig",
+    "_test_achsen_trennen_sich_und_lassen_keine_luecke",
+    "_test_achse_ist_zweiseitig",
+    "_test_gegner_tabelle_vollstaendig",
+    "_test_jede_sorte_hat_einen_eigenen_rhythmus",
+    "_test_fenster_passt_in_den_ansatz",
+    "_test_taeuschung_laesst_zeit_zum_zweiten_lesen",
+    "_test_schule_verschlechtert_nichts",
+    "_test_einkommen_und_kosten_wachsen_gleich",
+    "_test_ronden_sind_reproduzierbar",
+    "_test_ronde_ist_nie_leer",
+    "_test_ronde_waechst",
+    "_test_meister_tritt_zuletzt_an",
+    "_test_lesezeit_bleibt_menschlich",
+    "_test_fuehrung_und_fenster_teilen_die_zahl",
+    "_test_ein_leser_gewinnt",
+    "_test_ruehren_verliert",
+    "_test_kein_platz_doppelt_besetzt",
 ]
 
-var _fehler: PackedStringArray = []
+var _fehler: Array[String] = []
 
 
 func _init() -> void:
@@ -139,11 +59,11 @@ func _init() -> void:
     if _fehler.is_empty() and vollstaendig:
         print("Alles in Ordnung.")
         quit(0)
-    else:
-        quit(1)
+        return
+    quit(1)
 
 
-## Wachter: jede `_test_`-Methode dieses Skripts muss in TESTS stehen.
+## Waechter: jede `_test_`-Methode dieses Skripts muss in TESTS stehen.
 func _pruefe_vollstaendigkeit() -> bool:
     var fehlend := PackedStringArray()
     for m in get_method_list():
@@ -163,3001 +83,398 @@ func _melde(bedingung: bool, was: String) -> bool:
     return bedingung
 
 
-# --- Schlund: Lichtkegel ---------------------------------------------------
+# --- Die Linien ------------------------------------------------------------
 
-func _test_beleuchtung_mitte() -> bool:
-    var hell := Schlund.beleuchtung(Vector2.ZERO, Vector2.UP, 0.3, 500.0,
-        Vector2(0.0, -100.0))
-    return _melde(is_equal_approx(hell, 1.0),
-        "Mitte des Kegels muss voll hell sein, war %f" % hell)
-
-
-func _test_beleuchtung_ausserhalb() -> bool:
-    var spitze := Vector2.ZERO
-    var zu_weit := Schlund.beleuchtung(spitze, Vector2.UP, 0.3, 500.0,
-        Vector2(0.0, -501.0))
-    var daneben := Schlund.beleuchtung(spitze, Vector2.UP, 0.3, 500.0,
-        Vector2(400.0, -100.0))
-    var dahinter := Schlund.beleuchtung(spitze, Vector2.UP, 0.3, 500.0,
-        Vector2(0.0, 100.0))
-    return _melde(zu_weit == 0.0, "ausserhalb der Reichweite muss 0 sein") \
-        and _melde(daneben == 0.0, "ausserhalb des Winkels muss 0 sein") \
-        and _melde(dahinter == 0.0, "hinter dem Waechter muss 0 sein")
-
-
-func _test_beleuchtung_faellt_zum_rand() -> bool:
-    var winkel := 0.4
-    var mitte := Schlund.beleuchtung(Vector2.ZERO, Vector2.UP, winkel, 500.0,
-        Vector2(0.0, -200.0))
-    var schraeg := Vector2.UP.rotated(winkel * 0.95) * 200.0
-    var rand := Schlund.beleuchtung(Vector2.ZERO, Vector2.UP, winkel, 500.0, schraeg)
-    return _melde(rand < mitte, "Rand muss dunkler sein als Mitte (%f >= %f)"
-        % [rand, mitte]) and _melde(rand >= 0.0, "nie negativ")
-
-
-func _test_beleuchtung_faellt_in_die_tiefe() -> bool:
-    var nah := Schlund.beleuchtung(Vector2.ZERO, Vector2.UP, 0.3, 500.0,
-        Vector2(0.0, -200.0))
-    var fern := Schlund.beleuchtung(Vector2.ZERO, Vector2.UP, 0.3, 500.0,
-        Vector2(0.0, -480.0))
-    return _melde(fern < nah, "fern muss dunkler sein als nah (%f >= %f)" % [fern, nah])
-
-
-func _test_beleuchtung_entartet() -> bool:
-    var ohne_reichweite := Schlund.beleuchtung(Vector2.ZERO, Vector2.UP, 0.3, 0.0,
-        Vector2(0.0, -10.0))
-    var ohne_winkel := Schlund.beleuchtung(Vector2.ZERO, Vector2.UP, 0.0, 500.0,
-        Vector2(0.0, -100.0))
-    var ohne_richtung := Schlund.beleuchtung(Vector2.ZERO, Vector2.ZERO, 0.3, 500.0,
-        Vector2(0.0, -100.0))
-    var auf_der_spitze := Schlund.beleuchtung(Vector2.ZERO, Vector2.UP, 0.3, 500.0,
-        Vector2.ZERO)
-    return _melde(ohne_reichweite == 0.0, "Reichweite 0 muss 0 liefern") \
-        and _melde(ohne_winkel == 0.0, "Winkel 0 muss 0 liefern") \
-        and _melde(ohne_richtung == 0.0, "Richtung 0 muss 0 liefern") \
-        and _melde(auf_der_spitze == 1.0, "auf der Spitze muss voll hell sein")
-
-
-func _test_getroffen_stimmt_mit_beleuchtung() -> bool:
-    # Die Zusicherung aus schlund.gd: was leuchtet, trifft. Ohne diesen Test
-    # koennten Anzeige und Wirkung auseinanderlaufen.
-    var rng := RandomNumberGenerator.new()
-    rng.seed = 4711
-    for _i in 400:
-        var p := Vector2(rng.randf_range(-400.0, 400.0), rng.randf_range(-800.0, 400.0))
-        var richtung := Vector2.UP.rotated(rng.randf_range(-1.2, 1.2))
-        var hell := Schlund.beleuchtung(Graben.WAECHTER, richtung,
-            Graben.HALBWINKEL, Graben.REICHWEITE, p)
-        var trifft := Schlund.getroffen(Graben.WAECHTER, richtung,
-            Graben.HALBWINKEL, Graben.REICHWEITE, p)
-        if trifft != (hell > 0.02):
-            return _melde(false, "getroffen() weicht von beleuchtung() ab bei %s" % p)
-    return true
-
-
-func _test_brennende_nimmt_die_hellsten() -> bool:
-    var hell := PackedFloat32Array([0.1, 0.9, 0.5, 0.7, 0.2])
-    var treffer := Schlund.brennende(hell, 3)
-    if not _melde(treffer.size() == 3, "drei Ziele erwartet, waren %d" % treffer.size()):
-        return false
-    return _melde(treffer[0] == 1 and treffer[1] == 3 and treffer[2] == 2,
-        "absteigend nach Helligkeit erwartet, war %s" % str(treffer))
-
-
-func _test_brennende_laesst_dunkles_aus() -> bool:
-    var hell := PackedFloat32Array([0.0, 0.4, 0.0, 0.0])
-    var treffer := Schlund.brennende(hell, 3)
-    return _melde(treffer.size() == 1 and treffer[0] == 1,
-        "nur der eine beleuchtete Eintrag darf brennen, war %s" % str(treffer))
-
-
-func _test_brennende_entartet() -> bool:
-    var leer := Schlund.brennende(PackedFloat32Array(), 3)
-    var ohne_ziele := Schlund.brennende(PackedFloat32Array([0.5, 0.9]), 0)
-    var mehr_ziele := Schlund.brennende(PackedFloat32Array([0.5, 0.9]), 9)
-    return _melde(leer.is_empty(), "leere Liste muss leer bleiben") \
-        and _melde(ohne_ziele.is_empty(), "null Ziele muss leer liefern") \
-        and _melde(mehr_ziele.size() == 2,
-            "mehr Ziele als Eintraege darf nicht ueberlaufen")
-
-
-func _test_kegel_wird_nicht_staerker_durch_masse() -> bool:
-    # Der Fehler, den der Wellenpruefer aufgedeckt hat: ohne Zielgrenze wuchs
-    # die Gesamtleistung des Kegels mit der Zahl der Gegner, und grosse Wellen
-    # waren leichter als kleine. Dieser Test haelt die Grenze fest.
-    var wenige := PackedFloat32Array([1.0, 1.0])
-    var viele := PackedFloat32Array()
-    for _i in 200:
-        viele.append(1.0)
-    var a := Schlund.brennende(wenige, Graben.ZIELE).size()
-    var b := Schlund.brennende(viele, Graben.ZIELE).size()
-    return _melde(a <= Graben.ZIELE and b <= Graben.ZIELE,
-        "nie mehr als %d Ziele, waren %d und %d" % [Graben.ZIELE, a, b]) \
-        and _melde(b == Graben.ZIELE,
-            "bei Ueberangebot muessen alle Ziele belegt sein, waren %d" % b)
-
-
-func _test_schlieren_bleiben_schmuck() -> bool:
-    # Die zweite Zusicherung des Projekts lautet: was hell gezeichnet wird,
-    # macht Schaden. `kegel.gd::_schlieren()` legt ein wanderndes Streiflicht
-    # darueber - Wasser vor dem Licht, nicht mehr Licht. Damit das eine
-    # Verzierung bleibt und keine zweite Wahrheit, muss es zwei Dinge tun:
-    # eng um 1.0 schwanken und sich ueber die Flaeche zu null mitteln.
-    #
-    # Geprueft wird an den Konstanten, nicht am Bild: der Kegel ist ein
-    # Szenenknoten und laeuft im Testlauf nicht.
-    # **Alle Anteile, nicht die, an die man sich erinnert.** Hier standen
-    # zwei Summanden, und als ein dritter dazukam (`SCHLIEREN_LAENGS`, die
-    # Baender laengs des Strahls), lief er ungeprueft mit - der Test blieb
-    # gruen und pruefte weniger als er behauptete. Ein Waechter, der eine
-    # Zahl vergisst, faellt niemandem auf: er wird ja nicht rot.
-    var kegel := load("res://scripts/spiel/kegel.gd")
-    var tiefe: float = kegel.SCHLIEREN_TIEFE + kegel.SCHLIEREN_TIEFE_FEIN \
-        + kegel.SCHLIEREN_LAENGS
-    if not _melde(tiefe <= 0.20,
-            "die Schlieren aendern die Deckung um %.0f %% - ueber 20 %% ist "
-            % (tiefe * 100.0) + "das keine Verzierung mehr"):
-        return false
-
-    # Und der Umlauf muss nahtlos sein. `flackern` laeuft mit fmod(..., TAU)
-    # um; bei einem krummen Vielfachen springt das Argument bei jedem Umlauf
-    # um einen Bruchteil der Periode, und ein Riss laeuft durch den Kegel.
-    #
-    # Geprueft wird die **Eigenschaft**, nicht der Wortlaut: hier stand
-    # zuerst eine Liste erwarteter Zeichenketten, und die schlug fehl, sobald
-    # jemand einen Faktor von 2.0 auf 1.0 setzte - also bei einer Aenderung,
-    # die genau nichts kaputtmacht. Ein Test, der beim Aufraeumen rot wird,
-    # wird beim naechsten Mal abgeschaltet statt gelesen.
-    var quelle := FileAccess.get_file_as_string("res://scripts/spiel/kegel.gd")
-    var suche := RegEx.new()
-    suche.compile("flackern\\s*\\*\\s*([0-9]+\\.?[0-9]*)")
-    var treffer := suche.search_all(quelle)
-    if not _melde(treffer.size() >= 2,
-            "in kegel.gd steht kein Vielfaches von flackern mehr - dann "
-            + "prueft dieser Test nichts"):
-        return false
-    for t in treffer:
-        var faktor := float(t.get_string(1))
-        if not _melde(is_equal_approx(faktor, roundf(faktor)),
-                "flackern * %s ist kein ganzes Vielfaches - der Umlauf springt"
-                % t.get_string(1)):
-            return false
-    return true
-
-
-func _test_zielrichtung() -> bool:
-    var r := Schlund.zielrichtung(Vector2.ZERO, Vector2(0.0, -50.0))
-    var ersatz := Schlund.zielrichtung(Vector2.ZERO, Vector2(0.0, 0.5), Vector2.RIGHT)
-    return _melde(r.is_equal_approx(Vector2.UP), "gerade nach oben erwartet, war %s" % r) \
-        and _melde(ersatz == Vector2.RIGHT, "Ersatzrichtung bei Finger auf der Spitze")
-
-
-func _test_drehung_begrenzt() -> bool:
-    # Eine halbe Umdrehung in einem Bildschritt darf nicht durchgehen.
-    var neu := Schlund.gedreht(Vector2.UP, Vector2.DOWN, 4.0, 1.0 / 60.0)
-    var winkel := absf(angle_difference(Vector2.UP.angle(), neu.angle()))
-    return _melde(winkel <= 4.0 / 60.0 + 0.001,
-        "Drehung ueberschreitet das Tempo: %f" % winkel)
-
-
-func _test_drehung_erreicht_ziel() -> bool:
-    var r := Vector2.UP
-    for _i in 200:
-        r = Schlund.gedreht(r, Vector2.RIGHT, 7.0, 1.0 / 30.0)
-    return _melde(r.is_equal_approx(Vector2.RIGHT),
-        "Drehung muss das Ziel erreichen und dort bleiben, war %s" % r)
-
-
-# --- Schlund: Bahnen -------------------------------------------------------
-
-func _test_bahn_endet_an_der_brut() -> bool:
-    var start := Vector2(100.0, Graben.EINTRITT_Y)
-    var spaet := Schlund.bahn(start, Graben.BRUT_Y, 90.0, 20.0, 2.0, 0.0, 999.0)
-    return _melde(is_equal_approx(spaet.y, Graben.BRUT_Y),
-        "Bahn darf die Brut nicht durchsinken, war y=%f" % spaet.y)
-
-
-func _test_laufzeit() -> bool:
-    var t := Schlund.laufzeit(-100.0, 100.0, 50.0)
-    var stillstand := Schlund.laufzeit(-100.0, 100.0, 0.0)
-    return _melde(is_equal_approx(t, 4.0), "4 Sekunden erwartet, waren %f" % t) \
-        and _melde(stillstand == INF, "Tempo 0 muss unendlich liefern")
-
-
-# --- Arten -----------------------------------------------------------------
-
-func _test_arten_tabelle_vollstaendig() -> bool:
-    var felder: PackedStringArray = ["name", "leben", "tempo", "radius",
-        "wucht", "schlaengel", "takt", "farbe", "ab_welle", "regel", "kennung"]
-    if not _melde(Arten.TABELLE.size() == Arten.Art.size(),
-            "TABELLE und enum Art muessen gleich gross sein"):
-        return false
-
-    # Und in derselben **Reihenfolge**. Gleiche Groesse allein hat nicht
-    # gereicht: die Schlundmutter stand in der Tabelle vor dem Sprungaal und
-    # im enum dahinter. Jeder Zugriff ueber `Arten.Art.SPRUNGAAL` traf danach
-    # die Schlundmutter - im Bestiarium ein leeres Zeichen, im Spiel das
-    # falsche Tier.
-    #
-    # Verglichen wird die Kennung, nicht der angezeigte Name: der steht in
-    # der Sprache des Spielers, die Bezeichner bleiben deutsch.
-    var schluessel := Arten.Art.keys()
-    for i in Arten.zahl():
-        var erwartet := String(schluessel[i])
-        var kennung := String(Arten.art(i)[&"kennung"])
-        if not _melde(kennung == erwartet,
-                "Platz %d traegt die Kennung %s, das enum sagt %s"
-                % [i, kennung, erwartet]):
-            return false
-    for i in Arten.TABELLE.size():
-        for f in felder:
-            if not Arten.TABELLE[i].has(StringName(f)):
-                return _melde(false, "Art %d fehlt das Feld %s" % [i, f])
-        if not _melde(Arten.leben(i) > 0.0, "Art %d braucht Leben > 0" % i):
-            return false
-        if not _melde(Arten.tempo(i) > 0.0, "Art %d braucht Tempo > 0" % i):
-            return false
-        if not _melde(Arten.wucht(i) > 0, "Art %d braucht Wucht > 0" % i):
-            return false
-    return true
-
-
-func _test_arten_erst_ab_ihrer_welle() -> bool:
-    var erste := Arten.verfuegbar(1)
-    if not _melde(erste.size() >= 1, "Welle 1 braucht mindestens eine Art"):
-        return false
-    for i in erste:
-        if not _melde(int(Arten.art(i)[&"ab_welle"]) <= 1,
-                "Art %d darf in Welle 1 nicht vorkommen" % i):
-            return false
-    # Alle Arten ausser den Leitwesen - die werden nie gewuerfelt, sondern von
-    # `Wellen.auftritte()` an die Abschnittsenden gesetzt.
-    #
-    # **Es sind drei, nicht eines.** Hier stand `== 1`, und das war die
-    # richtige Zahl, solange jeder Abschnitt gleich endete. Was der Test
-    # wirklich sichern soll, steht eine Zeile tiefer: kein Leitwesen darf in
-    # der Wuerfelauswahl auftauchen. Wie viele es gibt, ist eine Frage des
-    # Inhalts, nicht der Richtigkeit.
-    var leitwesen := 0
-    for i in Arten.zahl():
-        if Arten.ist_leitwesen(i):
-            leitwesen += 1
-    if not _melde(leitwesen >= 1, "es muss mindestens ein Leitwesen geben"):
-        return false
-    for i in Arten.verfuegbar(Graben.ZYKLUS):
-        if not _melde(not Arten.ist_leitwesen(i),
-                "Leitwesen %d steht in der Wuerfelauswahl" % i):
-            return false
-
-    var spaet := Arten.verfuegbar(Graben.ZYKLUS)
-    return _melde(spaet.size() == Arten.zahl() - leitwesen,
-        "in der letzten Welle muessen alle wuerfelbaren Arten verfuegbar sein")
-
-
-# --- Wellen ----------------------------------------------------------------
-
-func _test_arten_verhalten_bleibt_im_rahmen() -> bool:
-    # Die vier Eigenschaften der spaeten Arten haben Grenzen, hinter denen sie
-    # nicht mehr Entwurf, sondern Fehler sind.
-    for i in Arten.zahl():
-        var name := Arten.name_von(i)
-        if not _melde(Arten.stoss(i) <= Schlund.STOSS_DECKEL,
-                "%s: ein Schub ueber %.2f liesse sie rueckwaerts schwimmen"
-                % [name, Schlund.STOSS_DECKEL]):
-            return false
-        if not _melde(Arten.mindest_licht(i) >= 0.0 and Arten.mindest_licht(i) < 1.0,
-                "%s: eine Mindesthelligkeit ab 1.0 waere unverwundbar" % name):
-            return false
-        if not _melde(Arten.drift(i) >= 0.0, "%s: negative Drift" % name):
-            return false
-        if not _melde(Arten.panzer(i) >= 0.0, "%s: negativer Panzer" % name):
-            return false
-        if not _melde(Arten.aufwand(i) >= 1.0,
-                "%s: eine Art darf nie weniger kosten als ihr Leben" % name):
-            return false
-
-        # Und keine Art darf gegen den vollen Kegel unverwundbar sein - sonst
-        # steht der Spieler vor einem Gegner, den er nicht toeten kann.
-        var voll := Schlund.schaden_an(Graben.LEISTUNG, 1.0,
-            Arten.panzer(i), Arten.mindest_licht(i))
-        if not _melde(voll > 0.0, "%s: der Grundkegel kommt gar nicht durch" % name):
-            return false
-    return true
-
-
-func _test_mutationen_tabelle_vollstaendig() -> bool:
+func _test_schnitte_tabelle_vollstaendig() -> bool:
     var laengen := {
-        "NAMEN": Mutationen.NAMEN.size(),
-        "HINWEISE": Mutationen.HINWEISE.size(),
-        "WIRKUNGSGRAD": Mutationen.WIRKUNGSGRAD.size(),
+        "NAMEN": Schnitte.NAMEN.size(),
+        "ANTWORTEN": Schnitte.ANTWORTEN.size(),
+        "WINKEL": Schnitte.WINKEL.size(),
     }
     for was in laengen:
-        if not _melde(laengen[was] == Mutationen.Mutation.size(),
-                "%s hat %d Eintraege, das enum %d"
-                % [was, laengen[was], Mutationen.Mutation.size()]):
+        if not _melde(laengen[was] == Schnitte.Linie.size(),
+                "%s hat %d Eintraege statt %d"
+                % [was, laengen[was], Schnitte.Linie.size()]):
             return false
-    for m in Mutationen.Mutation.size():
-        if not _melde(not Mutationen.name_von(m).is_empty()
-                and not Mutationen.hinweis(m).is_empty(),
-                "Mutation %d braucht Namen und Hinweis" % m):
-            return false
-        # Ohne Kopplung an die Wellenstaerke ist jede Mutation eine Wand -
-        # dieselbe Lehre wie bei den Abschnittsregeln, wo genau dieses
-        # Versaeumnis fuenf gefallene Sitzungen ab Welle 36 gekostet hat.
-        var w := Mutationen.WIRKUNGSGRAD[m]
-        if not _melde(w > 0.5 and w <= 1.0,
-                "%s hat einen Wirkungsgrad von %.2f - das ist keine Kurve mehr"
-                % [Mutationen.name_von(m), w]):
+    for l in Schnitte.Linie.size():
+        if not _melde(not Schnitte.name_von(l).is_empty()
+                and not Schnitte.antwort_von(l).is_empty(),
+                "Linie %d braucht Namen und Antwort" % l):
             return false
     return true
 
 
-func _test_mutationen_erst_ab_der_zweiten_umdrehung() -> bool:
-    # Wer die Arten noch nicht kennt, kann nicht sehen, was an ihnen anders
-    # ist. Eine Mutation in der Lernphase waere keine Abwechslung, sondern
-    # eine unerklaerliche Niederlage.
-    for n in range(1, Graben.ZYKLUS + 1):
-        if not _melde(Mutationen.in_welle(n).is_empty(),
-                "Welle %d traegt schon eine Mutation" % n):
-            return false
-    if not _melde(not Mutationen.in_welle(Graben.ZYKLUS + 1).is_empty(),
-            "die zweite Umdrehung muss mutieren, sonst aendert sich nie etwas"):
-        return false
-    return _melde(Mutationen.zahl_in(Graben.ZYKLUS * 9) == Mutationen.HOECHSTENS,
-        "tief unten muessen es %d Zuege sein" % Mutationen.HOECHSTENS)
-
-
-func _test_mutationen_sind_reproduzierbar() -> bool:
-    # Derselbe Grund wie bei der Zusammensetzung der Welle: der Wellenpruefer
-    # muss dieselbe Welle durchrechnen koennen, die beim Spieler ankommt, und
-    # alle Spieler sollen dieselbe Welle 137 sehen.
-    for n in range(Graben.ZYKLUS, Graben.ZYKLUS * 4, 7):
-        var a := Mutationen.in_welle(n)
-        var b := Mutationen.in_welle(n)
-        if not _melde(a == b, "Welle %d mutiert zweimal verschieden" % n):
-            return false
-        if not _melde(a.size() <= Mutationen.HOECHSTENS,
-                "Welle %d traegt %d Zuege" % [n, a.size()]):
-            return false
-        var gesehen := PackedInt32Array()
-        for m in a:
-            if not _melde(not gesehen.has(m),
-                    "Welle %d traegt %s doppelt" % [n, Mutationen.name_von(m)]):
-                return false
-            gesehen.append(m)
-    return true
-
-
-func _test_mutierte_werte_bleiben_im_rahmen() -> bool:
-    # Eine Mutation, die den Panzer ueber die Leistung des Kegels hebt, macht
-    # die Welle unbesiegbar - und zwar lautlos: `Schlund.schaden_an` gibt
-    # dann einfach null zurueck.
-    for n in range(Graben.ZYKLUS + 1, Graben.ZYKLUS * 5, 13):
-        var kegel := Graben.LEISTUNG * Ausbau.leistung_faktor(n)
-        for i in Arten.zahl():
-            var name := Arten.name_von(i)
-            if not _melde(Wellen.panzer_in(i, n) < kegel * 0.6,
-                    "%s in Welle %d: Panzer %.1f gegen Kegel %.1f"
-                    % [name, n, Wellen.panzer_in(i, n), kegel]):
-                return false
-            if not _melde(Wellen.mindest_licht_in(i, n) < 1.0,
-                    "%s in Welle %d braucht Helligkeit %.2f - die gibt es nicht"
-                    % [name, n, Wellen.mindest_licht_in(i, n)]):
-                return false
-            if not _melde(Wellen.stoss_in(i, n) <= Schlund.STOSS_DECKEL,
-                    "%s in Welle %d stoesst ueber den Deckel" % [name, n]):
-                return false
-            if not _melde(Wellen.tempo_in(i, n) > 0.0
-                    and Wellen.radius_in(i, n) > 0.0,
-                    "%s in Welle %d hat Tempo oder Radius <= 0" % [name, n]):
-                return false
-    return true
-
-
-func _test_bahn_bleibt_im_bild_und_sinkt() -> bool:
-    # Zwei Zusicherungen an einem Weg: er verlaesst das Bild nicht, und er
-    # geht nie rueckwaerts. Der Schub war genau dafuer der Verdachtsfall.
-    var halb := Graben.FELD.size.x * 0.5
-    for i in Arten.zahl():
-        var a := Arten.art(i)
-        for phase: float in [0.0, 1.4, 3.1, 4.8]:
-            for start: float in [-Graben.EINTRITT_SEITE, 0.0, Graben.EINTRITT_SEITE]:
-                var vorher := -INF
-                var t := 0.0
-                while t < 40.0:
-                    var p := Schlund.bahn(Vector2(start, Graben.EINTRITT_Y),
-                        Graben.BRUT_Y, a[&"tempo"], a[&"schlaengel"], a[&"takt"],
-                        phase, t, Arten.drift(i), Arten.stoss(i))
-                    if not _melde(absf(p.x) <= halb,
-                            "%s verlaesst das Bild bei %.1f s: x=%.1f"
-                            % [Arten.name_von(i), t, p.x]):
-                        return false
-                    if not _melde(p.y >= vorher - 0.001,
-                            "%s schwimmt bei %.1f s rueckwaerts" % [Arten.name_von(i), t]):
-                        return false
-                    vorher = p.y
-                    t += 0.05
-    return true
-
-
-func _test_haut_schluckt_schwache_quellen() -> bool:
-    # Panzer: ein fester Betrag je Sekunde geht ab. Genau das macht einen
-    # Wehrpolypen gegen eine Schildkoralle stumpf.
-    if not _melde(is_equal_approx(Schlund.schaden_an(30.0, 1.0, 0.0, 0.0), 30.0),
-            "ohne Haut muss der volle Schaden ankommen"):
-        return false
-    if not _melde(is_equal_approx(Schlund.schaden_an(30.0, 1.0, 12.0, 0.0), 18.0),
-            "der Panzer muss genau seinen Betrag abziehen"):
-        return false
-    if not _melde(is_equal_approx(Schlund.schaden_an(8.0, 1.0, 12.0, 0.0), 0.0),
-            "eine Quelle unter dem Panzer darf nichts ausrichten"):
-        return false
-
-    # Mindesthelligkeit: am Rand des Kegels passiert nichts, im Kern alles.
-    if not _melde(is_equal_approx(Schlund.schaden_an(30.0, 0.4, 0.0, 0.5), 0.0),
-            "unter der Mindesthelligkeit darf kein Schaden entstehen"):
-        return false
-    return _melde(Schlund.schaden_an(30.0, 0.6, 0.0, 0.5) > 0.0,
-        "ueber der Mindesthelligkeit muss Schaden entstehen")
-
-
-func _test_leitwesen_stehen_an_den_abschnittsenden() -> bool:
-    # Genau eines je Abschnittsende, sonst keines. Waeren sie Teil der
-    # normalen Auswahl, kaeme irgendwann eine Welle aus lauter Leitwesen - und
-    # aus sechs Hoehepunkten wuerde Rauschen.
-    var alle := Arten.leitwesen_liste()
-    if not _melde(not alle.is_empty(), "es gibt kein Leitwesen"):
-        return false
-    var leit := alle[0]
-
-    for n in range(1, Graben.ZYKLUS + 1):
-        var zahl := 0
-        for a in Wellen.auftritte(n):
-            if alle.has(int(a[&"art"])):
-                zahl += 1
-                # Und zwar genau das, das fuer diesen Abschnitt vorgesehen
-                # ist. Ein zufaellig gewaehlter Hoehepunkt ist ein Ereignis,
-                # ein zugeordneter ist ein Ort.
-                if not _melde(int(a[&"art"])
-                        == Arten.leitwesen_fuer(Graben.abschnitt(n)),
-                        "Welle %d hat das falsche Leitwesen" % n):
-                    return false
-        var soll := 1 if Wellen.hat_leitwesen(n) else 0
-        if not _melde(zahl == soll,
-                "Welle %d hat %d Leitwesen statt %d" % [n, zahl, soll]):
-            return false
-
-    # Und es waechst mit der Welle, statt spaeter zur Randnotiz zu werden.
-    var frueh := Wellen.leben_in(leit, Graben.WELLEN_JE_ABSCHNITT)
-    var spaet := Wellen.leben_in(leit, Graben.ZYKLUS)
-    if not _melde(spaet > frueh * 2.0,
-            "das Leitwesen muss ueber 60 Wellen deutlich zulegen"):
-        return false
-    return _melde(Arten.wucht(leit) > Arten.wucht(Arten.Art.PANZERKREBS),
-        "das Leitwesen muss haerter zuschlagen als jeder gewoehnliche Raeuber")
-
-
-func _test_wellen_wachsen() -> bool:
-    # Nicht die rohe Lebenspunktzahl waechst, sondern der **Anspruch**.
+func _test_achsen_trennen_sich_und_lassen_keine_luecke() -> bool:
+    # **Es gibt kein totes Band.** Jede Richtung, die ein Daumen ziehen
+    # kann, gehoert genau einer Achse - und zwar der, die ihr am naechsten
+    # liegt. Frueher stand hier eine Schwelle; sie hatte einen Rand, und ein
+    # Rand ist entweder doppeldeutig oder tot.
     #
-    # An jeder Abschnittsgrenze faellt die Zahl der Raeuber, weil die neue
-    # Regel dem Spieler Leistung abzieht - Welle 21 hat weniger Leben als
-    # Welle 20 und ist trotzdem schwerer. Wer hier die rohe Staerke prueft,
-    # zwingt die Wellen dazu, die Regeln zu ignorieren.
-    for n in range(1, Graben.ZYKLUS):
-        var jetzt := Wellen.staerke(n) / maxf(0.0001, Regeln.wirkungsgrad(n))
-        var danach := Wellen.staerke(n + 1) / maxf(0.0001, Regeln.wirkungsgrad(n + 1))
-        if not _melde(danach > jetzt,
-                "Welle %d verlangt nicht mehr als %d" % [n + 1, n]):
-            return false
-
-    # Ueber die ganze Strecke muss auch die rohe Zahl deutlich steigen -
-    # sonst waeren die Abschnitte das einzige Wachstum.
-    return _melde(Wellen.staerke(Graben.ZYKLUS) > Wellen.staerke(1) * 8.0,
-        "die letzte Welle muss um ein Vielfaches groesser sein als die erste")
-
-
-func _test_wellen_sind_reproduzierbar() -> bool:
-    # Der Wellenpruefer rechnet nur dann das Spiel durch, wenn zweimal
-    # dieselbe Welle herauskommt.
-    for n in [1, 7, 23, 60]:
-        var a := Wellen.auftritte(n)
-        var b := Wellen.auftritte(n)
-        if not _melde(a.size() == b.size(), "Welle %d hat wechselnde Groesse" % n):
-            return false
-        for i in a.size():
-            if a[i] != b[i]:
-                return _melde(false, "Welle %d weicht bei Eintrag %d ab" % [n, i])
-    return true
-
-
-func _test_wellen_bleiben_im_feld() -> bool:
-    for n in range(1, Graben.ZYKLUS + 1):
-        for a in Wellen.auftritte(n):
-            var x: float = a[&"x"]
-            if absf(x) > Graben.EINTRITT_SEITE + 0.001:
-                return _melde(false, "Welle %d tritt bei x=%f ausserhalb ein" % [n, x])
-            var art: int = a[&"art"]
-            if art < 0 or art >= Arten.zahl():
-                return _melde(false, "Welle %d nennt Art %d" % [n, art])
-    return true
-
-
-## Die Karte deckt auf, was befahren wurde - und sonst nichts.
-func _test_karte_deckt_auf_was_befahren_wurde() -> bool:
-    var k := Karte.new(Rundum.FELD_RADIUS)
-
-    if not _melde(k.anteil() < 0.001,
-            "eine frische Karte darf nichts kennen, sie kennt %.3f"
-            % k.anteil()):
-        return false
-
-    # Feld und Mitte muessen zueinander passen: die Mitte eines Feldes liegt
-    # in demselben Feld. Sonst deckt `decke_auf()` etwas anderes auf, als es
-    # misst.
-    for i in range(0, k.bekannt.size(), 17):
-        if not _melde(k.feld(k.mitte(i)) == i,
-                "Feld %d und seine Mitte passen nicht zusammen" % i):
-            return false
-
-    # Rasterkoordinaten und Index sind dieselbe Abbildung, von beiden Seiten.
-    # Der Nebel fragt ueber `raster()`/`zelle_bekannt()`, das Spiel ueber
-    # `feld()` - laufen die auseinander, liegt der Nebel neben der Karte.
-    for i in range(0, k.bekannt.size(), 23):
-        var zelle := k.raster(k.mitte(i))
-        if not _melde(k.index(zelle) == i,
-                "Raster und Index passen bei Feld %d nicht zusammen" % i):
-            return false
-
-    var wo := Vector2(120.0, -60.0)
-    var neu := k.decke_auf(wo)
-    if not _melde(neu > 0, "das Aufdecken deckt nichts auf"):
-        return false
-    if not _melde(k.ist_bekannt(wo), "der eigene Ort bleibt unbekannt"):
-        return false
-    # Zweimal an derselben Stelle deckt nichts Neues auf - daran haengt, ob
-    # es sich lohnt, etwas dafuer zu geben.
-    if not _melde(k.decke_auf(wo) == 0,
-            "dieselbe Stelle deckt zweimal auf"):
-        return false
-
-    if not _melde(k.zelle_bekannt(k.raster(wo)),
-            "dasselbe Feld gilt ueber die Rasterkoordinaten als unbekannt"):
-        return false
-
-    # Der mitgezaehlte Anteil muss sagen, was ein Nachzaehlen sagen wuerde -
-    # sonst steht in der Anzeige eine Zahl, die niemand geprueft hat.
-    var offen := 0
-    var moeglich := 0
-    for i in k.bekannt.size():
-        if k.mitte(i).length() > Rundum.FELD_RADIUS:
-            continue
-        moeglich += 1
-        if k.bekannt[i] != 0:
-            offen += 1
-    if not _melde(absf(k.anteil() - float(offen) / float(moeglich)) < 0.0001,
-            "der gezaehlte Anteil %.4f passt nicht zum nachgezaehlten %.4f"
-            % [k.anteil(), float(offen) / float(moeglich)]):
-        return false
-
-    # Was ausserhalb liegt, bleibt dunkel. Mit Abstand gemessen, weil ein
-    # Feld schon zaehlt, wenn seine Mitte im Umkreis liegt.
-    for i in 16:
-        var w := TAU * float(i) / 16.0
-        var weit := wo + Vector2.RIGHT.rotated(w) \
-            * (Karte.AUFDECK_RADIUS + Karte.ZELLE * 1.5)
-        if weit.length() > Rundum.FELD_RADIUS:
-            continue
-        if not _melde(not k.ist_bekannt(weit),
-                "eine Stelle ausserhalb des Umkreises ist bekannt"):
-            return false
-
-    # Und wer alles abfaehrt, kennt alles. Das ist die Zusage hinter der
-    # Anzeige: eine Prozentzahl, die nie hundert erreicht, ist eine Falle.
-    var voll := Karte.new(Rundum.FELD_RADIUS)
-    var schritt := Karte.ZELLE * 0.5
-    var r := Rundum.FELD_RADIUS
-    var y := -r
-    while y <= r:
-        var x := -r
-        while x <= r:
-            if Vector2(x, y).length() <= r:
-                voll.decke_auf(Vector2(x, y), Karte.ZELLE)
-            x += schritt
-        y += schritt
-    return _melde(voll.anteil() > 0.995,
-        "wer alles abfaehrt, muss alles kennen - bekannt sind %.3f"
-        % voll.anteil())
-
-
-## Ein Fels ist fest: was hineingeriete, wird herausgeschoben.
-##
-## Und zwar auf **dieselbe** Kante, die gezeichnet wird. `Riff.radius()` ist
-## die einzige Beschreibung der Form; Bild und Kollision fragen sie beide.
-## Zwei Beschreibungen derselben Kante laufen auseinander - in diesem Projekt
-## schon dreimal passiert, zuletzt bei den Nischen an den Ranken.
-func _test_felsen_sind_fest() -> bool:
-    var rng := RandomNumberGenerator.new()
-    rng.seed = 0x2109
-    for versuch in 12:
-        var fels := Riff.bauen(rng, Vector2(rng.randf_range(-400.0, 400.0),
-            rng.randf_range(-400.0, 400.0)), rng.randf_range(24.0, 90.0))
-        var dick := 26.0
-
-        # Der hoechste Radius muss wirklich der hoechste sein - er ist die
-        # Vorauswahl, und eine Vorauswahl, die zu klein ist, laesst
-        # Beruehrungen durch.
-        var groesster := 0.0
-        for i in 720:
-            groesster = maxf(groesster, Riff.radius(fels,
-                TAU * float(i) / 720.0))
-        if not _melde(Riff.hoechster_radius(fels) >= groesster - 0.001,
-                "hoechster_radius() ist zu klein: %.2f gegen %.2f"
-                % [Riff.hoechster_radius(fels), groesster]):
-            return false
-
-        # Von aussen anfahren: wer draussen bleibt, wird nicht verschoben.
-        for i in 24:
-            var w := TAU * float(i) / 24.0
-            var weit: Vector2 = Vector2(fels[&"ort"]) \
-                + Vector2.RIGHT.rotated(w) * (groesster + dick + 40.0)
-            if not _melde(not Riff.beruehrt(fels, weit, dick),
-                    "Versuch %d: Beruehrung ausserhalb des Felsens" % versuch):
+    # Geprueft wird deshalb zweierlei: dass die gewaehlte Achse wirklich die
+    # naechste ist (keine bevorzugt die Reihenfolge der Tabelle), und dass
+    # eine Richtung genau auf einer Achse auch diese bekommt.
+    var schritte := 720
+    for i in schritte:
+        var w := TAU * float(i) / float(schritte)
+        var r := Vector2(cos(w), sin(w))
+        var gewaehlt := Schnitte.naechste_achse(r)
+        var d := Schnitte.abstand(gewaehlt, r)
+        for l in Schnitte.GEWISCHT:
+            if not _melde(Schnitte.abstand(l, r) >= d - 0.0001,
+                    "Richtung %.1f Grad bekommt %s statt der naeheren %s"
+                    % [rad_to_deg(w), Schnitte.name_von(gewaehlt),
+                        Schnitte.name_von(l)]):
                 return false
-            if not _melde(Riff.abgestossen(fels, weit, dick) == weit,
-                    "Versuch %d: draussen wird verschoben" % versuch):
-                return false
-
-            # Und wer drinsteckt, steht danach genau auf der Kante - nicht
-            # daneben, nicht darin.
-            var drin: Vector2 = Vector2(fels[&"ort"]) \
-                + Vector2.RIGHT.rotated(w) * float(fels[&"gross"]) * 0.4
-            var raus := Riff.abgestossen(fels, drin, dick)
-            if not _melde(not Riff.beruehrt(fels, raus, dick - 0.01),
-                    "Versuch %d: nach dem Abstossen immer noch drin" % versuch):
-                return false
-            # Die Richtung bleibt: ein Stein schiebt nach aussen und dreht
-            # niemanden um.
-            var hin: Vector2 = raus - Vector2(fels[&"ort"])
-            if not _melde(hin.normalized().dot(Vector2.RIGHT.rotated(w))
-                    > 0.999, "Versuch %d: falsche Richtung" % versuch):
-                return false
-    return true
-
-
-## Der Rundumlauf haelt sein Feld, und der Finger steuert stetig.
-func _test_rundum_haelt_das_feld() -> bool:
-    # Der Eintritt liegt **ausserhalb der Sicht**, nicht ausserhalb des
-    # Feldes: seit das Feld viel groesser ist als ein Bild, treten die
-    # Raeuber um das Boot herum ein und nicht am Feldrand.
-    for i in 64:
-        var w := TAU * float(i) / 64.0
-        var e := Rundum.eintritt(w)
-        if not _melde(e.length() > Rundum.SICHT,
-                "der Eintritt bei %.2f liegt im Blickfeld" % w):
+        # Die halbe Luecke zwischen zwei Achsen: weiter kann eine Richtung
+        # von ihrer naechsten nie entfernt sein.
+        if not _melde(d <= PI / 8.0 + 0.0001,
+                "Richtung %.1f Grad liegt %.1f Grad von jeder Achse entfernt"
+                % [rad_to_deg(w), rad_to_deg(d)]):
             return false
-
-    for i in 40:
-        var w := TAU * float(i) / 40.0
-        var weit := Vector2.RIGHT.rotated(w) * 4000.0
-        var d := Rundum.gehalten(weit, 30.0)
-        if not _melde(absf(d.length() - (Rundum.FELD_RADIUS - 30.0)) < 0.01,
-                "gehalten() legt %.1f statt %.1f zurueck"
-                % [d.length(), Rundum.FELD_RADIUS - 30.0]):
-            return false
-    # Innen wird nichts verschoben - sonst zappelte das Boot in der Mitte.
-    var drin := Vector2(40.0, -20.0)
-    if not _melde(Rundum.gehalten(drin, 30.0) == drin,
-            "gehalten() verschiebt einen Ort mitten im Feld"):
-        return false
-
-    # Der Finger: in der Totzone steht das Boot, danach faehrt es stetig an
-    # und nie schneller als erlaubt.
-    var ort := Vector2.ZERO
-    if not _melde(Rundum.fahrt(ort, Vector2(0.0, -Rundum.TOTZONE * 0.9),
-            300.0) == Vector2.ZERO, "in der Totzone darf nichts fahren"):
-        return false
-    var vorher := 0.0
-    for i in range(0, 61):
-        var weite := Rundum.TOTZONE + float(i) * 8.0
-        var v := Rundum.fahrt(ort, Vector2(0.0, -weite), 300.0).length()
-        if not _melde(v >= vorher - 0.001,
-                "die Fahrt faellt bei %.0f" % weite):
-            return false
-        if not _melde(v <= 300.0 + 0.001,
-                "die Fahrt uebersteigt das Hoechsttempo: %.1f" % v):
-            return false
-        vorher = v
-    return _melde(vorher > 299.0, "die volle Fahrt wird nie erreicht")
-
-
-## Ein Raeuber naehert sich, und er wird beim Ausweichen nicht schneller.
-##
-## Das Pendeln sitzt deshalb im Ziel und nicht in der Geschwindigkeit. Waere
-## es andersherum, koennte ein Tier sein eigenes Tempo ueberschreiten - und
-## der Wellenpruefer rechnete mit einem langsameren Tier, als das Spiel
-## zeigt.
-## Die Schwaerme, die nicht angreifen: sie muessen vor dem Boot weichen, ohne
-## dass man sie aus der Karte scheuchen kann. Ein Schwarm, der am Rand
-## verschwindet, kommt nie wieder - und dann ist die Karte nach zehn Minuten
-## leer, ohne dass jemand etwas getan haette.
-func _test_schwaerme_fliehen_und_bleiben_im_feld() -> bool:
-    # Weit weg merkt der Schwarm nichts.
-    if not _melde(Rundum.schreck(Vector2(900.0, 0.0), Vector2.ZERO) == 0.0,
-            "ein Schwarm ausserhalb der Scheu erschrickt"):
-        return false
-    # Und je naeher, desto mehr.
-    var vorher := -1.0
-    for i in 10:
-        var d := Rundum.SCHEU_RADIUS * (1.0 - float(i) / 10.0)
-        var s := Rundum.schreck(Vector2(d, 0.0), Vector2.ZERO)
-        if not _melde(s >= vorher,
-                "der Schreck faellt bei Abstand %.0f statt zu steigen" % d):
-            return false
-        vorher = s
-
-    # Ein Boot, das mitten in einem Schwarm steht, treibt ihn weg.
-    var mitte := Vector2(100.0, 0.0)
-    var boot := Vector2(60.0, 0.0)
-    var abstand := mitte.distance_to(boot)
-    for _i in 30:
-        mitte = Rundum.schwarmschritt(mitte, mitte, boot, 1.0 / 60.0)
-    if not _melde(mitte.distance_to(boot) > abstand,
-            "der Schwarm bleibt beim Boot stehen"):
-        return false
-
-    # Auch wenn man ihn vierhundert Schritte lang nach aussen drueckt,
-    # bleibt er im Feld.
-    var weit := Vector2(Rundum.FELD_RADIUS - 60.0, 0.0)
-    for _i in 400:
-        weit = Rundum.schwarmschritt(weit, weit, weit * 0.86, 1.0 / 60.0)
-        if not _melde(weit.length() <= Rundum.FELD_RADIUS + 0.001,
-                "ein Schwarm wurde aus dem Feld gescheucht (%.0f)"
-                % weit.length()):
+    for l in Schnitte.GEWISCHT:
+        if not _melde(Schnitte.naechste_achse(Schnitte.richtung(l) * 80.0) == l,
+                "%s findet sich selbst nicht" % Schnitte.name_von(l)):
             return false
     return true
 
 
-## **Was hell gezeichnet wird, macht Schaden** - auch im Rundumlauf.
-##
-## Zusage 2 galt dort lange nur halb: `_verbrenne()` fragte
-## `Schlund.beleuchtung()` mit `_blick` statt mit dem wirksamen Kegel und
-## ohne Kernhaerte und Dunkelphase. Der Kegel wurde also mit der Stroemung
-## verzogen gezeichnet und ohne sie gerechnet - eine zweite Wahrheit ueber
-## dasselbe Licht, und die schlimmste Sorte: eine, die man nur merkt, wenn
-## man daneben trifft.
-##
-## Der Quelltext wird gelesen und nicht das Verhalten gemessen, weil ein
-## Verhaltenstest die ganze Szene braeuchte - und weil die Regel ohnehin eine
-## ueber den Quelltext ist: es darf nur **einen** Aufruf geben, und der muss
-## alles mitnehmen.
-func _test_rundumlauf_brennt_mit_dem_gezeichneten_kegel() -> bool:
-    var quelle := FileAccess.get_file_as_string(
-        "res://scripts/spiel/rundlauf.gd")
-    if not _melde(not quelle.is_empty(), "rundlauf.gd nicht lesbar"):
-        return false
-
-    # Die Anweisung mit dem Aufruf zusammensetzen: sie geht ueber mehrere
-    # Zeilen, und ein Zeilentest saehe nur ihren Anfang.
-    var zeilen := quelle.split("\n")
-    var gefunden := 0
-    for i in zeilen.size():
-        var zeile := String(zeilen[i])
-        # Kommentare zaehlen nicht: der Kopf der Datei nennt die Funktion
-        # namentlich, und ein Test, der ueber eine Erklaerung stolpert,
-        # zwingt dazu, Erklaerungen wegzulassen.
-        if zeile.strip_edges().begins_with("#"):
-            continue
-        if not zeile.contains("Schlund.beleuchtung("):
-            continue
-        gefunden += 1
-        var satz := ""
-        for j in range(i, mini(i + 5, zeilen.size())):
-            satz += String(zeilen[j]).strip_edges()
-            if satz.count("(") <= satz.count(")"):
-                break
-        for teil in ["_wirksam", "rand_kern", "tiefe_kern", "schein"]:
-            if not _melde(satz.contains(teil),
-                    "der Kegel des Rundumlaufs rechnet ohne %s: %s"
-                    % [teil, satz]):
-                return false
-        if not _melde(not satz.contains("_blick"),
-                "der Schaden fragt `_blick` statt den wirksamen Kegel"):
-            return false
-    return _melde(gefunden == 1,
-        "es darf genau einen `Schlund.beleuchtung()`-Aufruf im Rundumlauf "
-        + "geben, gefunden: %d" % gefunden)
-
-
-func _test_rundum_verfolgt_ohne_zu_beschleunigen() -> bool:
-    var delta := 1.0 / 60.0
-    for versuch in 6:
-        var phase := float(versuch) * 1.11
-        var ort := Rundum.eintritt(float(versuch) * 0.9)
-        var ziel := Vector2(30.0, -40.0)
-        var tempo := 90.0 + float(versuch) * 12.0
-        var zeit := 0.0
-        var schritte := 0
-        while ort.distance_to(ziel) > 12.0 and schritte < 3000:
-            var vorher := ort
-            ort = Rundum.schritt(ort, ziel, tempo, 46.0, 2.2, phase, zeit,
-                delta, 12.0)
-            var weg := vorher.distance_to(ort)
-            if not _melde(weg <= tempo * delta + 0.001,
-                    "Schritt %d legt %.3f zurueck, erlaubt sind %.3f"
-                    % [schritte, weg, tempo * delta]):
-                return false
-            zeit += delta
-            schritte += 1
-        if not _melde(schritte < 3000,
-                "Versuch %d kommt nie an" % versuch):
+func _test_achse_ist_zweiseitig() -> bool:
+    # Ein Kesa-Schnitt und sein Gegenzug liegen auf derselben Achse. Wer das
+    # aufgibt, hat acht Antworten statt vier - und acht Antworten sind auf
+    # einem Telefon acht Fehlversuche.
+    var schritte := 360
+    for i in schritte:
+        var w := TAU * float(i) / float(schritte)
+        var r := Vector2(cos(w), sin(w))
+        if not _melde(Schnitte.naechste_achse(r)
+                == Schnitte.naechste_achse(-r),
+                "Richtung %.1f Grad und ihre Gegenrichtung landen auf verschiedenen Achsen"
+                % rad_to_deg(w)):
             return false
     return true
 
 
-## Die Begleiter bleiben hinter dem Boot und im Kegel steht keiner.
-func _test_rundum_begleiter_bleiben_hinten() -> bool:
-    var fuehrer := Vector2(20.0, 60.0)
-    for anzahl in range(1, 9):
-        for i in anzahl:
-            for w in [0.0, 1.3, 3.0, -2.2]:
-                var blick := Vector2.UP.rotated(w)
-                var p := Rundum.begleiter_ziel(i, anzahl, fuehrer, blick, 90.0)
-                var hin := p - fuehrer
-                # **Die Spanne statt der Zahl** - und die Spanne ist
-                # abgeleitet, nicht gewaehlt: die zwei Reihen liegen
-                # symmetrisch um den Abstand, also bei
-                # `1 +- REIHE_TIEFE / 2`. Hier standen einmal 0,72 und
-                # 1,10 von Hand, und als die hintere Reihe auf 1,12 kam,
-                # war die Frage "Schranke hochsetzen oder nicht" - eine
-                # Frage, die sich bei einer abgeleiteten Schranke gar
-                # nicht erst stellt.
-                var halb := Rundum.REIHE_TIEFE * 0.5
-                if not _melde(hin.length() > 90.0 * (1.0 - halb) - 0.01
-                        and hin.length() < 90.0 * (1.0 + halb) + 0.01,
-                        "Begleiter %d/%d haelt %.1f statt rund 90 Abstand"
-                        % [i, anzahl, hin.length()]):
-                    return false
-                # Hinter dem Boot heisst: mehr als ein rechter Winkel weg
-                # von der Blickrichtung.
-                if not _melde(hin.normalized().dot(blick) < 0.0,
-                        "Begleiter %d/%d steht vor dem Boot" % [i, anzahl]):
-                    return false
-    # **Und keine zwei stehen aufeinander.**
-    #
-    # Der Faecher darf aufgebrochen werden - er soll es sogar, sonst ist er
-    # eine Anzeige und kein Schwarm. Was er dabei nicht darf, ist seine
-    # eigene Teilung aufzehren: `Rundum.ZITTERN` misst sich am Winkelabstand
-    # zum Nachbarn, und zwei Nachbarn koennen hoechstens aufeinander zu
-    # weichen. Mehr als zwei Fuenftel der Luecke duerfen dabei nicht
-    # verlorengehen - die Schranke ist also aus `ZITTERN` abgeleitet und
-    # nicht gewaehlt.
-    #
-    # Der Anlass war eine Zeile, die sich an der **Breite** des Faechers
-    # mass statt an seiner Teilung: bei acht Begleitern standen zwei davon
-    # sechs Einheiten auseinander, und im Bild waren es sieben Polypen.
-    var mindest_anteil := 1.0 - 2.0 * Rundum.ZITTERN
-    for anzahl in range(2, 9):
-        var blick := Vector2.UP.rotated(0.9)
-        var plaetze: Array[Vector2] = []
-        var glatt: Array[Vector2] = []
-        for i in anzahl:
-            plaetze.append(Rundum.begleiter_ziel(i, anzahl, fuehrer,
-                blick, 90.0))
-            var w := lerpf(-Rundum.FAECHER, Rundum.FAECHER,
-                float(i) / float(anzahl - 1))
-            glatt.append(fuehrer - blick.normalized().rotated(w) * 90.0)
-        var eng := INF
-        var eng_glatt := INF
-        for i in anzahl:
-            for j in range(i + 1, anzahl):
-                eng = minf(eng, plaetze[i].distance_to(plaetze[j]))
-                eng_glatt = minf(eng_glatt, glatt[i].distance_to(glatt[j]))
-        if not _melde(eng >= eng_glatt * mindest_anteil,
-                "bei %d Begleitern stehen zwei %.1f auseinander statt %.1f"
-                % [anzahl, eng, eng_glatt * mindest_anteil]):
-            return false
+# --- Die Gegner ------------------------------------------------------------
 
-    # **Und ihr Mittel bleibt der Abstand, gegen den gemessen wurde.**
-    #
-    # Das ist die Groesse, an der es wirklich haengt, und sie hat hier
-    # gefehlt. Ein Commit ueber das *Bild* gab jedem Begleiter seinen
-    # eigenen Abstand, im Mittel 0,93 statt 1,00 - der Kolonielauf sprang
-    # von 38 gefallenen Sitzungen auf 89, und kein Test wurde rot. Dieselbe
-    # Streuung um 1,00 herum kostet nichts (gemessen: 35). Nicht die Tiefe
-    # kostet, sondern ein Mittel daneben.
-    #
-    # Fuenf Prozent lassen Raum fuer eine ungerade Zahl Begleiter, bei der
-    # eine Reihe einmal mehr besetzt ist; mehr waere ein Ausbau, den die
-    # Sollkurve nicht kennt.
-    for anzahl in range(1, 9):
-        var blick := Vector2.UP.rotated(-0.4)
-        var summe := 0.0
-        for i in anzahl:
-            summe += (Rundum.begleiter_ziel(i, anzahl, fuehrer, blick, 90.0)
-                - fuehrer).length()
-        var mittel := summe / float(anzahl)
-        if not _melde(absf(mittel - 90.0) <= 90.0 * 0.05,
-                "%d Begleiter halten im Mittel %.1f statt 90 Abstand"
-                % [anzahl, mittel]):
-            return false
-
-    # Und ein Ziel ausserhalb der Reichweite wird nicht genommen.
-    var orte: Array[Vector2] = [Vector2(400.0, 0.0), Vector2(30.0, 40.0)]
-    if not _melde(Rundum.naechstes_ziel(Vector2.ZERO, orte, 120.0) == 1,
-            "der Begleiter nimmt nicht das naechste Ziel"):
-        return false
-    return _melde(Rundum.naechstes_ziel(Vector2.ZERO, orte, 10.0) == -1,
-        "der Begleiter schiesst ueber seine Reichweite hinaus")
-
-
-## Die Welle hat einen Bogen: hinten dichter als vorn.
-##
-## Vorher waren die Auftritte gleichmaessig ueber das Fenster verteilt - eine
-## Welle fuehlte sich am Ende genauso an wie am Anfang. `Wellen.anlauf()`
-## schiebt sie nach hinten und verdichtet dabei.
-##
-## Geprueft wird dreierlei, und jedes haelt eine Eigenschaft fest, ohne die
-## der Bogen etwas kaputt macht:
-##
-##   1. **Die Kurve bleibt eine Kurve** - streng steigend, von 0 nach 1. Faellt
-##      sie irgendwo, waeren die Auftritte nicht mehr sortiert, und
-##      `_test_wellen_zeiten_sortiert` haette recht damit, das zu melden.
-##   2. **Sie steigt wirklich an**, sonst waere die Aenderung nur ein Kommentar.
-##   3. **Vorne steht die Welle nicht leer.** Ein Bogen, der das erste Drittel
-##      raeumt, ist kein Bogen, sondern eine Pause mit angehaengtem Ansturm -
-##      und der Spieler haelt die ersten Sekunden fuer einen Fehler.
-func _test_die_welle_hat_einen_bogen() -> bool:
-    if not _melde(absf(Wellen.anlauf(0.0)) < 0.0001
-            and absf(Wellen.anlauf(1.0) - 1.0) < 0.0001,
-            "der Anlauf muss von 0 nach 1 laufen"):
-        return false
-
-    var vorher := -1.0
-    for i in range(0, 101):
-        var w := Wellen.anlauf(float(i) / 100.0)
-        if not _melde(w > vorher,
-                "der Anlauf faellt bei %.2f" % (float(i) / 100.0)):
-            return false
-        vorher = w
-
-    # Er schiebt nach hinten: die Mitte der Reihe faellt hinter die Mitte der
-    # Zeit. Ohne das waere die Verteilung wieder gleichmaessig.
-    if not _melde(Wellen.anlauf(0.5) > 0.55,
-            "der Anlauf verdichtet nicht: Mitte liegt bei %.3f"
-            % Wellen.anlauf(0.5)):
-        return false
-
-    # **Und jetzt an echten Wellen - aber als Verteilung, nicht je Welle.**
-    #
-    # Hier stand zuerst "jede gepruefte Welle muss hinten schwerer sein als
-    # vorn", und Welle 22 meldete 8 zu 8. Das war kein Fehler im Bogen,
-    # sondern der falsche Anspruch: Gruppen sind verschieden gross, ein
-    # Schleierschwarm bringt bis zu fuenf Tiere auf einen Schlag, und wo der
-    # landet, entscheidet der Wurf. Gemessen ueber alle 240 Wellen liegt die
-    # Verteilung bei 23 / 35 / 42 Prozent - also genau auf der Kurve -, und
-    # nur sechs Wellen fallen daneben.
-    #
-    # Dass einzelne Wellen ausscheren, ist ausserdem gewollt. Ein Bogen, den
-    # jede Welle exakt gleich traegt, waere wieder dasselbe Foerderband, nur
-    # mit anderer Steigung.
-    # **Gezaehlt statt je Welle abgebrochen.**
-    #
-    # Hier stand "keine einzelne Welle darf den Bogen umdrehen", und das war
-    # richtig, solange eine Welle sechzig Tiere gross war. Seit
-    # `Wellen.staerke()` durch `Rundum.DICHTE` geteilt wird - gespielt werden
-    # drei Wellen ineinander -, hat eine einzelne noch sechs bis zwanzig.
-    # Bei zwanzig Tieren in drei Dritteln entscheidet ein Schleierschwarm,
-    # wohin der Bogen zeigt, und Welle 4 meldete 6 zu 3.
-    #
-    # Das ist dieselbe Lektion wie beim ersten Anlauf dieses Tests, eine
-    # Groessenordnung tiefer: **der Bogen ist eine Eigenschaft der
-    # Verteilung, nicht jeder einzelnen Welle.** Die Verteilung wird deshalb
-    # weiter streng geprueft (24 / 40 Prozent ueber 214 Wellen); je Welle
-    # wird nur noch gezaehlt, damit eine systematische Umkehr trotzdem
-    # auffiele.
-    var vorn := 0.0
-    var hinten := 0.0
-    var ohne := 0
-    var rueckwaerts := 0
-    var geprueft := 0
-    for n in range(1, Graben.ZYKLUS * 3 + 1):
-        var liste := Wellen.auftritte(n)
-        if liste.size() < 12:
-            continue
-        var breite := Wellen.fenster(n)
-        var drittel := [0, 0, 0]
-        for e in liste:
-            var t: float = float(e[&"zeit"]) / breite
-            drittel[clampi(int(t * 3.0), 0, 2)] += 1
-        var ganz := float(liste.size())
-        vorn += float(drittel[0]) / ganz
-        hinten += float(drittel[2]) / ganz
-        if drittel[2] <= drittel[0]:
-            ohne += 1
-        if float(drittel[0]) > float(drittel[2]) * 1.5 + 1.0:
-            rueckwaerts += 1
-        geprueft += 1
-
-    if not _melde(geprueft > 200, "zu wenige Wellen geprueft: %d" % geprueft):
-        return false
-    var g := float(geprueft)
-    if not _melde(hinten / g > vorn / g * 1.4,
-            "im Mittel kein Bogen: %.1f %% vorn, %.1f %% hinten"
-            % [vorn / g * 100.0, hinten / g * 100.0]):
-        return false
-    # Und vorn bleibt etwas stehen: eine leere erste Phase ist eine Pause mit
-    # angehaengtem Ansturm, kein Anlauf.
-    if not _melde(vorn / g > 0.15,
-            "die Welle faengt zu leer an: %.1f %% im ersten Drittel"
-            % (vorn / g * 100.0)):
-        return false
-    # Gemessen: 3 von 214 laufen rueckwaerts, 33 von 214 haben keinen Bogen.
-    # Die Schranken liegen mit Abstand darueber, aber weit unter dem, was
-    # eine systematische Umkehr bedeuten wuerde.
-    if not _melde(rueckwaerts < geprueft / 20,
-            "%d von %d Wellen laufen rueckwaerts - das ist keine Streuung mehr"
-            % [rueckwaerts, geprueft]):
-        return false
-    return _melde(ohne < geprueft / 4,
-        "%d von %d Wellen ohne Bogen - das ist keine Streuung mehr"
-        % [ohne, geprueft])
-
-
-## Das Leitwesen tritt als letztes ein.
-##
-## Die Zeiten werden in Gruppenreihenfolge vergeben, und angehaengt wurde das
-## Leitwesen einmal als erstes - es bekam damit den fruehesten Schlitz. Eine
-## Welle, die mit ihrem groessten Tier anfaengt, hat keinen Bogen, sondern
-## ein Nachspiel: der Hoehepunkt eines ganzen Grabenabschnitts trat zuerst
-## ein, danach kam ein Rinnsal aus Kleinvieh.
-##
-## Geprueft ueber vier Umdrehungen, weil `LEITFOLGE` drei verschiedene
-## Leitwesen auf acht Abschnitte verteilt und `hat_leitwesen()` nur jede
-## zehnte Welle trifft.
-func _test_leitwesen_tritt_zuletzt_ein() -> bool:
-    var gesehen := 0
-    for nummer in range(Graben.WELLEN_JE_ABSCHNITT, Graben.ZYKLUS * 4 + 1,
-            Graben.WELLEN_JE_ABSCHNITT):
-        if not Wellen.hat_leitwesen(nummer):
-            continue
-        var liste := Wellen.auftritte(nummer)
-        if not _melde(not liste.is_empty(), "Welle %d ist leer" % nummer):
-            return false
-        var letzte: Dictionary = liste[liste.size() - 1]
-        if not _melde(Arten.ist_leitwesen(int(letzte[&"art"])),
-                "Welle %d: zuletzt kommt %d und nicht das Leitwesen"
-                % [nummer, int(letzte[&"art"])]):
-            return false
-        # Und nur einmal - sonst waere der Hoehepunkt zwei Hoehepunkte.
-        var zahl := 0
-        for e in liste:
-            if Arten.ist_leitwesen(int(e[&"art"])):
-                zahl += 1
-        if not _melde(zahl == 1,
-                "Welle %d traegt %d Leitwesen" % [nummer, zahl]):
-            return false
-        gesehen += 1
-    return _melde(gesehen >= 30,
-        "zu wenige Leitwellen geprueft: %d" % gesehen)
-
-
-func _test_wellen_zeiten_sortiert() -> bool:
-    for n in range(1, Graben.ZYKLUS + 1):
-        var liste := Wellen.auftritte(n)
-        for i in range(1, liste.size()):
-            if liste[i][&"zeit"] < liste[i - 1][&"zeit"]:
-                return _melde(false, "Welle %d ist nicht nach Zeit sortiert" % n)
-    return true
-
-
-func _test_wellen_dauer_im_rahmen() -> bool:
-    # Im Konzept steht: 40 bis 70 Sekunden je Welle. Steht es nur dort und
-    # nicht im Code, weicht es irgendwann ab.
-    for n in range(1, Graben.ZYKLUS + 1):
-        var d := Wellen.dauer(n)
-        if d < 40.0 or d > 70.0:
-            return _melde(false, "Welle %d dauert %.1f s, erlaubt sind 40-70" % [n, d])
-    return true
-
-
-func _test_wellen_treffen_ihr_budget() -> bool:
-    for n in range(1, Graben.ZYKLUS + 1):
-        # **Aufwand, nicht Leben.** Das Budget ist in Aufwand denominiert:
-        # eine Art mit `aufwand` 3,2 zieht das 3,2fache ihres Lebens ab, weil
-        # sie dreimal so lange bindet. Wer hier die Lebenssumme haelt, misst,
-        # wieviel Leben herausgekommen ist - nicht, ob das Budget aufging.
-        # Beim Kreiser sah das aus, als bliebe die Haelfte liegen.
-        var summe := Wellen.aufwandsumme(n)
-        var soll := Wellen.staerke(n)
-        if not _melde(summe > 0.0, "Welle %d ist leer" % n):
-            return false
-        # Nach unten darf das Budget aufgehen, nach oben nie ueberzogen werden.
-        if summe > soll + 0.001:
-            return _melde(false, "Welle %d ueberzieht ihr Budget: %.1f > %.1f"
-                % [n, summe, soll])
-        if summe < soll * 0.65:
-            return _melde(false, "Welle %d schoepft ihr Budget kaum aus: %.1f von %.1f"
-                % [n, summe, soll])
-    return true
-
-
-func _test_zaehigkeit_steigt() -> bool:
-    for n in range(1, Graben.ZYKLUS):
-        if not _melde(Wellen.zaehigkeit(n + 1) > Wellen.zaehigkeit(n),
-                "Zaehigkeit faellt zwischen Welle %d und %d" % [n, n + 1]):
-            return false
-    return _melde(is_equal_approx(Wellen.zaehigkeit(1), 1.0),
-        "Welle 1 muss die Grundwerte der Arten benutzen")
-
-
-func _test_druck_steigt_und_bleibt_im_rahmen() -> bool:
-    for n in range(1, Graben.ZYKLUS + 1):
-        var d := Wellen.druck(n)
-        if d <= 0.0 or d > 1.0:
-            return _melde(false, "Druck in Welle %d liegt bei %.2f" % [n, d])
-    return _melde(Wellen.druck(Graben.ZYKLUS) > Wellen.druck(1) * 2.0,
-        "der Druck muss ueber 60 Wellen deutlich anziehen")
-
-
-func _test_ausbau_verschlechtert_nie() -> bool:
-    # Dieselbe Zusicherung wie bei den HYPHA-Myzelknoten, nur eine Ebene
-    # hoeher: kein Wert der Sollkurve darf mit der Wellennummer fallen. Sonst
-    # waere die geprueft Ueberstehbarkeit spaeterer Wellen wertlos.
-    for n in range(1, Graben.ZYKLUS):
-        var paare := {
-            "Leistung": [Ausbau.leistung_faktor(n), Ausbau.leistung_faktor(n + 1)],
-            "Ziele": [float(Ausbau.ziele(n)), float(Ausbau.ziele(n + 1))],
-            "Reichweite": [Ausbau.reichweite_faktor(n), Ausbau.reichweite_faktor(n + 1)],
-            "Winkel": [Ausbau.winkel_faktor(n), Ausbau.winkel_faktor(n + 1)],
-            "Begleiter": [float(Ausbau.begleiter(n)), float(Ausbau.begleiter(n + 1))],
-            "Durchsatz": [Ausbau.durchsatz(n), Ausbau.durchsatz(n + 1)],
-        }
-        for was in paare:
-            var werte: Array = paare[was]
-            if werte[1] < werte[0]:
-                return _melde(false, "%s faellt zwischen Welle %d und %d"
-                    % [was, n, n + 1])
-    return true
-
-
-# --- Graben ----------------------------------------------------------------
-
-func _test_polyp_kosten_steigen() -> bool:
-    for i in range(Graben.NISCHEN.size() - 1):
-        if not _melde(Graben.polyp_kosten(i + 1) > Graben.polyp_kosten(i),
-                "Polyp %d kostet nicht mehr als %d" % [i + 1, i]):
-            return false
-    return true
-
-
-func _test_abschnitt() -> bool:
-    return _melde(Graben.abschnitt(1) == 0, "Welle 1 gehoert in Abschnitt 0") \
-        and _melde(Graben.abschnitt(Graben.WELLEN_JE_ABSCHNITT) == 0,
-            "letzte Welle des ersten Abschnitts gehoert noch in Abschnitt 0") \
-        and _melde(Graben.abschnitt(Graben.WELLEN_JE_ABSCHNITT + 1) == 1,
-            "danach beginnt Abschnitt 1") \
-        and _melde(Graben.abschnitt(Graben.ZYKLUS) == Graben.ABSCHNITTE - 1,
-            "die letzte Welle des Zyklus gehoert in den letzten Abschnitt") \
-        and _melde(Graben.abschnitt(Graben.ZYKLUS + 1) == 0,
-            "danach faengt der Zyklus wieder von vorn an")
-
-
-# --- Balance ---------------------------------------------------------------
-
-func _test_erste_wellen_sind_ueberstehbar() -> bool:
-    # Kurze Fassung des Wellenpruefers, damit ein grober Balance-Bruch schon
-    # im Testlauf auffaellt und nicht erst im eigenen Werkzeug.
-    var lauf := Simulation.sitzung(1)
-    if not _melde(lauf.size() == Graben.WELLEN_JE_SITZUNG,
-            "die erste Fahrt muss vollstaendig durchlaufen"):
-        return false
-    for e in lauf:
-        if not _melde(e.ueberstanden, "Welle %d faellt mit Grundwerten" % e.welle):
-            return false
-    # **Die erste Runde ohne einen einzigen Treffer.** Das ist die
-    # Einstiegszusage: wer zum ersten Mal faehrt, verliert keine Huelle,
-    # bevor er verstanden hat, was er tut. Und sie wird von einem Fahrer
-    # eingehalten, der nicht einmal ausweicht.
-    return _melde(lauf[0].treffer == 0,
-        "in Welle 1 darf mit vernuenftigem Spiel nichts durchkommen, es waren %d"
-        % lauf[0].treffer)
-
-
-## Ein staerkeres Boot raeumt eine Welle nie langsamer.
-##
-## Dasselbe Versprechen wie bei HYPHA fuer die Myzel-Knoten: kein Ausbau darf
-## etwas verschlechtern. `_test_ausbau_verschlechtert_nie` prueft die Kurve
-## als Zahlen; hier wird sie **gespielt**, weil eine Zahl monoton sein kann
-## und die Welle daraus trotzdem laenger wird - etwa wenn ein weiterer Kegel
-## den Schaden auf mehr Ziele verteilt, statt ihn zu buendeln.
-##
-## Gemessen wird die Dauer und nicht die Huelle: bei Grundwerten faellt in
-## Welle 4 ohnehin kein Treffer, und ein Vergleich zweier Nullen sagt nichts.
-func _test_staerkeres_boot_ist_nie_langsamer() -> bool:
-    var schwach := Simulation.Zustand.new()
-    var e_schwach := Simulation.welle(4, schwach)
-
-    var stark := Simulation.Zustand.new()
-    stark.leistung_faktor = 2.0
-    var e_stark := Simulation.welle(4, stark)
-
-    if not _melde(e_stark.dauer <= e_schwach.dauer + 0.001,
-            "doppelte Leistung darf nie laenger brauchen (%.1f > %.1f)"
-            % [e_stark.dauer, e_schwach.dauer]):
-        return false
-    return _melde(e_stark.huelle_nachher >= e_schwach.huelle_nachher,
-        "doppelte Leistung darf die Huelle nie schlechter stellen (%d < %d)"
-        % [e_stark.huelle_nachher, e_schwach.huelle_nachher])
-
-# --- Kammern ---------------------------------------------------------------
-
-func _test_kammern_treffen_die_sollkurve() -> bool:
-    # Die wichtigste Verbindung im Projekt: die Sollkurve sagt, wie stark der
-    # Waechter bei Welle n sein soll; die Kammern sagen, wie er dorthin kommt.
-    # Laufen beide auseinander, prueft der Wellenpruefer ein Spiel, das
-    # niemand spielen kann.
-    for n in range(1, Graben.ZYKLUS + 1):
-        var stufe := Ausbau.stufe_soll(n)
-
-        # Rundung auf ganze Stufen erlaubt hoechstens einen halben Schritt
-        # Abweichung - mehr waere ein echtes Auseinanderlaufen.
-        var toleranz_leistung := Kammern.LEISTUNG_JE_STUFE * 0.55
-        if absf(Kammern.leistung_faktor(stufe) - Ausbau.leistung_faktor(n)) > toleranz_leistung:
-            return _melde(false, "Leistung weicht bei Welle %d ab: Kammer %.3f, Soll %.3f"
-                % [n, Kammern.leistung_faktor(stufe), Ausbau.leistung_faktor(n)])
-
-        if absf(Kammern.reichweite_faktor(stufe) - Ausbau.reichweite_faktor(n)) > 0.02:
-            return _melde(false, "Reichweite weicht bei Welle %d ab" % n)
-
-        if absf(Kammern.winkel_faktor(stufe) - Ausbau.winkel_faktor(n)) > 0.02:
-            return _melde(false, "Winkel weicht bei Welle %d ab" % n)
-
-        # Hier stand einmal eine Toleranz von einem Ziel. Sie hat den Fehler
-        # durchgelassen, der die Wellen 37 bis 48 unspielbar machte: die
-        # Sollkurve verlangte dort sieben gleichzeitige Ziele, die Sollstufe
-        # gab sechs her. Ein Ziel mehr oder weniger ist der spuerbarste
-        # Unterschied im ganzen Spiel - dafuer gibt es keine Toleranz.
-        if Kammern.ziele(stufe) != Ausbau.ziele(n):
-            return _melde(false, "Ziele weichen bei Welle %d ab: Kammer %d, Soll %d"
-                % [n, Kammern.ziele(stufe), Ausbau.ziele(n)])
-
-    # Und an den Enden einer Umdrehung muss es exakt aufgehen. Frueher stand
-    # hier die Hoechststufe; seit der Graben keinen Boden hat, ist die
-    # Hoechststufe nur noch ein Deckel und `STUFEN_JE_WELLE` das Tempo.
-    return _melde(is_equal_approx(Kammern.leistung_faktor(0), Ausbau.leistung_faktor(1)),
-            "Stufe 0 muss den Grundwerten entsprechen") \
-        and _melde(Ausbau.stufe_soll(Ausbau.ANKER_WELLEN + 1) == Ausbau.STUFEN_ANKER,
-            "der Anker der Kurve muss halten: %d Wellen, %d Stufen"
-                % [Ausbau.ANKER_WELLEN, Ausbau.STUFEN_ANKER]) \
-        and _melde(Kammern.HOECHSTSTUFE > Ausbau.STUFEN_ANKER,
-            "der Kammerdeckel muss ueber eine Umdrehung hinausreichen")
-
-
-func _test_kammern_tabelle_vollstaendig() -> bool:
-    var felder: PackedStringArray = ["name", "zweck", "kosten", "wachstum", "zeit_faktor"]
-    if not _melde(Kammern.TABELLE.size() == Kammern.Kammer.size(),
-            "TABELLE und enum Kammer muessen gleich gross sein"):
-        return false
-    for i in Kammern.TABELLE.size():
-        for f in felder:
-            if not Kammern.TABELLE[i].has(StringName(f)):
-                return _melde(false, "Kammer %d fehlt das Feld %s" % [i, f])
-        if not _melde(not Kammern.zweck(i).is_empty(),
-                "Kammer %d braucht einen erklaerten Zweck" % i):
-            return false
-    return true
-
-
-func _test_kammerkosten_und_zeiten_steigen() -> bool:
-    for i in Kammern.zahl():
-        for stufe in range(Kammern.HOECHSTSTUFE - 1):
-            if Kammern.kosten(i, stufe + 1) <= Kammern.kosten(i, stufe):
-                return _melde(false, "%s wird auf Stufe %d nicht teurer"
-                    % [Kammern.name_von(i), stufe + 1])
-            if Kammern.bauzeit(i, stufe + 1) < Kammern.bauzeit(i, stufe):
-                return _melde(false, "%s baut auf Stufe %d kuerzer als davor"
-                    % [Kammern.name_von(i), stufe + 1])
-    return true
-
-
-func _test_einkommen_haelt_mit_den_kosten_schritt() -> bool:
-    # **Der Fehler, an dem der endlose Graben zuerst gescheitert ist.**
-    #
-    # Kammern kosten geometrisch, das Filterbecken lieferte aber nur 1.26 je
-    # Stufe und der Wellenertrag wuchs bloss linear. Zwei Kurven, von denen
-    # eine geometrisch und die andere linear waechst, holen einander nie
-    # wieder ein: bei Welle 45 kostete eine volle Kammerrunde fuenf Tage
-    # Ertrag, bei Welle 120 dreitausend. Der Kolonielauf meldete dazu
-    # sechs neue Kammerstufen zwischen Tag 40 und Tag 120 - ein Spiel, das
-    # stehenbleibt.
-    #
-    # Geprueft wird deshalb nicht eine Zahl, sondern ihr Verhaeltnis: wie
-    # viele Tage ein voller Kammerschritt kostet. Die Zahl darf sich ueber
-    # hunderte Wellen nicht davonmachen.
-    var kleinster := 99.0
-    var groesster := 0.0
-    for n in range(10, 400, 10):
-        var stufe := Ausbau.stufe_soll(n)
-        var aus_wellen := Wellen.ertrag(n) * float(Graben.WELLEN_JE_TAG)
-        var aus_filter := Kammern.filter_je_stunde(stufe) * 24.0
-        var tage := Kammern.rundenkosten(stufe) / maxf(1.0, aus_wellen + aus_filter)
-        kleinster = minf(kleinster, tage)
-        groesster = maxf(groesster, tage)
-        if not _melde(tage < 4.0,
-                "Welle %d: eine Kammerrunde kostet %.1f Tage Ertrag" % [n, tage]):
-            return false
-    return _melde(groesster / maxf(0.01, kleinster) < 5.0,
-        "die Kurve laeuft auseinander: zwischen %.2f und %.2f Tagen je Runde"
-        % [kleinster, groesster])
-
-
-func _test_bau_passt_zwischen_zwei_besuche() -> bool:
-    # Ein Bau, der laenger dauert als der Abstand zwischen zwei Besuchen,
-    # verschiebt sich um eine ganze Sitzung: der Spieler kommt, es ist nichts
-    # fertig, und er geht wieder. Bei genau acht Stunden Deckel und acht
-    # Stunden Abstand meldete der Kolonielauf dafuer bis zu sechzehn Stunden
-    # leere Sitzungen am Tag - bei voll laufender Kolonie.
-    var abstand := 86400.0 / float(Graben.SITZUNGEN_JE_TAG)
-    if not _melde(Kammern.ZEIT_DECKEL < abstand,
-            "der Bauzeitdeckel (%.0f s) muss unter dem Sitzungsabstand (%.0f s) liegen"
-            % [Kammern.ZEIT_DECKEL, abstand]):
-        return false
-    for i in Kammern.zahl():
-        var z := Kammern.bauzeit(i, Kammern.HOECHSTSTUFE - 1)
-        if not _melde(z < abstand,
-                "%s baut auf der hoechsten Stufe %.0f s - laenger als eine Sitzung"
-                % [Kammern.name_von(i), z]):
-            return false
-    return true
-
-
-func _test_grosse_zahlen_bleiben_lesbar() -> bool:
-    var paare := {
-        0: "0", 42: "42", 9999: "9999",
-        10000: "10.0K", 123456: "123K", 1234567: "1.23M",
-        -2500000: "-2.50M",
+func _test_gegner_tabelle_vollstaendig() -> bool:
+    var laengen := {
+        "NAMEN": Gegner.NAMEN.size(),
+        "LEHREN": Gegner.LEHREN.size(),
+        "ANSATZ": Gegner.ANSATZ.size(),
+        "FENSTER": Gegner.FENSTER.size(),
+        "OEFFNUNG": Gegner.OEFFNUNG.size(),
+        "PARADEN": Gegner.PARADEN.size(),
+        "TAEUSCHT": Gegner.TAEUSCHT.size(),
     }
-    for wert in paare:
-        var soll: String = paare[wert]
-        if not _melde(Zahl.kurz(wert) == soll,
-                "Zahl.kurz(%d) ergab \"%s\", erwartet \"%s\""
-                % [wert, Zahl.kurz(wert), soll]):
+    for was in laengen:
+        if not _melde(laengen[was] == Gegner.Art.size(),
+                "%s hat %d Eintraege statt %d"
+                % [was, laengen[was], Gegner.Art.size()]):
             return false
-    # Und keine Zahl des Spiels darf die Anzeige sprengen: acht Zeichen sind
-    # die Breite, die im Kopf des Koloniebildschirms Platz hat.
-    var hoechste := int(Kammern.rundenkosten(Kammern.HOECHSTSTUFE))
-    return _melde(Zahl.kurz(hoechste).length() <= 8,
-        "die groesste Zahl des Spiels wird %d Zeichen breit: %s"
-        % [Zahl.kurz(hoechste).length(), Zahl.kurz(hoechste)])
-
-
-func _test_erste_woche_ohne_wartemauer() -> bool:
-    # Aus dem Plan: die erste Woche fast ohne echte Wartezeit. Bauzeiten sind
-    # der Grund, warum Spieler aufhoeren - wer in den ersten Stunden auf eine
-    # Uhr starrt, kommt nicht wieder.
-    for i in Kammern.zahl():
-        for stufe in Kammern.ZEIT_SANFT_BIS:
-            var z := Kammern.bauzeit(i, stufe)
-            if z > Kammern.ZEIT_SANFT + 0.001:
-                return _melde(false, "%s Stufe %d baut %.0f s - zu lang fuer den Einstieg"
-                    % [Kammern.name_von(i), stufe + 1, z])
-    var spaet := Kammern.bauzeit(Kammern.Kammer.LEUCHTORGAN, Kammern.HOECHSTSTUFE - 1)
-    return _melde(spaet > Kammern.ZEIT_SANFT * 4.0,
-        "spaete Stufen muessen echte Wartezeit kosten, waren %.0f s" % spaet)
-
-
-func _test_schacht_deckelt_die_kolonie() -> bool:
-    # Ohne Deckel liesse sich das Leuchtorgan allein hochziehen und alles
-    # andere ignorieren - eine Kolonie mit einem einzigen sinnvollen Knopf.
-    var ohne_schacht := Kammern.deckel(Kammern.Kammer.LEUCHTORGAN, 0)
-    if not _melde(ohne_schacht < Kammern.HOECHSTSTUFE,
-            "ohne Tiefenschacht darf keine Kammer voll ausbaubar sein"):
-        return false
-    if not _melde(Kammern.deckel(Kammern.Kammer.TIEFENSCHACHT, 0) == Kammern.HOECHSTSTUFE,
-            "der Tiefenschacht selbst darf nicht von sich abhaengen"):
-        return false
-    if not _melde(not Kammern.ausbaubar(Kammern.Kammer.LEUCHTORGAN, ohne_schacht, 0),
-            "am Deckel muss der Ausbau gesperrt sein"):
-        return false
-    return _melde(Kammern.deckel(Kammern.Kammer.LEUCHTORGAN, Kammern.HOECHSTSTUFE)
-            == Kammern.HOECHSTSTUFE,
-        "mit vollem Schacht muss jede Kammer die Hoechststufe erreichen")
-
-
-func _test_grabentiefe_folgt_der_sollkurve() -> bool:
-    # Der Tiefenschacht oeffnet den Graben, und zwar genau so weit, dass die
-    # Sollstufe der letzten Welle des Abschnitts noch unter den Deckel passt.
-    # Waere das Tor niedriger, liefe der Spieler in Wellen hinein, fuer die es
-    # seine Kolonie nicht geben kann - genau der Fehler, den der Kolonielauf
-    # als gefallene Sitzungen ab Welle 36 gemeldet hat.
-    if not _melde(Ausbau.schacht_fuer_abschnitt(0) == 0,
-            "der erste Abschnitt darf nichts verlangen"):
-        return false
-
-    var vorher := -1
-    for a in Graben.ABSCHNITTE:
-        var tor := Ausbau.schacht_fuer_abschnitt(a)
-        if not _melde(tor > vorher or a == 0,
-                "Abschnitt %d verlangt nicht mehr als der davor" % (a + 1)):
-            return false
-        vorher = tor
-        if not _melde(tor <= Kammern.HOECHSTSTUFE,
-                "Abschnitt %d verlangt eine Stufe, die es nicht gibt" % (a + 1)):
-            return false
-
-        var deckel := Kammern.deckel(Kammern.Kammer.LEUCHTORGAN, tor)
-        var soll := Ausbau.stufe_soll(Graben.letzte_welle(a))
-        if not _melde(deckel >= soll,
-                "Abschnitt %d oeffnet bei Schacht %d, aber Welle %d verlangt Stufe %d"
-                % [a + 1, tor, Graben.letzte_welle(a), soll]):
-            return false
-
-    # Und die Leiter darf nirgends zurueckfallen.
-    var offen := 0
-    for schacht in range(0, Kammern.HOECHSTSTUFE + 1):
-        var jetzt := Ausbau.offene_welle(schacht)
-        if not _melde(jetzt >= offen,
-                "Schacht %d oeffnet weniger als %d" % [schacht, schacht - 1]):
-            return false
-        offen = jetzt
-    # Der volle Schacht muss ueber die erste Umdrehung hinaus oeffnen - sonst
-    # waere der Graben doch wieder zu Ende.
-    return _melde(Ausbau.offene_welle(Kammern.HOECHSTSTUFE) > Graben.ZYKLUS,
-        "der volle Schacht muss tiefer reichen als eine Umdrehung")
-
-
-func _test_grabentiefe_deckelt_den_fortschritt() -> bool:
-    # Der Fortschritt darf ueber den offenen Graben hinauszeigen - gespielt
-    # wird trotzdem nur, was offen ist.
-    var stand := KolonieStand.new()
-    stand.hoechste_welle = Graben.ZYKLUS
-    if not _melde(stand.naechste_welle() == Graben.WELLEN_JE_ABSCHNITT,
-            "ohne Schacht darf nur der erste Abschnitt offen sein"):
-        return false
-    if not _melde(stand.graben_haelt(), "der Graben muesste hier halten"):
-        return false
-    if not _melde(stand.naechste_tiefe() == Ausbau.schacht_fuer_abschnitt(1),
-            "die naechste Tiefe muss den zweiten Abschnitt nennen"):
-        return false
-
-    stand.stufen[Kammern.Kammer.TIEFENSCHACHT] = Kammern.HOECHSTSTUFE
-    if not _melde(stand.naechste_welle() == Graben.ZYKLUS,
-            "der Fortschritt darf nie ueber das Erreichte hinausgehen"):
-        return false
-    if not _melde(not stand.graben_haelt(), "der volle Schacht darf hier nichts halten"):
-        return false
-    # **Und auf dem vollen Schacht gibt es keine naechste Tiefe mehr.**
-    #
-    # Hier stand das Gegenteil - "es gibt immer eine naechste Tiefe, der
-    # Graben hat keinen Boden". Das stimmt fuer die Abschnitte und nicht fuer
-    # den Schacht: `Ausbau.stufe_soll()` ist auf `Kammern.HOECHSTSTUFE`
-    # gedeckelt (Zusage 12), also saettigt der Bedarf bei
-    # `HOECHSTSTUFE - SCHACHT_VORSPRUNG`, und ab da ist nichts mehr
-    # verschlossen. Der Test hielt die falsche Behauptung fest, und im Bild
-    # stand dafuer "shaft 80 of 76" - ein Ziel unter dem eigenen Stand.
-    if not _melde(stand.naechste_tiefe() == 0,
-            "der volle Schacht darf keine naechste Tiefe mehr nennen, "
-            + "gemeldet wurde %d" % stand.naechste_tiefe()):
-        return false
-
-    # Und unterhalb des Deckels muss sie eine Stufe nennen, die ueber dem
-    # Stand liegt - sonst waere die Null oben keine Aussage, sondern immer.
-    stand.stufen[Kammern.Kammer.TIEFENSCHACHT] = 1
-    var tiefe := stand.naechste_tiefe()
-    return _melde(tiefe > 1,
-        "unterhalb des Deckels muss eine hoehere Stufe anstehen, nicht %d"
-        % tiefe)
-
-
-func _test_tagesstroemung_ist_je_tag_gedeckelt() -> bool:
-    # Der Sinn der Tagesstroemung ist Wiederkommen, nicht Dauerspielen. Waere
-    # sie je Sitzung gedeckelt statt je Tag, belohnte sie Sitzen.
-    var stand := KolonieStand.new()
-    stand.pruefe_tag()
-    if not _melde(stand.stroemung_offen == Tagesstroemung.JE_TAG,
-            "ein neuer Tag muss die Stroemung auffuellen"):
-        return false
-
-    var genutzt := 0
-    while stand.nutze_stroemung():
-        genutzt += 1
-        if genutzt > Tagesstroemung.JE_TAG:
-            return _melde(false, "die Stroemung geht nie aus")
-    if not _melde(genutzt == Tagesstroemung.JE_TAG,
-            "die Stroemung gab %d statt %d Wellen her" % [genutzt, Tagesstroemung.JE_TAG]):
-        return false
-    if not _melde(not stand.hat_stroemung(), "aufgebraucht heisst aufgebraucht"):
-        return false
-
-    # Und sie darf eine Ausbeute nie kleiner machen.
-    for grund in [0, 1, 7, 250]:
-        var mit := Tagesstroemung.ausbeute(grund, true)
-        var ohne := Tagesstroemung.ausbeute(grund, false)
-        if not _melde(ohne == grund and mit >= grund,
-                "Ausbeute %d wird durch die Stroemung nicht besser" % grund):
-            return false
-    return _melde(Tagesstroemung.hinweis(0).is_empty(),
-        "ohne offene Stroemung darf kein Hinweis stehen")
-
-
-func _test_zuchtkalender_laeuft_einmal_und_endet_auf_einer_linie() -> bool:
-    var stand := KolonieStand.new()
-    stand.pruefe_tag()
-    var vorher_linien := stand.linien.size()
-
-    # Sieben Tage, sieben Abholungen - und je Tag genau eine.
-    var geholt := 0
-    var linien_geschenke := 0
-    for durchlauf in Zuchtkalender.TAGE + 3:
-        if not stand.kalender_offen():
-            break
-        var lohn := stand.hole_kalender()
-        if not _melde(not lohn.is_empty(),
-                "Tag %d gibt nichts her" % (durchlauf + 1)):
-            return false
-        if not _melde(stand.hole_kalender().is_empty(),
-                "Tag %d liesse sich zweimal abholen" % (durchlauf + 1)):
-            return false
-        if lohn.has(&"linie"):
-            linien_geschenke += 1
-        geholt += 1
-        # Der naechste Tag - sonst bleibt der Kalender heute zu.
-        stand.tag += 1
-
-    if not _melde(geholt == Zuchtkalender.TAGE,
-            "der Kalender gab %d statt %d Tage her" % [geholt, Zuchtkalender.TAGE]):
-        return false
-    if not _melde(linien_geschenke == 1,
-            "genau ein Tag muss eine Brutlinie geben, nicht %d" % linien_geschenke):
-        return false
-    if not _melde(stand.linien.size() == vorher_linien + 1,
-            "die geschenkte Linie fehlt im Bestand"):
-        return false
-    if not _melde(not stand.tragende().is_empty(),
-            "die geschenkte Linie muss auch einen Platz bekommen"):
-        return false
-
-    # Und danach ist Schluss. Ein Kalender, der sich auffuellt, verschenkt
-    # Brutlinien am laufenden Band.
-    stand.tag += 1
-    return _melde(not stand.kalender_offen(),
-        "der Kalender laeuft ein zweites Mal")
-
-
-func _test_stand_uebersteht_das_sichern() -> bool:
-    # Ein Feld, das jemand einzubauen vergisst, faellt sonst erst dem Spieler
-    # auf - und zwar daran, dass sein Fortschritt weg ist.
-    var stand := KolonieStand.new()
-    stand.stufen[Kammern.Kammer.LEUCHTORGAN] = 7
-    stand.stufen[Kammern.Kammer.TIEFENSCHACHT] = 5
-    stand.naehrstoffe = 4321
-    stand.hoechste_welle = 33
-    stand.linien.append(Brutlinien.Linie.STROMSINN)
-    stand.aktive.append(Brutlinien.Linie.STROMSINN)
-    stand.bau_kammer = Kammern.Kammer.FILTERBECKEN
-    stand.bau_fertig_um = 12345.5
-    stand.zuletzt_gesehen = 999.25
-    stand.tag = 20260829
-    stand.strecke = 6
-    stand.stroemung_offen = 1
-    stand.kalender = 3
-    stand.kalender_tag = 20260828
-    stand.einstieg = 4
-    stand.laut = 0.4
-    stand.beben = false
-    stand.bestpunkte = 91234
-    stand.beste_kette = 17
-    stand.ziel_fortschritt[0] = 2
-    stand.ziel_geholt[0] = 1
-    stand.merke_art(Arten.Art.SCHILDKORALLE)
-    stand.merke_mutation(Mutationen.Mutation.LICHTSCHEU)
-
-    var zurueck := KolonieStand.aus_wort(stand.zu_wort())
-    var paare := {
-        "Stufen": [Array(stand.stufen), Array(zurueck.stufen)],
-        "Naehrstoffe": [stand.naehrstoffe, zurueck.naehrstoffe],
-        "Hoechste Welle": [stand.hoechste_welle, zurueck.hoechste_welle],
-        "Linien": [Array(stand.linien), Array(zurueck.linien)],
-        "Aktive": [Array(stand.aktive), Array(zurueck.aktive)],
-        "Baukammer": [stand.bau_kammer, zurueck.bau_kammer],
-        "Bauende": [stand.bau_fertig_um, zurueck.bau_fertig_um],
-        "Zuletzt gesehen": [stand.zuletzt_gesehen, zurueck.zuletzt_gesehen],
-        "Tag": [stand.tag, zurueck.tag],
-        "Strecke": [stand.strecke, zurueck.strecke],
-        "Stroemung": [stand.stroemung_offen, zurueck.stroemung_offen],
-        "Kalender": [stand.kalender, zurueck.kalender],
-        "Kalendertag": [stand.kalender_tag, zurueck.kalender_tag],
-        "Einstieg": [stand.einstieg, zurueck.einstieg],
-        "Lautstaerke": [stand.laut, zurueck.laut],
-        "Beben": [stand.beben, zurueck.beben],
-        "Bestpunkte": [stand.bestpunkte, zurueck.bestpunkte],
-        "Beste Kette": [stand.beste_kette, zurueck.beste_kette],
-        "Zielfortschritt": [Array(stand.ziel_fortschritt), Array(zurueck.ziel_fortschritt)],
-        "Zielgeholt": [Array(stand.ziel_geholt), Array(zurueck.ziel_geholt)],
-        "Gesehene Arten": [Array(stand.gesehen), Array(zurueck.gesehen)],
-        "Gesehene Mutationen": [Array(stand.mutationen_gesehen),
-            Array(zurueck.mutationen_gesehen)],
-    }
-    for was in paare:
-        var werte: Array = paare[was]
-        if not _melde(werte[0] == werte[1],
-                "%s ueberlebt das Sichern nicht: %s statt %s"
-                % [was, str(werte[1]), str(werte[0])]):
-            return false
-
-    # **Und dasselbe noch einmal ohne Liste.** Die Paare oben stehen von Hand
-    # da, damit ein Fehler sagt, welches Feld gefallen ist. Genau deshalb
-    # sind sie unvollstaendig: `laut`, `beben`, `bestpunkte` und
-    # `beste_kette` kamen spaeter dazu und standen jahrelang nicht darin -
-    # ein Feld, das man zu schreiben vergisst, faellt einer Liste nicht auf,
-    # die man ebenso vergisst. Ein Wort, das durch `aus_wort()` und
-    # `zu_wort()` laeuft, muss dasselbe Wort sein; das prueft alle Felder,
-    # auch die von morgen.
-    var hin := stand.zu_wort()
-    var her := KolonieStand.aus_wort(hin).zu_wort()
-    for schluessel in hin:
-        if not _melde(her.has(schluessel),
-                "der Schluessel %s faellt beim Lesen weg" % schluessel):
-            return false
-        if not _melde(str(hin[schluessel]) == str(her[schluessel]),
-                "%s ueberlebt das Sichern nicht: %s statt %s"
-                % [schluessel, str(her[schluessel]), str(hin[schluessel])]):
-            return false
-
-    # Und ein veraenderter Stand darf keine unmoeglichen Werte einspeisen.
-    var boese := KolonieStand.aus_wort({
-        &"stufen": [999, -5],
-        &"naehrstoffe": -100,
-        &"hoechste_welle": 9999,
-        &"linien": [42],
-        &"aktive": [42, -3],
-        &"bau_kammer": 77,
-        &"stroemung_offen": 99,
-    })
-    return _melde(boese.stufe(0) == Kammern.HOECHSTSTUFE
-            and boese.stufe(1) == 0
-            and boese.naehrstoffe == 0
-            and boese.hoechste_welle == Graben.TIEFSTE
-            and boese.tragende().is_empty()
-            and boese.bau_kammer == -1
-            and boese.stroemung_offen == Tagesstroemung.JE_TAG,
-        "ein veraenderter Stand muss zurechtgebogen werden")
-
-
-func _test_kammerausbau_verschlechtert_nie() -> bool:
-    # Dieselbe Zusicherung wie fuer die Sollkurve, jetzt fuer die Kammern
-    # selbst: keine Wirkung darf mit der Stufe fallen.
-    for stufe in Kammern.HOECHSTSTUFE:
-        var paare := {
-            "Leistung": [Kammern.leistung_faktor(stufe), Kammern.leistung_faktor(stufe + 1)],
-            "Ziele": [float(Kammern.ziele(stufe)), float(Kammern.ziele(stufe + 1))],
-            "Reichweite": [Kammern.reichweite_faktor(stufe), Kammern.reichweite_faktor(stufe + 1)],
-            "Winkel": [Kammern.winkel_faktor(stufe), Kammern.winkel_faktor(stufe + 1)],
-            "Polypleistung": [Kammern.polyp_leistung(stufe), Kammern.polyp_leistung(stufe + 1)],
-            "Brut": [float(Kammern.brut_leben(stufe)), float(Kammern.brut_leben(stufe + 1))],
-            "Filter": [Kammern.filter_je_stunde(stufe), Kammern.filter_je_stunde(stufe + 1)],
-        }
-        for was in paare:
-            var werte: Array = paare[was]
-            if werte[1] < werte[0]:
-                return _melde(false, "%s faellt von Stufe %d auf %d"
-                    % [was, stufe, stufe + 1])
-        # Der Polypenpreis ist der eine Wert, der fallen *soll*.
-        if Kammern.polyp_kosten(stufe + 1, 3) > Kammern.polyp_kosten(stufe, 3):
-            return _melde(false, "Polypen werden auf Stufe %d teurer statt billiger"
-                % [stufe + 1])
-    return true
-
-
-# --- Grabenabschnitte ------------------------------------------------------
-
-func _test_jeder_abschnitt_hat_namen_und_hinweis() -> bool:
-    var abschnitte := Graben.ABSCHNITTE
-    if not _melde(Regeln.NAMEN.size() == abschnitte,
-            "%d Abschnitte, aber %d Namen" % [abschnitte, Regeln.NAMEN.size()]):
-        return false
-    if not _melde(Regeln.HINWEISE.size() == abschnitte,
-            "%d Abschnitte, aber %d Hinweise" % [abschnitte, Regeln.HINWEISE.size()]):
-        return false
-    for i in abschnitte:
-        if not _melde(not Regeln.name_von(i).is_empty(), "Abschnitt %d ohne Namen" % i):
-            return false
-        if not _melde(not Regeln.hinweis(i).is_empty(), "Abschnitt %d ohne Hinweis" % i):
+    for a in Gegner.Art.size():
+        if not _melde(not Gegner.linien_von(a).is_empty(),
+                "%s fuehrt keine einzige Linie" % Gegner.name_von(a)):
             return false
     return true
 
 
-func _test_erster_abschnitt_bleibt_ruhig() -> bool:
-    # Die ersten zehn Wellen sind der Einstieg. Wer hier schon gegen eine
-    # Stroemung kaempft, lernt die Grundhandlung nicht.
-    for n in range(1, Graben.WELLEN_JE_ABSCHNITT + 1):
-        for i in 20:
-            var t := float(i) * 1.7
-            if not is_equal_approx(Regeln.stroemung(n, t), 0.0):
-                return _melde(false, "Welle %d hat Stroemung" % n)
-            if not is_equal_approx(Regeln.helligkeit(n, t), 1.0):
-                return _melde(false, "Welle %d hat Dunkelphasen" % n)
-        if not is_equal_approx(Regeln.rand_kern(n), Schlund.RAND_KERN):
-            return _melde(false, "Welle %d hat Streulicht" % n)
-        if not is_equal_approx(Regeln.tiefe_kern(n), Schlund.TIEFE_KERN):
-            return _melde(false, "Welle %d hat truebes Wasser" % n)
-    return _melde(is_equal_approx(Regeln.wirkungsgrad(1), 1.0),
-        "der erste Abschnitt darf keinen Wirkungsgrad kosten, war %.3f"
-        % Regeln.wirkungsgrad(1))
-
-
-func _test_regeln_bleiben_in_ihren_grenzen() -> bool:
-    for n in range(1, Graben.ZYKLUS + 1):
-        for i in 60:
-            var t := float(i) * 0.83
-            var s := Regeln.stroemung(n, t)
-            if absf(s) > Regeln.STROM_WEITE_STURM + 0.001:
-                return _melde(false, "Stroemung %.3f in Welle %d ist zu stark" % [s, n])
-            var h := Regeln.helligkeit(n, t)
-            if h < Regeln.DUNKEL_TIEFE - 0.001 or h > 1.001:
-                return _melde(false, "Helligkeit %.3f in Welle %d liegt ausserhalb" % [h, n])
-        var w := Regeln.wirkungsgrad(n)
-        if w <= 0.0 or w > 1.001:
-            return _melde(false, "Wirkungsgrad %.3f in Welle %d liegt ausserhalb" % [w, n])
-    return true
-
-
-func _test_regeln_sind_reproduzierbar() -> bool:
-    # Der Wellenpruefer rechnet dieselben Funktionen wie das Spiel. Waeren sie
-    # nicht reproduzierbar, prueft er etwas anderes, als gespielt wird.
-    for n in [12, 34, 57]:
-        for i in 30:
-            var t := float(i) * 0.41
-            if not is_equal_approx(Regeln.stroemung(n, t), Regeln.stroemung(n, t)):
-                return _melde(false, "Stroemung schwankt bei gleicher Eingabe")
-            if not is_equal_approx(Regeln.helligkeit(n, t), Regeln.helligkeit(n, t)):
-                return _melde(false, "Helligkeit schwankt bei gleicher Eingabe")
-    return true
-
-
-## **Was hier geprueft wird, ist nicht mehr "jeder Abschnitt ist haerter".**
-##
-## Das stand hier, und es war die Zusicherung eines Grabens mit kumulativen
-## Regeln: wer eine Regel ab Abschnitt 1 hat, hat sie in allen folgenden auch,
-## also faellt der Wirkungsgrad zwangslaeufig monoton. Seit die Tafel je
-## Abschnitt entscheidet, ist das keine Zusicherung mehr, sondern eine
-## Fessel - "Still Trench" ist mit Absicht ruhiger als der Sturm davor, weil
-## ohne Atemzug dazwischen eine Steigerung nur noch Laerm ist.
-##
-## Die eigentliche Zusicherung ist eine andere, und sie ist staerker: **ein
-## Abschnitt, der Regeln traegt, muss den Spieler etwas kosten** - sonst ist
-## er eine Farbe und keine Regel. Und der Graben als Ganzes muss irgendwo
-## spuerbar kosten, sonst waeren die Regeln Zierde.
-func _test_wirkungsgrad_faellt_mit_den_regeln() -> bool:
-    var haertester := 1.0
-    for a in Regeln.NAMEN.size():
-        var n := a * Graben.WELLEN_JE_ABSCHNITT + 1
-        var w := Regeln.wirkungsgrad(n)
-        var traegt := false
-        for r in [Regeln.Regel.STROM, Regeln.Regel.DUNKEL,
-                Regeln.Regel.TRUEB, Regeln.Regel.STREU]:
-            traegt = traegt or Regeln.hat(a, r)
-        if traegt:
-            if not _melde(w < 0.999,
-                    "Abschnitt %d traegt Regeln, kostet aber nichts (%.3f)"
-                    % [a + 1, w]):
-                return false
-        else:
-            if not _melde(is_equal_approx(w, 1.0),
-                    "Abschnitt %d traegt keine Regel, kostet aber %.3f"
-                    % [a + 1, w]):
-                return false
-        haertester = minf(haertester, w)
-    return _melde(haertester < 0.75,
-        "kein Abschnitt kostet spuerbar, haertester war %.3f" % haertester)
-
-
-func _test_wellenstaerke_folgt_dem_wirkungsgrad() -> bool:
-    # Ohne diese Kopplung wurde jeder neue Abschnitt zur Wand: der
-    # Wellenpruefer meldete nach Einfuehrung der Regeln fuenf gefallene
-    # Sitzungen ab Welle 36.
-    for n in range(1, Graben.ZYKLUS + 1):
-        # Geteilt durch `Rundum.DICHTE`, weil eine Fahrtrunde so viele
-        # Wellen auf einmal nimmt - siehe `Wellen.staerke()`.
-        var erwartet := Ausbau.durchsatz(n) * Wellen.WIRKUNGSGRAD \
-            * Regeln.wirkungsgrad(n) * Wellen.fenster(n) * Wellen.druck(n) \
-            / float(Rundum.DICHTE)
-        if not is_equal_approx(Wellen.staerke(n), erwartet):
-            return _melde(false, "Welle %d rechnet den Wirkungsgrad nicht ein" % n)
-    return true
-
-
-# --- Geisterdaten ----------------------------------------------------------
-
-func _test_geister_stehen_gestaffelt() -> bool:
-    if not _melde(Geister.NAMEN.size() == Geister.STAERKEN.size(),
-            "jeder Nachbar braucht Namen und Staerke"):
-        return false
-    for i in range(Geister.zahl() - 1):
-        if not _melde(Geister.staerke(i + 1) > Geister.staerke(i),
-                "Nachbar %d ist nicht staerker als %d" % [i + 1, i]):
-            return false
-        if not _melde(Geister.tiefe(i + 1) > Geister.tiefe(i),
-                "Nachbar %d kommt nicht tiefer als %d" % [i + 1, i]):
-            return false
-    return _melde(Geister.tiefe(Geister.zahl() - 1) >= Graben.ZYKLUS,
-        "der staerkste Nachbar muss den ganzen Graben schaffen")
-
-
-func _test_geisterleiter_beginnt_frueh() -> bool:
-    # Im ersten Entwurf lag der schwaechste Nachbar bei Welle 23 - ein neuer
-    # Spieler stand abgeschlagen Letzter, mit zweiundzwanzig Wellen bis zum
-    # naechsten Namen. Es muss immer jemand in Reichweite stehen.
-    if not _melde(Geister.tiefe(0) <= 6,
-            "der schwaechste Nachbar steht bei Welle %d - zu tief fuer den Einstieg"
-            % Geister.tiefe(0)):
-        return false
-    for i in range(Geister.zahl() - 1):
-        var luecke := Geister.tiefe(i + 1) - Geister.tiefe(i)
-        if luecke > 10:
-            return _melde(false, "Luecke von %d Wellen zwischen %s und %s"
-                % [luecke, Geister.name_von(i), Geister.name_von(i + 1)])
-    return true
-
-
-func _test_eigener_platz_folgt_der_tiefe() -> bool:
-    var vorher := Geister.zahl() + 2
-    for tiefe in [1, 5, 12, 25, 40, 55, Graben.ZYKLUS]:
-        var platz := Geister.platz(tiefe)
-        if not _melde(platz >= 1 and platz <= Geister.zahl() + 1,
-                "Platz %d bei Tiefe %d liegt ausserhalb" % [platz, tiefe]):
-            return false
-        if not _melde(platz <= vorher,
-                "tiefer gekommen, aber schlechter platziert (%d nach %d)"
-                % [platz, vorher]):
-            return false
-        vorher = platz
-    return _melde(Geister.platz(Graben.TIEFSTE) == 1,
-        "wer den ganzen Graben schafft, steht oben")
-
-
-## Das Gelege wird an zwei Stellen gebraucht - `kolonie.gd` zeichnet es,
-## `wache.gd` setzt die Bruchstuecke eines getroffenen Eis dorthin. Deshalb
-## liegt die Rechnung in `Graben`, und deshalb wird sie hier festgehalten:
-## jedes Ei muss im Feld liegen, die Mitte muss frei bleiben (dort steht der
-## Waechter), und zwei Eier duerfen nicht aufeinanderliegen.
-func _test_gelege_bleibt_im_rahmen() -> bool:
-    for voll in [1, 6, 12, 24, 44, 63, 64, 65, 128, 400]:
-        var radius := Graben.ei_radius(voll)
-        if not _melde(radius > 0.6, "Eier bei %d Stueck nur %.2f gross"
-                % [voll, radius]):
-            return false
-        var orte: Array[Vector2] = []
-        for i in voll:
-            var o := Graben.ei_ort(i, voll)
-            if not _melde(absf(o.x) <= Graben.BRUT_BREITE * 0.5 + 0.01,
-                    "Ei %d von %d liegt bei x=%.1f ausserhalb der Brutbreite"
-                    % [i, voll, o.x]):
-                return false
-            if not _melde(absf(o.x) >= Graben.BRUT_MITTE_FREI - 0.01,
-                    "Ei %d von %d liegt bei x=%.1f hinter dem Waechter"
-                    % [i, voll, o.x]):
-                return false
-            orte.append(o)
-        # Kein Paar naeher beieinander als ein Eidurchmesser. Genau das war
-        # der Fehler des alten Aufbaus: vierundvierzig Eier mit sieben Pixeln
-        # Radius auf sieben Pixeln Abstand ergaben einen Balken.
-        for a in orte.size():
-            for b in range(a + 1, orte.size()):
-                var d: float = orte[a].distance_to(orte[b])
-                if not _melde(d >= radius * 1.5,
-                        "Ei %d und %d bei %d Stueck nur %.1f auseinander (Radius %.1f)"
-                        % [a, b, voll, d, radius]):
-                    return false
-    return true
-
-
-## Der Rechenschritt darf kein Tier weiter tragen als den Durchmesser des
-## kleinsten Tieres - sonst springt es zwischen zwei Bildern ueber den Kegel
-## hinweg, ohne je darin gestanden zu haben.
-##
-## Das ist der Fehler, den kein Bild und kein anderer Test zeigt: er tritt nur
-## auf, wenn Android die App pausiert und das erste Bild danach die volle
-## verstrichene Zeit mitbringt.
-func _test_takt_deckelt_den_sprung() -> bool:
-    for roh: float in [0.016, 0.1, 1.0, 12.0, 300.0]:
-        var t := Graben.takt(roh)
-        if not _melde(t <= Graben.TAKT_DECKEL + 0.0001,
-                "Takt %.3f aus delta %.3f ueber dem Deckel" % [t, roh]):
-            return false
-        if not _melde(t <= roh + 0.0001,
-                "Takt %.3f groesser als delta %.3f" % [t, roh]):
-            return false
-
-    # Und der Deckel selbst muss die Zusicherung einhalten, aus der er kommt.
-    var kleinster := 1e9
-    var schnellster := 0.0
-    for a in Arten.zahl():
-        if Arten.ist_leitwesen(a):
-            continue
-        kleinster = minf(kleinster, Arten.radius(a))
-        schnellster = maxf(schnellster, Arten.tempo(a))
-    var weg := schnellster * Graben.TAKT_DECKEL
-    return _melde(weg <= kleinster * 2.0,
-        "ein Schritt traegt %.1f, der kleinste Durchmesser ist %.1f"
-        % [weg, kleinster * 2.0])
-
-
-## Ein halb geschriebener Spielstand darf den alten nicht vernichten.
-##
-## Geprueft wird die Eigenschaft, aus der das folgt: waehrend geschrieben
-## wird, steht die Zwischendatei daneben, und erst das Umbenennen macht sie
-## zum Spielstand. Danach gibt es die Zwischendatei nicht mehr.
-func _test_speichern_ist_unteilbar() -> bool:
-    var pfad := "user://pruefstand.stand"
-    var roh := pfad + Speicher.ROHLING
-    Speicher.loesche(pfad)
-    if FileAccess.file_exists(roh):
-        DirAccess.remove_absolute(ProjectSettings.globalize_path(roh))
-
-    var stand := KolonieStand.new()
-    stand.naehrstoffe = 12345
-    stand.hoechste_welle = 42
-    if not _melde(Speicher.schreibe(stand, pfad), "Schreiben fehlgeschlagen"):
-        return false
-    if not _melde(not FileAccess.file_exists(roh),
-            "die Zwischendatei liegt nach dem Schreiben noch da"):
-        return false
-
-    var zurueck := Speicher.lies(pfad)
-    if not _melde(zurueck.naehrstoffe == 12345 and zurueck.hoechste_welle == 42,
-            "gelesener Stand stimmt nicht: %d / %d"
-            % [zurueck.naehrstoffe, zurueck.hoechste_welle]):
-        return false
-
-    # Eine abgeschnittene Zwischendatei darf den gueltigen Stand nicht
-    # anfassen - genau das war der Fehler, gegen den das Umbenennen steht.
-    var kaputt := FileAccess.open(roh, FileAccess.WRITE)
-    if kaputt != null:
-        kaputt.store_string("halb")
-        kaputt.close()
-    var immer_noch := Speicher.lies(pfad)
-    Speicher.loesche(pfad)
-    if FileAccess.file_exists(roh):
-        DirAccess.remove_absolute(ProjectSettings.globalize_path(roh))
-    return _melde(immer_noch.naehrstoffe == 12345,
-        "der Stand hat eine kaputte Zwischendatei nicht ueberlebt")
-
-
-## Der Kegel darf keinen Zielplatz an ein Tier verschenken, das gerade gar
-## nicht brennen kann.
-##
-## **Das war ein echter Fehler.** `brennende()` waehlte nach Helligkeit, den
-## Schaden rechnete `schaden_an()` - und die gibt fuer eine Glutqualle
-## unterhalb ihrer Mindesthelligkeit null zurueck. Eine Glutqualle im
-## Randlicht belegte damit einen der wenigen Zielplaetze, ohne Schaden zu
-## nehmen: der Ausbau "ein Ziel mehr" verpuffte. Sichtbar wird das nur beim
-## Spielen, und auch dort nur als "der Kegel tut nichts".
-func _test_kegel_waehlt_nach_wirkung() -> bool:
-    var leistung := 40.0
-    # Zwei Tiere: eine Glutqualle im Randlicht (hell, aber unverwundbar) und
-    # ein Zahnkiefer im schwaecheren Licht (dunkler, aber verwundbar).
-    var hell := PackedFloat32Array([0.50, 0.30])
-    var mindest := PackedFloat32Array([0.52, 0.0])
-    var wirkung := PackedFloat32Array()
-    for i in hell.size():
-        wirkung.append(Schlund.schaden_an(leistung, hell[i], 0.0, mindest[i]))
-
-    if not _melde(wirkung[0] == 0.0,
-            "die Glutqualle im Randlicht nimmt %.2f Schaden" % wirkung[0]):
-        return false
-    if not _melde(wirkung[1] > 0.0, "der Zahnkiefer nimmt gar nichts"):
-        return false
-
-    # Mit nur einem Zielplatz muss der Zahnkiefer gewaehlt werden, obwohl die
-    # Glutqualle heller steht.
-    var treffer := Schlund.brennende(wirkung, 1)
-    if not _melde(treffer.size() == 1 and treffer[0] == 1,
-            "der Kegel nimmt das Tier, das er nicht verletzen kann"):
-        return false
-
-    # Und die alte Auswahl nach Helligkeit haette genau andersherum gewaehlt -
-    # sonst wuerde dieser Test nichts belegen.
-    var frueher := Schlund.brennende(hell, 1)
-    return _melde(frueher.size() == 1 and frueher[0] == 0,
-        "die Helligkeitsauswahl haette dasselbe getan - der Test ist blind")
-
-
-## Der Spiegler ist das Gegenstueck zur Glutqualle: er brennt nur unterhalb
-## seiner Obergrenze. Wer ihn in den Kern nimmt, tut ihm nichts.
-func _test_spiegler_brennt_nur_im_randlicht() -> bool:
-    var art := Arten.Art.SPIEGLER
-    var grenze := Arten.hoechst_licht(art)
-    if not _melde(grenze > 0.0, "der Spiegler hat keine Obergrenze"):
-        return false
-
-    var leistung := 40.0
-    # **Beide Messungen dicht an der Grenze.** Der erste Anlauf verglich
-    # Randlicht mit vollem Kern - also zwei verschiedene Helligkeiten, und
-    # damit steckte im Ergebnis auch der gewoehnliche Helligkeitsverlauf. Was
-    # diese Art ausmacht, ist aber der **Sprung an der Grenze**: eine
-    # Handbreit daneben, und derselbe Strahl wirkt doppelt.
-    var hell_rand := grenze * 0.99
-    var hell_kern := minf(1.0, grenze * 1.01)
-    var im_rand := Schlund.schaden_an(leistung, hell_rand, 0.0, 0.0, grenze)
-    var im_kern := Schlund.schaden_an(leistung, hell_kern, 0.0, 0.0, grenze)
-    if not _melde(im_rand > 0.0, "im Randlicht nimmt der Spiegler nichts"):
-        return false
-
-    # **Nicht null, aber deutlich weniger.** Volle Unverwundbarkeit im Kern
-    # war der erste Entwurf und ergab eine Wand: achtunddreissig gefallene
-    # Sitzungen im Wellenpruefer, beginnend genau bei seiner ersten Welle.
-    # Wer ihn falsch haelt, soll langsamer vorankommen, nicht gar nicht.
-    if not _melde(im_kern > 0.0,
-            "im Kern ist der Spiegler unverwundbar - das war die Wand"):
-        return false
-    if not _melde(im_kern < im_rand * 0.6,
-            "der Sprung an der Grenze ist zu klein: Rand %.2f, Kern %.2f"
-            % [im_rand, im_kern]):
-        return false
-
-    # Und keine andere Art darf versehentlich eine Obergrenze haben - sonst
-    # waere die Regel nicht mehr das Besondere dieser einen.
-    for a in Arten.zahl():
-        if a == art:
-            continue
-        if not _melde(Arten.hoechst_licht(a) == 0.0,
-                "%s hat auch eine Obergrenze" % Arten.art(a)[&"kennung"]):
-            return false
-
-    # **Keine zweite Schranke von unten.** Lichtscheu auf einem Spiegler
-    # liesse nur ein Band uebrig, in dem er ueberhaupt brennt - das ist kein
-    # schwierigeres Tier mehr, sondern ein unzielbares. Der Wellenpruefer hat
-    # das mit einer gefallenen Sitzung bei Welle 224 belegt.
-    for n in range(1, Graben.ZYKLUS * 4):
-        if not Mutationen.hat(n, Mutationen.Mutation.LICHTSCHEU):
-            continue
-        if not _melde(Wellen.mindest_licht_in(art, n) == Arten.mindest_licht(art),
-                "Welle %d gibt dem Spiegler zusaetzlich eine Untergrenze" % n):
-            return false
-    return true
-
-
-## Die Fortschrittskurve darf sich nicht aendern, wenn der Graben einen
-## Abschnitt mehr bekommt.
-##
-## Sie stand als `(nummer - 1) / (ZYKLUS - 1) * STUFEN_JE_ZYKLUS` da und hing
-## damit an `Graben.ABSCHNITTE`. Ein siebter Abschnitt haette die ganze Kurve
-## gestreckt und mit ihr `Wellen.staerke()`, den Wellenpruefer und den
-## Kolonielauf - obwohl "ein Abschnitt mehr" eine Inhaltsentscheidung ist und
-## keine ueber das Tempo.
-##
-## Geprueft wird beides: dass die neue Rechnung die alte trifft, und dass sie
-## `Graben.ZYKLUS` nicht mehr braucht.
-func _test_kurve_haengt_nicht_an_der_abschnittszahl() -> bool:
-    for n in [1, 2, 17, 60, 61, 120, 241, 400]:
-        var frueher := minf(float(Kammern.HOECHSTSTUFE),
-            float(maxi(1, n) - 1) / 59.0 * 20.0)
-        var jetzt := Ausbau.stufe_kurve(n)
-        if not _melde(is_equal_approx(frueher, jetzt),
-                "Welle %d: Kurve war %.4f, ist %.4f" % [n, frueher, jetzt]):
-            return false
-
-    # Und die Kurve muss aus der Wellenzahl allein folgen: zwei Wellen mit
-    # demselben Abstand muessen denselben Zuwachs haben, egal wo im Zyklus.
-    var a := Ausbau.stufe_kurve(11) - Ausbau.stufe_kurve(1)
-    var b := Ausbau.stufe_kurve(71) - Ausbau.stufe_kurve(61)
-    return _melde(is_equal_approx(a, b),
-        "zehn Wellen bringen mal %.4f und mal %.4f Stufen" % [a, b])
-
-
-## Jeder Abschnitt braucht **jeden** seiner Werte.
-##
-## `Regeln` fuehrt neun Felder je Abschnitt in getrennten Feldern - Namen,
-## Hinweise, drei Farbsaetze, Schnee, Fels, Saeulen, Enge. Geprueft wurden
-## bisher zwei davon. Wer einen Abschnitt hinzufuegt und ein Feld vergisst,
-## bekommt entweder einen Absturz beim Betreten oder, schlimmer, still die
-## Farbe des Nachbarn - und beides faellt erst dem Spieler auf.
-func _test_jeder_abschnitt_ist_vollstaendig() -> bool:
-    var n := Graben.ABSCHNITTE
-    var felder := {
-        "NAMEN": Regeln.NAMEN.size(),
-        "HINWEISE": Regeln.HINWEISE.size(),
-        "TIEF_FARBEN": Regeln.TIEF_FARBEN.size(),
-        "GRUND_FARBEN": Regeln.GRUND_FARBEN.size(),
-        "SCHEIN_FARBEN": Regeln.SCHEIN_FARBEN.size(),
-        "SCHNEE_DICHTE": Regeln.SCHNEE_DICHTE.size(),
-        "FELS_FARBEN": Regeln.FELS_FARBEN.size(),
-        "SAEULEN": Regeln.SAEULEN.size(),
-        "ENGE": Regeln.ENGE.size(),
-    }
-    for name in felder:
-        if not _melde(int(felder[name]) == n,
-                "%d Abschnitte, aber %d Eintraege in %s"
-                % [n, int(felder[name]), name]):
-            return false
-    return true
-
-
-## Jede Brutlinie muss mindestens eine Zahl aendern.
-##
-## **Eine Linie, die nichts tut, faellt niemandem auf.** Sie steht in der
-## Liste, kostet Naehrstoff, hat einen Namen und eine Farbe - und wer sie
-## zuechtet, merkt den Unterschied nur daran, dass keiner da ist. Genau so
-## etwas entsteht, wenn eine Tabellenzeile geschrieben und die
-## Verwendungsstelle vergessen wird; beides liegt in verschiedenen Dateien.
-##
-## Geprueft wird nicht *wie stark*, sondern *ob ueberhaupt*: die Staerke ist
-## eine Balance-Entscheidung, das Wirken ist eine Zusicherung.
-func _test_jede_brutlinie_tut_etwas() -> bool:
-    for i in range(1, Brutlinien.zahl()):
-        var anders := false
-        if not is_equal_approx(Brutlinien.drehtempo_faktor(i), 1.0):
-            anders = true
-        if not is_equal_approx(Brutlinien.stroemung_faktor(i), 1.0):
-            anders = true
-        if Brutlinien.nachglut_dauer(i) > 0.0:
-            anders = true
-        if Brutlinien.ziele_zusatz(i) != 0:
-            anders = true
-        if not is_equal_approx(Brutlinien.leistung_faktor(i), 1.0):
-            anders = true
-        if Brutlinien.panzerbruch(i) > 0.0:
-            anders = true
-        if not is_equal_approx(Brutlinien.reichweite_faktor(i), 1.0):
-            anders = true
-        if not is_equal_approx(Brutlinien.winkel_faktor(i), 1.0):
-            anders = true
-        if Brutlinien.schwellen_nachlass(i) > 0.0:
-            anders = true
-        if not _melde(anders, "%s aendert keinen einzigen Wert"
-                % Brutlinien.name_von(i)):
-            return false
-
-    # Und die Linie KEINE muss wirklich nichts tun - sonst waeren die
-    # Grundwerte, mit denen der Wellenpruefer rechnet, nicht die Grundwerte.
-    var k := Brutlinien.Linie.KEINE
-    var neutral := is_equal_approx(Brutlinien.drehtempo_faktor(k), 1.0) \
-        and is_equal_approx(Brutlinien.stroemung_faktor(k), 1.0) \
-        and Brutlinien.nachglut_dauer(k) == 0.0 \
-        and Brutlinien.ziele_zusatz(k) == 0 \
-        and is_equal_approx(Brutlinien.leistung_faktor(k), 1.0) \
-        and Brutlinien.panzerbruch(k) == 0.0 \
-        and is_equal_approx(Brutlinien.reichweite_faktor(k), 1.0) \
-        and is_equal_approx(Brutlinien.winkel_faktor(k), 1.0) \
-        and Brutlinien.schwellen_nachlass(k) == 0.0
-    return _melde(neutral,
-        "die Linie KEINE aendert etwas - dann sind die Grundwerte keine")
-
-
-## Der Lehrpfad muss auf **jede** Sache zeigen, fuer die es ein Ziel gibt.
-##
-## Der Ring ist der Teil des Einstiegs, der die Arbeit macht: er beantwortet
-## das "wo", und ohne ihn ist jeder Satz eine Suchaufgabe. Ein Zielwert, den
-## keiner der Schritte benutzt, ist deshalb kein toter Aufzaehlungswert,
-## sondern ein Ding im Spiel, auf das nie jemand hinweist - und man merkt es
-## nicht, weil nichts fehlt, sondern nur nichts passiert.
-##
-## Umgekehrt darf kein Ziel zweimal vorkommen: zwei Schritte, die auf
-## denselben Ring zeigen, sind einer zu viel.
-## Der Einstieg in die Kolonie ist vollstaendig und schickt niemanden zurueck.
-##
-## **Die alte Regel war "ein Ziel, ein Schritt".** Sie stimmte, solange ein
-## Ziel ein einzelnes Bedienelement war - der Wellenknopf, das Gelege, eine
-## Knospe. Seit der Einstieg nur noch die Kolonie erklaert, ist ein Ziel ein
-## **Reiter**, und mehrere Saetze auf demselben Reiter sind kein Fehler,
-## sondern der Normalfall: Kammer heben, was die Kammern tun, was der Schacht
-## aufmacht.
-##
-## Was stattdessen gilt: jeder Schritt hat Titel und Satz, jeder zeigt auf
-## einen Reiter, den es gibt, und die Reihenfolge geht **nie zurueck** - ein
-## Einstieg, der den Spieler zwischen zwei Reitern hin und her schickt, ist
-## eine Schnitzeljagd und keine Fuehrung.
-func _test_lehrpfad_zeigt_auf_alles() -> bool:
-    var zuletzt := -1
-    var gesehen := {}
-    for schritt in Lehrpfad.anzahl():
-        if not _melde(not Lehrpfad.titel(schritt).is_empty(),
-                "Lehrschritt %d hat keinen Titel" % schritt):
-            return false
-        if not _melde(Lehrpfad.satz(schritt).length() > 20,
-                "Lehrschritt %d hat keinen Satz" % schritt):
-            return false
-        var r := Lehrpfad.reiter(schritt)
-        if not _melde(r >= 0 and r < Lehrpfad.REITER_ANZAHL,
-                "Lehrschritt %d zeigt auf Reiter %d, den es nicht gibt"
-                % [schritt, r]):
-            return false
-        if not _melde(r >= zuletzt,
-                "Lehrschritt %d schickt von Reiter %d zurueck auf %d"
-                % [schritt, zuletzt, r]):
-            return false
-        zuletzt = r
-        gesehen[Lehrpfad.ziel(schritt)] = true
-
-    for ziel in Lehrpfad.Ziel.values():
-        if ziel == Lehrpfad.Ziel.KEINS:
-            continue
-        if not _melde(gesehen.has(ziel),
-                "Auf Ziel %d zeigt kein Lehrschritt" % ziel):
-            return false
-
-    # **Und die Reiterzahl muss stimmen.** `Lehrpfad` gibt einen Index
-    # zurueck, `kolonie_schirm.gd` zeichnet die Reiter - laufen die beiden
-    # auseinander, zeigt ein Satz auf einen Reiter, den es nicht gibt, und
-    # das faellt erst auf, wenn ihn jemand erreicht.
-    var quelle := FileAccess.get_file_as_string(
-        "res://scripts/ui/kolonie_schirm.gd")
-    var zeile := quelle.substr(quelle.find("enum Sicht"), 80)
-    var wieviele := zeile.split("}")[0].split(",").size()
-    return _melde(wieviele == Lehrpfad.REITER_ANZAHL,
-        "der Koloniebildschirm hat %d Reiter, der Lehrpfad rechnet mit %d"
-        % [wieviele, Lehrpfad.REITER_ANZAHL])
-
-
-## Jede Nische muss auf ihrer Ranke sitzen.
-##
-## Die Ranke wird gezeichnet, die Nische wird getippt, und beide kommen aus
-## `Graben.ranke()`. Solange das so bleibt, kann die Tippflaeche nicht neben
-## der Knospe liegen - und dieser Test ist der Grund, warum es so bleibt.
-func _test_nischen_liegen_auf_den_ranken() -> bool:
-    if not _melde(Graben.NISCHEN.size() == Graben.NISCHEN_JE_RANKE * 2,
-            "Es sind nicht zwei Ranken mit je %d Knospen"
-            % Graben.NISCHEN_JE_RANKE):
-        return false
-    for i in Graben.NISCHEN.size():
-        var p := Graben.NISCHEN[i]
-        var t := Graben.nische_lage(i / 2)
-        var seite := -1.0 if i % 2 == 0 else 1.0
-        if not _melde(p.distance_to(Graben.ranke(seite, t)) < 0.01,
-                "Nische %d sitzt nicht auf ihrer Ranke" % i):
-            return false
-        # Und im Bild, mit Abstand zum Rand - eine Knospe, die halb aus dem
-        # Bild ragt, ist eine halbe Tippflaeche.
-        if not _melde(absf(p.x) < Graben.FELD.end.x - Graben.POLYP_RADIUS * 2.0,
-                "Nische %d steht zu weit aussen (x = %.1f)" % [i, p.x]):
-            return false
-    return true
-
-
-## Jede Art braucht ein Sinnbild im Bestiarium.
-##
-## **Der Spiegler hatte keines, und im Bild war ein leerer grauer Kreis.**
-## Das ist der Fehler, den man beim Hinzufuegen einer Art zuverlaessig macht:
-## die Tabelle wird ergaenzt, das Verhalten wird ergaenzt, die Zeichnung im
-## Schlund wird ergaenzt - und die eine `match`-Verzweigung im
-## Koloniebildschirm faellt in den Standardzweig, der nichts zeichnet. Es
-## kracht nicht, es fehlt nur.
-##
-## Geprueft wird am Quelltext und nicht an der Zeichnung: eine Zeichenfunktion
-## laesst sich kopflos nicht ausfuehren, ein `match`-Zweig aber sehr wohl
-## nachweisen. Grob, aber es faengt genau den Fall, um den es geht.
-func _test_jede_art_hat_ein_sinnbild() -> bool:
-    var quelle := FileAccess.get_file_as_string(
-        "res://scripts/ui/kolonie_schirm.gd")
-    if not _melde(not quelle.is_empty(), "kolonie_schirm.gd nicht lesbar"):
-        return false
-    for name in Arten.Art.keys():
-        if not _melde(quelle.contains("Arten.Art.%s:" % name),
-                "Die Art %s hat keinen Zweig im Bestiarium-Sinnbild" % name):
-            return false
-    for name in Brutlinien.Linie.keys():
-        if name == "KEINE":
-            continue
-        if not _melde(quelle.contains("Brutlinien.Linie.%s:" % name),
-                "Die Brutlinie %s hat keinen Zweig im Sinnbild" % name):
-            return false
-    return true
-
-
-## Alles Sichtbare ist englisch - auch das, was spaeter dazukam.
-##
-## Die Konvention steht seit dem ersten Commit: Bezeichner und Kommentare auf
-## Deutsch, alles Sichtbare auf Englisch. Sie haelt sich trotzdem nicht von
-## selbst. In der Grabenwertung stand "Welle 80" neben "Your colony" - eine
-## Zeile, die ich beim Bauen der Rangliste aus dem Kopf getippt habe, in
-## derselben Sprache, in der ich denke.
-##
-## Geprueft werden die Zeichenketten, die tatsaechlich in `_text()` gehen: das
-## ist die eine Stelle, durch die jedes sichtbare Wort dieses Spiels laeuft.
-## Namen aus den Datentabellen haben ihre eigenen Waechter.
-const DEUTSCHE_WOERTER: PackedStringArray = [
-    "Welle", "Naehrstoff", "Kammer", "Polypen", "Graben", "Schlund",
-    "Waechter", "Tiefe", "Sitzung", "Abschnitt", "Knospe", "Ranke", "Stufe",
-]
-
-
-func _test_sichtbares_bleibt_englisch() -> bool:
-    var dateien: PackedStringArray = [
-        "res://scripts/ui/kolonie_schirm.gd",
-        # Der Rundumlauf faellt unter dieselbe Regel. Sein Entwurf kam
-        # auf Deutsch, und genau so hatte ich das Bedienbild auch
-        # geschrieben - "HUELLE", "WELLE", "PUNKTE". Der Waechter hat
-        # es nicht gemeldet, weil die Datei nicht in dieser Liste stand.
-        "res://scripts/ui/rund_hud.gd",
-        "res://scripts/ui/rund_menue.gd",
-    ]
-    var zeichenkette := RegEx.new()
-    zeichenkette.compile('"[^"]*"')
-    for datei in dateien:
-        var quelle := FileAccess.get_file_as_string(datei)
-        if not _melde(not quelle.is_empty(), "%s nicht lesbar" % datei):
-            return false
-        var nummer := 0
-        for zeile in quelle.split("\n"):
-            nummer += 1
-            if not zeile.contains("_text("):
-                continue
-            for treffer in zeichenkette.search_all(zeile):
-                var text := treffer.get_string()
-                for wort in DEUTSCHE_WOERTER:
-                    if not _melde(not text.contains(wort),
-                            "%s:%d zeigt deutschen Text: %s"
-                            % [datei.get_file(), nummer, text]):
-                        return false
-    return true
-
-
-## Ein gepanzertes Leitwesen darf nie in einem abgedunkelten Abschnitt stehen.
-##
-## Der Panzer zieht einen **festen** Betrag je Sekunde ab. `Regeln.DUNKEL`
-## nimmt dem Kegel einen grossen Teil seiner Helligkeit - und von einem
-## Fuenftel frisst ein fester Abzug alles. Beides zusammen ist kein schwerer
-## Kampf, sondern ein Tier, an dem der Spieler nichts ausrichten kann, und der
-## Wellenpruefer wuerde es als Wand melden, ohne zu sagen warum.
-##
-## Die Zuordnung in `Arten.LEITFOLGE` haelt das auseinander. Sie ist von Hand
-## gesetzt; dieser Test ist der Grund, warum sie es bleiben darf.
-func _test_gepanzertes_leitwesen_nie_im_dunkeln() -> bool:
-    for abschnitt in Graben.ABSCHNITTE:
-        var leit := Arten.leitwesen_fuer(abschnitt)
-        if Arten.panzer(leit) < 8.0:
-            continue
-        if not _melde(not Regeln.hat(abschnitt, Regeln.Regel.DUNKEL),
-                "%s steht in Abschnitt %d, und der dunkelt den Kegel ab"
-                % [Arten.name_von(leit), abschnitt]):
-            return false
-    return true
-
-
-## Das Stosslicht muss in der Sollkurve stehen.
-##
-## Zusicherung: **was die Welle leichter macht, geht in `Wellen.staerke()`
-## ein.** Der Stoss ist eine zweite Schadensquelle, die jeder Spieler in jeder
-## Welle hat. Faellt er aus `Ausbau.durchsatz()` heraus, waechst die
-## Wellenstaerke an einer Leistung vorbei, die es tatsaechlich gibt - und der
-## Wellenpruefer misst ein Spiel, das leichter ist als das gespielte. Genau
-## dieser Fehler hat bei den Abschnittsregeln fuenf gefallene Sitzungen
-## gekostet, und bei den Mutationen noch einmal.
-##
-## Geprueft wird beides: dass der Anteil ueberhaupt drin ist, und dass er mit
-## dem Leuchtorgan mitwaechst. Ein fester Zuschlag waere in Welle 200 nicht
-## mehr messbar.
-func _test_stosslicht_steht_in_der_sollkurve() -> bool:
-    for n in [1, 20, 60, 140, 240]:
-        var leistung := Graben.LEISTUNG * Ausbau.leistung_faktor(n)
-        var ohne := leistung * float(Ausbau.ziele(n)) \
-            + Graben.POLYP_LEISTUNG * float(Ausbau.begleiter(n))
-        var mit := Ausbau.durchsatz(n)
-        var anteil := mit - ohne
-        var soll := leistung * (Graben.STOSS_WERT / Graben.STOSS_ABKUEHLUNG)
-        if not _melde(absf(anteil - soll) < 0.001,
-                "Welle %d: der Stossanteil im Durchsatz ist %.2f statt %.2f"
-                % [n, anteil, soll]):
-            return false
-
-    # Und er waechst mit: sonst ist er in Welle 200 eine Rundungsstelle.
-    if not _melde(Ausbau.durchsatz(240) - Ausbau.durchsatz(1) > 0.0,
-            "der Durchsatz muss mit der Welle wachsen"):
-        return false
-
-    # Der Stoss rechnet mit derselben Schadensfunktion wie der Kegel. Ein
-    # gepanzertes Tier nimmt weniger, ein Spiegler nur den Rest - haette der
-    # Stoss eine eigene Rechnung, waeren beide Regeln an dieser Stelle
-    # ausgehebelt, ohne dass es irgendwo stuende.
-    var voll := Schlund.schaden_an(100.0, 1.0, 0.0, 0.0)
-    var gepanzert := Schlund.schaden_an(100.0, 1.0, 30.0, 0.0)
-    if not _melde(gepanzert < voll, "Panzer muss auch den Stoss daempfen"):
-        return false
-    var gespiegelt := Schlund.schaden_an(100.0, 1.0, 0.0, 0.0, 0.78)
-    return _melde(gespiegelt < voll,
-        "ein Spiegler darf den Stoss nicht voll abbekommen")
-
-
-## Die Kette zahlt Punkte, niemals Naehrstoff.
-##
-## Zusicherung: **Einkommen und Kosten wachsen mit derselben Rate**, und beide
-## Einkommensquellen sind aus `Kammern.rundenkosten()` abgeleitet. Ein
-## Multiplikator, der am Koennen haengt, haette daneben keinen Platz: wer gut
-## spielt, waere nicht schneller fertig, sondern in einer anderen Wirtschaft.
-## Deshalb ist die Kette bewusst **keine** Waehrung - sie ist eine Bestmarke.
-##
-## Geprueft am Quelltext, weil die Regel eine ueber den Aufbau ist und keine
-## ueber einen Wert: jede Zeile in `wache.gd`, die den Kettenfaktor benutzt,
-## muss ihn in die Punkte schreiben. Sobald er einmal neben `aendere()` oder
-## `verdient` auftaucht, ist die Ableitung der Wirtschaft still gebrochen.
-func _test_kette_zahlt_punkte_und_keinen_naehrstoff() -> bool:
-    # Erst die Zahlen: ab eins, steigend, gedeckelt.
-    if not _melde(absf(Graben.kette_faktor(1) - 1.0) < 0.001,
-            "eine Kette von eins darf nichts multiplizieren"):
-        return false
-    if not _melde(Graben.kette_faktor(10) > Graben.kette_faktor(5),
-            "der Kettenfaktor muss steigen"):
-        return false
-    if not _melde(absf(Graben.kette_faktor(9999) - Graben.KETTE_DECKEL) < 0.001,
-            "der Kettenfaktor braucht einen Deckel"):
-        return false
-
-    var quelle := FileAccess.get_file_as_string(
-        "res://scripts/spiel/rundlauf.gd")
-    if not _melde(not quelle.is_empty(), "rundlauf.gd nicht lesbar"):
-        return false
-
-    # **Die Regel als Satz:** Naehrstoff und Kette treffen sich nirgends.
-    # Geprueft wird deshalb nicht, wo der Faktor steht, sondern dass die
-    # beiden Woerter nie in derselben Anweisung vorkommen - `Fortschritt.
-    # aendere()` und `verdient` sind die einzigen zwei Stellen, an denen
-    # Naehrstoff entsteht.
-    var nummer := 0
-    for zeile in quelle.split("\n"):
-        nummer += 1
-        var rein := zeile.strip_edges()
-        if rein.begins_with("#"):
-            continue
-        if not (rein.contains("Fortschritt.aendere(") or rein.contains("verdient")):
-            continue
-        if not _melde(not rein.contains("kette"),
-                "rundlauf.gd:%d bringt die Kette mit dem Naehrstoff zusammen"
-                % nummer):
-            return false
-    return true
-
-
-## Es gibt genau eine Stroemung: die gezeichnete ist die wirkende.
-##
-## **Warum das ein Test ist und keine Absichtserklaerung.** Seit die
-## Schlieren im Wasser stehen, gibt es zwei Stellen, an denen sich der
-## Abtrieb zeigt - der Kegel dreht sich, und das Wasser wandert. Beide
-## kommen aus **einer** Zahl: `wache.gd` rechnet sie einmal aus
-## `Regeln.stroemung()` mal `stand.stroemung_faktor()` und reicht sie an
-## `kolonie.gd` weiter.
-##
-## Die naheliegende Bequemlichkeit waere, sie in `kolonie.gd` noch einmal zu
-## holen - es sind dieselben zwei Sinus, es sieht gleich aus, und es spart
-## eine Zuweisung. Nur haengt der Kegel zusaetzlich am Koloniestand: wer die
-## Kammer hebt, bekommt weniger Abtrieb. Eine zweite Rechnung ohne diesen
-## Faktor liefe sofort auseinander, und dann zeigte das Wasser nach rechts,
-## waehrend der Strahl geradeaus stuende - genau der Fehler, gegen den die
-## Schlieren ueberhaupt eingebaut wurden.
-##
-## Gemessen wird deshalb am Quelltext: `kolonie.gd` darf `Regeln` nicht
-## kennen, und `wache.gd` muss den Abtrieb weiterreichen.
-func _test_stroemung_wird_nur_einmal_gerechnet() -> bool:
-    var grund := FileAccess.get_file_as_string(
-        "res://scripts/spiel/grund_rundum.gd")
-    if not _melde(not grund.is_empty(), "grund_rundum.gd nicht lesbar"):
-        return false
-    var nummer := 0
-    for zeile in grund.split("\n"):
-        nummer += 1
-        var rein := zeile.strip_edges()
-        if rein.begins_with("#"):
-            continue
-        if not _melde(not rein.contains("Regeln."),
-                "grund_rundum.gd:%d rechnet die Stroemung ein zweites Mal"
-                % nummer):
-            return false
-    var lauf := FileAccess.get_file_as_string(
-        "res://scripts/spiel/rundlauf.gd")
-    if not _melde(lauf.contains("_grund.abtrieb = abtrieb"),
-            "rundlauf.gd muss den Abtrieb an den Grund weiterreichen"):
-        return false
-    return true
-
-
-## Alle `.gd` unter `verzeichnis`, samt Unterordnern.
-func _skripte(verzeichnis: String, hinein: PackedStringArray) -> void:
-    var d := DirAccess.open(verzeichnis)
-    if d == null:
-        return
-    d.list_dir_begin()
-    var name := d.get_next()
-    while name != "":
-        var pfad := verzeichnis.path_join(name)
-        if d.current_is_dir():
-            _skripte(pfad, hinein)
-        elif name.ends_with(".gd"):
-            hinein.append(pfad)
-        name = d.get_next()
-    d.list_dir_end()
-
-
-## `Mutationen.erzwinge()` dreht an jeder Welle - und darf nur im Messstand
-## stehen.
-##
-## Der Hebel gibt es, weil `in_welle()` an der Wellennummer haengt: wer eine
-## einzelne Mutation messen will, kann sie nicht herbeiwuenschen, indem er
-## die Nummer wechselt - dann wechselt die ganze Welle mit. Genau deshalb ist
-## er aber auch die schaerfste Schraube in der Datenschicht: einmal gesetzt
-## und vergessen, traegt **jede** Welle des Spiels dieselben Zuege, und der
-## Wellenpruefer wuerde es nicht melden, weil er dieselbe Luege misst.
-##
-## Also liest dieser Test den Quelltext: ausserhalb von `tools/` darf der
-## Name nirgends auftauchen - nicht im Spiel, nicht im Kern, nicht in den
-## Daten selbst.
-func _test_mutationszwang_bleibt_im_werkzeug() -> bool:
-    var dateien := PackedStringArray()
-    _skripte("res://scripts", dateien)
-    if not _melde(dateien.size() > 10, "keine Skripte gefunden"):
-        return false
-    for datei in dateien:
-        var quelle := FileAccess.get_file_as_string(datei)
-        var nummer := 0
-        for zeile in quelle.split("\n"):
-            nummer += 1
-            var rein := zeile.strip_edges()
-            if rein.begins_with("#"):
-                continue
-            if rein.begins_with("static func erzwinge("):
-                continue
-            if not _melde(not rein.contains("erzwinge(")
-                    and not rein.contains(".frei()"),
-                    "%s:%d dreht am Mutationszwang - der gehoert in tools/"
-                    % [datei, nummer]):
-                return false
-
-    # Und die Datei, in der er steht, muss ihn leer lassen.
-    if not _melde(Mutationen.in_welle(1).is_empty(),
-            "Welle 1 traegt Mutationen - steht der Zwang noch?"):
-        return false
-    return true
-
-
-## Die Artensperre gehoert in den Messstand, nicht ins Spiel.
-##
-## **Dieselbe Schraube und derselbe Grund wie beim Mutationszwang.**
-## `Arten.sperre()` nimmt Arten aus `verfuegbar()` heraus, und
-## `Wellen.auftritte()` kauft dann etwas anderes ein. Einmal gesetzt und
-## vergessen, fehlt eine Art im ganzen Graben - und **kein** anderer Waechter
-## meldet das: der Wellenpruefer und der Kolonielauf spielen dieselbe Luege
-## und finden sie stimmig. Ein Fehler, der sich selbst bestaetigt, ist die
-## teuerste Sorte.
-##
-## Also liest dieser Test den Quelltext: ausserhalb von `tools/` darf der
-## Name nirgends stehen - nicht im Spiel, nicht im Kern, nicht in den Daten.
-func _test_artensperre_bleibt_im_werkzeug() -> bool:
-    var dateien := PackedStringArray()
-    _skripte("res://scripts", dateien)
-    if not _melde(dateien.size() > 10, "keine Skripte gefunden"):
-        return false
-    for datei in dateien:
-        var quelle := FileAccess.get_file_as_string(datei)
-        var nummer := 0
-        for zeile in quelle.split("\n"):
-            nummer += 1
-            var rein := zeile.strip_edges()
-            if rein.begins_with("#"):
-                continue
-            if rein.begins_with("static func sperre("):
-                continue
-            if not _melde(not rein.contains("sperre("),
-                    "%s:%d dreht an der Artensperre - die gehoert in tools/"
-                    % [datei, nummer]):
-                return false
-
-    # Und im Ruhezustand sperrt sie nichts: jede Art, deren Welle erreicht
-    # ist, muss auftreten koennen.
-    var offen := Arten.verfuegbar(240)
-    for i in Arten.zahl():
-        if Arten.ist_leitwesen(i):
-            continue
-        if not _melde(offen.has(i),
-                "%s fehlt in Welle 240 - steht die Sperre noch?"
-                % Arten.name_von(i)):
-            return false
-    # Und das Leitwesen des Abschnitts steht ebenfalls bereit.
-    if not _melde(Arten.leitwesen_fuer(1) >= 0,
-            "Abschnitt 1 hat kein Leitwesen - steht die Sperre noch?"):
-        return false
-    return true
-
-
-## Ein Anstrich faerbt das Boot - und aendert nichts, was Schaden macht.
-##
-## **Das ist die Zusage, an der ein Skinsystem stirbt.** Zusage 2 sagt: was
-## hell gezeichnet wird, macht Schaden. Ein Anstrich, der den Kegel weiter,
-## breiter oder heller macht, waere damit ein Ausbau in Verkleidung - und die
-## Wahl waere keine Frage des Geschmacks mehr, sondern eine der Stufe. Wer
-## dann den huebschesten nimmt, spielt schwerer.
-##
-## Zwei Wege, das festzuhalten, und es braucht beide:
-##
-## 1. **Die Tabelle darf nur Farben fuehren.** Ein `&"reichweite": 1.1`
-##    daneben faellt in keinem Bild auf und wirkt sofort.
-## 2. **Der Quelltext darf `Skins` nicht dort anfassen, wo gerechnet wird.**
-##    Eine Zeile wie `_kegel.reichweite *= Skins.…` waere Punkt 1 gegenueber
-##    unauffaellig und genauso falsch.
-func _test_anstrich_faerbt_und_leuchtet_nicht() -> bool:
-    # Vollstaendig und ohne Ueberraschungen: genau diese Felder, kein Feld
-    # mehr. Die Kennung wird gegen das Enum geprueft (deutsch, fest), nicht
-    # der angezeigte Name (englisch, frei).
-    var erlaubt: PackedStringArray = ["kennung", "name", "regel", "haut",
-        "glut", "strahl", "kern", "ab_welle"]
-    for i in Skins.zahl():
-        var eintrag := Skins.anstrich(i)
-        for feld in erlaubt:
-            if not _melde(eintrag.has(StringName(feld)),
-                    "Anstrich %d fehlt das Feld %s" % [i, feld]):
-                return false
-        for schluessel in eintrag.keys():
-            if not _melde(erlaubt.has(String(schluessel)),
-                    "Anstrich %d fuehrt %s - ein Anstrich ist nur Farbe"
-                    % [i, schluessel]):
-                return false
-        if not _melde(String(eintrag[&"kennung"])
-                == Skins.Anstrich.keys()[i],
-                "Anstrich %d heisst anders als sein Enum" % i):
-            return false
-
-    # **Der erste steht jedem offen.** Sonst faehrt ein neuer Spieler ohne
-    # Anstrich, und `KolonieStand.skin` faellt beim Laden auf einen zurueck,
-    # den es fuer ihn nicht gibt.
-    if not _melde(Skins.ab_welle(0) == 0, "der erste Anstrich ist gesperrt"):
-        return false
-    for i in Skins.zahl():
-        if not _melde(Skins.frei(i, 100000), "Anstrich %d bleibt fuer immer zu" % i):
-            return false
-
-    # Und was gerechnet wird, bleibt unberuehrt.
-    var verboten: PackedStringArray = ["reichweite", "halbwinkel", "winkel",
-        "leistung", "schein", "rand_kern", "tiefe_kern", "ziele", "huelle",
-        "naehrstoff", "punkte"]
-    for datei in ["res://scripts/spiel/rundlauf.gd",
-            "res://scripts/spiel/kegel.gd",
-            "res://scripts/daten/kolonie_stand.gd"]:
-        var quelle := FileAccess.get_file_as_string(datei)
-        var nummer := 0
-        for zeile in quelle.split("\n"):
-            nummer += 1
-            var rein := zeile.strip_edges()
-            if rein.begins_with("#") or not rein.contains("Skins."):
-                continue
-            for wort in verboten:
-                if not _melde(not rein.contains(wort),
-                        "%s:%d laesst einen Anstrich an %s ruehren"
-                        % [datei, nummer, wort]):
-                    return false
-    return true
-
-
-## Keine Art kostet ein Vielfaches von dem, was sie bezahlt.
-##
-## **Der Fund, aus dem dieser Test entstanden ist:** der Kreiser stand auf
-## einem Aufwand von 1,24 und brauchte gemessen das 3,3fache der Zeit, die
-## der Zahnkiefer je Lebenspunkt braucht. `Wellen.auftritte()` kauft nach
-## `Arten.aufwand()` ein, also kaufte das Budget dreimal soviel Kreiser, wie
-## es bezahlte. Der Wellenpruefer meldete eine Wand ab Welle 85, und ihre
-## Ursache stand nirgends - sie war eine von Hand gesetzte Zahl, die der
-## Wirklichkeit davongelaufen war.
-##
-## Die Schranke ist bewusst **locker**. `tools/artenkosten.gd` misst ein
-## einzelnes Tier ohne Zieldeckel und ohne Nachbarn; alles, was aus der
-## Auswahl kommt, sieht es nicht (siehe dort). Ein Faktor von 1,7 ist damit
-## noch Messrauschen, einer von 2,6 nicht mehr.
-func _test_keine_art_kostet_ein_vielfaches() -> bool:
-    var kosten := preload("res://tools/artenkosten.gd")
-    var schlimm: Array = kosten.schlimmster_faktor()
-    var faktor := float(schlimm[0])
-    var wer := int(schlimm[1])
-    return _melde(faktor <= 2.0,
-        "%s kostet das %.2ffache seines Aufwands - das Wellenbudget kauft "
-        % [Arten.name_von(wer) if wer >= 0 else "?", faktor]
-        + "mehr davon, als es sich leisten kann")
-
-
-## Kein Leitwesen steht wesentlich laenger, als es soll.
-##
-## **Der Fund, aus dem dieser Test entstanden ist, waren zwei auf einmal.**
-## `Wellen.leben_in()` rechnet das Leben eines Leitwesens aus `LEIT_SEKUNDEN`
-## - "so lange soll es dauern". Gemessen dauerte es bei Welle 6 das
-## 3,77fache, und beim Ringmaul das **47fache**: es kreiste auf einem Ring,
-## der sich zusammenzog, entfernte sich dabei vom Ring und kreiste dafuer
-## immer entschlossener. Null Sekunden Brennzeit in vierhundert Sekunden.
-##
-## Keiner der beiden Fehler wirft etwas. Der Wellenpruefer sah daran vorbei,
-## weil er ganze Sitzungen misst und ein einzelnes zaehes Tier darin
-## untergeht; gefunden hat es erst der Kolonielauf, der sagt, **woran** eine
-## Sitzung gefallen ist.
-##
-## Die Schranke ist bewusst locker: gemessen wird ein Tier allein, ohne
-## Nachbarn und ohne Zieldeckel, und die Anmarschzeit laesst sich auch mit
-## der besten Rechnung nicht auf null bringen. 1,8 faengt beide alten Fehler
-## und laesst dem Messrauschen Luft.
-func _test_kein_leitwesen_steht_zu_lange() -> bool:
-    var kosten := preload("res://tools/artenkosten.gd")
-    var schlimm: Array = kosten.schlimmstes_leitwesen()
-    var faktor := float(schlimm[0])
-    var wer := int(schlimm[1])
-    var wo := int(schlimm[2])
-    return _melde(faktor <= 1.8,
-        "%s brennt bei Welle %d das %.2ffache seiner geplanten Dauer - "
-        % [Arten.name_von(wer) if wer >= 0 else "?", wo, faktor]
-        + "ein Hoehepunkt, der nicht enden will, ist eine Wand")
-
-
-## Die gerechneten Toene sind hoerbar, unverzerrt und knacksfrei.
-##
-## **Dieses Spiel ist nie gehoert worden.** Der Container hat kein Audiogeraet,
-## und in CI erst recht keines - `klang.gd` rechnet seine Puffer also seit
-## Beginn ins Blinde. Ein Vorzeichenfehler in einer Huellkurve, ein Faktor,
-## der ueber eins geht, eine Laenge von null: nichts davon faellt irgendwo
-## auf, weil nichts davon einen Fehler wirft. Der Ton waere einfach falsch,
-## und niemand wuesste es vor dem ersten Telefon.
-##
-## Ein Puffer laesst sich aber messen, auch ohne Lautsprecher. Vier Dinge
-## muessen stimmen, und jedes steht fuer einen Fehler, den man sonst hoert:
-##
-##   * **Ausschlag** - zu leise ist kein Ton, zu laut ist Zerren.
-##   * **Uebersteuerung** - einzelne Anschlaege am Rand sind normal, ein
-##     nennenswerter Anteil ist eine Rechnung, die aus dem Rahmen laeuft.
-##   * **Anfang und Ende bei null** - ein Puffer, der mitten im Ausschlag
-##     beginnt oder endet, knackt. Das ist der haeufigste Fehler bei
-##     gerechnetem Ton und im Bild unsichtbar.
-##   * **Ausklang** - hinten leiser als vorn. Ein Ton, der auf voller
-##     Lautstaerke abbricht, ist derselbe Knacks noch einmal.
-func _test_toene_sind_hoerbar_und_sauber() -> bool:
-    var quelle := load("res://scripts/spiel/klang.gd")
-    if not _melde(quelle != null, "klang.gd nicht ladbar"):
-        return false
-
-    # Die Einzeltoene. Der Grundton laeuft in Schleife und wird getrennt
-    # geprueft - fuer ihn gelten Ausklang und Nullende gerade nicht.
-    var namen := ["_treffer", "_tod", "_brut_faellt", "_polyp", "_kammer",
-        "_welle", "_tipp"]
-    var gesehen := {}
-
-    for name in namen:
-        var strom: AudioStreamWAV = quelle.call(name)
-        if not _melde(strom != null, "%s() gibt keinen Strom" % name):
-            return false
-        var w := _abtastung(strom)
-        if not _melde(w.size() > 200, "%s(): Puffer zu kurz" % name):
-            return false
-
-        var spitze := 0.0
-        var rand := 0
-        for v in w:
-            spitze = maxf(spitze, absf(v))
-            if absf(v) > 0.995:
-                rand += 1
-        if not _melde(spitze > 0.10, "%s(): fast stumm (Spitze %.3f)"
-                % [name, spitze]):
-            return false
-        if not _melde(float(rand) / float(w.size()) < 0.01,
-                "%s(): %d von %d Werten am Anschlag - das zerrt"
-                % [name, rand, w.size()]):
-            return false
-
-        # Anfang und Ende: die ersten und letzten Millisekunden muessen
-        # deutlich unter der Spitze liegen, sonst setzt der Ton mit einem
-        # Sprung ein oder bricht mit einem ab.
-        var kante := maxi(8, w.size() / 200)
-        var vorn := 0.0
-        var hinten := 0.0
-        for i in kante:
-            vorn = maxf(vorn, absf(w[i]))
-            hinten = maxf(hinten, absf(w[w.size() - 1 - i]))
-        if not _melde(vorn < spitze * 0.5,
-                "%s(): setzt mit einem Knacks ein (%.3f von %.3f)"
-                % [name, vorn, spitze]):
-            return false
-        if not _melde(hinten < spitze * 0.5,
-                "%s(): bricht mit einem Knacks ab (%.3f von %.3f)"
-                % [name, hinten, spitze]):
-            return false
-
-        # Ausklang: das letzte Viertel traegt weniger Energie als das erste.
-        var viertel := w.size() / 4
-        var e_vorn := 0.0
-        var e_hinten := 0.0
-        for i in viertel:
-            e_vorn += w[i] * w[i]
-            e_hinten += w[w.size() - 1 - i] * w[w.size() - 1 - i]
-        if not _melde(e_hinten < e_vorn,
-                "%s(): klingt nicht aus" % name):
-            return false
-
-        # Und keine zwei Toene duerfen derselbe Puffer sein - das waere ein
-        # Tippfehler in `_ready()`, den man an sieben gleichen Geraeuschen
-        # merkt und sonst nirgends.
-        var schluessel := strom.data.size()
-        if gesehen.has(schluessel):
-            var anderer: PackedFloat32Array = gesehen[schluessel]
-            var gleich := anderer.size() == w.size()
-            if gleich:
-                for i in w.size():
-                    if absf(w[i] - anderer[i]) > 0.0001:
-                        gleich = false
-                        break
-            if not _melde(not gleich, "%s() klingt wie ein anderer Ton" % name):
-                return false
-        gesehen[schluessel] = w
-    return true
-
-
-## Der Grundton laeuft in Schleife: an der Naht darf es nicht knacken.
-##
-## Fuer ihn gilt das Gegenteil der Regel oben - er soll gerade **nicht**
-## ausklingen und nicht bei null enden. Was er stattdessen muss: an der
-## Nahtstelle stetig sein, sonst hoert man alle sechs Sekunden einen Schlag.
-## `_grund()` blendet dafuer das Ende ueber den Anfang; geprueft wird, dass
-## die Blende wirkt - und dass die Abschnitte wirklich verschieden klingen,
-## denn sonst waere der Wechsel eine Zusage ohne Deckung.
-func _test_grundton_schliesst_die_schleife() -> bool:
-    var quelle := load("res://scripts/spiel/klang.gd")
-    if not _melde(quelle != null, "klang.gd nicht ladbar"):
-        return false
-
-    var vorher := PackedFloat32Array()
-    for abschnitt in Graben.ABSCHNITTE:
-        var w := _abtastung(quelle.call("_grund", abschnitt))
-        if not _melde(w.size() > 1000, "Grundton %d: Puffer zu kurz" % abschnitt):
-            return false
-
-        var spitze := 0.0
-        for v in w:
-            spitze = maxf(spitze, absf(v))
-        if not _melde(spitze > 0.10 and spitze <= 1.0,
-                "Grundton %d: Ausschlag %.3f" % [abschnitt, spitze]):
-            return false
-
-        # Die Naht: der Sprung vom letzten zum ersten Wert muss klein sein
-        # gegen den groessten Sprung im Inneren. Ein absoluter Grenzwert
-        # waere hier falsch - wie gross ein Schritt sein darf, sagt das
-        # Signal selbst.
-        var groesster := 0.0
-        for i in range(1, w.size()):
-            groesster = maxf(groesster, absf(w[i] - w[i - 1]))
-        var naht := absf(w[0] - w[w.size() - 1])
-        if not _melde(naht <= groesster * 1.5,
-                "Grundton %d knackt an der Naht (%.4f gegen %.4f)"
-                % [abschnitt, naht, groesster]):
-            return false
-
-        if abschnitt > 0:
-            var gleich := vorher.size() == w.size()
-            if gleich:
-                for i in w.size():
-                    if absf(w[i] - vorher[i]) > 0.0001:
-                        gleich = false
-                        break
+func _test_jede_sorte_hat_einen_eigenen_rhythmus() -> bool:
+    # **Eine Sorte, die man am Rhythmus nicht erkennt, ist keine.** Zwei
+    # Gegner mit denselben vier Zahlen sind derselbe Gegner unter zwei
+    # Namen, und der Spieler lernt an ihnen nichts Neues.
+    for a in Gegner.Art.size():
+        for b in range(a + 1, Gegner.Art.size()):
+            var gleich := is_equal_approx(Gegner.ansatz(a), Gegner.ansatz(b)) \
+                and is_equal_approx(Gegner.fenster(a), Gegner.fenster(b)) \
+                and is_equal_approx(Gegner.oeffnung(a), Gegner.oeffnung(b)) \
+                and Gegner.paraden(a) == Gegner.paraden(b) \
+                and Gegner.taeuscht(a) == Gegner.taeuscht(b) \
+                and Gegner.linien_von(a) == Gegner.linien_von(b)
             if not _melde(not gleich,
-                    "Grundton %d klingt wie der vorige" % abschnitt):
+                    "%s und %s haben denselben Rhythmus"
+                    % [Gegner.name_von(a), Gegner.name_von(b)]):
                 return false
-        vorher = w
     return true
 
 
-## Liest einen gerechneten Strom in Gleitkommawerte zurueck - dieselben, die
-## `_stream()` hineingeschrieben hat.
-func _abtastung(strom: AudioStreamWAV) -> PackedFloat32Array:
-    var w := PackedFloat32Array()
-    var daten := strom.data
-    var anzahl := daten.size() / 2
-    w.resize(anzahl)
-    for i in anzahl:
-        w[i] = float(daten.decode_s16(i * 2)) / 32767.0
-    return w
+func _test_fenster_passt_in_den_ansatz() -> bool:
+    # Das Fenster liegt beidseitig um den Schlag. Waere es breiter als der
+    # halbe Ansatz, begaenne es, bevor die Fuehrungslinie ueberhaupt
+    # gewachsen ist - dann pariert man, bevor man gelesen hat, und das Lesen
+    # ist der ganze Inhalt dieses Spiels.
+    # **Auf jeder Schulstufe, nicht nur auf der nullten.** Beide Zahlen
+    # wachsen mit der Schule; wer nur eine davon prueft, prueft eine
+    # Kombination, die es im Spiel nicht gibt.
+    for s in range(0, Schule.HOECHSTSTUFE + 1):
+        for a in Gegner.Art.size():
+            var f := Duell.fensterbreite(a, Schule.fensterzusatz(s))
+            var d := Duell.ansatzdauer(a, Schule.lesezeit(s))
+            if not _melde(f < d * 0.5,
+                    "%s auf Stufe %d: Fenster %.2f passt nicht in den Ansatz %.2f"
+                    % [Gegner.name_von(a), s, f, d]):
+                return false
+    return true
 
 
-## Die Kamera zeigt den Eintrittsrand auf keinem Geraet.
-##
-## Das Spiel ist auf 720x1280 entworfen; `aspect="expand"` zeigt auf hoeheren
-## Bildern mehr Welt, und `Graben.EINTRITT_Y` liegt nur 120 Einheiten
-## ausserhalb des Entwurfsbildes. Auf einem 20:9-Telefon - also auf den
-## meisten - lag er im Bild, und jeder Raeuber erschien sichtbar aus dem
-## Nichts auf einer Linie.
-##
-## Geprueft wird ueber die ganze Spanne, die auf einem Telefon vorkommt: von
-## 4:3 (ein Tablet im Hochformat) bis 21:9. Und zwei Dinge muessen gelten -
-## der Eintritt bleibt draussen, und auf dem Entwurfsbild aendert sich
-## nichts, sonst waere der Deckel ein neuer Bildausschnitt und keine
-## Absicherung.
-## **Was gekeult wird, darf nie im Bild stehen.**
-##
-## `schwarm.gd` zeichnet ein Tier nur noch, wenn es in `Rundum.SICHT` plus
-## `Rundum.zeichen_rand()` steht - vorher zeichnete es die ganze Welle,
-## quer ueber ein Feld von 1500 Einheiten, und Godot keult in 2D je Knoten,
-## also gar nicht.
-##
-## `SICHT` ist auf 720x1600 gerechnet (877 halbe Diagonale) und deckt das
-## knapp. Ein 21:9-Telefon liegt bei 914 und damit **darueber**: ohne den
-## Rand faellt genau dort die Bildecke weg, wo ohnehin schon
-## `Graben.kamera_y()` nachhelfen muss (Zusage 23).
-##
-## Geprueft wird dieselbe Spanne wie dort - 4:3 bis 21:9 -, und zwar so,
-## dass ein spaeteres Drehen an `SICHT` hier rot wird und nicht im Spiel.
-func _test_zeichenrand_deckt_jedes_bild() -> bool:
-    for v: float in [4.0 / 3.0, 16.0 / 9.0, 20.0 / 9.0, 21.0 / 9.0]:
-        var hoch := Rundum.BILD_BREITE * v
-        var halbe := sqrt(Rundum.BILD_BREITE * Rundum.BILD_BREITE
-            + hoch * hoch) * 0.5
-        if not _melde(Rundum.SICHT + Rundum.zeichen_rand() >= halbe,
-                "bei %.2f:1 reicht die Zeichensicht %.1f nicht fuer %.1f"
-                % [v, Rundum.SICHT + Rundum.zeichen_rand(), halbe]):
-            return false
-    # Und er darf nicht ins Uferlose wachsen: ein Rand so gross wie das Feld
-    # keult nichts mehr und die Messung oben waere folgenlos gruen.
-    return _melde(Rundum.zeichen_rand() < Rundum.SICHT * 0.5,
-        "der Zeichenrand %.1f ist kein Rand mehr" % Rundum.zeichen_rand())
-
-
-func _test_kamera_zeigt_den_eintritt_nie() -> bool:
-    if not _melde(absf(Graben.kamera_y(1280.0) - 0.0) < 0.001,
-            "auf dem Entwurfsbild muss die Kamera im Ursprung stehen, nicht bei %.1f"
-            % Graben.kamera_y(1280.0)):
-        return false
-
-    for hoehe in range(960, 1740, 20):
-        var h := float(hoehe)
-        var y := Graben.kamera_y(h)
-        var oben := y - h * 0.5
-        if not _melde(oben > Graben.EINTRITT_Y,
-                "bei %d Einheiten beginnt das Bild bei %.1f und zeigt den "
-                % [hoehe, oben] + "Eintritt bei %.1f" % Graben.EINTRITT_Y):
-            return false
-        # Und die Brut darf nie unter den unteren Rand rutschen - sonst waere
-        # der Deckel ein zweiter Fehler statt der Behebung des ersten.
-        var unten := y + h * 0.5
-        if not _melde(unten > Graben.BRUT_Y + Graben.UNTERKANTE * 0.5,
-                "bei %d Einheiten steht die Brut zu tief" % hoehe):
+func _test_taeuschung_laesst_zeit_zum_zweiten_lesen() -> bool:
+    # Nach dem Wechsel muss genug Zeit bleiben, um die wahre Linie noch zu
+    # lesen. Bleibt weniger als eine Reaktionszeit, ist die Taeuschung keine
+    # Taeuschung mehr, sondern ein Wuerfel.
+    const REAKTION := 0.25
+    for a in Gegner.Art.size():
+        if not Gegner.taeuscht(a):
+            continue
+        var rest := Gegner.ansatz(a) * (1.0 - Gegner.TAEUSCH_LAGE)
+        if not _melde(rest >= REAKTION,
+                "%s laesst nach der Taeuschung nur %.2f s"
+                % [Gegner.name_von(a), rest]):
             return false
     return true
 
 
-## Die Funkenbluete steht ausserhalb von Wirtschaft und Wellenbudget.
-##
-## Sie ist kein Raeuber: sie greift nichts an, sie steht in keiner
-## `Wellen.auftritte()`, und sie zahlt keinen Naehrstoff. Beides muss so
-## bleiben, und zwar aus zwei verschiedenen Gruenden:
-##
-##   * **Nicht im Budget**, weil `Wellen.staerke()` aus der Sollkurve faellt.
-##     Ein Koerper, der Zeit kostet und nicht bezahlt wurde, macht jede Welle
-##     um seinen Anteil schwerer, als sie entworfen ist.
-##   * **Kein Naehrstoff**, weil das Einkommen aus den Kammerkosten abgeleitet
-##     ist. Dieselbe Regel wie bei der Kette.
-##
-## Und sie muss zaeher werden: ein fester Wert waere in Welle 200 ein
-## Streifschuss.
-func _test_bluete_bleibt_ausserhalb_der_wirtschaft() -> bool:
-    if not _melde(Wellen.bluete_leben(200) > Wellen.bluete_leben(10) * 2.0,
-            "die Bluete muss mit der Sollkurve zaeher werden"):
-        return false
+# --- Die Schule ------------------------------------------------------------
 
-    # Sie darf in keiner Welle als Auftritt gefuehrt werden - dort stuende sie
-    # im Budget und waere ein Raeuber mit anderem Anstrich.
-    var mit := 0
-    for n in range(1, Graben.ZYKLUS + 1):
-        if Wellen.hat_bluete(n):
-            mit += 1
-        if not _melde(Wellen.auftritte(n).size() > 0,
-                "Welle %d hat keine Auftritte" % n):
+func _test_schule_verschlechtert_nichts() -> bool:
+    # Kein Ausbau darf etwas verschlechtern. Das klingt selbstverstaendlich
+    # und ist es nicht: eine Kurve mit einem Exponenten ueber eins kippt am
+    # Ende, und niemand sieht es, weil niemand die vierzigste Stufe spielt.
+    for s in Schule.HOECHSTSTUFE:
+        if not _melde(Schule.lesezeit(s + 1) >= Schule.lesezeit(s)
+                and Schule.fensterzusatz(s + 1) >= Schule.fensterzusatz(s)
+                and Schule.atem(s + 1) >= Schule.atem(s)
+                and Schule.oeffnungsfaktor(s + 1) >= Schule.oeffnungsfaktor(s),
+                "Stufe %d ist schlechter als %d" % [s + 1, s]):
             return false
-    if not _melde(mit > 0 and mit < Graben.ZYKLUS,
-            "die Bluete muss manchmal kommen und manchmal nicht, nicht %d von %d"
-            % [mit, Graben.ZYKLUS]):
-        return false
+    return true
 
-    var quelle := FileAccess.get_file_as_string(
-        "res://scripts/spiel/rundlauf.gd")
-    if not _melde(not quelle.is_empty(), "rundlauf.gd nicht lesbar"):
-        return false
-    var nummer := 0
-    for zeile in quelle.split("\n"):
-        nummer += 1
-        var rein := zeile.strip_edges()
-        if rein.begins_with("#"):
-            continue
-        if not (rein.contains("Fortschritt.aendere(") or rein.contains("verdient")):
-            continue
-        if not _melde(not rein.contains("bluete"),
-                "rundlauf.gd:%d bringt die Bluete mit dem Naehrstoff zusammen"
-                % nummer):
+
+func _test_einkommen_und_kosten_wachsen_gleich() -> bool:
+    # **Kammern kosten geometrisch.** Ein Einkommen, das linear oder auch nur
+    # langsamer geometrisch waechst, holt das nie wieder ein - der Spieler
+    # baut die ersten zehn Stufen und danach nie wieder eine. Beide Seiten
+    # fallen deshalb aus derselben Kostenzahl; geprueft wird, dass ihr
+    # Verhaeltnis ueber die ganze Strecke stehen bleibt.
+    # Geprueft wird die Ableitung selbst und nicht ein Verhaeltnis: die Ehre
+    # **ist** die Rundenkosten geteilt durch `RONDEN_JE_RUNDE`, auf ganze
+    # Zahlen gerundet. Ein Verhaeltnis zu pruefen hiesse, die Rundung bei
+    # kleinen Zahlen fuer eine Abweichung zu halten.
+    for n in range(1, 260):
+        var soll := Schule.rundenkosten(Schule.stufe_soll(n)) \
+            / Schule.RONDEN_JE_RUNDE
+        var ist := float(Ronde.ehre(n))
+        if not _melde(absf(ist - soll) <= 1.0,
+                "Ronde %d zahlt %.0f statt %.2f" % [n, ist, soll]):
             return false
+    # Und dass beide Seiten wirklich geometrisch mitwachsen: nach zwanzig
+    # Sollstufen muss eine Ronde ein Vielfaches einbringen.
+    return _melde(float(Ronde.ehre(120)) > float(Ronde.ehre(1)) * 50.0,
+        "das Einkommen haelt mit den geometrischen Kosten nicht mit")
+
+
+# --- Die Ronden ------------------------------------------------------------
+
+func _test_ronden_sind_reproduzierbar() -> bool:
+    # Dieselbe Ronde muss bei jedem Spieler dieselbe sein, sonst laesst sich
+    # nichts nachmessen und niemand kann ueber eine Stelle reden.
+    for n in [1, 4, 6, 13, 29]:
+        var a := Ronde.gegner(n)
+        var b := Ronde.gegner(n)
+        if not _melde(a == b, "Ronde %d wechselt ihre Besetzung" % n):
+            return false
+    return true
+
+
+func _test_ronde_ist_nie_leer() -> bool:
+    for n in range(1, 120):
+        if not _melde(Ronde.gegner(n).size() > 0,
+                "Ronde %d hat keinen einzigen Gegner" % n):
+            return false
+    return true
+
+
+func _test_ronde_waechst() -> bool:
+    # Nicht die rohe Zahl waechst, sondern der Anspruch: eine Ronde mit dem
+    # Meister ist kuerzer und trotzdem schwerer. Geprueft wird deshalb das
+    # Budget und nicht die Kopfzahl.
+    for n in range(1, 60):
+        var jetzt := Ronde.staerke(n) / float(Ronde.gleichzeitig(n))
+        var danach := Ronde.staerke(n + 1) / float(Ronde.gleichzeitig(n + 1))
+        if not _melde(danach >= jetzt - 0.001,
+                "Ronde %d verlangt weniger als %d" % [n + 1, n]):
+            return false
+    return _melde(Ronde.staerke(60) > Ronde.staerke(1) * 1.8,
+        "ueber sechzig Ronden muss das Budget deutlich steigen")
+
+
+func _test_meister_tritt_zuletzt_an() -> bool:
+    # Eine Ronde, die mit ihrem groessten Gegner anfaengt, hat keinen Bogen,
+    # sondern ein Nachspiel.
+    for n in range(1, 120):
+        var liste := Ronde.gegner(n)
+        for i in liste.size():
+            if not Gegner.ist_meister(liste[i]):
+                continue
+            if not _melde(i == liste.size() - 1,
+                    "Ronde %d hat den Meister an Platz %d von %d"
+                    % [n, i, liste.size()]):
+                return false
+    return true
+
+
+# --- Das Duell -------------------------------------------------------------
+
+func _test_lesezeit_bleibt_menschlich() -> bool:
+    # Der Ansatz ist die Lesezeit, und sie darf nie unter eine
+    # Reaktionszeit fallen - auch nicht fuer den schnellsten Gegner auf
+    # einer Schule ohne jede Stufe.
+    const REAKTION := 0.25
+    for a in Gegner.Art.size():
+        var d := Duell.ansatzdauer(a, Schule.lesezeit(0))
+        if not _melde(d >= REAKTION * 2.0,
+                "%s holt nur %.2f s aus" % [Gegner.name_von(a), d]):
+            return false
+    return true
+
+
+func _test_fuehrung_und_fenster_teilen_die_zahl() -> bool:
+    # **Was gezeigt wird, muss gelten.** Die Zinnoberlinie nimmt ihre Laenge
+    # aus `fuehrungsanteil()`; das Fenster liegt um den Punkt, an dem dieser
+    # Anteil eins erreicht. Liefen beide auseinander, waere die Linie eine
+    # Luege - und das Spiel unlernbar.
+    var k := Duell.Klinge.new()
+    var s := Duell.Stand.new()
+    k.lage = Duell.Lage.ANSATZ
+    k.art = Gegner.Art.RONIN
+    k.dauer = Duell.ansatzdauer(k.art, 0.0)
+    k.in_mensur = true
+    var f := Duell.fensterbreite(k.art, 0.0)
+
+    k.uhr = k.dauer
+    if not _melde(is_equal_approx(Duell.fuehrungsanteil(k), 1.0)
+            and Duell.im_fenster(k, s),
+            "im Augenblick des Schlags muss die Linie voll und das Fenster offen sein"):
+        return false
+    k.uhr = k.dauer - f * 1.2
+    if not _melde(not Duell.im_fenster(k, s),
+            "vor dem Fenster darf nichts treffen"):
+        return false
+    k.uhr = k.dauer + f * 1.2
+    return _melde(not Duell.im_fenster(k, s),
+        "nach dem Fenster darf nichts mehr treffen")
+
+
+## Ein Spieler, der liest: er antwortet genau dann, wenn ein Gegner im
+## Fenster steht, und faellt Offene, wenn nichts draengt.
+func _spiele(nummer: int, stufe: int, ruehrt: bool, saat: int) -> Duell.Stand:
+    var stufen := {}
+    for h in Schule.NAMEN.size():
+        stufen[h] = stufe
+    var s := Duell.baue(nummer, stufen)
+    var rng := RandomNumberGenerator.new()
+    rng.seed = saat
+    var takt := 1.0 / 60.0
+    var t := 0.0
+    var ruehr_uhr := 0.0
+    while s.lebt() and not Duell.geraeumt(s) and t < 400.0:
+        Duell.schritt(s, takt, rng)
+        t += takt
+        if ruehrt:
+            # Der Ruehrer wischt blind, so schnell er darf.
+            ruehr_uhr -= takt
+            if ruehr_uhr <= 0.0:
+                ruehr_uhr = 0.09
+                var l: int = Schnitte.GEWISCHT[rng.randi_range(
+                    0, Schnitte.GEWISCHT.size() - 1)]
+                Duell.antworte(s, Schnitte.richtung(l) * 120.0)
+            continue
+        for k in s.klingen:
+            if not k.lebt() or not k.in_mensur:
+                continue
+            if Duell.im_fenster(k, s):
+                if Schnitte.ist_stoss(k.wahre_linie):
+                    Duell.antworte(s, Vector2(3.0, 0.0))
+                else:
+                    Duell.antworte(s, Schnitte.richtung(k.wahre_linie) * 130.0)
+                break
+            if k.lage == Duell.Lage.OFFEN:
+                Duell.antworte(s, Vector2(130.0, 0.0))
+                break
+    return s
+
+
+func _test_ein_leser_gewinnt() -> bool:
+    # **Die untere Schranke.** Der simulierte Daumen kann genau eine Sache:
+    # die wahre Linie treffen, sobald das Fenster offen ist. Er weicht nicht
+    # aus, priorisiert nicht und sieht keine Taeuschung kommen - alles, was
+    # ein Mensch zusaetzlich kann, geht als Reserve in das Ergebnis ein.
+    #
+    # Wer das hier rot sieht, hat eine Ronde gebaut, die niemand raeumen
+    # kann; die Schranke wird nicht gelockert, damit eine Aenderung durchgeht.
+    var gefallen := 0
+    for n in range(1, 41):
+        var s := _spiele(n, Schule.stufe_soll(n), false, 1000 + n)
+        if not Duell.geraeumt(s):
+            gefallen += 1
+            _melde(false, "Ronde %d nicht geraeumt (Atem %d/%d, offen %d)"
+                % [n, s.atem, s.atem_voll, s.offen()])
+    return _melde(gefallen == 0,
+        "%d von 40 Ronden sind fuer einen Leser nicht zu raeumen" % gefallen)
+
+
+func _test_ruehren_verliert() -> bool:
+    # **Die Zusage, an der das ganze Spiel haengt.** Ohne die Sperre nach
+    # einem Fehlgriff waere die beste Strategie, alle vier Achsen dauernd
+    # durchzuwischen, bis eine passt - und dann waere es kein Lesen mehr,
+    # sondern Ruehren. Geprueft wird nicht, dass Ruehren *schlechter* ist,
+    # sondern dass es **verliert**: ein Vorteil, den man sich erruehren
+    # kann, ist ein Fehler und kein Schwierigkeitsgrad.
+    var geraeumt := 0
+    for n in [4, 8, 12, 16, 20]:
+        var s := _spiele(n, Schule.stufe_soll(n), true, 2000 + n)
+        if Duell.geraeumt(s):
+            geraeumt += 1
+            _melde(false, "Ronde %d liess sich erruehren" % n)
+    return _melde(geraeumt == 0,
+        "%d Ronden liessen sich blind erruehren" % geraeumt)
+
+
+func _test_kein_platz_doppelt_besetzt() -> bool:
+    # Zwei Gegner auf derselben Stelle stehen im Bild ineinander. Der Kern
+    # weiss nicht, wo eine Stelle liegt - aber er weiss, dass zwei nicht
+    # dieselbe haben duerfen.
+    var rng := RandomNumberGenerator.new()
+    rng.seed = 5
+    for n in [7, 11, 18, 26]:
+        var stufen := {}
+        for h in Schule.NAMEN.size():
+            stufen[h] = Schule.stufe_soll(n)
+        var s := Duell.baue(n, stufen)
+        var t := 0.0
+        while s.lebt() and not Duell.geraeumt(s) and t < 60.0:
+            Duell.schritt(s, 1.0 / 60.0, rng)
+            t += 1.0 / 60.0
+            var belegt := {}
+            for k in s.klingen:
+                if not k.lebt() or not k.in_mensur:
+                    continue
+                if not _melde(not belegt.has(k.stelle),
+                        "Ronde %d: zwei Gegner auf Stelle %d" % [n, k.stelle]):
+                    return false
+                belegt[k.stelle] = true
+                if not _melde(k.stelle < s.gleichzeitig,
+                        "Ronde %d: Stelle %d ausserhalb der Mensur"
+                        % [n, k.stelle]):
+                    return false
+            # Damit die Schleife nicht an einem perfekten Spieler haengt:
+            for k in s.klingen:
+                if k.lebt() and k.in_mensur and Duell.im_fenster(k, s):
+                    if Schnitte.ist_stoss(k.wahre_linie):
+                        Duell.antworte(s, Vector2(3.0, 0.0))
+                    else:
+                        Duell.antworte(s,
+                            Schnitte.richtung(k.wahre_linie) * 130.0)
+                    break
+                if k.lebt() and k.in_mensur and k.lage == Duell.Lage.OFFEN:
+                    Duell.antworte(s, Vector2(130.0, 0.0))
+                    break
     return true

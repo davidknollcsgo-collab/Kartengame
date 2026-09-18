@@ -62,40 +62,13 @@ jobs:
       - name: Herkunft aller Dateien belegt
         run: godot --headless --path . --script tools/lizenzcheck.gd
 
-      # Getrennter Schritt, weil der Prüfer je Welle spürbar Zeit braucht.
-      # Bricht ab, sobald eine Sitzung mit dem Sollausbau fällt - also sobald
-      # jemand feststecken würde, der nicht bezahlt hat.
-      - name: Vier Umdrehungen durch den Graben prüfen
-        run: godot --headless --path . --script tools/wellenpruefer.gd
-
-      # Beantwortet, was man einem Aufbauspiel nicht ansieht: erreicht ein
-      # normaler Spieler die Sollkurve, und entsteht dabei eine Wartemauer?
-      #
-      # **Drei Saaten, nicht eine.** Der Lauf ist deterministisch, aber die
-      # Fallzahl haengt fast vollstaendig daran, wieviele katastrophale
-      # Wellen eine Saat wuerfelt: ohne jede Aenderung am Spiel gibt die
-      # Vorgabe 35, +1 gibt 41 und +2 gibt 144 gefallene Sitzungen. Eine
-      # einzelne Saat misst damit den Wurf und nicht die Balance, und eine
-      # gruene Zahl darin ist ein Zufallstreffer (Veilform auf 1,50 / 2,00 /
-      # 2,50 gesetzt: 87 / 20 / 46).
-      #
-      # Geprueft wird deshalb **jede** Saat einzeln. Das ist die Zusage, die
-      # hier immer gemeint war: egal wie die Wuerfel fallen, ein normaler
-      # Spieler verliert nicht oefter als die Schranke erlaubt.
-      - name: Kolonie über 120 Tage, drei Saaten
-        run: |
-          set -euo pipefail
-          for s in 0 1 2; do
-            echo "=== Saat +$s ==="
-            godot --headless --path . --script tools/kolonielauf.gd -- --saat "$s"
-          done
-
       # **Der Testlauf allein beweist nicht, dass das Spiel läuft.** Er lädt
-      # `rundlauf.gd`, `rund_hud.gd` und `kolonie_schirm.gd` nie - ein
-      # `--script`-Lauf kennt keine Autoloads. Ein Parse-Fehler in einer
-      # dieser Dateien bleibt dort grün, und das Spiel startet dann
-      # *scheinbar*: kein Fehler im Bild, keine Ausgabe, nur ein Prozess, der
-      # hängt. Der Startlauf findet es in Sekunden.
+      # `schnitt_lauf.gd`, `schnitt_hud.gd`, `buehne.gd` und `fechter.gd` nie
+      # - ein `--script`-Lauf kennt keine Autoloads und keine Szene. Ein
+      # Parse-Fehler in einer dieser Dateien bleibt dort grün, und das Spiel
+      # startet dann *scheinbar*. Genau das ist beim Neubau zweimal passiert,
+      # an einem Tag: ein fehlendes `class_name` und ein `:=` auf einem
+      # untypisierten Wert. Der Startlauf findet beides in Sekunden.
       #
       # Die Ausgabe muss dabei in eine Variable: `godot ... | grep ... | head`
       # gibt immer Erfolg zurück, weil `head` gelingt.
@@ -109,11 +82,3 @@ jobs:
             exit 1
           fi
           echo "Das Spiel startet sauber."
-
-      # Die zweite Schleife hatte bis hierher keinen Wächter. Ein simulierter
-      # Daumen ersetzt kein Fahrkönnen - was er ersetzt, ist das Raten: er
-      # bricht ab, sobald eine Fahrt fällt oder eine Welle nicht leer wird,
-      # und meldet damit eine untere Schranke. Vierzig Wellen kosten knapp
-      # eine Minute.
-      - name: Vierzig Wellen im Rundumlauf fahren
-        run: godot --headless --path . -- --fahrprobe 40
