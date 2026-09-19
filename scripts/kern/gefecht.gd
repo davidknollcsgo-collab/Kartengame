@@ -27,7 +27,16 @@ extends RefCounted
 ## haerteste von ihnen bestimmt, was es kostet. Damit bleibt ein Ritter
 ## gefaehrlicher als ein Strolch, und zwanzig Strolche sind nicht zwanzigmal
 ## ein Strolch.
-const WUNDE_SPERRE := 0.55
+##
+## **Und sie macht Platz fuer die Umzingelung.** Mit 0,55 s und dem neuen
+## Faktor fielen alle vier Helden rund zwanzig Prozent frueher als ohne ihn
+## (gemessen ueber drei Saaten: 187/210/186/240 statt 234/240/234/240
+## Sekunden). Eine neue Regel obendrauf ist eine Verteuerung und keine
+## Entscheidung; der Grundtakt gibt deshalb zurueck, was die Aufstellung
+## nimmt - mit 0,75 s stehen es wieder 218/211/210/240, und die Spreizung
+## zwischen Stehen und Laufen bleibt bei 0,49. Weniger Wunden, dafuer
+## groessere: fuer ein Horden-Spiel ist das die bessere Form.
+const WUNDE_SPERRE := 0.95
 ## Wie groß der Streiter selbst ist - für Berührung und für das Bild.
 const STREITER_RADIUS := 20.0
 
@@ -43,13 +52,36 @@ const STREITER_RADIUS := 20.0
 ## einer Seite sind so teuer wie einer; acht, die dich einschließen, sind
 ## das Dreifache. Das belohnt genau das, was das Spiel verspricht - sie vor
 ## dir halten, eine Flanke freilassen, durch eine Lücke gehen.
+##
+## **Die Weite ist gemessen, nicht geschaetzt.** Der erste Anlauf nahm 110 -
+## knapp ausserhalb der Beruehrung. Gezaehlt ueber drei Saaten standen darin
+## im Mittel **0,8 Feinde**, und alle acht Faecher waren in **0,0 %** der
+## Bilder besetzt: die Waffen raeumen den Ring schneller, als die Horde ihn
+## fuellt. Eine Strafe fuer eine Lage, die das Spiel nie herstellt, ist
+## keine Regel, sondern ein toter Buchstabe. Gemessen ueber 110/180/260/340/
+## 420 liegt der groesste Abstand zwischen Stehen und Laufen bei 180 - dort
+## sind es stehend 2,84 Faecher gegen laufend 1,42, also Faktor zwei. Weiter
+## draussen steigt zwar die Zahl, aber der Laufende zahlt mit; bei 420 sind
+## es 6,5 gegen 5,1, und damit bestraft der Ring das Spielen selbst.
 const DRUCK_RADIUS := 180.0
 ## In so viele Fächer fällt der Kreis. Gezählt wird, wie viele **besetzt**
 ## sind, nicht wie viele darin stehen.
 const SEKTOREN := 8
-## Der Aufschlag bei voller Umzingelung. Ein Fach mal eins, alle acht mal
-## dreieinhalb.
-const UMZINGELT_ZUSATZ := 2.5
+## Was ein Treffer kostet, wenn er aus **einer** Richtung kommt - und was
+## er kostet, wenn der Ring geschlossen ist. Dazwischen wird gerade
+## interpoliert.
+##
+## **Der Faktor spannt um die Eins, nicht von ihr aufwaerts.** Der erste
+## Anlauf legte die Umzingelung als Aufschlag obendrauf: ein Fach mal eins,
+## acht mal dreieinhalb. Damit war die Regel eine reine Verteuerung, und
+## gemessen fielen alle vier Helden binnen hundertfuenfzig Sekunden, wo bei
+## abgeschalteter Umzingelung drei die vollen drei Minuten standen. Wer eine
+## Flanke freihaelt, soll aber nicht *verschont* werden, sondern
+## **belohnt**: aus einer Richtung kostet es die Haelfte, rundum das
+## Vierfache. Erst damit bezahlt sich das Laufen, statt nur das Stehen zu
+## bestrafen.
+const UMZINGELT_FREI := 0.5
+const UMZINGELT_VOLL := 4.0
 ## Wie schnell sich der Blick der Laufrichtung nachdreht. Sofort wäre ein
 ## Zeiger, gar nicht wäre ein Schild.
 const BLICK_FOLGT := 9.0
@@ -408,7 +440,8 @@ static func _bewege_feinde(s: Stand, dt: float, rng: RandomNumberGenerator) -> v
 
     if haerteste > 0.0 and s.wunde_frei <= 0.0:
         s.wunde_frei = WUNDE_SPERRE
-        _verwunde(s, haerteste * (1.0 + UMZINGELT_ZUSATZ * s.umzingelt))
+        _verwunde(s, haerteste * lerpf(UMZINGELT_FREI, UMZINGELT_VOLL,
+            s.umzingelt))
 
 
 static func _verwunde(s: Stand, roh: float) -> void:

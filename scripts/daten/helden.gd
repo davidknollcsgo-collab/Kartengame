@@ -35,8 +35,24 @@ const STARTWAFFE: PackedInt32Array = [
 ## Die Eigenart, als vier Faktoren - aber je Held ist hoechstens einer davon
 ## ungleich eins (der Hammertraeger zahlt seinen Schaden mit Tempo, und das
 ## ist der einzige Handel im Satz).
+##
+## **Die Weite des Bogenschuetzen stand auf 1,30 und tat nichts.** Seine
+## Startwaffe ist die Armbrust, und die reicht ohnehin 520 Punkte weit -
+## dreissig Prozent mehr auf eine Weite, die schon ueber das ganze Bild geht,
+## sind keine Eigenart, sondern eine Zahl. Gemessen war er der einzige Held,
+## der die ersten drei Minuten nicht ueberstand, und zwar schon **bevor** es
+## die Umzingelung gab: bei einer von drei Saaten fiel er nach 167 Sekunden.
+## Mit 1,60 traegt der Faktor, sobald er die zweite Waffe aufnimmt - gemessen
+## stieg er von 425 auf 607 Erschlagene und von 210 auf 234 Sekunden.
+##
+## Es bleibt ein **offener Posten**: eine von drei Saaten faellt er weiter
+## vor der dritten Minute. Die Ursache ist nicht sein Faktor, sondern sein
+## Anfang - die Armbrust ist die einzige Startwaffe ohne Flaeche
+## (`Waffen.BREITE` null, `ZAHL` eins), und in der ersten Minute duennt er
+## die Horde damit nicht aus. Das gehoert in einen eigenen Durchgang und
+## nicht in eine Zahl hier.
 const LEBEN_FAKTOR: PackedFloat32Array = [1.25, 1.00, 1.00, 1.00]
-const WEITE_FAKTOR: PackedFloat32Array = [1.00, 1.30, 1.00, 1.00]
+const WEITE_FAKTOR: PackedFloat32Array = [1.00, 1.60, 1.00, 1.00]
 const TEMPO_FAKTOR: PackedFloat32Array = [1.00, 1.00, 1.12, 0.92]
 const SCHADEN_FAKTOR: PackedFloat32Array = [1.00, 1.00, 1.00, 1.20]
 

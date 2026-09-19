@@ -78,7 +78,16 @@ func band(mitte: PackedVector2Array, halb: PackedFloat32Array,
             lauf = Vector2.RIGHT
         var quer := lauf.normalized().orthogonal()
         var h: float = halb[mini(i, halb.size() - 1)]
-        var d: float = deckung[mini(i, deckung.size() - 1)]
+        # **Eine leere Deckungsliste heisst voll deckend, nicht unsichtbar.**
+        # Vorher stand hier `deckung[mini(i, deckung.size() - 1)]`, und bei
+        # leerer Liste ist das `deckung[-1]`: der Zugriff geht daneben, `d`
+        # wird null, und die Figur wird mit Deckung null in das Netz
+        # geschrieben - gerechnet, gezeichnet, im Bild nicht vorhanden. Der
+        # Druckring lief so eine Runde lang durch alle Messungen (in 66 % der
+        # Bilder gesetzt) und war auf keinem Schuss zu sehen.
+        var d := 1.0
+        if not deckung.is_empty():
+            d = deckung[mini(i, deckung.size() - 1)]
         for r in breit:
             _punkte.append(mitte[i] + quer * (h * REIHEN[r]))
             _farben.append(Color(farbe.r, farbe.g, farbe.b,

@@ -305,14 +305,19 @@ func _zeichne_druck() -> void:
     var rx := HELD_HOEHE * 0.46
     var ry := HELD_HOEHE * 0.17
     var hoch := HELD_HOEHE * 0.04
-    var farbe := Color(ZINNOBER.r, ZINNOBER.g, ZINNOBER.b, 0.30 + 0.60 * u)
-    var dick := HELD_HOEHE * (0.014 + 0.026 * u)
+    # **Kraeftig genug, um es zu sehen.** Der erste Anlauf zeichnete
+    # Haarstriche von knapp vier Punkten Breite bei dreissig Prozent Deckung:
+    # im Schuss war neben dem Helden nichts zu erkennen, obwohl der Ring
+    # gerechnet wurde. Ein Zeichen, das man suchen muss, zeigt nichts an.
+    var farbe := Color(ZINNOBER.r, ZINNOBER.g, ZINNOBER.b, 0.50 + 0.45 * u)
+    var dick := HELD_HOEHE * (0.030 + 0.045 * u)
     var stuecke := 6
     for i in Gefecht.SEKTOREN:
         if (s.druck_faecher & (1 << i)) == 0:
             continue
         var mitte := PackedVector2Array()
         var halb := PackedFloat32Array()
+        var deck := PackedFloat32Array()
         for k in stuecke:
             var t := float(k) / float(stuecke - 1)
             # Mit Luecke zum Nachbarn. Acht Striche ohne Luecke sind ein
@@ -320,7 +325,8 @@ func _zeichne_druck() -> void:
             var w := (float(i) + 0.14 + 0.72 * t) * TAU / float(Gefecht.SEKTOREN) - PI
             mitte.append(s.ort + Vector2(cos(w) * rx, sin(w) * ry - hoch))
             halb.append(dick * (0.18 + 0.82 * sin(t * PI)))
-        _tu.band(mitte, halb, farbe, PackedFloat32Array())
+            deck.append(1.0)
+        _tu.band(mitte, halb, farbe, deck)
 
 
 ## --- Was das Bedienbild fragt ---

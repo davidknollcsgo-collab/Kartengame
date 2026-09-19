@@ -102,6 +102,7 @@ xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 720x1600 \
 | `--held <n>` | beginnt sofort einen Lauf mit diesem Helden |
 | `--zeit <s>` | rechnet s Sekunden Gefecht mit festem Takt vor |
 | `--stufen <n>` | setzt alle vier Bauten auf Stufe n **und den Beutel** |
+| `--lage <n>` | zeigt Titel (0), Burg (3), Beutel (4) statt des Laufs |
 
 **`--zeit` führt `Daumen`**, denselben simulierten Daumen wie `tools/probe.gd`.
 Ohne ihn zeigte jeder Schuss denselben Stillstandstod nach vierzehn Sekunden.
@@ -121,87 +122,128 @@ setzt, zeigt ein Spiel, das es nicht gibt.
    bestimmt, was es kostet; damit bleibt ein Ritter gefährlicher als ein
    Strolch, und zwanzig Strolche sind nicht zwanzigmal ein Strolch.
 
-2. **Waffen zielen auf den Nächsten, nicht in die Laufrichtung.** In einem
+2. **Nicht wie viele anliegen kostet, sondern aus wie vielen Richtungen**
+   (`Gefecht.DRUCK_RADIUS`, `SEKTOREN`, `UMZINGELT_FREI`/`_VOLL`). Der Deckel aus
+   1 behob den Sofort-Tod und nahm dabei jeden Grund, sich zu bewegen:
+   gemessen hielt Stehenbleiben 465 s und Laufen 473 — die einzige Eingabe
+   des Spiels bewirkte nichts. Der Grundwert wird deshalb mit den besetzten
+   Fächern multipliziert; zwanzig Strolche auf einer Seite sind so teuer wie
+   einer, acht rundum das Dreifache. **Schaden fällt weiter nur bei
+   Berührung** — der Ring sagt, wie schlimm es ist, die Berührung sagt, dass
+   es passiert. Und die Zahl steht im Bild (`Stand.umzingelt`): eine Strafe,
+   die man nicht kommen sieht, ist keine Regel, sondern ein Unfall.
+   **Der Faktor spannt um die Eins** — aus einer Richtung kostet es die
+   Hälfte, rundum das Vierfache. Als reiner Aufschlag obendrauf war die Regel
+   nur eine Verteuerung und kostete alle vier Helden ein Fünftel ihrer Zeit;
+   wer eine Flanke freihält, soll nicht verschont, sondern belohnt werden.
+
+3. **Waffen zielen auf den Nächsten, nicht in die Laufrichtung.** In einem
    Genre, dessen ganze Bewegung Fliehen ist, zeigt der Laufweg *von* der
    Horde weg. Gemessen: 130 Sekunden, 180 Hiebe, **sieben** Erschlagene.
    Ausnahme ist der Speer — siehe 3.
 
-3. **Der Speer stößt nach hinten.** Er war als der eine Zug entworfen, der
+4. **Der Speer stößt nach hinten.** Er war als der eine Zug entworfen, der
    nach dem Laufweg fragt, und stieß nach vorn: zwei Erschlagene in zwei
    Minuten. Die Frage war richtig, die Antwort stand andersherum — er spießt
    auf, was sich an die Fersen heftet. Damit ist er die einzige Waffe, die
    belohnt, dass man gerade flieht.
 
-4. **Eine Sorte, die man am Verhalten nicht erkennt, ist keine.** Vier
+5. **Eine Sorte, die man am Verhalten nicht erkennt, ist keine.** Vier
    Verhalten (läuft / hält Abstand / stürmt / treibt), und zwei Sorten mit
    demselben Sinn müssen sich deutlich in Tempo oder Zähigkeit unterscheiden.
    Ein Feind mit mehr Leben wäre derselbe Feind mit mehr Wartezeit.
 
-5. **Sorten treten gestaffelt ein** (`Andrang.AB`), mindestens
+6. **Sorten treten gestaffelt ein** (`Andrang.AB`), mindestens
    `NEULING_FENSTER` auseinander, und die jüngste kommt in ihrer ersten
    halben Minute doppelt so oft. Wer in der ersten Minute alles trifft, lernt
    keine Sorte — er lernt nur, dass es voll ist.
 
-6. **Jeder Held hat genau eine Eigenart.** Ein Held mit fünf kleinen
+7. **Jeder Held hat genau eine Eigenart.** Ein Held mit fünf kleinen
    Vorteilen fühlt sich an wie der Grundheld mit Rauschen. Freigeschaltet
    wird an Taten, nicht an Sold — wer Abwechslung kaufen kann, kauft sie am
    ersten Tag.
 
-7. **Jedes Ausrüstungsstück wirkt auf genau einen Wert**, aus demselben Grund.
+8. **Jedes Ausrüstungsstück wirkt auf genau einen Wert**, aus demselben Grund.
    Und `Ausruestung.summe()` gibt ohne alles genau eins zurück, damit
    `Gefecht.baue()` bedingungslos multiplizieren kann und niemand ein `if`
    vergisst.
 
-8. **Der Aufstieg bietet nie dreimal dasselbe** und bei vollen Plätzen nur
+9. **Der Aufstieg bietet nie dreimal dasselbe** und bei vollen Plätzen nur
    noch Stufen. Drei Buffs nebeneinander sind keine Wahl; ein Angebot, das
    man nicht annehmen kann, ist ein verschenkter Aufstieg.
 
-9. **Man beginnt mit genau einer Waffe**, der seines Helden. Ohne eine
+10. **Man beginnt mit genau einer Waffe**, der seines Helden. Ohne eine
    schlägt man die erste halbe Minute gar nichts; mit zweien hat der erste
    Aufstieg nichts mehr zu sagen.
 
-10. **Einkommen und Kosten wachsen mit derselben Rate.** `Halle.ertrag()`
+11. **Einkommen und Kosten wachsen mit derselben Rate.** `Halle.ertrag()`
     **ist** `rundenkosten()` geteilt durch `LAEUFE_JE_RUNDE`. Geprüft wird die
     Ableitung selbst und nicht ein Verhältnis: ein Verhältnis zu prüfen hieße,
     die Rundung bei kleinen Zahlen für eine Abweichung zu halten.
 
-11. **Kein Ausbau verschlechtert etwas**, über alle 25 Stufen. Eine Kurve mit
+12. **Kein Ausbau verschlechtert etwas**, über alle 25 Stufen. Eine Kurve mit
     einem Exponenten über eins kippt am Ende, und niemand sieht es, weil
     niemand die fünfundzwanzigste Stufe spielt.
 
-12. **Eine Dauerwaffe rechnet Schaden je Zeit, nicht je Bild.** Hängt der
+13. **Eine Dauerwaffe rechnet Schaden je Zeit, nicht je Bild.** Hängt der
     Flegel am Takt, ist er auf einem 120-Hz-Telefon doppelt so stark — und
     eine Einstellung im Anzeigemenü verstellte den Schwierigkeitsgrad.
 
-13. **Nach y sortiert zeichnen.** In einem Bild ohne Perspektive ist die
+14. **Nach y sortiert zeichnen.** In einem Bild ohne Perspektive ist die
     Zeichenreihenfolge die einzige Tiefe, die es gibt; ohne sie steht ein
     Feind vor dem Helden, der hinter ihm ist.
 
-14. **Der Held wird freigestellt.** Eine Fläche in Pergamentton unter ihm,
+15. **Der Held wird freigestellt.** Eine Fläche in Pergamentton unter ihm,
     etwas größer als er — im leeren Feld unsichtbar, im Gedränge steht er in
     einer Lücke. Es ist die einzige Stelle im Spiel, an der Pergament über
     Tusche liegt. Ein heller Saum *unter* der Figur (der erste Anlauf) macht
     sie blass statt auffindbar.
 
-15. **Der Stick sitzt, wo der Daumen aufsetzt.** Kein fester Knüppel an einer
+16. **Der Stick sitzt, wo der Daumen aufsetzt.** Kein fester Knüppel an einer
     Ecke — auf einem Telefon hält niemand den Daumen dort, wo ein Entwerfer
     ihn hingelegt hat.
 
-16. **Im Lauf gehört der Finger dem Helden** — außer beim Aufstieg. Ein Knopf,
+17. **Im Lauf gehört der Finger dem Helden** — außer beim Aufstieg. Ein Knopf,
     der einen Zug verschluckt, kostet Leben.
 
-17. **Kein Angebot nach einer Niederlage.** Der Bericht hat zwei Wege.
+18. **Kein Angebot nach einer Niederlage.** Der Bericht hat zwei Wege.
 
-18. **`get_display_safe_area()` nur auf dem Telefon fragen** und jeden Rand auf
+19. **`get_display_safe_area()` nur auf dem Telefon fragen** und jeden Rand auf
     12 % der Bildkante deckeln: auf dem Schreibtisch liefert sie den ganzen
     Bildschirm und nicht das Fenster.
 
-19. **Der Ton wird gemessen, nicht gehört.** Anfang und Ende jedes Puffers
+20. **Der Ton wird gemessen, nicht gehört.** Anfang und Ende jedes Puffers
     stehen konstruktionsbedingt auf null (`_huelle`); ein Puffer, der bei
     halber Auslenkung einsetzt, ist ein Knacks und kein Schlag. Und er wird
     **gedrosselt**: in Minute neun fallen dreißig Feinde je Sekunde.
 
 ## Was beim Bau gelernt wurde
+
+**Ein Messstand, der bei gleicher Saat andere Zahlen liefert, misst gar
+nichts.** `Gunst.ziehe()` mischte seinen Topf mit `Array.shuffle()`, und der
+greift auf Godots **globalen** Generator zu statt auf den übergebenen `rng`.
+Damit war kein Lauf wiederholbar: zwei Messungen mit denselben Saaten meldeten
+für dasselbe Stehenbleiben einmal 232 und einmal 300 Sekunden, und mehrere
+Balance-Befunde dieser Session waren Rauschen. In einem Repository, dessen
+ganze Balance auf gesäten Vergleichen steht, ist das kein Detail. **Jede
+Ziehung im Kern nimmt den übergebenen `rng`** — `shuffle()`, `pick_random()`
+und `randi()` ohne Empfänger gehören nicht nach `scripts/kern/` oder
+`scripts/daten/`.
+
+**Eine Strafe für eine Lage, die das Spiel nie herstellt, ist ein toter
+Buchstabe.** Der Druckring stand zuerst bei 110 Punkten, knapp außerhalb der
+Berührung. Gezählt standen darin im Mittel **0,8 Feinde**, und alle acht
+Fächer waren in **0,0 %** der Bilder besetzt — die Waffen räumen den Ring
+schneller, als die Horde ihn füllt. Die Mechanik war richtig gebaut und feuerte
+auf nichts. Erst die Messung über 110/180/260/340/420 fand die Weite, bei der
+Stehen und Laufen am weitesten auseinanderliegen. **Bevor man an einer Zahl
+dreht, misst man, ob die Regel überhaupt greift.**
+
+**Eine Messung, die an eine Decke stößt, ist keine.** Der gestellte
+Umzingelungstest ließ den Helden mit hundert Leben antreten: rundum war er nach
+der halben Zeit tot, danach fiel kein Schaden mehr, und acht Feinde rundum
+meldeten denselben Wert wie acht auf einer Flanke. Nicht die Mechanik war
+stumpf, sondern das Messgerät voll.
 
 **Eine Einzelmessung aus einer streuenden Verteilung ist ein Zug und kein
 Befund** — und dieses Genre streut enorm. Derselbe Stand meldete für den
@@ -249,6 +291,24 @@ Engine, nicht eines Spiels):
 Deshalb sammelt `Tusche` alles in **ein** Dreiecksnetz: eine Figur, ein
 Aufruf. Bei hundertfünfzig Feinden ist das keine vorgezogene Optimierung,
 sondern die Form, in der dieses Bild überhaupt bezahlbar ist.
+
+**`Tusche` sammelt, `draw_string` nicht.** Der Pinsel häuft alles in einem
+Netz an und spült es am Ende in **einem** Aufruf; `draw_string` geht sofort
+aufs Blatt. Damit lag jede Beschriftung **unter** ihrer eigenen Tafel — und
+eine Tafel ist ein Pergamentwisch mit zweiundsechzig Prozent Deckung. Im Bild
+stand auf jedem Knopf und jeder Karte graue Schrift, wo schwarze stehen sollte,
+und die Baukosten in der Burg sahen aus, als könne man sie sich nicht leisten.
+**Wer neben Tusche zeichnet, sammelt mit** (`zug_hud.gd._worte`).
+
+**Eine Beschriftung, die breiter ist als das, was sie beschriftet, ist keine.**
+Der Satz des Bogenschützen lief über den Rand seiner Karte und rechts aus dem
+Bild. Gekürzt wird nicht — ein abgeschnittener Satz sagt weniger als ein
+kleinerer; die Größe fällt, bis er hineingeht (`_zeile_eng`).
+
+**Ein Schirm, der oben klebt, ist für ein anderes Gerät entworfen.** Die Menüs
+waren von oben gesetzt und standen auf einem 720x1600-Telefon im oberen
+Drittel, darunter ein leeres Viertel Pergament. Der Block sitzt mittig in dem,
+was da ist (`_luft`); wird es eng, klebt er wieder oben.
 
 **Wenn im Bild etwas steht, das keine Zeichnung erklärt**, ist der nächste
 Schritt nicht Nachdenken, sondern **einen Knoten stillstellen und noch einmal
