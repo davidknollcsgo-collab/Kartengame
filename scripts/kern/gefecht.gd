@@ -260,8 +260,27 @@ static func sog_von(s: Stand) -> float:
 ## Die Reichweite einer Waffe, mit dem Helden darin. Sie steht hier und nicht
 ## bei `Waffen`, weil erst hier bekannt ist, wer sie fuehrt - und ein
 ## Bogenschuetze, dessen Vorteil nur im Bild steht, hat keinen.
+##
+## **Die kreisende Waffe bleibt aussen vor** - siehe `bahn_von()` darunter.
 static func weite_von(s: Stand, w: int) -> float:
     return Waffen.weite(w, s.waffe_stufe(w)) * s.weite_faktor
+
+
+## Der Bahnradius der kreisenden Waffe - **ohne** den Helden darin.
+##
+## Der Flegel fuehrt in `Waffen.WEITE` keine Reichweite, sondern seinen
+## Bahnradius, und der ist seine ganze Aussage: *lass sie nah heran*. Er lag
+## einmal bei 96, das Gedraenge steht bei rund vierzig, und er traf fast nie
+## (37 Erschlagene gegen 268 bei der Axt); auf 70 gezogen wurde er zur Waffe.
+##
+## `weite_faktor` haette ihn genau dorthin zurueckgeschoben. Er kommt
+## ausschliesslich aus `Helden.WEITE_FAKTOR` - keine Ausruestung, kein Zug
+## speist ihn -, also traf das **genau einen Helden**: der Bogenschuetze
+## kreiste mit 1,60 auf 112 statt auf 70. Eine Heldeneigenart, die eine von
+## sechs Waffen schlechter macht, ist eine Falle, die der Spieler nicht sehen
+## kann. Eine Bahn ist keine Reichweite, die man verlaengert.
+static func bahn_von(s: Stand, w: int) -> float:
+    return Waffen.weite(w, s.waffe_stufe(w))
 
 
 ## --- Der Schritt ---
@@ -577,7 +596,9 @@ static func _schlage(s: Stand, w: int, stufe: int, rng: RandomNumberGenerator) -
 
 static func _flegel(s: Stand, w: int, stufe: int, dt: float) -> void:
     var zahl := Waffen.zahl(w, stufe)
-    var weite := weite_von(s, w)
+    # **`bahn_von`, nicht `weite_von`** - die Bahn traegt die Aussage der
+    # Waffe und nicht die Reichweite ihres Traegers.
+    var weite := bahn_von(s, w)
     var schaden := schaden_von(s, w) * dt / maxf(0.05, Waffen.takt(w, stufe))
     # Der Kopf ist so gross wie ein Feind breit ist: kleiner faehrt er
     # zwischen ihnen hindurch, ohne etwas zu beruehren.

@@ -281,7 +281,10 @@ func _zeichne_held() -> void:
     # eine Wirkung: was Schaden macht, muss man sehen.
     var stufe := s.waffe_stufe(Waffen.Art.FLEGEL)
     if stufe > 0:
-        var weite := Gefecht.weite_von(s, Waffen.Art.FLEGEL)
+        # `bahn_von`, dieselbe Rechnung wie im Gefecht. Zwei Rechnungen
+        # waeren zwei Wahrheiten, und dann schlaegt der Flegel woanders zu,
+        # als er im Bild steht.
+        var weite := Gefecht.bahn_von(s, Waffen.Art.FLEGEL)
         var zahl := Waffen.zahl(Waffen.Art.FLEGEL, stufe)
         for i in zahl:
             var w := s.flegel_winkel + TAU * float(i) / float(zahl)
