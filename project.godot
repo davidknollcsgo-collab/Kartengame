@@ -3,13 +3,13 @@ config_version=5
 
 [application]
 
-config/name="Hundred Cuts"
-config/description="A duel of lines. Read the cut, meet the cut, and answer with one of your own."
+config/name="Ten Thousand"
+config/description="One against ten thousand. Your blade swings itself; you choose where to stand and what to become."
 ; **Kommentare hier fangen mit Strichpunkt an.** Mit `#` gesetzt zerreisst es
 ; die Sektion, und Godot meldet "no main scene defined" - was wie ein
 ; fehlender Eintrag aussieht und keiner ist.
 config/version="1.0.0"
-run/main_scene="res://scenes/schnitt.tscn"
+run/main_scene="res://scenes/gefecht.tscn"
 ; Die Zurueck-Taste beendet nicht die App.
 run/flush_stdout_on_print=true
 config/quit_on_go_back=false
@@ -18,8 +18,8 @@ config/features=PackedStringArray("4.5", "GL Compatibility")
 
 [autoload]
 
-Weg="*res://scripts/autoload/weg.gd"
-Stahl="*res://scripts/spiel/stahl.gd"
+Burg="*res://scripts/autoload/burg.gd"
+Klang="*res://scripts/spiel/klang.gd"
 Tastsinn="*res://scripts/spiel/tastsinn.gd"
 
 [display]
@@ -70,14 +70,13 @@ window/frame_pacing/android/swappy_mode=2
 
 textures/vram_compression/import_etc2_astc=true
 
-; **Kein HDR und kein Gluehen.** Das vorige Spiel hing daran: dort war jedes
-; helle Ding eine Lichtquelle. Tusche leuchtet nicht - sie liegt auf Papier,
-; und ein Blueheffekt darauf sieht aus wie ein schlecht belichteter Scan.
-; Der Puffer bleibt damit auch billiger, und die Bildrate bekommt das Fuenftel
-; zurueck, das das Gluehen gekostet hat.
+; **Kein HDR und kein Gluehen.** Ein Holzschnitt leuchtet nicht - er liegt auf
+; Pergament, und ein Blueheffekt darauf sieht aus wie ein schlecht belichteter
+; Scan. Der Puffer bleibt damit auch billiger, und das zaehlt hier doppelt:
+; in Minute neun stehen hundert Figuren im Bild.
 viewport/hdr_2d=false
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
-; Das Blatt. Es ist kein Weiss: Papier hat einen Ton, und ohne ihn sieht jede
-; Tusche darauf aus, als waere sie ausgeschnitten.
-environment/defaults/default_clear_color=Color(0.937, 0.918, 0.871, 1)
+; Pergament. Es ist kein Weiss und kein Grau: Pergament ist warm, und ohne
+; diesen Ton sieht jede Tusche darauf aus, als waere sie ausgeschnitten.
+environment/defaults/default_clear_color=Color(0.898, 0.855, 0.757, 1)

@@ -192,6 +192,35 @@ func klecks(ort: Vector2, radius: float, farbe: Color, saat := 0) -> void:
         _index.append(basis + 1 + (i + 1) % ecken)
 
 
+## **Schraffur** - der Unterschied zwischen Tuschemalerei und Holzschnitt.
+##
+## Ein Holzschnitt kennt keine Graustufen: er hat Schwarz, er hat Weiss, und
+## dazwischen hat er **Striche, die man zaehlen kann**. Ein Schatten entsteht
+## dort, wo sie dichter liegen.
+##
+## Gezeichnet wird zwischen zwei Punkten quer zur Achse, `zahl` Striche, mit
+## abnehmender Laenge zu den Enden - so bekommt die Flaeche eine Form und
+## wird nicht zum Gitter. Kostet nichts extra: alles landet im selben Netz.
+func schraffur(a: Vector2, b: Vector2, breite: float, zahl: int,
+        farbe: Color, staerke := 1.6) -> void:
+    if zahl <= 0:
+        return
+    var achse := b - a
+    if achse.length_squared() < 0.01:
+        return
+    var quer := achse.orthogonal().normalized()
+    for i in zahl:
+        var t := (float(i) + 0.5) / float(zahl)
+        var mitte := a + achse * t
+        # Zu den Enden hin kuerzer: eine Schraffur gleicher Laenge ist ein
+        # Rechteck, und ein Rechteck ist keine Woelbung.
+        var halb := breite * 0.5 * sin(t * PI)
+        if halb < 0.4:
+            continue
+        zug(mitte - quer * halb, mitte + quer * halb, staerke, farbe,
+            0.5, 0.0, 0.0, 3)
+
+
 ## **Ein Wisch** - die graue Lavierung, aus der Tiefe entsteht. Sehr breit,
 ## sehr blass: sie soll Raum andeuten und nicht als Form gelesen werden.
 func wisch(a: Vector2, b: Vector2, breite: float, farbe: Color) -> void:

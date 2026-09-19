@@ -7,7 +7,7 @@ Zweck ist nicht Ordnungsliebe. Bei einer Copyright-Beschwerde gegen eine
 Play-Store-App ist dieses Dokument der Nachweis der Herkunft. Ohne es steht
 Aussage gegen Aussage, und die App ist in der Zwischenzeit offline.
 
-## Herkunft von HUNDRED CUTS
+## Herkunft von TEN THOUSAND
 
 Das Spiel ist **vollständig in diesem Repository entstanden**. Es gibt kein
 Vorbild, von dem etwas übernommen wurde — weder Code noch Grafik, Ton,
@@ -22,10 +22,10 @@ kein Original in einem Grafikprogramm, weil es keines gibt.
 **Kein Reverse Engineering, kein Asset-Rip, kein Nachzeichnen nach Vorlage.**
 Auch das Abmalen erzeugt eine Bearbeitung und ist ohne Zustimmung unzulässig.
 
-Vorgänger dieses Repositories war NEKTON, ein Tiefsee-Spiel desselben Autors.
-Es ist gelöscht; aus ihm stammen weder Assets noch Zeichnungen. Was aus ihm
-weitergilt, sind gemessene Eigenschaften der Engine und der Umgebung, und
-die stehen in `CLAUDE.md`.
+Vorgänger dieses Repositories waren NEKTON (Tiefsee) und HUNDRED CUTS (ein
+Timing-Duell), beide vom selben Autor. Beide sind gelöscht; aus ihnen stammen
+weder Assets noch Zeichnungen. Was aus ihnen weitergilt, sind gemessene
+Eigenschaften der Engine und der Umgebung, und die stehen in `CLAUDE.md`.
 
 ## Regeln
 
@@ -47,11 +47,11 @@ keinen Shader mehr — Tusche braucht keinen:
 
 | Was | Wo |
 |---|---|
-| Der Pinsel selbst: Strich, Strang, Klecks, Wisch | `scripts/spiel/tusche.gd` |
-| Die Fechter: Skelett, Haltungen, Gewand, Klinge | `scripts/spiel/fechter.gd` |
-| Das Blatt: Sonnenscheibe, Dunst, Bodenstrich, Gräser, Faser | `scripts/spiel/buehne.gd` |
-| Führungslinien, Spritzer, Wischspur, Bühnenbild | `scripts/spiel/schnitt_lauf.gd` |
-| Bedienbild, Knöpfe, Wundenstriche, Schulschirm | `scripts/spiel/schnitt_hud.gd` |
+| Der Pinsel selbst: Band, Zug, Strang, Klecks, Schraffur, Wisch | `scripts/spiel/tusche.gd` |
+| Held und Feinde: Masse, Glieder, Sparfassung, Freistellung | `scripts/spiel/streiter.gd` |
+| Das Pergament: Faser, Flecken, Gräser, Sold | `scripts/spiel/feld.gd` |
+| Waffenspuren, Funken, Druckring, Zeichenreihenfolge nach y | `scripts/spiel/zug_lauf.gd` |
+| Bedienbild, Tafeln, Knöpfe, Balken, Aufstiegskarten | `scripts/spiel/zug_hud.gd` |
 
 Das ist Absicht und nicht nur eine Frage der Dateigröße: prozedural erzeugte
 Optik hat genau eine Quelle — dieses Repository. Diese Dateien sind selbst
@@ -79,12 +79,14 @@ entstehen aus demselben Werkzeug und derselben `Schlund.beleuchtung()`.
 ## Ton
 
 **Keine einzige Audiodatei im Projekt.** Alles entsteht zur Laufzeit in
-`scripts/spiel/stahl.gd` als `AudioStreamWAV` mit von Hand gefüllten Puffern:
-der Holzschlag des Ansatzes, Stahl auf Stahl bei der Parade, das Zischen des
-Schnitts, der dumpfe Schlag einer Wunde, der Fall, der Trommelschlag zur Ronde
-und das Tippen im Menü. Metall entsteht dabei aus **unharmonischen**
-Teiltönen — ganzzahlige Vielfache klingen nach Ton, krumme nach Blech.
-Null Audiodateien heißt null Lizenzrisiko.
+`scripts/spiel/klang.gd` als `AudioStreamWAV` mit von Hand gefüllten Puffern:
+der Hieb, der Treffer, der Bolzen, die Wunde, das Geldstück, der Aufstieg,
+das Horn des Warlords und das Tippen im Menü. Metall entsteht dabei aus
+**unharmonischen** Teiltönen — ganzzahlige Vielfache klingen nach Ton, krumme
+nach Blech. Anfang und Ende jedes Puffers stehen konstruktionsbedingt auf
+null; ein Puffer, der bei halber Auslenkung einsetzt, ist ein Knacks und kein
+Schlag. Gedrosselt wird auch — in Minute neun fallen dreißig Feinde je
+Sekunde. Null Audiodateien heißt null Lizenzrisiko.
 
 | Datei | Herkunft | Autor | Lizenz | Quelle | Datum |
 |---|---|---|---|---|---|

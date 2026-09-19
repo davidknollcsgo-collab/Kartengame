@@ -63,7 +63,7 @@ jobs:
         run: godot --headless --path . --script tools/lizenzcheck.gd
 
       # **Der Testlauf allein beweist nicht, dass das Spiel läuft.** Er lädt
-      # `schnitt_lauf.gd`, `schnitt_hud.gd`, `buehne.gd` und `fechter.gd` nie
+      # `zug_lauf.gd`, `zug_hud.gd`, `feld.gd` und `streiter.gd` nie
       # - ein `--script`-Lauf kennt keine Autoloads und keine Szene. Ein
       # Parse-Fehler in einer dieser Dateien bleibt dort grün, und das Spiel
       # startet dann *scheinbar*. Genau das ist beim Neubau zweimal passiert,
@@ -82,3 +82,11 @@ jobs:
             exit 1
           fi
           echo "Das Spiel startet sauber."
+
+      # Der Messstand: vier Helden ueber drei Burgstufen, volle Laeufe. Er
+      # faellt nicht ueber Balance - dafuer streut dieses Genre zu stark und
+      # eine Einzelmessung waere ein Wurf. Er faellt darueber, dass ein
+      # voller Lauf ueberhaupt bis zum Warlord durchrechnet, und seine Zahlen
+      # stehen im Protokoll, wenn jemand eine Aenderung nachschlagen will.
+      - name: Volle Laeufe
+        run: godot --headless --path . --script tools/probe.gd
