@@ -86,6 +86,19 @@ const UMZINGELT_VOLL := 4.0
 ## Zeiger, gar nicht wäre ein Schild.
 const BLICK_FOLGT := 9.0
 
+## Wie weit der Gefaehrte neben dem Helden laeuft, wie schnell er aufschliesst,
+## wie weit und wie oft er zuschlaegt.
+##
+## **Er laeuft seitlich, nicht hinterher.** Ein Begleiter in der Spur des
+## Helden steht immer dort, wo gerade niemand ist - man flieht ja nach vorn,
+## und was gefaehrlich wird, steht vorn und an den Flanken. Seitlich deckt er
+## eine Flanke, und das ist zugleich seine Aussage.
+const GEFAEHRTE_ABSTAND := 58.0
+const GEFAEHRTE_TEMPO := 1.35
+const GEFAEHRTE_WEITE := 104.0
+const GEFAEHRTE_TAKT := 0.85
+const GEFAEHRTE_RADIUS := 15.0
+
 ## Wie weit der Sog den Sold heranzieht, wenn er einmal gefasst ist.
 const SOLD_ZUG := 620.0
 ## Ein Geldstück liegt nicht ewig. Ohne das häufen sich in Minute neun
@@ -144,6 +157,21 @@ class Geschoss extends RefCounted:
     var lebt := true
 
 
+## **Ein Gefaehrte.** Er laeuft mit, haelt eine Flanke und schlaegt, was ihm
+## nahe kommt.
+##
+## **Er hat kein Leben.** Ein Begleiter, der faellt, macht aus einem Aufstieg
+## eine Ausgabe, die spaeter verfaellt - und der Spieler kann ihn nicht
+## schuetzen, weil der Finger dem Helden gehoert. Was man gewaehlt hat, bleibt.
+class Gefaehrte extends RefCounted:
+    var ort := Vector2.ZERO
+    var platz := 0
+    var takt_frei := 0.0
+    ## Rein fuer das Bild.
+    var blick := 1.0
+    var schlag := 0.0
+
+
 class Muenze extends RefCounted:
     var ort := Vector2.ZERO
     var wert := 1
@@ -182,6 +210,7 @@ class Stand extends RefCounted:
     var takte := {}           ## Art -> Sekunden bis zum nächsten Schlag
     var flegel_winkel := 0.0
 
+    var gefaehrten: Array[Gefaehrte] = []
     var feinde: Array[Feind] = []
     var geschosse: Array[Geschoss] = []
     var muenzen: Array[Muenze] = []
@@ -297,6 +326,7 @@ static func schritt(s: Stand, dt: float, eingabe: Vector2,
     _speise_nach(s, dt, rng)
     _bewege_feinde(s, dt, rng)
     _fuehre_waffen(s, dt, rng)
+    _fuehre_gefaehrten(s, dt)
     _bewege_geschosse(s, dt)
     _raeume_auf(s, dt)
     _sammle(s, dt)
@@ -648,6 +678,90 @@ static func _naechste(s: Stand, weite: float, zahl: int) -> Array:
     nah.sort_custom(func(a, b):
         return a.ort.distance_squared_to(s.ort) < b.ort.distance_squared_to(s.ort))
     return nah.slice(0, maxi(1, zahl))
+
+
+## **Die Gefaehrten.** Sie werden hier erzeugt und gefuehrt, nicht beim
+## Aufstieg: so gibt es genau einen Ort, an dem ihre Zahl aus der Stufe
+## folgt, und ein Spielstand kann gar nicht mit der falschen Zahl dastehen.
+static func _fuehre_gefaehrten(s: Stand, dt: float) -> void:
+    var soll := Gunst.gefaehrten(s.zug_stufe(Gunst.Zug.GEFAEHRTE))
+    while s.gefaehrten.size() < soll:
+        var g := Gefaehrte.new()
+        g.platz = s.gefaehrten.size()
+        g.ort = s.ort
+        s.gefaehrten.append(g)
+    while s.gefaehrten.size() > soll:
+        s.gefaehrten.pop_back()
+    if s.gefaehrten.is_empty():
+        return
+
+    var schaden := Gunst.gefaehrte_schaden(s.zug_stufe(Gunst.Zug.GEFAEHRTE)) \
+        * s.schaden_faktor
+    var zahl := s.gefaehrten.size()
+    # **Er deckt den Rueckzug - und nur den.**
+    #
+    # Der erste Entwurf liess ihn immer schlagen. Gemessen hob das die Zeit
+    # des **Stehenden** von 323 auf 432 Sekunden und senkte die des
+    # Laufenden von 552 auf 464: das Verhaeltnis aus
+    # `_test_stehenbleiben_verliert` sprang auf 0,931. Der Grund steht bei
+    # `Waffen.BREITE` ausfuehrlich - zusaetzliche Feuerkraft nuetzt dem
+    # Eingeschlossenen mehr als dem Fliehenden, weil er rundum Ziele hat.
+    #
+    # Also bekommt er die Aussage, die zu ihm passt: *er haelt dir den
+    # Ruecken frei*. Wer nicht zurueckweicht, hat keinen Ruecken, den
+    # jemand halten koennte - dann steht er nur dabei. Damit ist er der
+    # einzige Zug, der wie der Speer nach dem Laufweg fragt, und er
+    # belohnt dieselbe Sache.
+    var weicht := s.lauf.length_squared() > 0.02
+    for g in s.gefaehrten:
+        # Sein Platz liegt hinten seitlich - dort, wo die Verfolger sind.
+        var achse := -s.lauf.normalized() if weicht else s.blick
+        var w := PI * 0.5 + PI * (float(g.platz) / maxf(1.0, float(zahl - 1)) - 0.5) \
+            if zahl > 1 else PI * 0.5
+        var seite := achse.rotated(w if g.platz % 2 == 0 else -w)
+        var ziel := s.ort + seite * GEFAEHRTE_ABSTAND
+
+        # **Er bricht zu einem Feind aus, der ihm nahe kommt** - aber nur bis
+        # an seine Leine. Ein Begleiter, der frei jagt, laeuft aus dem Bild.
+        var nah := _naechste_zu(s, g.ort, GEFAEHRTE_WEITE * 1.4) if weicht else null
+        if nah != null:
+            ziel = ziel.lerp(nah.ort, 0.55)
+
+        var zu := ziel - g.ort
+        if zu.length() > 1.0:
+            g.ort += zu.normalized() * minf(zu.length(),
+                tempo_von(s) * GEFAEHRTE_TEMPO * dt)
+        if absf(zu.x) > 1.0:
+            g.blick = 1.0 if zu.x >= 0.0 else -1.0
+
+        g.schlag = maxf(0.0, g.schlag - dt)
+        g.takt_frei -= dt
+        if g.takt_frei > 0.0 or not weicht:
+            continue
+        var ziel_f := _naechste_zu(s, g.ort, GEFAEHRTE_WEITE)
+        if ziel_f == null:
+            continue
+        g.takt_frei = GEFAEHRTE_TAKT
+        g.schlag = 0.18
+        if absf(ziel_f.ort.x - g.ort.x) > 1.0:
+            g.blick = 1.0 if ziel_f.ort.x >= g.ort.x else -1.0
+        _treffe(s, ziel_f, schaden, (ziel_f.ort - g.ort).normalized())
+
+
+## Der naechste lebende Feind zu einem beliebigen Punkt - der Gefaehrte
+## steht nicht dort, wo der Held steht.
+static func _naechste_zu(s: Stand, ort: Vector2, weite: float) -> Feind:
+    var w2 := weite * weite
+    var beste: Feind = null
+    var nah := w2
+    for f in s.feinde:
+        if not f.lebt:
+            continue
+        var d := f.ort.distance_squared_to(ort)
+        if d < nah:
+            nah = d
+            beste = f
+    return beste
 
 
 static func _bewege_geschosse(s: Stand, dt: float) -> void:

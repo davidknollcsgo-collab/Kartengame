@@ -15,8 +15,9 @@ entscheidet, ist die Aufstellung: wohin man läuft, wen man vor sich lässt,
 wann man durch eine Lücke geht.
 
 Und bei jedem Aufstieg eines von drei Angeboten: eine neue Waffe, eine Stufe
-auf eine alte, oder einen der fünf Züge (Rüstung, Stiefel, Wetzstein,
-Laterne, Zehrung). Nie dreimal dasselbe, nie ein Angebot, das man nicht
+auf eine alte, oder einen der sechs Züge (Rüstung, Stiefel, Wetzstein,
+Laterne, Zehrung — und den **Gefährten**, einen Mann an deiner Seite, der
+eine Flanke hält). Nie dreimal dasselbe, nie ein Angebot, das man nicht
 annehmen kann.
 
 Nach zehn Minuten steht der Warlord da. Danach kommt nichts mehr nach — ein

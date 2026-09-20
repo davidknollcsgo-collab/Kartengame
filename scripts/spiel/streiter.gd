@@ -137,21 +137,63 @@ static func held(tu: Tusche, ort: Vector2, h: float, blick: float,
 ## einer Luecke. Dazu ein Ring am Boden, der sagt, wo er steht.
 ##
 ## Es ist die einzige Stelle im Spiel, an der Pergament ueber Tusche liegt.
+## Die Flaeche unter dem Helden. **Der Ring gehoert nicht hierher** - siehe
+## `standring()`.
 static func frei_gestellt(tu: Tusche, ort: Vector2, h: float,
-        pergament: Color, ring := Palette.HELD) -> void:
+        pergament: Color) -> void:
     var hueft := ort + Vector2(0.0, -h * 0.44)
     var brust := ort + Vector2(0.0, -h * 0.80)
     tu.strang(PackedVector2Array([ort + Vector2(0.0, -h * 0.02), hueft, brust]),
         PackedFloat32Array([h * 0.34, h * 0.40, h * 0.30]), pergament, 7)
     tu.klecks(ort + Vector2(0.0, -h * 0.90), h * 0.13, pergament, int(ort.y))
-    # **Der Standring, und jetzt traegt er die Farbe des Helden.** Vorher
-    # waren es zwei blasse Tuschebogen bei 45 % Deckung - im Gedraenge zwei
-    # graue Striche unter einer von achtzig Figuren. Er ist die Marke, an der
-    # man sich findet, also darf er auch wie eine aussehen.
+
+
+## **Der Standring - die Marke, an der man sich findet.**
+##
+## Er traegt die Farbe des Helden. Vorher waren es zwei blasse Tuschebogen
+## bei 45 % Deckung - im Gedraenge zwei graue Striche unter einer von achtzig
+## Figuren.
+##
+## **Und er wird zuletzt gezeichnet, ueber allem.** Er lag einmal in der
+## y-Sortierung wie eine Figur, und sobald Gefaehrten mitliefen, stand einer
+## davor: drei blaue Maenner nebeneinander und die Marke verdeckt. Eine
+## Figur gehoert in die Tiefe, eine **Marke** nicht - sie beantwortet die
+## Frage *wo bin ich*, und eine Antwort, die verdeckt sein kann, ist keine.
+static func standring(tu: Tusche, ort: Vector2, h: float,
+        ring := Palette.HELD) -> void:
     for s in [-1.0, 1.0]:
         tu.zug(ort + Vector2(h * 0.34 * s, -h * 0.03),
             ort + Vector2(h * 0.08 * s, h * 0.045), h * 0.055,
             ring, 0.5, 0.15, h * 0.03 * s, 5, Palette.UMRISS)
+
+
+## **Ein Gefaehrte - er traegt deine Farben.**
+##
+## Das ist die ganze Antwort auf die Frage, die ein Spieler bei
+## hundertfuenfzig Figuren stellt, sobald etwas neben ihm mitlaeuft: *ist das
+## meiner?* Eine eigene Farbe waere eine achte Sorte, die man sich zusaetzlich
+## merken muss; dieselbe Farbe heisst **dieselbe Seite**, und das muss man
+## niemandem erklaeren.
+##
+## Vom Helden unterscheidet er sich an dem, woran man den Helden findet:
+## er ist deutlich kleiner, hat **keinen Standring**, **keinen Lebensbalken**
+## und wird **nicht freigestellt**. Wer im Gedraenge sucht, sucht den Ring.
+static func gefaehrte(tu: Tusche, ort: Vector2, h: float, blick: float,
+        phase: float, schlag: float, farbe: Color, glanz: Color) -> void:
+    _schatten(tu, ort, h)
+    var hueft := ort + Vector2(0.0, -h * 0.44)
+    var brust := ort + Vector2(h * 0.02 * blick, -h * 0.74)
+    var kopf := ort + Vector2(h * 0.03 * blick, -h * 0.89)
+    _beine(tu, hueft, h, blick, phase, h * 0.135, farbe)
+    _rumpf(tu, hueft, brust, h * 0.20, farbe)
+    tu.klecks(kopf, h * 0.058, farbe, int(ort.x), Palette.UMRISS)
+    # Der Speer in der Hand, und er zuckt beim Schlag nach vorn. Ein Schlag,
+    # den man nicht sieht, ist eine Zahl im Protokoll und kein Schlag.
+    var aus := h * (0.16 + 0.34 * clampf(schlag / 0.18, 0.0, 1.0))
+    var hand := brust + Vector2(h * 0.14 * blick, h * 0.02)
+    tu.zug(brust, hand, h * 0.065, farbe, 0.2, 0.3, 0.0, 4, Palette.UMRISS)
+    tu.zug(hand, hand + Vector2(aus * blick, -h * 0.05), h * 0.030, glanz,
+        0.3, 0.3, 0.0, 4, Palette.UMRISS)
 
 
 ## --- Die Feinde ---

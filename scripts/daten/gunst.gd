@@ -17,11 +17,20 @@ extends RefCounted
 ##
 ## Reine Datenschicht: keine Szenen-, keine Autoload-Bezüge.
 
-enum Zug { RUESTUNG, STIEFEL, WETZSTEIN, LATERNE, ZEHRUNG }
+## **Der Gefaehrte steht hier und nicht bei den Waffen.**
+##
+## Er ist kein Wert, den man hebt, sondern eine Figur, die mitlaeuft - aber
+## beim Aufstieg ist er genau das, was die anderen Zuege auch sind: das, was
+## man waehlt und was keine Waffe ist. Als eigene dritte Sorte haette er
+## `ist_waffe` an einem Dutzend Stellen zu einer Aufzaehlung gemacht, die
+## Regel "hoechstens zwei Waffen und hoechstens zwei Zuege unter dreien"
+## verdreifacht und die Aufstiegskarte umgebaut - fuer eine Unterscheidung,
+## die der Spieler an der Karte ohnehin sieht.
+enum Zug { RUESTUNG, STIEFEL, WETZSTEIN, LATERNE, ZEHRUNG, GEFAEHRTE }
 
 ## Sichtbar, also englisch.
 const ZUG_NAMEN: PackedStringArray = [
-    "Mail", "Boots", "Whetstone", "Lantern", "Rations",
+    "Mail", "Boots", "Whetstone", "Lantern", "Rations", "Sworn Man",
 ]
 
 const ZUG_LEHREN: PackedStringArray = [
@@ -30,6 +39,7 @@ const ZUG_LEHREN: PackedStringArray = [
     "Every edge cuts deeper.",
     "Coin comes to you from further off.",
     "Wounds close, slowly, on their own.",
+    "A man at your back. He fights while you give ground.",
 ]
 
 const ZUG_HOECHSTSTUFE := 5
@@ -41,6 +51,35 @@ const ZUG_PLAETZE := 3
 
 ## Wie viele Angebote ein Aufstieg zeigt.
 const ANGEBOTE := 3
+
+
+## **Wie viele Gefaehrten** auf dieser Stufe mitlaufen.
+##
+## Die Zahl waechst, nicht ihre Staerke: einen zweiten Mann sieht man, ein
+## unsichtbares Prozent nicht. Das ist dieselbe Regel wie bei den
+## Waffenstufen - eine Stufe, die man nicht merkt, ist keine.
+static func gefaehrten(stufe: int) -> int:
+    if stufe <= 0:
+        return 0
+    return 1 + (clampi(stufe, 1, ZUG_HOECHSTSTUFE) - 1) / 2
+
+
+## Was ein Gefaehrte je Schlag austeilt. Er skaliert mit, damit der fuenfte
+## Mann nicht zum Zuschauer wird - aber flach, denn seine Aussage ist die
+## Zahl und nicht der Schaden.
+##
+## **Dieser Wert ist gemessen wirkungslos, und das ist der Befund.** Von 9
+## auf 17 verdoppelt bewegte sich die Zeit des laufenden Helden von 428 auf
+## **429** Sekunden. Nicht seine Staerke begrenzt ihn, sondern wie selten er
+## ueberhaupt zum Zug kommt: er braucht einen Feind innerhalb
+## `Gefecht.GEFAEHRTE_WEITE` **und** einen Helden, der gerade weicht - beim
+## Fliehen trifft beides selten zusammen.
+##
+## Wer ihn staerker machen will, dreht also an `GEFAEHRTE_WEITE` oder an
+## `GEFAEHRTE_TAKT` und nicht hier. Vorsicht dabei: die Reichweite war es,
+## die ihn in der ersten Fassung dem **Stehenden** so nuetzlich machte.
+static func gefaehrte_schaden(stufe: int) -> float:
+    return 17.0 * (1.0 + 0.22 * float(maxi(0, stufe - 1)))
 
 
 static func zug_name(z: int) -> String:

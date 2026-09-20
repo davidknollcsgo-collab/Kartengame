@@ -16,7 +16,8 @@ Drei Ebenen dahinter, und jede beantwortet eine andere Frage:
 * **Die Ausrüstung** (`Ausruestung`) ist die Fundfreude: vier Plätze, acht
   Stücke, ein Fund nach jedem Lauf — auch nach einem kurzen.
 * **Die Helden** (`Helden`) sind die Abwechslung: vier Klassen, jede mit
-  **genau einer** Eigenart, freigeschaltet an Taten statt an Sold.
+  **genau einer** Eigenart, freigeschaltet an Taten statt an Sold. Dazu
+  zwölf **Gewänder** (`Skins`), ebenfalls an Taten, und sie ändern nur Farben.
 
 **Es gab vor September 2026 zwei andere Spiele in diesem Repository** —
 NEKTON (Tiefsee, Lichtkegel) und HUNDRED CUTS (ein Timing-Duell). Beide sind
@@ -117,15 +118,17 @@ xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 720x1600 \
 | `--schuss <datei>` | speichert und beendet |
 | `--held <n>` | beginnt sofort einen Lauf mit diesem Helden |
 | `--zeit <s>` | rechnet s Sekunden Gefecht mit festem Takt vor |
-| `--stufen <n>` | setzt alle vier Bauten auf Stufe n **und den Beutel** |
+| `--stufen <n>` | setzt alle vier Bauten auf Stufe n, **den Beutel und die Züge** |
 | `--lage <n>` | zeigt Titel (0), Burg (3), Beutel (4) statt des Laufs |
 
 **`--zeit` führt `Daumen`**, denselben simulierten Daumen wie `tools/probe.gd`.
 Ohne ihn zeigte jeder Schuss denselben Stillstandstod nach vierzehn Sekunden.
 Zwei Daumen wären zwei Spiele.
 
-**`--stufen` setzt auch den Beutel.** Ein Schalter, der die halbe Wahrheit
-setzt, zeigt ein Spiel, das es nicht gibt.
+**`--stufen` setzt auch den Beutel und die Züge.** Ein Schalter, der die halbe
+Wahrheit setzt, zeigt ein Spiel, das es nicht gibt — `Daumen` nimmt lieber
+neue Waffen als neue Züge, und ohne das bekäme man den **Gefährten** auf
+keinem Schuss zu sehen, obwohl er im Spiel steht.
 
 ## Zusicherungen, die nicht aufgeweicht werden dürfen
 
@@ -194,49 +197,69 @@ setzt, zeigt ein Spiel, das es nicht gibt.
 
 9. **Der Aufstieg bietet nie dreimal dasselbe** und bei vollen Plätzen nur
    noch Stufen. Drei Buffs nebeneinander sind keine Wahl; ein Angebot, das
-   man nicht annehmen kann, ist ein verschenkter Aufstieg.
+   man nicht annehmen kann, ist ein verschenkter Aufstieg. **Der Gefährte
+   steht als sechster `Gunst.Zug` darin** und nicht als dritte Sorte: als
+   eigene hätte er `ist_waffe` an einem Dutzend Stellen zu einer Aufzählung
+   gemacht und die Regel „höchstens zwei Waffen und höchstens zwei Züge unter
+   dreien" verdreifacht — für eine Unterscheidung, die der Spieler an der
+   Karte ohnehin sieht.
 
-10. **Man beginnt mit genau einer Waffe**, der seines Helden. Ohne eine
+10. **Ein Gefährte trägt deine Farben und hat kein Leben.** Dieselbe Farbe
+    heißt dieselbe Seite, und das muss man niemandem erklären; eine eigene
+    wäre eine achte Sorte zum Merken. Vom Helden unterscheidet er sich an
+    dem, woran man den Helden findet: deutlich kleiner, **kein Standring**,
+    **kein Lebensbalken**, nicht freigestellt. Und er fällt nicht — ein
+    Begleiter, der fällt, macht aus einem Aufstieg eine Ausgabe, die später
+    verfällt, und schützen kann man ihn nicht, weil der Finger dem Helden
+    gehört.
+
+11. **Ring und Lebensbalken werden zuletzt gezeichnet, über allem.** Sie
+    lagen in der y-Sortierung wie eine Figur — sobald Gefährten mitliefen,
+    stand einer davor und die Marke war verdeckt. Eine Figur gehört in die
+    Tiefe, eine **Marke** nicht: sie beantwortet *wo bin ich*, und eine
+    Antwort, die verdeckt sein kann, ist keine.
+
+12. **Man beginnt mit genau einer Waffe**, der seines Helden. Ohne eine
    schlägt man die erste halbe Minute gar nichts; mit zweien hat der erste
    Aufstieg nichts mehr zu sagen.
 
-11. **Einkommen und Kosten wachsen mit derselben Rate.** `Halle.ertrag()`
+13. **Einkommen und Kosten wachsen mit derselben Rate.** `Halle.ertrag()`
     **ist** `rundenkosten()` geteilt durch `LAEUFE_JE_RUNDE`. Geprüft wird die
     Ableitung selbst und nicht ein Verhältnis: ein Verhältnis zu prüfen hieße,
     die Rundung bei kleinen Zahlen für eine Abweichung zu halten.
 
-12. **Kein Ausbau verschlechtert etwas**, über alle 25 Stufen. Eine Kurve mit
+14. **Kein Ausbau verschlechtert etwas**, über alle 25 Stufen. Eine Kurve mit
     einem Exponenten über eins kippt am Ende, und niemand sieht es, weil
     niemand die fünfundzwanzigste Stufe spielt.
 
-13. **Eine Dauerwaffe rechnet Schaden je Zeit, nicht je Bild.** Hängt der
+15. **Eine Dauerwaffe rechnet Schaden je Zeit, nicht je Bild.** Hängt der
     Flegel am Takt, ist er auf einem 120-Hz-Telefon doppelt so stark — und
     eine Einstellung im Anzeigemenü verstellte den Schwierigkeitsgrad.
 
-14. **Nach y sortiert zeichnen.** In einem Bild ohne Perspektive ist die
+16. **Nach y sortiert zeichnen.** In einem Bild ohne Perspektive ist die
     Zeichenreihenfolge die einzige Tiefe, die es gibt; ohne sie steht ein
     Feind vor dem Helden, der hinter ihm ist.
 
-15. **Der Held wird freigestellt.** Eine Fläche in Pergamentton unter ihm,
+17. **Der Held wird freigestellt.** Eine Fläche in Pergamentton unter ihm,
     etwas größer als er — im leeren Feld unsichtbar, im Gedränge steht er in
     einer Lücke. Es ist die einzige Stelle im Spiel, an der Pergament über
     Tusche liegt. Ein heller Saum *unter* der Figur (der erste Anlauf) macht
     sie blass statt auffindbar.
 
-16. **Der Stick sitzt, wo der Daumen aufsetzt.** Kein fester Knüppel an einer
+18. **Der Stick sitzt, wo der Daumen aufsetzt.** Kein fester Knüppel an einer
     Ecke — auf einem Telefon hält niemand den Daumen dort, wo ein Entwerfer
     ihn hingelegt hat.
 
-17. **Im Lauf gehört der Finger dem Helden** — außer beim Aufstieg. Ein Knopf,
+19. **Im Lauf gehört der Finger dem Helden** — außer beim Aufstieg. Ein Knopf,
     der einen Zug verschluckt, kostet Leben.
 
-18. **Kein Angebot nach einer Niederlage.** Der Bericht hat zwei Wege.
+20. **Kein Angebot nach einer Niederlage.** Der Bericht hat zwei Wege.
 
-19. **`get_display_safe_area()` nur auf dem Telefon fragen** und jeden Rand auf
+21. **`get_display_safe_area()` nur auf dem Telefon fragen** und jeden Rand auf
     12 % der Bildkante deckeln: auf dem Schreibtisch liefert sie den ganzen
     Bildschirm und nicht das Fenster.
 
-20. **Der Ton wird gemessen, nicht gehört.** Anfang und Ende jedes Puffers
+22. **Der Ton wird gemessen, nicht gehört.** Anfang und Ende jedes Puffers
     stehen konstruktionsbedingt auf null (`_huelle`); ein Puffer, der bei
     halber Auslenkung einsetzt, ist ein Knacks und kein Schlag. Und er wird
     **gedrosselt**: in Minute neun fallen dreißig Feinde je Sekunde.

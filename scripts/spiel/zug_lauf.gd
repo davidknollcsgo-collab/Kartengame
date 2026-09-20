@@ -230,17 +230,29 @@ func _draw() -> void:
     sichtbar.sort_custom(func(a, b): return a.ort.y < b.ort.y)
     var knapp := sichtbar.size() > Streiter.DICHT_AB
 
+    # **Die Gefaehrten laufen in derselben Sortierung mit.** In einem Bild
+    # ohne Perspektive ist die Zeichenreihenfolge die einzige Tiefe, die es
+    # gibt - ein Begleiter, der immer oben liegt, steht vor Feinden, hinter
+    # denen er steht.
     var vor_held: Array = []
     for f in sichtbar:
         if f.ort.y > _stand.ort.y:
             vor_held.append(f)
             continue
         _zeichne_feind(f, knapp)
+    for g in _stand.gefaehrten:
+        if g.ort.y <= _stand.ort.y:
+            _zeichne_gefaehrte(g)
 
     _zeichne_held()
 
     for f in vor_held:
         _zeichne_feind(f, knapp)
+    for g in _stand.gefaehrten:
+        if g.ort.y > _stand.ort.y:
+            _zeichne_gefaehrte(g)
+
+    _zeichne_marke()
 
     for g in _stand.geschosse:
         var farbe := ZINNOBER if g.feindlich else TINTE
@@ -304,6 +316,31 @@ func _riegel(mitte: Vector2, breit: float, hoch: float, teil: float,
         PackedFloat32Array([1.0, 1.0]))
 
 
+## Ring und Lebensbalken des Helden - **zuletzt und ueber allem**. Beides
+## beantwortet *wo bin ich und wie steht es*, und beides darf kein Feind und
+## kein Gefaehrte verdecken.
+func _zeichne_marke() -> void:
+    var s := _stand
+    var n := Burg.stand.skin(s.held)
+    Streiter.standring(_tu, s.ort, HELD_HOEHE, Skins.koerper(s.held, n))
+    # **Sein Leben steht bei ihm, nicht nur oben am Schirm.** Der Balken oben
+    # sagt, wie es steht; dieser sagt es dort, wo der Blick ohnehin liegt -
+    # und im Gedraenge schaut niemand an den Bildrand.
+    _riegel(s.ort + Vector2(0.0, HELD_HOEHE * 0.17), HELD_HOEHE * 0.26,
+        HELD_HOEHE * 0.024,
+        clampf(s.leben / maxf(1.0, s.leben_voll), 0.0, 1.0),
+        Palette.LEBEN_VOLL)
+
+
+func _zeichne_gefaehrte(g: Gefecht.Gefaehrte) -> void:
+    var n := Burg.stand.skin(_stand.held)
+    # **Deutlich kleiner als der Held.** Bei 0,78 standen drei blaue Maenner
+    # nebeneinander und man musste suchen, welcher man selbst ist.
+    Streiter.gefaehrte(_tu, g.ort, HELD_HOEHE * 0.62, g.blick,
+        _zeit * 8.0 + g.ort.x * 0.05, g.schlag,
+        Skins.koerper(_stand.held, n), Skins.glanz(_stand.held, n))
+
+
 func _zeichne_held() -> void:
     var s := _stand
     var blick := 1.0 if s.blick.x >= 0.0 else -1.0
@@ -317,17 +354,10 @@ func _zeichne_held() -> void:
     var n := Burg.stand.skin(s.held)
     var kleid := Skins.koerper(s.held, n)
     var glanz := Skins.glanz(s.held, n)
-    Streiter.frei_gestellt(_tu, s.ort, HELD_HOEHE, Palette.BODEN, kleid)
+    Streiter.frei_gestellt(_tu, s.ort, HELD_HOEHE, Palette.BODEN)
     _zeichne_druck()
     Streiter.held(_tu, s.ort, HELD_HOEHE, blick, phase, _waffe_winkel,
         kleid, glanz)
-    # **Sein Leben steht bei ihm, nicht nur oben am Schirm.** Der Balken oben
-    # sagt, wie es steht; dieser sagt es dort, wo der Blick ohnehin liegt -
-    # und im Gedraenge schaut niemand an den Bildrand.
-    _riegel(s.ort + Vector2(0.0, HELD_HOEHE * 0.17), HELD_HOEHE * 0.26,
-        HELD_HOEHE * 0.024,
-        clampf(s.leben / maxf(1.0, s.leben_voll), 0.0, 1.0),
-        Palette.LEBEN_VOLL)
 
     # Der Flegel steht dauernd im Feld, also gehoert er ins Bild und nicht in
     # eine Wirkung: was Schaden macht, muss man sehen.
@@ -427,6 +457,7 @@ func _lies_schalter() -> void:
     var schuss := ""
     var zeit := 0.0
     var held := -1
+    var stufen_n := 0
     for i in args.size():
         match args[i]:
             "--schuss":
@@ -446,6 +477,7 @@ func _lies_schalter() -> void:
             "--stufen":
                 if i + 1 < args.size():
                     var n := int(args[i + 1])
+                    stufen_n = n
                     for b in Halle.NAMEN.size():
                         Burg.stand.stufen[b] = n
                     # **Auch der Beutel.** Ein Schalter, der die halbe
@@ -458,6 +490,14 @@ func _lies_schalter() -> void:
         Burg.stand.einstieg = 1
         _mit_daumen = true
         beginne(held)
+        # **Auch die Zuege.** Derselbe Grundsatz wie beim Beutel: ein
+        # Schalter, der die halbe Wahrheit setzt, zeigt ein Spiel, das es
+        # nicht gibt. Der simulierte Daumen nimmt lieber neue Waffen als
+        # neue Zuege - ohne das hier bekaeme man den Gefaehrten auf keinem
+        # Schuss zu sehen, obwohl er im Spiel steht.
+        if stufen_n > 0 and _stand != null:
+            for z in Gunst.Zug.size():
+                _stand.zuege[z] = clampi(stufen_n, 1, Gunst.ZUG_HOECHSTSTUFE)
     if zeit > 0.0:
         _treibe_vor(zeit)
     if schuss != "":

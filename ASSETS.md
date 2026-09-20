@@ -49,6 +49,7 @@ keinen Shader mehr — Tusche braucht keinen:
 |---|---|
 | Alle Farben des Spiels, an einer Stelle | `scripts/daten/palette.gd` |
 | Die zwölf Gewänder, je Held drei | `scripts/daten/skins.gd` |
+| Der Gefährte: er trägt die Farben des Helden | `scripts/spiel/streiter.gd` |
 | Der Pinsel selbst: Band, Zug, Strang, Klecks, Kranz, Schraffur, Wisch | `scripts/spiel/tusche.gd` |
 | Held und Feinde: Masse, Glieder, Kante, Schatten, Sparfassung | `scripts/spiel/streiter.gd` |
 | Das Pergament: Faser, Flecken, Gräser, Sold | `scripts/spiel/feld.gd` |

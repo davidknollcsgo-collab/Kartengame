@@ -28,6 +28,7 @@ const TESTS: PackedStringArray = [
     "_test_ausruestung_verschlechtert_nichts",
     "_test_kein_ausbau_verschlechtert",
     "_test_einkommen_und_kosten_wachsen_gleich",
+    "_test_gefaehrte_kaempft_und_jede_stufe_zaehlt",
     "_test_angebote_nie_dreimal_dasselbe",
     "_test_angebote_bleiben_annehmbar",
     "_test_ein_laeufer_haelt_die_ersten_minuten",
@@ -396,6 +397,50 @@ func _test_einkommen_und_kosten_wachsen_gleich() -> bool:
 
 
 # --- Die Aufstiege ---------------------------------------------------------
+
+func _test_gefaehrte_kaempft_und_jede_stufe_zaehlt() -> bool:
+    # **Ein Begleiter, der nichts erschlaegt, ist ein verschenkter
+    # Aufstieg.** Geprueft in einem gestellten Aufbau: der Held fuehrt
+    # **keine** Waffe, es stehen nur Gefaehrten und Feinde da. Faellt
+    # trotzdem etwas, war es einer von ihnen - in einem ganzen Lauf waere
+    # dieselbe Zahl nicht von den Waffen zu trennen.
+    for stufe in [1, Gunst.ZUG_HOECHSTSTUFE]:
+        var stufen := {}
+        for b in Halle.NAMEN.size():
+            stufen[b] = 0
+        var s := Gefecht.baue(stufen, Helden.Held.SCHWERT, {})
+        s.waffen.clear()
+        s.takte.clear()
+        s.zuege[Gunst.Zug.GEFAEHRTE] = stufe
+        s.leben_voll = 100000.0
+        s.leben = s.leben_voll
+        var rng := RandomNumberGenerator.new()
+        rng.seed = 31
+        var takt := 1.0 / 60.0
+        var gefallen := 0
+        for i in int(12.0 / takt):
+            Gefecht.schritt(s, takt, Vector2.ZERO, rng)
+            for v in s.vorfaelle:
+                if v[0] == Gefecht.Vorfall.FEIND_FAELLT:
+                    gefallen += 1
+        if not _melde(s.gefaehrten.size() == Gunst.gefaehrten(stufe),
+                "Stufe %d soll %d Gefaehrten stellen, im Feld stehen %d"
+                % [stufe, Gunst.gefaehrten(stufe), s.gefaehrten.size()]):
+            return false
+        if not _melde(gefallen > 0,
+                "Auf Stufe %d erschlaegt kein Gefaehrte irgendetwas" % stufe):
+            return false
+
+    # **Jede Stufe gibt etwas**, und zwar entweder einen Mann mehr oder mehr
+    # Schaden - eine Stufe, die man nicht merkt, ist keine.
+    for stufe in range(1, Gunst.ZUG_HOECHSTSTUFE):
+        var mehr := Gunst.gefaehrten(stufe + 1) > Gunst.gefaehrten(stufe) \
+            or Gunst.gefaehrte_schaden(stufe + 1) > Gunst.gefaehrte_schaden(stufe)
+        if not _melde(mehr, "Gefaehrten-Stufe %d aendert nichts gegenueber %d"
+                % [stufe + 1, stufe]):
+            return false
+    return true
+
 
 func _test_angebote_nie_dreimal_dasselbe() -> bool:
     # Drei Buffs nebeneinander sind keine Wahl, sondern eine Formalitaet.
