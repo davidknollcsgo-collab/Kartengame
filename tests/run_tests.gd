@@ -20,6 +20,7 @@ const TESTS: PackedStringArray = [
     "_test_feinde_tabelle_vollstaendig",
     "_test_jede_sorte_hat_ein_eigenes_verhalten",
     "_test_jede_sorte_hat_eine_eigene_farbe",
+    "_test_keine_skin_ist_eine_tarnkappe",
     "_test_sorten_treten_gestaffelt_ein",
     "_test_helden_tabelle_vollstaendig",
     "_test_jeder_held_ist_zu_erkennen",
@@ -230,6 +231,34 @@ func _test_jede_sorte_hat_eine_eigene_farbe() -> bool:
                 "%s liegt der Heldenfarbe zu nah (%.3f)"
                 % [Feinde.name_von(a), d]):
             return false
+    return true
+
+
+func _test_keine_skin_ist_eine_tarnkappe() -> bool:
+    # **Eine Skin darf schmuecken und nicht verstecken.** Die ganze farbige
+    # Fassung haengt an einem Satz: die Farbe des Helden traegt niemand
+    # sonst. Ein Gewand in Lederbraun waere keine Zierde, sondern eine
+    # Tarnkappe - und wer sich im Gedraenge nicht findet, hat nichts davon,
+    # dass er gut aussieht.
+    #
+    # Geprueft wird jede der zwoelf gegen jede der sieben Sorten, mit
+    # derselben Schranke wie die Heldenfarbe selbst.
+    for held in Helden.NAMEN.size():
+        for n in Skins.JE_HELD:
+            var k := Skins.koerper(held, n)
+            for a in Feinde.Art.size():
+                var d := Palette.abstand(k, Palette.sorte(a))
+                if not _melde(d > 0.18,
+                        "Skin %s liegt %s zu nah (%.3f)"
+                        % [Skins.name_von(held, n), Feinde.name_von(a), d]):
+                    return false
+            # Und der Glanz ist heller als der Koerper - ein Glanz, der
+            # dunkler ist, ist keiner.
+            if not _melde(Skins.glanz(held, n).get_luminance()
+                    > k.get_luminance(),
+                    "Skin %s: der Glanz ist nicht heller als das Gewand"
+                    % Skins.name_von(held, n)):
+                return false
     return true
 
 

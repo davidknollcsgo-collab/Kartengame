@@ -14,6 +14,9 @@ var besitz := {}
 ## Platz -> Stueck. Was davon getragen wird.
 var angelegt := {}
 var held := 0
+## Held -> gewaehlte Skin. Fehlt einer, traegt er die erste - die ist immer
+## frei, also braucht ein alter Spielstand keine Wanderung.
+var skins := {}
 var sold := 0
 var laeufe := 0
 var beste_zeit := 0.0
@@ -31,6 +34,25 @@ func _init() -> void:
 
 func stufe(b: int) -> int:
     return int(stufen.get(b, 0))
+
+
+## Welche Skin dieser Held traegt. **Immer eine freigeschaltete:** wer eine
+## Bestmarke zurueckdreht, soll nicht in einem Gewand stehen, das er nicht
+## mehr hat - und ein Spielstand aus einer aelteren Fassung kennt das Feld
+## gar nicht.
+func skin(h: int) -> int:
+    var n := int(skins.get(h, 0))
+    if n > 0 and not Skins.ist_frei(h, n, beste_zeit, meiste_erschlagen,
+            warlord_gefallen):
+        return 0
+    return clampi(n, 0, Skins.JE_HELD - 1)
+
+
+func waehle_skin(h: int, n: int) -> bool:
+    if not Skins.ist_frei(h, n, beste_zeit, meiste_erschlagen, warlord_gefallen):
+        return false
+    skins[h] = clampi(n, 0, Skins.JE_HELD - 1)
+    return true
 
 
 func kosten(b: int) -> int:
@@ -95,6 +117,7 @@ func als_wort() -> Dictionary:
         "besitz": besitz.duplicate(),
         "angelegt": angelegt.duplicate(),
         "held": held,
+        "skins": skins.duplicate(),
         "sold": sold,
         "laeufe": laeufe,
         "beste_zeit": beste_zeit,
@@ -124,6 +147,9 @@ func aus_wort(w: Dictionary) -> void:
             "angelegt":
                 for k in wert.keys():
                     angelegt[int(k)] = int(wert[k])
+            "skins":
+                for k in wert.keys():
+                    skins[int(k)] = int(wert[k])
             "laut":
                 laut = clampf(float(wert), 0.0, 1.0)
             "beste_zeit":

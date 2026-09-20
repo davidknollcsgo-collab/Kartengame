@@ -215,11 +215,20 @@ func _titel() -> void:
         _zeile(Helden.name_von(h), Vector2(r.position.x + 22.0, y + 44.0), 34,
             TINTE if frei else Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.6))
         var satz := Helden.lehre_von(h) if frei else Helden.bedingung_text(h)
+        # **Die Zeile hoert vor den Gewaendern auf.** Sonst laeuft sie unter
+        # den Farbpunkten durch, und eine Beschriftung unter einem Knopf ist
+        # keine Beschriftung.
         _zeile_eng(satz, Vector2(r.position.x + 22.0, y + 80.0), 22,
             Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.95 if frei else 0.6),
-            r.size.x - 44.0)
+            r.size.x - 44.0 - (156.0 if frei else 0.0))
         if frei:
-            _felder.append({"id": "held%d" % h, "r": r, "aktiv": true})
+            # **Die Karte hoert vor den Punkten auf.** Der Treffer nimmt das
+            # erste Feld, das passt; laege die Karte darueber, startete jeder
+            # Tipp auf ein Gewand sofort einen Lauf.
+            _felder.append({"id": "held%d" % h,
+                "r": Rect2(r.position, Vector2(r.size.x - 156.0, r.size.y)),
+                "aktiv": true})
+            _gewaender(h, r)
         y += 130.0
 
     _knopf("burg", Rect2(38.0, y + 14.0, (b - 92.0) * 0.5, 72.0), "KEEP")
@@ -235,6 +244,33 @@ func _titel() -> void:
             HORIZONTAL_ALIGNMENT_LEFT, -1, 23).x
         _zeile(z, Vector2((b - zw) * 0.5, y + 122.0), 23,
             Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.9))
+
+
+## Die drei Gewaender am rechten Rand einer Heldenkarte.
+##
+## **Als Farbpunkte und nicht als Namensliste.** Eine Skin ist eine Farbe;
+## wer sie waehlen will, will sie sehen und nicht lesen. Was gesperrt ist,
+## steht blass da - ein Gewand, das man nicht sieht, ist kein Ziel.
+func _gewaender(h: int, karte: Rect2) -> void:
+    var s := Burg.stand
+    var gewaehlt := s.skin(h)
+    for n in Skins.JE_HELD:
+        var mitte := Vector2(karte.end.x - 30.0 - float(Skins.JE_HELD - 1 - n) * 46.0,
+            karte.position.y + karte.size.y * 0.5)
+        var frei := Skins.ist_frei(h, n, s.beste_zeit, s.meiste_erschlagen,
+            s.warlord_gefallen)
+        if n == gewaehlt:
+            # Der Reif um das getragene: zwei Punkte uebereinander waeren
+            # zwei Gewaender, ein Reif ist eine Wahl.
+            _tu.klecks(mitte, 21.0, Color(TINTE.r, TINTE.g, TINTE.b, 0.9), h * 7)
+        var farbe := Skins.koerper(h, n)
+        if not frei:
+            farbe = Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.25)
+        _tu.klecks(mitte, 15.0, farbe, h * 13 + n, Palette.UMRISS)
+        if frei:
+            _felder.append({"id": "skin%d_%d" % [h, n],
+                "r": Rect2(mitte - Vector2.ONE * 23.0, Vector2.ONE * 46.0),
+                "aktiv": true})
 
 
 func _im_lauf() -> void:
@@ -444,7 +480,11 @@ func _gui_input(e: InputEvent) -> void:
 
 func _gewaehlt(id: String) -> void:
     Klang.spiele(Klang.Ton.TIPP)
-    if id.begins_with("held"):
+    if id.begins_with("skin"):
+        var teile := id.substr(4).split("_")
+        Burg.stand.waehle_skin(int(teile[0]), int(teile[1]))
+        Burg.sichere()
+    elif id.begins_with("held"):
         _lauf.beginne(int(id.substr(4)))
     elif id.begins_with("wahl"):
         _lauf.waehle(int(id.substr(4)))

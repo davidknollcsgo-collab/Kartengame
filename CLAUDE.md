@@ -179,7 +179,13 @@ setzt, zeigt ein Spiel, das es nicht gibt.
 7. **Jeder Held hat genau eine Eigenart.** Ein Held mit fünf kleinen
    Vorteilen fühlt sich an wie der Grundheld mit Rauschen. Freigeschaltet
    wird an Taten, nicht an Sold — wer Abwechslung kaufen kann, kauft sie am
-   ersten Tag.
+   ersten Tag. **Dasselbe gilt für die Skins** (`Skins`): drei je Held, an
+   Taten freigeschaltet, und sie ändern **nur Farben**. Sobald eine Skin
+   einen Kampfwert trägt, wählt niemand mehr die, die ihm gefällt, sondern
+   die, die gewinnt — in `Skins` steht deshalb kein Feld, in das ein Vorteil
+   hineinpasste. Und **keine Skin ist eine Tarnkappe**: jede der zwölf hält
+   denselben Farbabstand zu jedem Feind wie die Grundfarbe des Helden
+   (gemessen, engste 0,45 gegen eine Schranke von 0,18).
 
 8. **Jedes Ausrüstungsstück wirkt auf genau einen Wert**, aus demselben Grund.
    Und `Ausruestung.summe()` gibt ohne alles genau eins zurück, damit

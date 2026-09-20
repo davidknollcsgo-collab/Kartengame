@@ -312,9 +312,15 @@ func _zeichne_held() -> void:
     # Die Waffe zeigt dorthin, wo der Schlag gerechnet wurde - sie schwingt
     # mit dem Takt der schnellsten Waffe.
     _waffe_winkel = s.blick.angle() + sin(_zeit * 6.0) * 0.45
-    Streiter.frei_gestellt(_tu, s.ort, HELD_HOEHE, Palette.BODEN)
+    # Das Gewand kommt aus dem Spielstand und nicht aus dem Gefecht: eine
+    # Skin ist Zierde und darf in `Gefecht.Stand` nichts zu suchen haben.
+    var n := Burg.stand.skin(s.held)
+    var kleid := Skins.koerper(s.held, n)
+    var glanz := Skins.glanz(s.held, n)
+    Streiter.frei_gestellt(_tu, s.ort, HELD_HOEHE, Palette.BODEN, kleid)
     _zeichne_druck()
-    Streiter.held(_tu, s.ort, HELD_HOEHE, blick, phase, _waffe_winkel)
+    Streiter.held(_tu, s.ort, HELD_HOEHE, blick, phase, _waffe_winkel,
+        kleid, glanz)
     # **Sein Leben steht bei ihm, nicht nur oben am Schirm.** Der Balken oben
     # sagt, wie es steht; dieser sagt es dort, wo der Blick ohnehin liegt -
     # und im Gedraenge schaut niemand an den Bildrand.
@@ -340,6 +346,7 @@ func _zeichne_held() -> void:
             # Stahl, nicht der helle Glanz des Helden: als HELD_GLANZ waren
             # die Koepfe drei helle Scheiben und lasen sich als Blasen.
             _tu.klecks(ort, 12.0, Color(0.60, 0.63, 0.67), i, Palette.UMRISS)
+
 
 
 ## Der Druckring am Boden: je ein Zinnoberbogen dort, wo ein Fach besetzt

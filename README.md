@@ -35,6 +35,7 @@ und zwar aus derselben Zahl, aus der der Schaden fällt.
 | **Die Burg** (`Halle`) | die stetige Kurve | Mauer, Schmiede, Stall, Münze — 25 Stufen, keine verschlechtert etwas |
 | **Die Ausrüstung** (`Ausruestung`) | die Fundfreude | vier Plätze, acht Stücke, ein Fund nach jedem Lauf |
 | **Die Helden** (`Helden`) | die Abwechslung | vier Klassen, jede mit **genau einer** Eigenart, freigeschaltet an Taten statt an Sold |
+| **Die Gewänder** (`Skins`) | die Zierde | drei je Held, an Taten freigeschaltet, und sie ändern **nur Farben** |
 
 Einkommen und Kosten wachsen mit derselben Rate: `Halle.ertrag()` **ist**
 `rundenkosten()` geteilt durch `LAEUFE_JE_RUNDE`, und geprüft wird die

@@ -90,7 +90,8 @@ static func _rumpf(tu: Tusche, hueft: Vector2, brust: Vector2, breite: float,
 ## Figuren alle zwei Sekunden stellt: *wo bin ich?* Die andere Haelfte ist
 ## die Freistellung darunter.
 static func held(tu: Tusche, ort: Vector2, h: float, blick: float,
-        phase: float, waffe_winkel: float, farbe := Palette.HELD) -> void:
+        phase: float, waffe_winkel: float, farbe := Palette.HELD,
+        glanz := Palette.HELD_GLANZ) -> void:
     var hueft := ort + Vector2(0.0, -h * 0.46)
     var brust := ort + Vector2(h * 0.02 * blick, -h * 0.76)
     var kopf := ort + Vector2(h * 0.04 * blick, -h * 0.92)
@@ -104,7 +105,7 @@ static func held(tu: Tusche, ort: Vector2, h: float, blick: float,
     tu.klecks(kopf, h * 0.062, farbe, int(ort.x), Palette.UMRISS)
     tu.zug(kopf + Vector2(h * 0.05 * blick, -h * 0.01),
         kopf + Vector2(h * 0.055 * blick, h * 0.045), h * 0.022,
-        Palette.HELD_GLANZ, 0.4, 0.2, 0.0, 3)
+        glanz, 0.4, 0.2, 0.0, 3)
 
     # Der Arm und die Klinge. Der Winkel kommt von aussen: so zeigt die
     # Waffe wirklich dorthin, wo der Schlag gerechnet wurde.
@@ -115,7 +116,7 @@ static func held(tu: Tusche, ort: Vector2, h: float, blick: float,
     # **Die Klinge traegt nicht die Farbe des Helden.** Stahl ist hell und
     # kalt; faerbte man sie wie sein Gewand, waere sie ein dritter Arm.
     var spitze := hand + Vector2(cos(waffe_winkel), sin(waffe_winkel)) * h * 0.52
-    tu.zug(hand, spitze, h * 0.040, Palette.HELD_GLANZ, 0.2, 0.35, h * 0.012,
+    tu.zug(hand, spitze, h * 0.040, glanz, 0.2, 0.35, h * 0.012,
         6, Palette.UMRISS)
     # Parierstange: quer, kurz. Ohne sie ist es ein Stock.
     var quer := Vector2(cos(waffe_winkel), sin(waffe_winkel)).orthogonal()
@@ -137,7 +138,7 @@ static func held(tu: Tusche, ort: Vector2, h: float, blick: float,
 ##
 ## Es ist die einzige Stelle im Spiel, an der Pergament ueber Tusche liegt.
 static func frei_gestellt(tu: Tusche, ort: Vector2, h: float,
-        pergament: Color) -> void:
+        pergament: Color, ring := Palette.HELD) -> void:
     var hueft := ort + Vector2(0.0, -h * 0.44)
     var brust := ort + Vector2(0.0, -h * 0.80)
     tu.strang(PackedVector2Array([ort + Vector2(0.0, -h * 0.02), hueft, brust]),
@@ -150,7 +151,7 @@ static func frei_gestellt(tu: Tusche, ort: Vector2, h: float,
     for s in [-1.0, 1.0]:
         tu.zug(ort + Vector2(h * 0.34 * s, -h * 0.03),
             ort + Vector2(h * 0.08 * s, h * 0.045), h * 0.055,
-            Palette.HELD, 0.5, 0.15, h * 0.03 * s, 5, Palette.UMRISS)
+            ring, 0.5, 0.15, h * 0.03 * s, 5, Palette.UMRISS)
 
 
 ## --- Die Feinde ---

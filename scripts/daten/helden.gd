@@ -21,7 +21,7 @@ const NAMEN: PackedStringArray = ["Swordsman", "Archer", "Spearman", "Hammerman"
 
 const LEHREN: PackedStringArray = [
     "Stands where others fall. Begins with the arming sword.",
-    "Strikes from further than they can reach. Begins with the crossbow.",
+    "Reaches further than they can. Begins with the crossbow.",
     "Outpaces the press. Begins with the boar spear.",
     "Slow, and it does not matter. Begins with the war hammer.",
 ]
