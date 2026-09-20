@@ -299,6 +299,20 @@ der halben Zeit tot, danach fiel kein Schaden mehr, und acht Feinde rundum
 meldeten denselben Wert wie acht auf einer Flanke. Nicht die Mechanik war
 stumpf, sondern das Messgerät voll.
 
+**Eine Waffenverbesserung nuetzt dem Stehenden mehr als dem Laufenden.** Der
+Speer ist die schwaechste Waffe — er zielt als einziger blind (`-s.lauf`
+statt auf den Naechsten), und sein Kegel ist mit `BREITE 0.58` nur
+dreiunddreissig Grad breit. Vier Fassungen wurden ueber je acht Saaten
+gemessen, und **jede, die den Speertraeger auf die Quote hebt, schiebt
+`_test_stehenbleiben_verliert` ueber seine Schranke** (0,585 → 0,754 → 0,829).
+Der Grund steht in der letzten Messung: dort stieg auch die Zeit des
+**Stehenden**, von 323 auf 382 Sekunden. Er fuehrt dieselbe Waffe und ist
+dabei *rundum* von Zielen umgeben, waehrend der Fliehende nur nach hinten
+trifft. Das ist keine Eigenheit des Speers — dieser Waechter steht **jeder**
+Waffenverbesserung im Weg, und wer ihn anfasst, nimmt das zuerst
+auseinander. Die Einzelheiten und zwei bereits **widerlegte** Erklaerungen
+stehen bei `Waffen.BREITE`.
+
 **Eine Einzelmessung aus einer streuenden Verteilung ist ein Zug und kein
 Befund** — und dieses Genre streut enorm. Derselbe Stand meldete für den
 Flegel 298 Erschlagene bei einer Saat und 169 über drei. Stehenbleiben fällt
