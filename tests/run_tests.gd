@@ -495,14 +495,34 @@ func _test_stehenbleiben_verliert() -> bool:
     # er hatte sich in eine Lawine hineingespielt. Ein Test auf "stirbt
     # binnen x Sekunden" meldet bei dieser Streuung den Wurf und nicht die
     # Regel; ein Test auf "haelt deutlich kuerzer durch" meldet die Regel.
+    #
+    # **Acht Saaten, nicht drei - und die Schranke bleibt, wo sie war.**
+    #
+    # Mit drei Saaten meldete derselbe Stand einmal 0,50 und einmal 0,624.
+    # Ueber acht gemessen liegt er bei **0,585**, und so sehen die Rohwerte
+    # aus:
+    #
+    #     steht :  194 111 600 123 157 600 600 198   Schnitt 323 s
+    #     laeuft:  600 600 600 600 600 218 600 600   Schnitt 552 s
+    #
+    # Stehenbleiben ueberlebt bei drei von acht Saaten die vollen zehn
+    # Minuten. Die Verteilungen ueberlappen, der Unterschied liegt in ihren
+    # Schwerpunkten - und welche drei Saaten man zieht, entschied bisher
+    # ueber gruen oder rot. Die 0,50, die nach dem Einbau der Umzingelung
+    # gemeldet wurde, war ein Wurf aus genau dieser Verteilung.
+    #
+    # **Gelockert wird dabei nichts:** die 0,60 stehen unveraendert, nur das
+    # Messgeraet wird genauer. Wer sie rot sieht, hat der Bewegung ihren
+    # Sinn genommen - und dann wird die Mechanik nachgezogen, nicht die Zahl.
+    var saaten := 8
     var steht := 0.0
     var laeuft := 0.0
-    for saat in 3:
+    for saat in saaten:
         steht += _laufe(Helden.Held.SCHWERT, 0, 600.0, 77 + saat, false).zeit
         laeuft += _laufe(Helden.Held.SCHWERT, 0, 600.0, 77 + saat, true).zeit
     return _melde(steht < laeuft * 0.6,
-        "Stehenbleiben haelt im Schnitt %.0f s, Laufen nur %.0f s"
-        % [steht / 3.0, laeuft / 3.0])
+        "Stehenbleiben haelt im Schnitt %.0f s, Laufen nur %.0f s (Verhaeltnis %.3f)"
+        % [steht / float(saaten), laeuft / float(saaten), steht / laeuft])
 
 
 ## Stellt einen Aufbau hin und misst **nur**, was der Held verliert.
