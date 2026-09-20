@@ -28,12 +28,46 @@ extends RefCounted
 ## Aufruf. Das ist keine vorgezogene Optimierung, sondern die Form, in der
 ## dieses Bild ueberhaupt bezahlbar ist.
 
-## Wie viele Laengsreihen ein Strich hat: aussen durchsichtig, innen satt.
-## Fuenf, nicht drei - mit drei faellt die Deckung von der Mittellinie an
-## sofort ab, und ein Strich von zwei Einheiten Breite sieht dann aus wie
-## ein Faden von einer.
-const REIHEN: PackedFloat32Array = [-1.0, -0.55, 0.0, 0.55, 1.0]
-const REIHEN_DECKUNG: PackedFloat32Array = [0.0, 0.92, 1.0, 0.92, 0.0]
+## Wie viele Laengsreihen ein Strich hat.
+##
+## **Sieben, und die beiden aeusseren tragen den Umriss.** Vorher waren es
+## fuenf mit Deckung `[0, 0.92, 1, 0.92, 0]` - aussen durchsichtig, die Form
+## eines Haarpinsels. Das war richtig, solange alles dieselbe schwarze Tusche
+## war; farbige Figuren brauchen eine Kante, sonst verlaufen achtzig davon
+## ineinander.
+##
+## **Die Kante kostet keinen zweiten Durchgang.** Der naheliegende Weg waere,
+## jede Figur zweimal zu zeichnen - fett und dunkel, dann schmal und farbig -
+## und das verdoppelt die Eckpunkte. Hier faerbt der Sammler ohnehin je
+## Eckpunkt: die aeusseren Reihen bekommen einfach den Umriss statt der
+## Koerperfarbe. Sieben statt fuenf Reihen heisst Faktor **1,4** statt 2,0,
+## und die Kante folgt dem Strich von allein - auch um Kurven und an den
+## Enden, wo ein zweiter Durchgang immer danebenliegt.
+## **Ein Umriss braucht zwei Dinge, und der erste Anlauf gab ihm nur eines.**
+##
+## Erster Versuch: Kantenreihen auf 0,88 und Koerper ab 0,62 - dazwischen lief
+## die Farbe ueber ein Viertel der Breite von Umriss nach Koerper, und das war
+## kein Umriss, sondern ein Verlauf. Zweiter Versuch, korrigiert in die
+## falsche Richtung: 0,78 und 0,74. Jetzt war der Uebergang scharf, aber das
+## **deckende** Kantenband nur vier Hundertstel breit - bei einem Glied von
+## zwanzig Bildpunkten ein halbes Pixel. Auf dem Schuss war wieder nichts zu
+## sehen.
+##
+## Beides zugleich: das Kantenband laeuft von 0,72 bis 0,96 (also ein Viertel
+## der halben Breite, **deckend**), springt bei 0,72 auf die Koerperfarbe, und
+## ganz aussen liegt eine durchsichtige Reihe als weiche Aussenkante - die
+## bekommt dieser Renderer ohne MSAA nicht anders.
+##
+## Neun Reihen statt fuenf: Faktor 1,8 auf die Eckpunkte. Was `DICHT_AB`
+## davon vertraegt, wird gemessen und nicht geraten.
+const REIHEN: PackedFloat32Array = [
+    -1.0, -0.96, -0.72, -0.68, 0.0, 0.68, 0.72, 0.96, 1.0,
+]
+const REIHEN_DECKUNG: PackedFloat32Array = [
+    0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0,
+]
+## Welche Reihen den Umriss tragen statt der Koerperfarbe.
+const REIHEN_KANTE: PackedInt32Array = [1, 1, 1, 0, 0, 0, 1, 1, 1]
 
 var _punkte := PackedVector2Array()
 var _farben := PackedColorArray()
@@ -44,6 +78,12 @@ func loesche() -> void:
     _punkte.clear()
     _farben.clear()
     _index.clear()
+
+
+## Wie viele Eckpunkte gerade im Netz liegen. Fuer den Messstand, der das
+## Eckpunkt-Budget prueft - geraten wird es nicht.
+func ecken() -> int:
+    return _punkte.size()
 
 
 func leer() -> bool:
@@ -60,13 +100,19 @@ func spuele(ci: RID) -> void:
 
 ## **Der Grundstrich.** `mitte` ist der Weg, `halb` die halbe Breite je
 ## Stuetzstelle, `deckung` die Saettigung je Stuetzstelle.
+## `kante` ist die Farbe der beiden aeusseren Reihen. Wird sie weggelassen,
+## laufen alle sieben Reihen in `farbe` - das ist der alte, weiche Pinsel,
+## und den brauchen Boden, Schraffur und Balken weiterhin. Eine Figur bekommt
+## eine Kante, ein Grashalm nicht.
 func band(mitte: PackedVector2Array, halb: PackedFloat32Array,
-        farbe: Color, deckung: PackedFloat32Array) -> void:
+        farbe: Color, deckung: PackedFloat32Array,
+        kante := Color(0, 0, 0, 0)) -> void:
     var n := mitte.size()
     if n < 2:
         return
     var basis := _punkte.size()
     var breit := REIHEN.size()
+    var mit_kante := kante.a > 0.0
 
     for i in n:
         # Die Normale aus der lokalen Laufrichtung. An den Enden zaehlt das
@@ -90,8 +136,11 @@ func band(mitte: PackedVector2Array, halb: PackedFloat32Array,
             d = deckung[mini(i, deckung.size() - 1)]
         for r in breit:
             _punkte.append(mitte[i] + quer * (h * REIHEN[r]))
-            _farben.append(Color(farbe.r, farbe.g, farbe.b,
-                farbe.a * d * REIHEN_DECKUNG[r]))
+            var c := farbe
+            if mit_kante and REIHEN_KANTE[r] != 0:
+                c = kante
+            _farben.append(Color(c.r, c.g, c.b,
+                c.a * d * REIHEN_DECKUNG[r]))
 
     for i in n - 1:
         for r in breit - 1:
@@ -109,7 +158,8 @@ func band(mitte: PackedVector2Array, halb: PackedFloat32Array,
 ## `trocken` reisst die Deckung zum Ende hin auf - der Schleppstrich, der
 ## einer Klinge ihre Richtung gibt.
 func zug(a: Vector2, b: Vector2, breite: float, farbe: Color,
-        druck := 0.35, trocken := 0.0, bogen := 0.0, stuecke := 8) -> void:
+        druck := 0.35, trocken := 0.0, bogen := 0.0, stuecke := 8,
+        kante := Color(0, 0, 0, 0)) -> void:
     if a.distance_squared_to(b) < 0.0001:
         return
     var mitte := PackedVector2Array()
@@ -125,7 +175,7 @@ func zug(a: Vector2, b: Vector2, breite: float, farbe: Color,
         var f := clampf(1.0 - absf(t - druck) / maxf(0.08, spanne), 0.0, 1.0)
         halb.append(breite * 0.5 * (0.16 + 0.84 * pow(f, 0.6)))
         deck.append(clampf(1.0 - trocken * pow(t, 2.2), 0.0, 1.0))
-    band(mitte, halb, farbe, deck)
+    band(mitte, halb, farbe, deck, kante)
 
 
 ## **Ein Strang** - ein Glied, ein Rumpf, alles, was durch mehrere Punkte
@@ -143,7 +193,7 @@ func zug(a: Vector2, b: Vector2, breite: float, farbe: Color,
 ## dahinter gilt fuer jede neue Zeichnung hier - **wo ein Uebergang
 ## hingehoert, wird keine Kante gezeichnet**, und eine Kerbe ist eine Kante.
 func strang(stuetzen: PackedVector2Array, breiten: PackedFloat32Array,
-        farbe: Color, stuecke := 12) -> void:
+        farbe: Color, stuecke := 12, kante := Color(0, 0, 0, 0)) -> void:
     var n := stuetzen.size()
     if n < 2:
         return
@@ -170,16 +220,25 @@ func strang(stuetzen: PackedVector2Array, breiten: PackedFloat32Array,
         mitte.append(p)
         halb.append(maxf(0.35, w * 0.5))
         deck.append(1.0)
-    band(mitte, halb, farbe, deck)
+    band(mitte, halb, farbe, deck, kante)
 ## **Ein Klecks** - ein Kopf, ein Knauf, ein Tropfen. Kein Kreis: ein Kreis
 ## ist gedruckt, ein Klecks ist gesetzt.
-func klecks(ort: Vector2, radius: float, farbe: Color, saat := 0) -> void:
+## `kante` legt einen Umriss um den Klecks: dieselbe Welle noch einmal, ein
+## Stueck weiter aussen, als Ring aus Dreiecken. Als Ring und nicht als
+## groesserer Klecks darunter - der waere doppelt so viele Dreiecke fuer eine
+## Flaeche, die vollstaendig verdeckt wird.
+func klecks(ort: Vector2, radius: float, farbe: Color, saat := 0,
+        kante := Color(0, 0, 0, 0)) -> void:
     # **Die Zahl der Ecken waechst mit dem Radius.** Elf Ecken sind auf einem
     # Kopf von zwoelf Bildpunkten ein Klecks und auf einer Sonnenscheibe von
     # hundertzwanzig ein Vieleck - und ein sichtbares Vieleck ist gedruckt,
     # nicht gesetzt. Eine feste Zahl kann nur eine der beiden Groessen
     # richtig machen.
     var ecken := clampi(9 + int(radius * 0.45), 9, 44)
+    if kante.a > 0.0:
+        # Erst der Umriss, dann der Koerper darueber - ein Umriss ueber der
+        # Figur waere ein Fleck, einer unter ihr waere keiner.
+        _kranz(ort, radius, radius + maxf(1.6, radius * 0.17), kante, saat, ecken)
     var basis := _punkte.size()
     _punkte.append(ort)
     _farben.append(farbe)
@@ -199,6 +258,29 @@ func klecks(ort: Vector2, radius: float, farbe: Color, saat := 0) -> void:
         _index.append(basis)
         _index.append(basis + 1 + i)
         _index.append(basis + 1 + (i + 1) % ecken)
+
+
+## Ein Ring zwischen zwei Radien, mit derselben Welle wie `klecks`.
+func _kranz(ort: Vector2, innen: float, aussen: float, farbe: Color,
+        saat: int, ecken: int) -> void:
+    var basis := _punkte.size()
+    var phase := float((saat * 2654435761) % 1000) * 0.006283
+    for i in ecken:
+        var w := TAU * float(i) / float(ecken)
+        var welle := 1.0 + 0.085 * sin(w * 2.0 + phase) \
+            + 0.055 * sin(w * 3.0 - phase * 1.7)
+        var richtung := Vector2(cos(w), sin(w))
+        _punkte.append(ort + richtung * (innen * welle))
+        _farben.append(farbe)
+        _punkte.append(ort + richtung * (aussen * welle))
+        _farben.append(farbe)
+    for i in ecken:
+        var a := basis + i * 2
+        var b := a + 1
+        var c := basis + ((i + 1) % ecken) * 2
+        var d2 := c + 1
+        _index.append(a); _index.append(c); _index.append(b)
+        _index.append(b); _index.append(c); _index.append(d2)
 
 
 ## **Schraffur** - der Unterschied zwischen Tuschemalerei und Holzschnitt.

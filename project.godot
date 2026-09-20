@@ -79,4 +79,4 @@ renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 ; Pergament. Es ist kein Weiss und kein Grau: Pergament ist warm, und ohne
 ; diesen Ton sieht jede Tusche darauf aus, als waere sie ausgeschnitten.
-environment/defaults/default_clear_color=Color(0.898, 0.855, 0.757, 1)
+environment/defaults/default_clear_color=Color(0.804, 0.776, 0.694, 1)

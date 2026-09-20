@@ -47,8 +47,9 @@ keinen Shader mehr — Tusche braucht keinen:
 
 | Was | Wo |
 |---|---|
-| Der Pinsel selbst: Band, Zug, Strang, Klecks, Schraffur, Wisch | `scripts/spiel/tusche.gd` |
-| Held und Feinde: Masse, Glieder, Sparfassung, Freistellung | `scripts/spiel/streiter.gd` |
+| Alle Farben des Spiels, an einer Stelle | `scripts/daten/palette.gd` |
+| Der Pinsel selbst: Band, Zug, Strang, Klecks, Kranz, Schraffur, Wisch | `scripts/spiel/tusche.gd` |
+| Held und Feinde: Masse, Glieder, Kante, Schatten, Sparfassung | `scripts/spiel/streiter.gd` |
 | Das Pergament: Faser, Flecken, Gräser, Sold | `scripts/spiel/feld.gd` |
 | Waffenspuren, Funken, Druckring, Zeichenreihenfolge nach y | `scripts/spiel/zug_lauf.gd` |
 | Bedienbild, Tafeln, Knöpfe, Balken, Aufstiegskarten | `scripts/spiel/zug_hud.gd` |

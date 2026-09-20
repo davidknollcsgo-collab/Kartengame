@@ -1,6 +1,6 @@
 # TEN THOUSAND
 
-Einer gegen die Horde. Holzschnitt auf Pergament, ein Daumen, zehn Minuten.
+Einer gegen die Horde. Ein Daumen, zehn Minuten.
 
 Godot 4.5 · Hochformat · Android · im Aufbau
 
@@ -53,15 +53,27 @@ treten **gestaffelt** ein (`Andrang.AB`). Die jüngste Sorte kommt in ihrer
 ersten halben Minute doppelt so oft: wer in der ersten Minute alles trifft,
 lernt keine Sorte, sondern nur, dass es voll ist.
 
-## Der Artstyle: Holzschnitt auf Pergament
+## Der Artstyle
 
-Warmes Pergament, schwarze Tusche, Schraffur für Schatten, **Zinnober nur für
-Gefahr** und **Gold nur für Sold**. Zwei Farben, zwei Bedeutungen.
+Ruhiger entsättigter Grund, **farbige Figuren mit dunkler Kante**, ein
+Schlagschatten unter jeder. Jede Feindsorte hat ihre eigene Farbe, und **die
+des Helden hat niemand sonst** — das ist die Antwort auf die Frage, die man
+bei hundertfünfzig Figuren alle zwei Sekunden stellt. Zinnober bleibt dem
+Schaden am Spieler vorbehalten, Gold dem Sold. Alle Farben stehen an einer
+Stelle (`scripts/daten/palette.gd`), und ein Wächter prüft, dass keine zwei
+Sorten sich eine teilen.
 
-Alles Sichtbare entsteht in diesem Repository: `Tusche` sammelt jede Figur in
-**ein** Dreiecksnetz und spült sie in einem einzigen Zeichenaufruf — bei
-hundertfünfzig Feinden ist das keine vorgezogene Optimierung, sondern die
-Form, in der dieses Bild überhaupt bezahlbar ist. Der Ton wird in `Klang`
+Hier stand bis September 2026 ein Holzschnitt auf Pergament — alles schwarze
+Tusche. Er scheiterte an seiner eigenen Regel: *eine Sorte muss an ihrer
+Silhouette erkennbar sein* — nur wirft die Sparfassung ab siebzig Figuren
+genau die Silhouette weg, und übrig blieben achtzig gleiche schwarze Umrisse.
+
+Alles Sichtbare entsteht trotzdem weiterhin in diesem Repository und aus
+demselben Sammler: `Tusche` häuft jede Figur in **ein** Dreiecksnetz und
+spült sie in einem einzigen Zeichenaufruf — bei hundertfünfzig Feinden ist
+das keine vorgezogene Optimierung, sondern die Form, in der dieses Bild
+überhaupt bezahlbar ist. Der Farbwechsel hat daran nichts gekostet: der
+Sammler färbte immer schon je Eckpunkt. Der Ton wird in `Klang`
 synthetisiert; es gibt keine einzige Audiodatei. `ASSETS.md` ist der Nachweis.
 
 ## Bauen und Prüfen

@@ -25,14 +25,26 @@ oder `fechter.gd` stolpert: die gibt es nicht mehr. **Eine Schleife, eine
 Wahrheit.**
 
 Alles Sichtbare und Hörbare entsteht in diesem Repository: Grafik prozedural
-(`Tusche`), Ton synthetisiert (`Klang`). `ASSETS.md` ist der Nachweis.
+(`Tusche`), Ton synthetisiert (`Klang`). `ASSETS.md` ist der Nachweis — es
+gibt **keine einzige Bilddatei** außer den App-Symbolen.
 
-### Der Artstyle: Holzschnitt auf Pergament
+### Der Artstyle: farbig, umrandet, mit Schatten
 
-Warmes Pergament, schwarze Tusche, Schraffur für Schatten, **Zinnober nur für
-Gefahr** und **Gold nur für Sold**. Zwei Farben, zwei Bedeutungen.
+Ruhiger entsaettigter Grund, **farbige Figuren mit dunkler Kante**, ein
+Schlagschatten unter jeder, **Zinnober nur für Schaden am Spieler** und
+**Gold nur für Sold**. Alle Farben stehen an **einer** Stelle
+(`scripts/daten/palette.gd`), und ein Wächter prueft sie.
 
-Vier Regeln, die für **jede** neue Zeichnung hier gelten:
+**Hier stand bis September 2026 ein Holzschnitt auf Pergament** — alles
+schwarze Tusche, und die Regel dazu lautete: *eine Sorte muss an ihrer
+Silhouette erkennbar sein, nicht an ihrer Farbe.* Sie war in sich schluessig
+und im Gedraenge unbrauchbar, und zwar aus einem Grund, der im Code stand:
+ab `Streiter.DICHT_AB` Figuren schaltet **jede** davon auf die Sparfassung,
+und die wirft die Silhouette weg. Die Regel verlangte genau das, was das Bild
+in seinem dichtesten Moment nicht mehr liefern konnte. Uebrig blieben achtzig
+gleiche schwarze Umrisse, und einer davon war der Spieler selbst.
+
+Fünf Regeln, die für **jede** neue Zeichnung hier gelten:
 
 * **Kein Strich hat zwei gleiche Enden.** Ein Band gleicher Breite ist ein
   Klebestreifen; ein Pinsel setzt auf, trägt und hebt ab.
@@ -40,9 +52,13 @@ Vier Regeln, die für **jede** neue Zeichnung hier gelten:
   Skelett und hängt danach vergeblich Kleider daran.
 * **Ein Glied ist ein Strang, keine zwei Züge** — sonst hat es am Gelenk eine
   Kerbe, und eine Kerbe ist eine Kante, wo ein Übergang hingehört.
-* **Eine Sorte muss an ihrer Silhouette erkennbar sein, nicht an ihrer Farbe.**
-  Es stehen hundert schwarze Figuren auf hellem Grund; wer eine Sorte nur am
-  Farbton unterscheidet, hat sie nicht unterschieden.
+* **Jede Sorte hat ihre eigene Farbe, und die des Helden hat niemand sonst.**
+  Das ist die Frage, die ein Spieler bei hundertfünfzig Figuren alle zwei
+  Sekunden stellt: *wo bin ich?* Geprueft wird als Abstand im Farbraum und
+  nicht als Ungleichheit von drei Fließkommazahlen.
+* **Jede Figur hat eine Kante und einen Schatten.** Die Kante trennt sie von
+  der Figur daneben, der Schatten vom Boden darunter — ohne den schwebt in
+  einem Bild ohne Perspektive alles.
 
 ## Godot beschaffen
 
@@ -151,7 +167,9 @@ setzt, zeigt ein Spiel, das es nicht gibt.
 5. **Eine Sorte, die man am Verhalten nicht erkennt, ist keine.** Vier
    Verhalten (läuft / hält Abstand / stürmt / treibt), und zwei Sorten mit
    demselben Sinn müssen sich deutlich in Tempo oder Zähigkeit unterscheiden.
-   Ein Feind mit mehr Leben wäre derselbe Feind mit mehr Wartezeit.
+   Ein Feind mit mehr Leben wäre derselbe Feind mit mehr Wartezeit. **Und sie
+   muss ihre eigene Farbe haben** (`Palette.SORTE`), denn die Sparfassung
+   wirft die Silhouette weg, die Farbe aber nicht.
 
 6. **Sorten treten gestaffelt ein** (`Andrang.AB`), mindestens
    `NEULING_FENSTER` auseinander, und die jüngste kommt in ihrer ersten
@@ -218,6 +236,36 @@ setzt, zeigt ein Spiel, das es nicht gibt.
     **gedrosselt**: in Minute neun fallen dreißig Feinde je Sekunde.
 
 ## Was beim Bau gelernt wurde
+
+**Die Sparfassung ist nicht der Randfall, sondern der Normalfall.** Bei
+`DICHT_AB = 70` steht ein Lauf ab Minute drei fast durchgehend in ihr — und
+sie zeichnete den Wolf als **Balken mit zwei Nadeln**. Wer eine Figur
+verbessert, verbessert zuerst ihre Sparfassung: die Vollfassung sieht man in
+der ersten Minute, die andere den Rest des Spiels.
+
+**Ein Vierbeiner braucht drei Dinge gleichzeitig, und zwei reichen nicht.**
+Der Wolf war dreimal ein Möbelstück. Erst lagen Rücken und Kopf auf einer
+Höhe — ein Tisch. Dann stimmte die Neigung, aber mit sieben Bildpunkten
+Gefälle auf fünfzig Länge sah sie niemand — wieder ein Tisch. Dann stimmte
+die Neigung sichtbar, aber der Rumpf war sechzig Punkte lang und zehn dick
+mit vier Nadeln darunter — ein **Kleiderständer**. Es braucht **Neigung**
+(Kruppe hoch, Schulter tiefer, Kopf darunter), **Masse** (gut anderthalbmal
+so lang wie tief, mit eingezogener Weiche) und **geknickte Läufe** zugleich.
+
+**Ein Umriss braucht ein deckendes Band *und* einen scharfen Sprung.** Erster
+Anlauf: Kantenreihen auf 0,88, Körper ab 0,62 — dazwischen ein Verlauf über
+ein Viertel der Breite, also kein Umriss. Zweiter Anlauf, in die falsche
+Richtung korrigiert: 0,78 und 0,74 — der Sprung war scharf, das *deckende*
+Band aber vier Hundertstel breit, bei einem Glied von zwanzig Punkten ein
+halbes Pixel. Auf dem Schuss war zweimal nichts zu sehen. Beides zugleich
+gehört hin.
+
+**Farbe kostet in diesem Sammler nichts.** `Tusche.band()` schrieb immer
+schon eine Farbe **je Eckpunkt**; der ganze Stilwechsel von Tusche auf Farbe
+hat **keinen einzigen** Zeichenaufruf gekostet. Teuer war allein die Kante —
+und auch die ging ohne zweiten Durchgang, weil die äußeren Reihen einfach
+eine andere Farbe bekommen (neun Reihen statt fünf, Faktor 1,8 auf die
+Eckpunkte, statt Faktor 2,0 für ein zweites Zeichnen der ganzen Figur).
 
 **Ein Messstand, der bei gleicher Saat andere Zahlen liefert, misst gar
 nichts.** `Gunst.ziehe()` mischte seinen Topf mit `Array.shuffle()`, und der

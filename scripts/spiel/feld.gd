@@ -15,9 +15,9 @@ extends Node2D
 ## Gitterkoordinaten - dieselbe Kachel sieht damit immer gleich aus, egal von
 ## welcher Seite man sie betritt.
 
-const PERGAMENT := Color(0.898, 0.855, 0.757)
-const TINTE := Color(0.12, 0.10, 0.09)
-const SEPIA := Color(0.42, 0.34, 0.24)
+const PERGAMENT := Palette.BODEN
+const TINTE := Palette.UMRISS
+const SEPIA := Palette.GRUND_ZIER
 
 const KACHEL := 420.0
 ## Wieviele Dinge auf einer Kachel stehen. Sehr wenige: siehe oben.

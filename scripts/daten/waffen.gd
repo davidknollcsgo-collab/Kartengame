@@ -61,6 +61,32 @@ const WEITE: PackedFloat32Array = [132.0, 168.0, 70.0, 520.0, 138.0, 460.0]
 
 ## **Wie breit der Schlag streut**, im Bogenmaß. Null heißt: ein Punkt oder
 ## eine Bahn, kein Kegel.
+##
+## **Der Speer stand auf 0,58 und war damit die schwaechste Waffe im Spiel.**
+## Gemessen ueber acht Saaten, und zwar ueber Kreuz: der Speertraeger stand
+## mit seinem eigenen Speer 5 von 8 Laeufen durch und mit dem Schwert 7 von
+## 8; der Schwertkaempfer umgekehrt 8 von 8 mit seinem Schwert und 5 von 8
+## mit dem Speer. **Die Schwaeche folgt der Waffe, nicht dem Helden** - und
+## ueber Kreuz messen ist der einzige Weg, die beiden auseinanderzuhalten.
+##
+## Er stoesst nach hinten und trifft damit nur, was in der Fluchtachse
+## liegt; bei 0,58 ist das ein Faden. Gemessen ueber 0,58 / 0,85 / 1,10 stand
+## 1,10 am besten (6/8 statt 5/8, und in der Kreuzprobe ebenfalls 6/8).
+##
+## **Und trotzdem steht hier wieder 0,58.** Mit 1,10 fiel der laufende Held
+## in `_test_stehenbleiben_verliert` von 600 auf 489 Sekunden, und das
+## Verhaeltnis zwischen Stehen und Laufen rutschte von 0,50 auf 0,617 -
+## ueber die Schranke. Der Speer ist nicht die Ursache davon; er verschiebt
+## nur, welche Feinde wann fallen, und der Rest ist die Lawine, die dieses
+## Genre aus jeder Kleinigkeit macht. Aber eine Aenderung, die eine Waffe um
+## eine Saat verbessert und dafuer die **Kernzusicherung des Spiels**
+## anfasst, ist kein Gewinn.
+##
+## **Offener Posten, zweifach:** der Speer traegt seine ersten zwei Minuten
+## schlechter als jede andere Waffe (5 von 8), und die Streuung der drei
+## Messungen (5 / 4 / 6) ist zu gross, um hier zu drehen, ohne den Wurf fuer
+## den Befund zu halten. Wer ihn angeht, misst zuerst ueber mehr Saaten und
+## prueft danach **beide** Schranken.
 const BREITE: PackedFloat32Array = [1.55, 0.58, 0.0, 0.0, TAU, 0.0]
 
 ## Wie viele Geschosse oder Köpfe auf Stufe eins.

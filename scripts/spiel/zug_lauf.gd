@@ -13,9 +13,9 @@ extends Node2D
 
 enum Lage { TITEL, LAUF, ENDE, BURG, ZEUG }
 
-const PERGAMENT := Color(0.898, 0.855, 0.757)
-const TINTE := Color(0.12, 0.10, 0.09)
-const ZINNOBER := Color(0.66, 0.14, 0.11)
+const PERGAMENT := Palette.BODEN
+const TINTE := Palette.UMRISS
+const ZINNOBER := Palette.GEFAHR
 const GOLD := Color(0.72, 0.55, 0.18)
 
 ## Wie gross eine Figur im Bild ist.
@@ -130,7 +130,10 @@ func _werte_aus() -> void:
                     _tod_sperre = TOD_SPERRE
                     Klang.spiele(Klang.Ton.TREFFER, 0.85 + randf() * 0.4, 0.7)
                 var f: Gefecht.Feind = v[1]
-                _spritz(f.ort, ZINNOBER, 4)
+                # **Der Funke traegt die Farbe dessen, der faellt.** Zinnober
+                # bleibt dem Schaden am Spieler vorbehalten - darf alles rot
+                # spritzen, heisst Rot nichts mehr.
+                _spritz(f.ort, Palette.sorte(f.art), 4)
             Gefecht.Vorfall.STREITER_GETROFFEN:
                 Klang.spiele(Klang.Ton.WUNDE)
                 Tastsinn.gib(Tastsinn.Art.WUNDE)
@@ -263,6 +266,42 @@ func _zeichne_feind(f: Gefecht.Feind, knapp: bool) -> void:
     if f.stuermt:
         _tu.zug(f.ort, f.ort + f.stoss * 90.0, 6.0,
             Color(ZINNOBER.r, ZINNOBER.g, ZINNOBER.b, 0.7), 0.7, 0.4, 0.0, 4)
+    _zeichne_leben(f, h)
+
+
+## **Ein Balken nur ueber den Schweren.** Der Ritter und der Warlord sind die
+## beiden, bei denen die Frage *wie lange noch* ueberhaupt auftaucht; ein
+## Strolch faellt beim ersten oder zweiten Schlag. Hundertfuenfzig Balken
+## waeren hundertfuenfzig Dinge im Bild, die kein Feind sind - und was einen
+## Hintergrund laut macht, ist die Zahl der getrennten Dinge darin.
+func _zeichne_leben(f: Gefecht.Feind, h: float) -> void:
+    if f.art != Feinde.Art.RITTER and f.art != Feinde.Art.WARLORD:
+        return
+    var teil := clampf(f.leben / maxf(1.0, f.leben_voll), 0.0, 1.0)
+    if teil >= 0.999:
+        return
+    var breit := h * 0.34
+    var oben := f.ort + Vector2(0.0, -h * 1.10)
+    _riegel(oben, breit, h * 0.035, teil, Palette.LEBEN_VOLL)
+
+
+## Ein liegender Balken: **ueberall dieselbe Hoehe**. Als `zug()` gebaut
+## schwillt er zur Mitte an, und ueber dem Kopf stuende eine Linse mit
+## spitzen Enden - man liest einen Balken an seiner Laenge, und eine Laenge
+## mit spitzen Enden laesst sich nicht ablesen.
+func _riegel(mitte: Vector2, breit: float, hoch: float, teil: float,
+        farbe: Color) -> void:
+    var links := mitte - Vector2(breit, 0.0)
+    var rechts := mitte + Vector2(breit, 0.0)
+    _tu.band(PackedVector2Array([links, rechts]),
+        PackedFloat32Array([hoch, hoch]), Palette.LEBEN_LEER,
+        PackedFloat32Array([1.0, 1.0]), Palette.UMRISS)
+    if teil <= 0.0:
+        return
+    var ende := links.lerp(rechts, teil)
+    _tu.band(PackedVector2Array([links, ende]),
+        PackedFloat32Array([hoch * 0.62, hoch * 0.62]), farbe,
+        PackedFloat32Array([1.0, 1.0]))
 
 
 func _zeichne_held() -> void:
@@ -273,9 +312,16 @@ func _zeichne_held() -> void:
     # Die Waffe zeigt dorthin, wo der Schlag gerechnet wurde - sie schwingt
     # mit dem Takt der schnellsten Waffe.
     _waffe_winkel = s.blick.angle() + sin(_zeit * 6.0) * 0.45
-    Streiter.frei_gestellt(_tu, s.ort, HELD_HOEHE, PERGAMENT)
+    Streiter.frei_gestellt(_tu, s.ort, HELD_HOEHE, Palette.BODEN)
     _zeichne_druck()
     Streiter.held(_tu, s.ort, HELD_HOEHE, blick, phase, _waffe_winkel)
+    # **Sein Leben steht bei ihm, nicht nur oben am Schirm.** Der Balken oben
+    # sagt, wie es steht; dieser sagt es dort, wo der Blick ohnehin liegt -
+    # und im Gedraenge schaut niemand an den Bildrand.
+    _riegel(s.ort + Vector2(0.0, HELD_HOEHE * 0.17), HELD_HOEHE * 0.26,
+        HELD_HOEHE * 0.024,
+        clampf(s.leben / maxf(1.0, s.leben_voll), 0.0, 1.0),
+        Palette.LEBEN_VOLL)
 
     # Der Flegel steht dauernd im Feld, also gehoert er ins Bild und nicht in
     # eine Wirkung: was Schaden macht, muss man sehen.
@@ -291,7 +337,9 @@ func _zeichne_held() -> void:
             var ort := s.ort + Vector2(cos(w), sin(w)) * weite
             _tu.zug(s.ort, ort, 3.0, Color(TINTE.r, TINTE.g, TINTE.b, 0.5),
                 0.5, 0.2, 0.0, 3)
-            _tu.klecks(ort, 13.0, TINTE, i)
+            # Stahl, nicht der helle Glanz des Helden: als HELD_GLANZ waren
+            # die Koepfe drei helle Scheiben und lasen sich als Blasen.
+            _tu.klecks(ort, 12.0, Color(0.60, 0.63, 0.67), i, Palette.UMRISS)
 
 
 ## Der Druckring am Boden: je ein Zinnoberbogen dort, wo ein Fach besetzt

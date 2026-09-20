@@ -19,6 +19,7 @@ const TESTS: PackedStringArray = [
     "_test_jede_stufe_gibt_etwas",
     "_test_feinde_tabelle_vollstaendig",
     "_test_jede_sorte_hat_ein_eigenes_verhalten",
+    "_test_jede_sorte_hat_eine_eigene_farbe",
     "_test_sorten_treten_gestaffelt_ein",
     "_test_helden_tabelle_vollstaendig",
     "_test_jeder_held_ist_zu_erkennen",
@@ -197,6 +198,38 @@ func _test_jede_sorte_hat_ein_eigenes_verhalten() -> bool:
                     "%s und %s verhalten sich gleich und fuehlen sich gleich an"
                     % [Feinde.name_von(a), Feinde.name_von(b)]):
                 return false
+    return true
+
+
+func _test_jede_sorte_hat_eine_eigene_farbe() -> bool:
+    # **Die Farbe traegt, was die Silhouette nicht mehr traegt.**
+    #
+    # Hier stand einmal die umgekehrte Regel - *eine Sorte muss an ihrer
+    # Silhouette erkennbar sein, nicht an ihrer Farbe*. Sie scheiterte an
+    # `Streiter.DICHT_AB`: ab siebzig Figuren zeichnet das Spiel die
+    # Sparfassung, und die wirft die Silhouette weg. Uebrig blieben achtzig
+    # gleiche schwarze Umrisse, und einer davon war der Spieler selbst.
+    #
+    # Gemessen wird der Abstand im Farbraum und **nicht** die Ungleichheit
+    # von drei Fliesskommazahlen: zwei Farben, die sich in der letzten Stelle
+    # unterscheiden, sind verschieden und trotzdem dieselbe Farbe.
+    var schwelle := 0.10
+    for a in Feinde.Art.size():
+        for b in range(a + 1, Feinde.Art.size()):
+            var d := Palette.abstand(Palette.sorte(a), Palette.sorte(b))
+            if not _melde(d > schwelle,
+                    "%s und %s liegen nur %.3f auseinander"
+                    % [Feinde.name_von(a), Feinde.name_von(b), d]):
+                return false
+    # **Und der Held gehoert niemandem.** Seine Farbe ist die Antwort auf die
+    # Frage, die ein Spieler bei hundertfuenfzig Figuren alle zwei Sekunden
+    # stellt; traegt eine Sorte sie mit, ist sie keine Antwort mehr.
+    for a in Feinde.Art.size():
+        var d := Palette.abstand(Palette.HELD, Palette.sorte(a))
+        if not _melde(d > schwelle * 1.8,
+                "%s liegt der Heldenfarbe zu nah (%.3f)"
+                % [Feinde.name_von(a), d]):
+            return false
     return true
 
 
@@ -382,19 +415,44 @@ func _test_ein_laeufer_haelt_die_ersten_minuten() -> bool:
     # Wer das rot sieht, hat eine Kurve gebaut, die niemand laeuft - die
     # Schranke wird nicht gelockert, damit eine Aenderung durchgeht.
     #
-    # **Drei Saaten, und alle drei muessen stehen.** Der erste Anlauf zog
-    # **eine** - und dieses Genre streut so stark, dass eine Einzelmessung
-    # ein Wurf ist und kein Befund. Gemessen fiel der Spearman bei einer Saat
-    # nach 134 s und hielt bei zwei anderen die vollen drei Minuten. Das ist
-    # keine Lockerung, sondern die Regel dieses Repositories: ein Waechter,
-    # der bei jeder zweiten Ausfuehrung etwas anderes meldet, bewacht nichts.
+    # **Acht Saaten je Held, sieben muessen stehen.**
+    #
+    # Der erste Anlauf zog **eine** Saat, der zweite drei und verlangte alle
+    # drei. Beides misst die Verteilung nicht, die dahintersteht - gemessen
+    # ueber acht Saaten auf Burgstufe 0:
+    #
+    #     Swordsman  8/8
+    #     Archer     7/8   (147 s)
+    #     Spearman   5/8   (165 / 149 / 154 s)
+    #     Hammerman  7/8   (150 s)
+    #
+    # Drei von vier Helden haben eine schlechte Saat, und welche drei man
+    # zieht, entscheidet ueber gruen oder rot. Ein Waechter, der bei jeder
+    # zweiten Ausfuehrung etwas anderes meldet, bewacht nichts.
+    #
+    # **Das ist keine Lockerung.** Die drei Minuten auf Burgstufe 0 stehen
+    # unveraendert; gemessen wird ueber mehr Saaten und mit benannter
+    # Toleranz statt mit einer stillen. Wer das rot sieht, hat eine Kurve
+    # gebaut, die niemand laeuft - und dann wird die Kurve nachgezogen und
+    # nicht die Schranke.
+    #
+    # Der Speertraeger mit 5/8 ist ein **offener Posten** und faellt hier
+    # bereits durch. Er faellt auch, wenn man die Umzingelung abschaltet;
+    # zugleich ist der `Boar Spear` - seine Startwaffe - die einzige Waffe
+    # unter 8/8. Zwei unabhaengige Messungen auf dieselbe Stelle.
     for held in Helden.Held.size():
-        for saat in 3:
+        var stand := 0
+        var schlimmste := 1e9
+        for saat in 8:
             var s := _laufe(held, 0, 180.0, 400 + held * 10 + saat)
-            if not _melde(s.lebt(),
-                    "%s faellt bei Saat %d schon nach %.0f s (erschlagen %d, Stufe %d)"
-                    % [Helden.name_von(held), saat, s.zeit, s.erschlagen, s.stufe]):
-                return false
+            if s.lebt():
+                stand += 1
+            else:
+                schlimmste = minf(schlimmste, s.zeit)
+        if not _melde(stand >= 7,
+                "%s steht nur %d von 8 Saaten, die schlimmste faellt nach %.0f s"
+                % [Helden.name_von(held), stand, schlimmste]):
+            return false
     return true
 
 
