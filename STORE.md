@@ -10,9 +10,9 @@ weil dafür ein Konto, eine Zahlung oder ein Schlüssel nötig ist.
 
 | Datei | Wo | Wofür |
 |---|---|---|
-| `nekton.aab` | Artefakt `nekton-play` des CI-Laufs | Der Upload für die Play Console |
-| `nekton.apk` | Anhang der Vorabveröffentlichung | Zum Ausprobieren auf dem eigenen Telefon |
-| `nekton.html` | Anhang der Vorabveröffentlichung | Dasselbe Spiel in einer Datei, im Browser |
+| `tenthousand.aab` | Artefakt `tenthousand-play` des CI-Laufs | Der Upload für die Play Console |
+| `tenthousand.apk` | Anhang der Vorabveröffentlichung | Zum Ausprobieren auf dem eigenen Telefon |
+| `tenthousand.html` | Anhang der Vorabveröffentlichung | Dasselbe Spiel in einer Datei, im Browser |
 | `privacy.html` | GitHub Pages, `…/privacy.html` | Die Pflichtadresse für die Datenschutzerklärung |
 
 Das App Bundle entsteht nur, wenn die vier Geheimnisse hinterlegt sind
@@ -26,9 +26,9 @@ statt den ganzen Bau zu fällen.
 ### a) Signierschlüssel erzeugen — einmalig, und gut aufbewahren
 
 ```bash
-keytool -genkeypair -v -keystore nekton.keystore -alias nekton \
+keytool -genkeypair -v -keystore tenthousand.keystore -alias tenthousand \
   -keyalg RSA -keysize 4096 -validity 10000
-base64 -w0 nekton.keystore > nekton.keystore.b64
+base64 -w0 tenthousand.keystore > tenthousand.keystore.b64
 ```
 
 **Geht dieser Schlüssel verloren, lässt sich die App nie wieder
@@ -42,9 +42,9 @@ Settings → Secrets and variables → Actions → *New repository secret*:
 
 | Name | Inhalt |
 |---|---|
-| `PLAY_KEYSTORE_BASE64` | der Inhalt von `nekton.keystore.b64` |
+| `PLAY_KEYSTORE_BASE64` | der Inhalt von `tenthousand.keystore.b64` |
 | `PLAY_KEYSTORE_PASSWORD` | das Store-Passwort aus a) |
-| `PLAY_KEY_ALIAS` | `nekton` |
+| `PLAY_KEY_ALIAS` | `tenthousand` |
 | `PLAY_KEY_PASSWORD` | das Key-Passwort aus a) |
 
 ### c) GitHub Pages einschalten
@@ -56,10 +56,13 @@ die verlangt Google.
 ### d) Play Console
 
 * Entwicklerkonto anlegen (einmalig 25 USD).
-* Neue App: Name **Nekton**, Sprache Englisch, Typ *Spiel*, kostenpflichtig.
+* Neue App: Name **Ten Thousand**, Sprache Englisch, Typ *Spiel*, kostenpflichtig.
+  Die Paketkennung ist `de.tenthousand.horde` (`export_presets.cfg`). **Sie
+  ist ab dem ersten Hochladen endgültig** — bis dahin lässt sie sich frei
+  ändern, danach nie mehr.
 * Preis setzen. Für ein Spiel dieses Umfangs sind 2,99 bis 3,99 € der
   übliche Rahmen.
-* Bundle aus dem Artefakt `nekton-play` hochladen.
+* Bundle aus dem Artefakt `tenthousand-play` hochladen.
 * Die Formulare unter Punkt 4 ausfüllen.
 * Vor der ersten Veröffentlichung verlangt Google einen geschlossenen Test
   mit echten Testern über mehrere Tage. Das ist kein Formfehler, den man
@@ -72,84 +75,71 @@ die verlangt Google.
 **Titel** (max. 30 Zeichen)
 
 ```
-Nekton: Deep Guard
+Ten Thousand: One vs the Horde
 ```
 
 **Kurzbeschreibung** (max. 80 Zeichen)
 
 ```
-One finger, one cone of light, and a trench that comes at you from all sides.
+One finger steers the man. The weapons swing themselves. Last ten minutes.
 ```
 
 **Vollständige Beschreibung** (max. 4000 Zeichen)
 
 ```
-Deep in a lightless trench, a colony survives on one thing: light. You take a
-boat out into the dark water above the trench floor and bring back what the
-colony needs to grow.
+One man, seen from above, and a horde that does not stop coming. Hold out for
+ten minutes and the Warlord takes the field.
 
-Hold your finger anywhere on the screen. The light turns to face it, and the
-boat drives toward it. What stands in the light burns. What reaches you takes
-a piece of the hull. That is the whole control scheme — no buttons to learn,
-no aiming reticle, no timing windows. Where the light should be is a harder
-question than it sounds once a dozen species are closing from every direction
-at once, each of them wrong to treat the same way.
+Your finger steers the man — nothing else. Put your thumb down anywhere and
+drag; that is the whole control scheme. The weapons strike on their own, at
+whoever is nearest. What you decide is where to stand: which way to run, whom
+to let in front of you, when to slip through a gap before it closes.
 
-THE DIVE
-Five waves to a dive, three or four minutes, and then the report: what you
-brought back stays with the colony even when the hull does not.
+SURROUNDED IS WORSE THAN OUTNUMBERED
+Twenty brigands on one side cost you what one does. Eight all around cost four
+times as much. A red ring at your feet shows how closed in you are, so you
+see it coming before you feel it. Keep a flank open and you are rewarded, not
+merely spared.
 
-The trench is unlit until you drive through it. What you have seen stays on
-your map; what you have not could be anything. Sites lie buried out there
-that only show themselves once you have been close — and so do ambushers. A
-quarter of every wave is already lying in the dark when you arrive, waiting
-for you to come near.
+CHOOSE WHAT YOU BECOME
+Every level brings three offers, never three of the same. Six weapons, each
+asking something different of you: the arming sword cuts an arc before you,
+the boar spear thrusts at whatever is on your heels, the flail swings close
+about you, the crossbow looses at the nearest, the war hammer pays when they
+crowd you, the throwing axe flies out and comes back. And six ways to grow
+between them — mail, boots, a whetstone, a lantern that draws in coin, rations
+that close your wounds, and sworn men who fight at your back while you give
+ground.
 
-Guard polyps ride behind you and burn what they can reach. How many is up to
-your colony: one at the start, up to eight once the polyp chamber is deep.
+SEVEN FOES, EACH ITS OWN QUESTION
+Brigands, wolves and pikemen simply come. Crossbowmen keep their distance and
+shoot, so you must go to them. Knights gather and charge. The standard bearer
+drives the men around him faster — take him first. Each arrives in its own
+time, so you learn one before the next.
 
-SEVENTEEN WAYS TO BE WRONG
-Fangjaw comes straight at you and dies fast — the yardstick for everything
-else. Shellback is slow enough to ignore and tough enough that ignoring it
-costs you. Emberjelly burns only in the core of the beam, never at the edge.
-Mirrorshell is the exact opposite: its shell throws the core back, so only
-the fringe of the light bites. Driftanchor slides sideways and leaves the
-cone even if you hold perfectly still. Shylight backs away while it is lit,
-so half a beam only pushes it out of reach. Ringrunner never closes at all —
-it circles, and holding the beam on it means you stop steering.
+BETWEEN RUNS
+The keep is the steady climb: a wall for more life, a forge for harder blows,
+a stable for speed, a mint for more coin — twenty-five levels each. Every run
+ends with a find, even a short one: helms, hauberks, rings and cloaks, one
+piece for each of four places, each doing exactly one thing.
 
-Five wardens close the sections, and none of them is just a bigger animal.
-One keeps spawning young while it lives. One will not hold still. One circles
-and makes you choose between shooting and driving.
-
-THE COLONY
-Between dives the game turns into something slower. Five chambers, dug down a
-shaft into the rock: a brighter light organ, more and stronger guard polyps,
-a thicker hull, nutrients that accrue while you are away, and a shaft that
-opens the trench deeper. Build times run from minutes to hours — enough to
-give the day a rhythm, never enough to make you wait for permission to play.
-
-THE TRENCH HAS NO FLOOR
-Every ten waves the trench changes its rules: a current that bends your aim,
-raiders that avoid light, stretches of darkness. Past the sixth section the
-raiders begin to mutate — plated, lightshy, erratic, bloated — in
-combinations that keep arriving as long as you keep descending. There is no
-last wave.
+Four heroes — the Swordsman, the Archer, the Spearman and the Hammerman — each
+with exactly one trait, unlocked by deeds rather than bought. Twelve garments
+to wear, also earned by deeds, and they change nothing but your colours.
 
 NO STRINGS
-One price, once. No ads. No loot boxes. No energy meter. No second currency
-you can buy. No account, no sign-in, no internet connection — the game does
-not collect a single thing about you, because there is no code in it that
-could.
+One price, once. No ads. No loot boxes. No energy meter. No second currency.
+No account, no sign-in, no internet connection — the game does not collect a
+single thing about you, because there is no code in it that could.
 
 Everything you see and hear was made for this game and generated by it: the
-graphics are drawn in code, every sound is synthesised as it plays. There is
+figures are drawn in code, every sound is synthesised as it plays. There is
 not one image file and not one audio file in the whole app.
 ```
 
 
-**Kategorie**: Spiele → Strategie
-**Tags**: Strategy, Casual, Single player, Offline
+**Kategorie**: Spiele → Action
+**Tags**: Action, Casual, Single player, Offline
 **Kontakt**: david.knoll.csgo@gmail.com
 **Datenschutzerklärung**: `https://<benutzer>.github.io/<repo>/privacy.html`
 
@@ -162,15 +152,18 @@ demselben Grund wie alles andere hier: `ASSETS.md` führt keine Bilddatei
 außer dem App-Symbol, und ein zugekauftes Ladenbild wäre der erste Eintrag.
 
 ```bash
-tools/ladenbilder.sh build/laden    # acht Screenshots, 1080x1920
+tools/ladenbilder.sh build/laden    # fünf Screenshots, 1080x1920
 tools/ladengrafik.sh build/laden    # das Feature-Bild, 1024x500
 ```
 
-Jeder Lauf legt sich einen eigenen, leeren Spielstand an. Ohne das lief die
-Aufnahme auf dem Stand, der zufällig im Behälter lag — und statt des Spiels
-stand dann eine Rückkehrtafel im Bild. **Eine Aufnahme, die den Spielstand
-der Maschine zeigt, zeigt nicht das Spiel**, und das fällt erst auf, wenn der
-Eintrag schon steht.
+Jeder Lauf legt sich einen eigenen, leeren Spielstand an. **Eine Aufnahme,
+die den Spielstand der Maschine zeigt, zeigt nicht das Spiel**, und das fällt
+erst auf, wenn der Eintrag schon steht.
+
+Die Gefechtsbilder rechnet `--zeit` mit `Daumen` vor — demselben simulierten
+Daumen, den `tools/probe.gd` misst, bis hin zur Wahl beim Aufstieg. Ein
+Ladenbild aus einem Lauf, den es nicht gibt, wäre Werbung für ein anderes
+Spiel.
 
 ## 4. Formulare — die Antworten
 
@@ -187,13 +180,14 @@ HTTP-Client, kein Web-Socket, keine Werbe- oder Auswertungsbibliothek, keine
 Geräte-Kennung.
 
 **Genau eine Android-Berechtigung**, und die ist `android.permission.VIBRATE`:
-das Spiel bebt bei einem Treffer an der Brut, einem gefallenen Leitwesen, dem
-Stoßlicht und dem Ende einer Sitzung. VIBRATE ist eine normale Berechtigung —
-sie fragt beim Benutzer nichts ab, liest nichts und erhebt nichts; sie darf nur
-den Vibrationsmotor anstoßen. An den Antworten oben ändert sie deshalb nichts.
-Abschaltbar ist sie im Spiel unter **Colony → Day → Settings → Rumble**.
+das Spiel bebt, wenn der Held getroffen wird, beim Aufstieg, wenn der Warlord
+das Feld betritt, und am Ende eines Laufs. VIBRATE ist eine normale
+Berechtigung — sie fragt beim Benutzer nichts ab, liest nichts und erhebt
+nichts; sie darf nur den Vibrationsmotor anstoßen. An den Antworten oben
+ändert sie deshalb nichts. Abschaltbar ist sie im Spiel unter **Keep →
+Rumble**, der Ton daneben unter **Keep → Sound**.
 
-Nachprüfbar mit `aapt dump badging nekton.apk`: in der Berechtigungsliste steht
+Nachprüfbar mit `aapt dump badging tenthousand.apk`: in der Berechtigungsliste steht
 diese eine Zeile und sonst nichts. Kommt je eine zweite hinzu, gehört sie in
 demselben Commit hierher — eine Abgabemappe, die eine Berechtigung verschweigt,
 ist schlimmer als gar keine.
@@ -209,11 +203,18 @@ der gebauten APK nachgeparst, nicht angenommen. Genau das listet `aapt` auch.
 
 | Frage | Antwort |
 |---|---|
-| Gewalt | Keine gegen Menschen oder menschenähnliche Figuren. Erfundene Tiefseetiere werden von Licht verbrannt; kein Blut, keine Verletzungsdarstellung |
-| Sexuelle Inhalte, Drogen, Glücksspiel, Schimpfwörter | Keine |
+| Gewalt | **Ja, gegen menschenähnliche Figuren**, in einem erfundenen Mittelalter: Räuber, Pikeniere, Armbruster, Ritter, dazu Wölfe. Von oben gesehen, die Figuren wenige Millimeter groß und gezeichnet, nicht realistisch. Waffen schlagen selbsttätig; ein Erschlagener verschwindet in einem Funkenstoß in seiner eigenen Farbe. Wird der Held getroffen, stieben zinnoberrote Funken — gezeichnet als Signal, im selben Stil, nicht als Blut. Keine Verletzungsdarstellung, keine Leichen, die liegen bleiben |
+| Sexuelle Inhalte, Drogen, Glücksspiel, Schimpfwörter | Keine. Der Fund nach einem Lauf ist zufällig, aber weder kaufbar noch gegen Geld tauschbar — kein Glücksspiel im Sinne des Fragebogens |
 | Nutzerinteraktion, geteilter Standort, Käufe in der App | Keine |
 
-Erwartete Einstufung: **PEGI 3 / ESRB Everyone**.
+Erwartete Einstufung: **PEGI 7 / ESRB Everyone 10+** (Fantasy-Gewalt). Die
+Einstufung vergibt der IARC-Fragebogen, nicht diese Mappe — die Antworten
+oben sind die, die der Stand des Spiels hergibt.
+
+**Hier stand bis September 2026 „keine Gewalt gegen menschenähnliche
+Figuren“ und PEGI 3** — die Antwort für NEKTON, zwei Spiele zuvor. Eine
+falsche Antwort im Einstufungsfragebogen ist kein Formfehler: Google kann die
+App dafür entfernen.
 
 ### Werbung
 

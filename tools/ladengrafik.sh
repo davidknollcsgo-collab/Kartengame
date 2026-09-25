@@ -10,23 +10,19 @@
 # Grafikprogramm. Das ist derselbe Nachweis wie ueberall hier: `ASSETS.md`
 # fuehrt keine einzige Bilddatei ausser dem App-Symbol, und ein Feature-Bild
 # aus fremder Hand waere der erste Eintrag. Gezeichnet wird der Schriftzug
-# von `rund_menue.gd::_zeichne_marke()`, der Rest ist der Graben selbst.
-#
-# `--offen` nimmt den Nebel heraus. Im Spiel ist er die halbe Idee, im
-# Feature-Bild waere er eine schwarze Flaeche: der Graben soll hier zu sehen
-# sein, und ein Bild, das zu einem Drittel aus Dunkelheit besteht, wirbt fuer
-# nichts.
+# von `zug_hud.gd::_marke()`, der Rest ist ein Gefecht in der sechsten
+# Minute, gefuehrt vom selben Daumen wie der Messstand.
 #
 # Aufgenommen wird in doppelter Groesse und danach verkleinert: Schrift und
-# Leuchtroehren werden davon sauber, und die Kantenglaettung der Aufnahme
-# arbeitet auf der grossen Flaeche.
+# Kanten werden davon sauber, und die Kantenglaettung der Aufnahme arbeitet
+# auf der grossen Flaeche.
 set -euo pipefail
 
 ZIEL="${1:-build/laden}"
 mkdir -p "$ZIEL"
 
-# Eigener, leerer Spielstand - wie bei den Ladenbildern, damit keine
-# Rueckkehrtafel und kein gewachsener Stand hineinregiert.
+# Eigener, leerer Spielstand - wie bei den Ladenbildern, damit kein
+# gewachsener Stand hineinregiert.
 STAND="$(mktemp -d)"
 trap 'rm -rf "$STAND"' EXIT
 export HOME="$STAND"
@@ -34,8 +30,8 @@ export XDG_DATA_HOME="$STAND/.local/share"
 
 ROH="$STAND/roh.png"
 xvfb-run -a godot --path . --rendering-driver opengl3 \
-  --resolution 2048x1000 -- --marke --stufen 14 --lehre 9 --offen \
-  --schuss "$ROH" --zeit 18 > /dev/null 2>&1
+  --resolution 2048x1000 -- --marke --held 0 --stufen 12 --zeit 330 \
+  --schuss "$ROH" > /dev/null 2>&1
 
 python3 - "$ROH" "$ZIEL/feature.png" <<'PY'
 import sys

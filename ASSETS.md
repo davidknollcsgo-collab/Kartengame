@@ -60,24 +60,27 @@ Das ist Absicht und nicht nur eine Frage der Dateigröße: prozedural erzeugte
 Optik hat genau eine Quelle — dieses Repository. Diese Dateien sind selbst
 geschriebener Quelltext und stehen deshalb nicht in der Tabelle unten.
 
-Die einzigen Bilddateien im Projekt sind die App-Symbole. Sie stammen noch aus
-dem Vorgängerspiel und sind **offen**: `tools/symbol.gd` zeichnet den alten
-Lichtkegel und gehört ersetzt, bevor irgendetwas in einen Laden geht. Auch das
-Symbol ist gerechnet und nicht gemalt.
+Die einzigen Bilddateien im Projekt sind die App-Symbole. Auch sie sind
+gezeichnet und nicht gemalt: `tools/symbol.gd` stellt den Helden mit erhobener
+Klinge in einen Ring aus Feinden, mit **denselben Aufrufen** wie das Spiel —
+`Streiter.held()`, `Streiter.feind()`, `Tusche`. Bis September 2026 standen
+hier noch NEKTONs Lichtkegel, erzeugt von einem Werkzeug, das nicht mehr lief.
 
 | Datei | Herkunft | Autor | Lizenz | Quelle | Datum |
 |---|---|---|---|---|---|
-| `symbol.png` | selbst erzeugt | dieses Projekt | eigen | `tools/symbol.gd` | 2026-08-29 |
-| `symbol_192.png` | selbst erzeugt | dieses Projekt | eigen | `tools/symbol.gd` | 2026-08-31 |
-| `symbol_hintergrund.png` | selbst erzeugt | dieses Projekt | eigen | `tools/symbol.gd` | 2026-08-31 |
-| `symbol_vordergrund.png` | selbst erzeugt | dieses Projekt | eigen | `tools/symbol.gd` | 2026-08-31 |
-| `symbol_einfarbig.png` | selbst erzeugt | dieses Projekt | eigen | `tools/symbol.gd` | 2026-08-31 |
+| `symbol.png` | selbst erzeugt | dieses Projekt | eigen | `tools/symbol.gd` | 2026-09-25 |
+| `symbol_192.png` | selbst erzeugt | dieses Projekt | eigen | `tools/symbol.gd` | 2026-09-25 |
+| `symbol_hintergrund.png` | selbst erzeugt | dieses Projekt | eigen | `tools/symbol.gd` | 2026-09-25 |
+| `symbol_vordergrund.png` | selbst erzeugt | dieses Projekt | eigen | `tools/symbol.gd` | 2026-09-25 |
+| `symbol_einfarbig.png` | selbst erzeugt | dieses Projekt | eigen | `tools/symbol.gd` | 2026-09-25 |
 
 Die vier zusaetzlichen Dateien sind der Android-Symbolsatz. Seit
 Android 8 schiebt das System zwei Ebenen gegeneinander und schneidet
 daraus die Form, die der Hersteller vorsieht — wer nur ein fertiges
 Bild abgibt, bekommt es in ein weisses Kaestchen gesetzt. Alle fuenf
-entstehen aus demselben Werkzeug und derselben `Schlund.beleuchtung()`.
+entstehen aus demselben Werkzeug: der Boden und die Horde im Hintergrund,
+der Held im Vordergrund und innerhalb der Schutzzone, und die einfarbige
+Fassung ist seine Silhouette.
 
 ## Ton
 

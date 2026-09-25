@@ -78,12 +78,30 @@ mv "/tmp/g/Godot_v${V}_linux.x86_64" /usr/local/bin/godot && chmod +x /usr/local
 
 ```bash
 godot --headless --import                               # class_name-Registry
-godot --headless --path . --script tests/run_tests.gd   # ~5 min, Exitcode 1 bei Fehler
-godot --headless --path . --script tools/probe.gd       # volle Läufe, ~8 min
+godot --headless --path . --script tests/run_tests.gd   # ~45 min, Exitcode 1 bei Fehler
+godot --headless --path . --script tools/probe.gd       # volle Läufe, Auskunft, ~40 min
 godot --headless --path . --script tools/probe.gd -- --held 1 --stufen 8
 godot --headless --path . --quit-after 180              # startet das Spiel wirklich
 godot --headless --path . --script tools/lizenzcheck.gd # Herkunft belegt
+xvfb-run -a godot --path . --rendering-driver opengl3 --script tools/symbol.gd  # App-Symbole
+tools/ladenbilder.sh build/laden && tools/ladengrafik.sh build/laden          # Ladenbilder
 ```
+
+**`tools/probe.gd` ist Auskunft, keine Schranke.** Jede Zeile ist ein Lauf
+mit einer Saat; derselbe Stand liess den Bogenschützen auf Burgstufe 0 die
+zehn Minuten halten und auf Burgstufe 14 fallen. Er fällt nur, wenn ein Lauf
+nicht zu Ende rechnet. Die Balance-Schranken stehen in `tests/run_tests.gd`,
+über acht Saaten.
+
+**Ein Schritt hinter einem roten ist ungeprüft.** Der Messstand steht in CI
+hinter den Tests, und die waren vom ersten Commit von TEN THOUSAND an rot —
+er ist dort kein einziges Mal gelaufen, und niemand wusste, dass er einen
+Lauf zum Fall eines ganzen Bauauftrags machte. Dasselbe bei der
+Veröffentlichung: hinter den roten Tests lag eine APK namens **Nekton** mit
+NEKTONs Lichtkegel als Symbol, zwei Spiele alt, und in der
+Vorabveröffentlichung, die man aufs Telefon lädt, lag die ganze Zeit HUNDRED
+CUTS. Wird ein lange roter Schritt grün,
+schaut man nach, was dahinter wartet.
 
 **Der Testlauf allein beweist nicht, dass das Spiel läuft.** Er lädt
 `zug_lauf.gd`, `zug_hud.gd` und `feld.gd` nie — ein `--script`-Lauf kennt
@@ -166,7 +184,7 @@ keinem Schuss zu sehen, obwohl er im Spiel steht.
 3. **Waffen zielen auf den Nächsten, nicht in die Laufrichtung.** In einem
    Genre, dessen ganze Bewegung Fliehen ist, zeigt der Laufweg *von* der
    Horde weg. Gemessen: 130 Sekunden, 180 Hiebe, **sieben** Erschlagene.
-   Ausnahme ist der Speer — siehe 3.
+   Ausnahme ist der Speer — siehe 4.
 
 4. **Der Speer stößt nach hinten.** Er war als der eine Zug entworfen, der
    nach dem Laufweg fragt, und stieß nach vorn: zwei Erschlagene in zwei
@@ -247,11 +265,11 @@ keinem Schuss zu sehen, obwohl er im Spiel steht.
     Zeichenreihenfolge die einzige Tiefe, die es gibt; ohne sie steht ein
     Feind vor dem Helden, der hinter ihm ist.
 
-17. **Der Held wird freigestellt.** Eine Fläche in Pergamentton unter ihm,
-    etwas größer als er — im leeren Feld unsichtbar, im Gedränge steht er in
-    einer Lücke. Es ist die einzige Stelle im Spiel, an der Pergament über
-    Tusche liegt. Ein heller Saum *unter* der Figur (der erste Anlauf) macht
-    sie blass statt auffindbar.
+17. **Der Held wird freigestellt.** Eine Fläche in der Farbe des Bodens
+    (`Palette.BODEN`) unter ihm, etwas größer als er — im leeren Feld
+    unsichtbar, im Gedränge steht er in einer Lücke. Es ist die einzige
+    Stelle im Spiel, an der Boden über Figuren liegt. Ein heller Saum *unter*
+    der Figur (der erste Anlauf) macht sie blass statt auffindbar.
 
 18. **Der Stick sitzt, wo der Daumen aufsetzt.** Kein fester Knüppel an einer
     Ecke — auf einem Telefon hält niemand den Daumen dort, wo ein Entwerfer

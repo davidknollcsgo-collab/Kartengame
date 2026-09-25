@@ -1,4 +1,4 @@
-; HUNDRED CUTS - Godot Projektkonfiguration
+; TEN THOUSAND - Godot Projektkonfiguration
 config_version=5
 
 [application]
@@ -14,6 +14,9 @@ run/main_scene="res://scenes/gefecht.tscn"
 run/flush_stdout_on_print=true
 config/quit_on_go_back=false
 config/icon="res://symbol.png"
+; Der Startschirm in der Farbe des Bodens. Ohne das blitzt vor dem ersten
+; Bild ein fast schwarzes Grau auf, und dann das helle Feld.
+boot_splash/bg_color=Color(0.804, 0.776, 0.694, 1)
 config/features=PackedStringArray("4.5", "GL Compatibility")
 
 [autoload]

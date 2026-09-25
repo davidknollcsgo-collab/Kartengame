@@ -11,6 +11,12 @@
 # Montagen: dieselbe Bildfolge laesst sich nach jeder Aenderung neu erzeugen
 # und bleibt damit ehrlich.
 #
+# **Bis September 2026 rief dieses Skript Schalter auf, die es nicht mehr
+# gab** - `--welle`, `--kolonie`, `--offen`, zwei Spiele alt. Godot ueber-
+# geht unbekannte Schalter stumm, also waeren sieben Titelbilder
+# herausgekommen und kein Fehler. Jeder Schalter hier steht in
+# `zug_lauf.gd::_lies_schalter()`.
+#
 # 1080x1920 statt der Entwurfsgroesse 720x1280: Google will mindestens
 # 1080 Pixel auf der kurzen Kante.
 set -euo pipefail
@@ -19,22 +25,15 @@ ZIEL="${1:-build/laden}"
 mkdir -p "$ZIEL"
 GROESSE="1080x1920"
 
-# **Ein eigener, leerer Spielstand je Lauf.**
-#
-# Vorher liefen die Aufnahmen auf dem Stand, der zufaellig im Behaelter lag -
-# und der hatte ein Datum. Beim naechsten Lauf stand deshalb die Tafel
-# "WHILE YOU WERE AWAY" mit 45.3K gefilterten Naehrstoffen im Bild: ein
-# Ladenbild, das nicht das Spiel zeigt, sondern eine Rueckkehr. Die
-# Kammerstufen kommen ohnehin aus `--stufen`, also braucht keine Aufnahme
-# einen gewachsenen Stand.
+# **Ein eigener, leerer Spielstand je Lauf.** Sonst laeuft die Aufnahme auf
+# dem Stand, der zufaellig im Behaelter liegt. Die Burgstufen, der Beutel und
+# die Bestmarken kommen ohnehin aus `--stufen`.
 STAND="$(mktemp -d)"
 trap 'rm -rf "$STAND"' EXIT
 export HOME="$STAND"
 export XDG_DATA_HOME="$STAND/.local/share"
 
-# Es gibt nur noch eine Schleife. `fahrt` nimmt sie auf - im Spiel, im
-# Titelbild, im Bericht oder auf einem Reiter des Ausbaus, je nach Schaltern.
-fahrt () {
+schuss () {
   local name="$1"; shift
   xvfb-run -a godot --path . --rendering-driver opengl3 \
     --resolution "$GROESSE" -- --schuss "$ZIEL/$name.png" "$@" \
@@ -42,41 +41,23 @@ fahrt () {
   echo "  $ZIEL/$name.png"
 }
 
-# **Der Lehrpfad muss aus den meisten Bildern heraus.** Der Behaelter hat
-# keinen Spielstand, also steht der Einstieg auf Schritt 1 - und dann haengt
-# ueber Welle 22 eine Tafel, die erklaert, wie man den Finger haelt. Das ist
-# nicht falsch, es passt nur nicht zusammen: die Aufnahme zeigt eine
-# ausgebaute Kolonie und einen Satz fuer die erste Minute. `--lehre 9` liegt
-# hinter dem letzten Schritt und schaltet ihn ab.
-FERTIG="--lehre 9"
-
 echo "Ladenbilder nach $ZIEL:"
-# **Die Reihenfolge ist die des Spiels, nicht die der Entstehung.** Wer den
-# Eintrag durchwischt, sieht zuerst, womit die App aufmacht.
+# **Die Reihenfolge ist die des Werbens, nicht die der Entstehung.** Wer den
+# Eintrag durchwischt, sieht zuerst, worum es geht: einer gegen viele.
 #
-# 1. Der Rundumlauf, die Fahrt - das ist der erste Bildschirm nach PLAY.
-fahrt  1-fahrt   --spiel --welle 24 --zeit 26 --stufen 14 $FERTIG
-# 2. Das Titelbild: der Name, und dass es hinter ihm weitergeht.
-fahrt  2-titel   --zeit 6 --stufen 14 $FERTIG
-# 3. Der Bericht nach einer Fahrt.
-fahrt  3-bericht --ende --zeit 3 $FERTIG
-# 4. Eine spaete Welle, ohne Nebel: der Grund, ueber den man faehrt.
+# `--zeit` rechnet das Gefecht mit `Daumen` vor, demselben simulierten
+# Daumen wie `tools/probe.gd` - ein Bild aus einem Lauf, den es gibt.
 #
-# **Auch hier `--stufen 14`.** Ohne den Schalter steht in der Kopfzeile der
-# leere Spielstand des Behaelters neben einer Welle 40. In diesem Zustand
-# ist nie ein Spieler: wer so tief kommt, hat eine gewachsene Kolonie. Ein
-# Ladenbild soll das Spiel zeigen, das man bekommt, und dazu gehoert ein
-# Stand, den es gibt.
-fahrt  4-tief    --spiel --offen --welle 40 --zeit 30 --stufen 14 $FERTIG
-# 5. Das Aufbauspiel: der Schnitt durch die Kolonie.
-fahrt  5-kolonie --kolonie 0 --stufen 14 $FERTIG
-# 6. Was eine Brutlinie aendert.
-fahrt  6-linien  --kolonie 1 --stufen 14 $FERTIG
-# 7. Das Bestiarium - die Regeln stehen im Spiel, nicht in einem Wiki.
-#
-# **Mit einer Welle davor.** Der Reiter zeigt, was schon aufgetreten ist;
-# ohne gespielte Welle stuenden dort zwoelf Zeilen "Not yet encountered" -
-# ein Ladenbild, das nur sagt, dass man nichts gesehen hat.
-fahrt  7-arten   --spiel --welle 40 --zeit 26 --kolonie 2 --stufen 14 $FERTIG
+# **Niedrige Burgstufen, mittlere Zeiten.** Der erste Satz nahm Stufe 14 und
+# die neunte Minute, weil das nach dem vollen Spiel klang - und zeigte ein
+# fast leeres Feld: wer so ausgebaut ist, raeumt schneller, als die Horde
+# nachkommt. Ein Ladenbild fuer ein Spiel namens TEN THOUSAND mit acht
+# Feinden im Bild wirbt fuer das falsche.
+schuss 1-horde    --held 0 --stufen 4 --zeit 240
+schuss 2-titel    --lage 0 --stufen 14
+schuss 3-bogen    --held 1 --stufen 4 --zeit 200
+# Mit `--stufen` stehen auch die Zuege, und damit die Gefaehrten im Bild.
+schuss 4-gefolge  --held 2 --stufen 4 --zeit 300
+schuss 5-burg     --lage 3 --stufen 10
 
 echo "fertig."

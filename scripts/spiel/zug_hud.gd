@@ -176,7 +176,10 @@ func _draw() -> void:
         0:
             _titel()
         1:
-            _im_lauf()
+            if _lauf.marke:
+                _marke()
+            else:
+                _im_lauf()
         2:
             _ende()
         3:
@@ -184,7 +187,17 @@ func _draw() -> void:
         4:
             _zeug()
     _tu.spuele(get_canvas_item())
+    # **Im Lauf bekommt die Schrift eine Kante.** Sie steht dort nicht auf
+    # einer Tafel, sondern direkt ueber dem Gedraenge, und "837 slain" war
+    # auf dem Ladenbild zur Haelfte ein Pikenier. Dieselbe Regel wie fuer
+    # die Figuren: eine Kante trennt, was sonst ineinanderlaeuft.
+    var kante: bool = _lauf.lage == 1
     for w in _worte:
+        if kante:
+            draw_string_outline(w["f"], w["wo"], w["text"],
+                HORIZONTAL_ALIGNMENT_LEFT, -1, w["groesse"],
+                maxi(4, int(w["groesse"]) / 5),
+                Color(HELL.r, HELL.g, HELL.b, 0.85))
         draw_string(w["f"], w["wo"], w["text"], HORIZONTAL_ALIGNMENT_LEFT,
             -1, w["groesse"], w["farbe"])
 
@@ -317,6 +330,38 @@ func _im_lauf() -> void:
             _tu.klecks(kopf, 16.0, Color(TINTE.r, TINTE.g, TINTE.b, 0.34), 2)
 
 
+## **Der Name ueber dem Gefecht** - nur fuer das Feature-Bild des Ladens.
+##
+## Es ist eine Aufnahme aus dem laufenden Spiel und kein Bild aus einem
+## Grafikprogramm; `ASSETS.md` fuehrt keine Bilddatei ausser dem App-Symbol.
+## Die Tafel dahinter ist so blass, dass das Gedraenge durchscheint, und so
+## dicht, dass die Schrift auf ihm steht und nicht zwischen den Figuren.
+##
+## **Oben und nicht in der Mitte**: die Kamera folgt dem Helden, und der
+## steht in der Mitte. Der erste Schuss setzte den Namen genau auf ihn - ein
+## Werbebild fuer ein Spiel, in dem man sich findet, auf dem man sich nicht
+## findet.
+func _marke() -> void:
+    var b := size.x
+    var h := size.y
+    var f := ThemeDB.fallback_font
+    var t := "TEN THOUSAND"
+    var gross := int(minf(b * 0.085, h * 0.16))
+    var w := f.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, gross).x
+    var u := "One blade. Ten thousand of them."
+    var klein := int(gross * 0.42)
+    var uw := f.get_string_size(u, HORIZONTAL_ALIGNMENT_LEFT, -1, klein).x
+    var mitte := h * 0.2
+    _tafel(Rect2((b - w) * 0.5 - gross * 0.6, mitte - gross * 1.15,
+        w + gross * 1.2, gross * 2.2), 0.78)
+    _zeile(t, Vector2((b - w) * 0.5, mitte + gross * 0.12), gross, TINTE)
+    _tu.zug(Vector2((b - w) * 0.5 - 8.0, mitte + gross * 0.34),
+        Vector2((b + w) * 0.5 + 8.0, mitte + gross * 0.38), gross * 0.1,
+        Color(ZINNOBER.r, ZINNOBER.g, ZINNOBER.b, 0.85), 0.35, 0.5, 3.0, 7)
+    _zeile(u, Vector2((b - uw) * 0.5, mitte + gross * 0.86), klein,
+        Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.95))
+
+
 func _aufstieg(st: Gefecht.Stand) -> void:
     var b := size.x
     var h := size.y
@@ -382,7 +427,7 @@ func _ende() -> void:
 
 func _burg() -> void:
     var b := size.x
-    var oben := _rand() + _luft(100.0 + float(Halle.NAMEN.size()) * 164.0 + 86.0)
+    var oben := _rand() + _luft(100.0 + float(Halle.NAMEN.size()) * 164.0 + 162.0)
     var s := Burg.stand
     _zeile("THE KEEP", Vector2(38.0, oben + 62.0), 42, TINTE)
     var e := "%d coin" % s.sold
@@ -407,7 +452,17 @@ func _burg() -> void:
             158.0, 46.0), "MAX" if voll else "%d" % s.kosten(bau),
             s.kann_bauen(bau))
         y += 164.0
-    _knopf("titel", Rect2(b * 0.24, y + 10.0, b * 0.52, 66.0), "BACK")
+    # **Ton und Beben lassen sich abschalten.** Ein Telefon, das bei jedem
+    # Treffer brummt und sich nicht zum Schweigen bringen laesst, spielt man
+    # nicht in der Bahn - und die Datenschutzerklaerung verspricht den
+    # Schalter. Er steht in der Burg, weil sie der einzige Schirm ist, der
+    # ohnehin Einstellungen am Spieler vornimmt.
+    var halb := (b - 92.0) * 0.5
+    _knopf("ton", Rect2(38.0, y + 10.0, halb, 56.0),
+        "SOUND ON" if s.laut > 0.001 else "SOUND OFF")
+    _knopf("beben", Rect2(b * 0.5 + 8.0, y + 10.0, halb, 56.0),
+        "RUMBLE ON" if s.beben else "RUMBLE OFF")
+    _knopf("titel", Rect2(b * 0.24, y + 86.0, b * 0.52, 66.0), "BACK")
 
 
 func _zeug() -> void:
@@ -495,6 +550,15 @@ func _gewaehlt(id: String) -> void:
         Burg.sichere()
     elif id == "nochmal":
         _lauf.beginne(Burg.stand.held)
+    elif id == "ton":
+        Burg.stand.laut = 0.0 if Burg.stand.laut > 0.001 else 0.7
+        Klang.laut = Burg.stand.laut
+        Burg.sichere()
+        Klang.spiele(Klang.Ton.TIPP)
+    elif id == "beben":
+        Burg.stand.beben = not Burg.stand.beben
+        Tastsinn.an = Burg.stand.beben
+        Burg.sichere()
     elif id == "burg":
         _lauf.lage = 3
     elif id == "zeug":

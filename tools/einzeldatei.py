@@ -53,19 +53,24 @@ for name, typ in DATEIEN.items():
     )
     print("%-34s %8.1f KB komprimiert" % (name, len(roh) / 1024))
 
-# Der Ladebildschirm nimmt die Farben des Spiels vorweg: Grabenschwarz mit
-# einem Blaugruen-Stich, das kalte Biolumineszenzblau als einzige Farbe. Ein
+# Der Ladebildschirm nimmt die Farben des Spiels vorweg: der Boden aus
+# `Palette.BODEN`, die Schrift in der Farbe der Kante, und das Blau des
+# Helden als einzige Farbe - wie im Spiel, wo es niemand sonst traegt. Ein
 # neutrales Grau haette hier einen sichtbaren Bruch zum ersten Bild ergeben.
+#
+# **Hier stand bis September 2026 noch das Grabenschwarz von NEKTON**, zwei
+# Spiele nach NEKTON. Der Name wird seit langem aus `project.godot` gelesen;
+# die Farben standen fest im Quelltext und wurden vergessen.
 kopf = '''<title>%(name)s</title>
 <style>
   :root {
-    color-scheme: dark;
-    --grund: #03060b;
-    --tiefer: #071119;
-    --schrift: #cfe4ea;
-    --leise: #6d8890;
-    --licht: #3ddcf5;
-    --warnung: #f08a78;
+    color-scheme: light;
+    --grund: #cdc6b1;
+    --tiefer: #afa995;
+    --schrift: #211d26;
+    --leise: #5e5866;
+    --licht: #4fa7ec;
+    --warnung: #d42f29;
   }
   html, body { margin: 0; padding: 0; height: 100%%; overflow: hidden;
     background: var(--grund); }
@@ -75,20 +80,21 @@ kopf = '''<title>%(name)s</title>
   #laden {
     position: fixed; inset: 0; display: flex; flex-direction: column;
     align-items: center; justify-content: center; gap: 20px;
-    /* Der Schein von unten - dieselbe Geste wie im Spiel, wo die Kolonie
-       unten leuchtet und die Dunkelheit oben liegt. */
-    background: radial-gradient(120%% 62%% at 50%% 118%%,
-      #0d2b31 0%%, var(--tiefer) 46%%, var(--grund) 100%%);
+    /* Der Boden, zum Rand hin etwas dunkler - wie das Feld unter dem
+       Helden, das in der Mitte am hellsten ist. */
+    background: radial-gradient(120%% 80%% at 50%% 50%%,
+      var(--grund) 40%%, var(--tiefer) 100%%);
     color: var(--schrift); z-index: 10;
     font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
   }
   #laden h1 { margin: 0; font-size: 24px; font-weight: 600; letter-spacing: .34em;
     text-indent: .34em; color: var(--schrift); }
   #laden h1 span { color: var(--licht); }
-  #balken { width: min(260px, 62vw); height: 3px; border-radius: 2px;
-    background: #10242b; overflow: hidden; }
+  #balken { width: min(260px, 62vw); height: 6px; border-radius: 3px;
+    background: var(--tiefer); border: 2px solid var(--schrift);
+    overflow: hidden; }
   #fuellung { height: 100%%; width: 0%%; background: var(--licht);
-    box-shadow: 0 0 12px var(--licht); transition: width .25s; }
+    transition: width .25s; }
   #stand { font-size: 13px; color: var(--leise); min-height: 1.2em;
     letter-spacing: .04em; }
   #fehler { color: var(--warnung); font-size: 13px; max-width: 80vw;
@@ -106,7 +112,7 @@ kopf = '''<title>%(name)s</title>
 </div>
 ''' % {
     "name": NAME,
-    # Der erste Buchstabe im Leuchtblau - ein Zeichen statt eines Logos.
+    # Der erste Buchstabe im Blau des Helden - ein Zeichen statt eines Logos.
     "kopfname": "<span>%s</span>%s" % (NAME[:1].upper(), NAME[1:].upper()),
 }
 

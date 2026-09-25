@@ -88,5 +88,22 @@ jobs:
       # eine Einzelmessung waere ein Wurf. Er faellt darueber, dass ein
       # voller Lauf ueberhaupt bis zum Warlord durchrechnet, und seine Zahlen
       # stehen im Protokoll, wenn jemand eine Aenderung nachschlagen will.
+      #
+      # **Bis September 2026 hielt `tools/probe.gd` diese Zusage nicht** und
+      # brach ab, sobald ein einziger Lauf fiel. Es fiel nur nicht auf: der
+      # Schritt steht hinter den Tests, und die waren bis dahin rot.
+      #
+      # Ein Laufzeitfehler bricht in einem `--script`-Lauf nur den Aufruf ab.
+      # Das Werkzeug erkennt ihn an der stehenden Uhr; die Ausgabe wird
+      # trotzdem auf SCRIPT ERROR geprueft, denn ein Fehler hinter dem
+      # Weiterzaehlen der Zeit liesse sie laufen.
       - name: Volle Laeufe
-        run: godot --headless --path . --script tools/probe.gd
+        run: |
+          set -euo pipefail
+          AUSGABE="$(godot --headless --path . --script tools/probe.gd 2>&1)" \
+            || { printf '%s\n' "$AUSGABE"; exit 1; }
+          printf '%s\n' "$AUSGABE"
+          if printf '%s\n' "$AUSGABE" | grep -q "SCRIPT ERROR"; then
+            echo "::error::Der Messstand meldet SCRIPT ERROR - siehe oben."
+            exit 1
+          fi

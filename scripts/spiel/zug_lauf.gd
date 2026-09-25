@@ -101,6 +101,9 @@ func _process(delta: float) -> void:
 ## Der Stick: relativ zum Aufsetzpunkt, nicht an einer festen Ecke. Auf einem
 ## Telefon haelt niemand den Daumen dort, wo ein Entwerfer ihn hingelegt hat.
 var _mit_daumen := false
+## Nur fuer das Feature-Bild des Ladens: statt der Anzeige steht der Name
+## ueber dem laufenden Gefecht. Siehe `tools/ladengrafik.sh`.
+var marke := false
 
 func _eingabe() -> Vector2:
     # Im Messstand fuehrt `Daumen` - dieselbe Rechnung, die auch `tools/probe.gd`
@@ -469,6 +472,8 @@ func _lies_schalter() -> void:
             "--held":
                 if i + 1 < args.size():
                     held = int(args[i + 1])
+            "--marke":
+                marke = true
             "--lage":
                 # Fuer Schuesse von Titel, Burg und Beutel. Was man nicht
                 # angesehen hat, ist geraten.
@@ -512,8 +517,12 @@ func _lies_schalter() -> void:
 func _treibe_vor(sekunden: float) -> void:
     var takt := 1.0 / 60.0
     for i in int(sekunden / takt):
+        # **Auch die Wahl gehoert dem Daumen.** Hier stand `nimm(_stand, 0)`:
+        # der Schuss nahm stets das erste Angebot, der Messstand das, was
+        # `Daumen.waehle()` sagt. Gleicher Lauf, zwei Aufstiegsfolgen - und
+        # damit zeigte das Bild ein anderes Spiel, als `tools/probe.gd` mass.
         if _stand != null and _stand.wartet_auf_wahl:
-            Gefecht.nimm(_stand, 0)
+            Gefecht.nimm(_stand, Daumen.waehle(_stand))
         _process(takt)
         for kind in get_children():
             if kind.has_method("_process"):
