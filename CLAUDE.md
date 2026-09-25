@@ -156,6 +156,13 @@ keinem Schuss zu sehen, obwohl er im Spiel steht.
    nur eine Verteuerung und kostete alle vier Helden ein Fünftel ihrer Zeit;
    wer eine Flanke freihält, soll nicht verschont, sondern belohnt werden.
 
+   **Bewacht wird das in zwei Stücken**, denn die Kette hat zwei Glieder:
+   `_test_umzingelung_kostet_mehr_als_eine_flanke` zeigt gestellt, dass mehr
+   besetzte Fächer mehr kosten, und `_test_stehen_wird_umzingelt`, dass
+   Stehenbleiben mehr Fächer besetzt (gemessen Faktor 2,8, und die
+   Verteilungen überlappen nicht). `_test_stehenbleiben_verliert` ist nur noch
+   die Probe aufs Ganze — **paarweise je Saat**, siehe unten.
+
 3. **Waffen zielen auf den Nächsten, nicht in die Laufrichtung.** In einem
    Genre, dessen ganze Bewegung Fliehen ist, zeigt der Laufweg *von* der
    Horde weg. Gemessen: 130 Sekunden, 180 Hiebe, **sieben** Erschlagene.
@@ -321,6 +328,26 @@ Umzingelungstest ließ den Helden mit hundert Leben antreten: rundum war er nach
 der halben Zeit tot, danach fiel kein Schaden mehr, und acht Feinde rundum
 meldeten denselben Wert wie acht auf einer Flanke. Nicht die Mechanik war
 stumpf, sondern das Messgerät voll.
+
+**Und ein Mittelwert aus abgeschnittenen Daten ist erst recht keine.**
+`_test_stehenbleiben_verliert` verglich die mittlere Überlebenszeit stehend
+gegen laufend. Die Läufe enden aber bei 600 Sekunden, und **drei von acht**
+stehenden sowie **sieben von acht** laufenden Läufen stoßen an diese Decke —
+ein Lauf, der neunhundert Sekunden gehalten hätte, steht als 600 in der Liste.
+Das Verhältnis maß damit vor allem, wie viele Läufe gerade anstießen: derselbe
+Umbau verschob es um siebenundzwanzig Prozent (0,585 auf 0,743), während die
+**paarweise** Bilanz je Saat sich kaum rührte (5/1/2 auf 5/2/1). Drei
+Änderungen in Folge scheiterten an dieser Form, bei zweieinhalb Prozent
+Spielraum. **Wo eine Obergrenze im Spiel ist, vergleicht man paarweise und
+nimmt den Median** — oder man misst gleich die Mechanik statt ihrer
+Fernwirkung.
+
+**Die Mechanik zu messen ist billiger und ruhiger als ihre Fernwirkung.** Statt
+zu fragen, ob der Stehende früher stirbt (600-Sekunden-Läufe, Werte von 59 bis
+600), fragt `_test_stehen_wird_umzingelt`, ob er **mehr Fächer besetzt** —
+gemittelt über Bilder in 150 Sekunden: 0,176 gegen 0,062, und der niedrigste
+stehende Wert liegt über dem höchsten laufenden. Dieselbe Aussage, ein Viertel
+der Rechenzeit, keine Decke.
 
 **Eine Waffenverbesserung nuetzt dem Stehenden mehr als dem Laufenden.** Der
 Speer ist die schwaechste Waffe — er zielt als einziger blind (`-s.lauf`

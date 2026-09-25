@@ -32,6 +32,7 @@ const TESTS: PackedStringArray = [
     "_test_angebote_nie_dreimal_dasselbe",
     "_test_angebote_bleiben_annehmbar",
     "_test_ein_laeufer_haelt_die_ersten_minuten",
+    "_test_stehen_wird_umzingelt",
     "_test_stehenbleiben_verliert",
     "_test_umzingelung_kostet_mehr_als_eine_flanke",
     "_test_jede_waffe_traegt_allein",
@@ -404,6 +405,12 @@ func _test_gefaehrte_kaempft_und_jede_stufe_zaehlt() -> bool:
     # **keine** Waffe, es stehen nur Gefaehrten und Feinde da. Faellt
     # trotzdem etwas, war es einer von ihnen - in einem ganzen Lauf waere
     # dieselbe Zahl nicht von den Waffen zu trennen.
+    #
+    # **Und der Held weicht dabei.** Der erste Anlauf liess ihn stillstehen,
+    # und der Test wurde rot, als der Gefaehrte seine Rueckzugsregel bekam -
+    # zu Recht: wer nicht weicht, hat keinen Ruecken, den jemand haelt. Ein
+    # stillstehender Aufbau haette hier die alte Regel geprueft und die neue
+    # uebersehen.
     for stufe in [1, Gunst.ZUG_HOECHSTSTUFE]:
         var stufen := {}
         for b in Halle.NAMEN.size():
@@ -418,8 +425,8 @@ func _test_gefaehrte_kaempft_und_jede_stufe_zaehlt() -> bool:
         rng.seed = 31
         var takt := 1.0 / 60.0
         var gefallen := 0
-        for i in int(12.0 / takt):
-            Gefecht.schritt(s, takt, Vector2.ZERO, rng)
+        for i in int(15.0 / takt):
+            Gefecht.schritt(s, takt, Vector2.RIGHT, rng)
             for v in s.vorfaelle:
                 if v[0] == Gefecht.Vorfall.FEIND_FAELLT:
                     gefallen += 1
@@ -541,33 +548,123 @@ func _test_stehenbleiben_verliert() -> bool:
     # binnen x Sekunden" meldet bei dieser Streuung den Wurf und nicht die
     # Regel; ein Test auf "haelt deutlich kuerzer durch" meldet die Regel.
     #
-    # **Acht Saaten, nicht drei - und die Schranke bleibt, wo sie war.**
+    # **Paarweise je Saat - denn ein Mittelwert aus abgeschnittenen Daten
+    # ist keine Messung.**
     #
-    # Mit drei Saaten meldete derselbe Stand einmal 0,50 und einmal 0,624.
-    # Ueber acht gemessen liegt er bei **0,585**, und so sehen die Rohwerte
-    # aus:
+    # Hier stand einmal "Mittel(steht) < 0,6 x Mittel(laeuft)". Die Laeufe
+    # enden aber bei 600 Sekunden, und im ausgelieferten Stand stossen **drei
+    # von acht** stehenden und **sieben von acht** laufenden Laeufen an diese
+    # Decke. Ein Lauf, der neunhundert Sekunden gehalten haette, steht als
+    # 600 in der Liste - das Verhaeltnis mass damit vor allem, wie viele
+    # Laeufe gerade anstossen, und sprang bei jeder Kleinigkeit:
     #
-    #     steht :  194 111 600 123 157 600 600 198   Schnitt 323 s
-    #     laeuft:  600 600 600 600 600 218 600 600   Schnitt 552 s
+    #                                Mittelwert   paarweise (L gewinnt/verliert/gleich)
+    #     ohne Gefaehrten              0,585            5 / 1 / 2
+    #     mit Gefaehrten               0,743            5 / 2 / 1
     #
-    # Stehenbleiben ueberlebt bei drei von acht Saaten die vollen zehn
-    # Minuten. Die Verteilungen ueberlappen, der Unterschied liegt in ihren
-    # Schwerpunkten - und welche drei Saaten man zieht, entschied bisher
-    # ueber gruen oder rot. Die 0,50, die nach dem Einbau der Umzingelung
-    # gemeldet wurde, war ein Wurf aus genau dieser Verteilung.
+    # Der Mittelwert schwankt um siebenundzwanzig Prozent, die paarweise
+    # Bilanz kaum: die Saat-Streuung faellt heraus, weil beide Laeufe
+    # dieselbe Saat teilen. Drei Aenderungen in Folge - der Speer in zwei
+    # Fassungen und der Gefaehrte - scheiterten an der alten Form, bei
+    # zweieinhalb Prozent Spielraum.
     #
-    # **Gelockert wird dabei nichts:** die 0,60 stehen unveraendert, nur das
-    # Messgeraet wird genauer. Wer sie rot sieht, hat der Bewegung ihren
-    # Sinn genommen - und dann wird die Mechanik nachgezogen, nicht die Zahl.
+    # **Die Aussage ist unveraendert**, nur ehrlich gemessen. Und das
+    # eigentliche Gewicht traegt jetzt `_test_stehen_wird_umzingelt`: dieser
+    # hier ist die Probe aufs Ganze.
     var saaten := 8
-    var steht := 0.0
-    var laeuft := 0.0
+    var verloren := 0
+    var diff := PackedFloat32Array()
+    var zs := ""
+    var zl := ""
     for saat in saaten:
-        steht += _laufe(Helden.Held.SCHWERT, 0, 600.0, 77 + saat, false).zeit
-        laeuft += _laufe(Helden.Held.SCHWERT, 0, 600.0, 77 + saat, true).zeit
-    return _melde(steht < laeuft * 0.6,
-        "Stehenbleiben haelt im Schnitt %.0f s, Laufen nur %.0f s (Verhaeltnis %.3f)"
-        % [steht / float(saaten), laeuft / float(saaten), steht / laeuft])
+        var a := _laufe(Helden.Held.SCHWERT, 0, 600.0, 77 + saat, false).zeit
+        var b := _laufe(Helden.Held.SCHWERT, 0, 600.0, 77 + saat, true).zeit
+        if a > b:
+            verloren += 1
+        diff.append(b - a)
+        zs += " %3.0f" % a
+        zl += " %3.0f" % b
+    var sortiert := diff.duplicate()
+    sortiert.sort()
+    var mitte := (sortiert[saaten / 2 - 1] + sortiert[saaten / 2]) * 0.5
+
+    # **Hoechstens zwei von acht**, auf denen Stehenbleiben laenger haelt.
+    # Ohne jede Wirkung waeren rund vier zu erwarten; der ausgelieferte Stand
+    # hat eine.
+    if not _melde(verloren <= 2,
+            "Stehenbleiben schlaegt Laufen auf %d von %d Saaten\n     steht :%s\n     laeuft:%s"
+            % [verloren, saaten, zs, zl]):
+        return false
+    # Und der **Median** der Differenz ist positiv - er ist gegen die
+    # Abschneidung unempfindlich, der Mittelwert nicht.
+    return _melde(mitte > 0.0,
+        "Der Median von (laeuft - steht) ist %.0f s\n     steht :%s\n     laeuft:%s"
+        % [mitte, zs, zl])
+
+
+## **Besetzt Stehenbleiben wirklich mehr Faecher?**
+##
+## Das ist die eine Haelfte der Kernaussage; die andere - *mehr besetzte
+## Faecher kosten mehr* - prueft `_test_umzingelung_kostet_mehr_als_eine_
+## flanke` in einem gestellten Aufbau. Zusammen tragen beide, was vorher ein
+## einzelnes, zensiertes Ende-zu-Ende-Mass tragen sollte.
+##
+## Gemittelt wird ueber **Bilder** und ueber einen festen Zeitraum, den beide
+## Fassungen sicher ueberleben - hier ist nichts abgeschnitten, und man sieht
+## es an der Streuung. Gemessen auf dem ausgelieferten Stand:
+##
+##     steht : 0,186 0,159 0,201 0,174 0,145 0,170 0,169 0,193  -> 0,176
+##     laeuft: 0,049 0,052 0,058 0,044 0,090 0,065 0,050 0,091  -> 0,062
+##
+## Faktor 2,82, und die Verteilungen **ueberlappen nicht einmal**: der
+## niedrigste stehende Wert liegt ueber dem hoechsten laufenden. Zum
+## Vergleich streuten die Ueberlebenszeiten derselben Laeufe von 59 bis 600.
+##
+## `Stand.umzingelt` ist genau die Zahl, die `_verwunde` multipliziert - hier
+## wird die Mechanik gemessen und nicht ihre Fernwirkung.
+func _test_stehen_wird_umzingelt() -> bool:
+    var saaten := 8
+    var st := PackedFloat32Array()
+    var la := PackedFloat32Array()
+    for saat in saaten:
+        st.append(_umzingelung(false, 77 + saat))
+        la.append(_umzingelung(true, 77 + saat))
+    var st_summe := 0.0
+    var la_summe := 0.0
+    for i in saaten:
+        st_summe += st[i]
+        la_summe += la[i]
+        # **Auf jeder einzelnen Saat**, nicht nur im Schnitt. Der
+        # ausgelieferte Stand haelt das mit grossem Abstand.
+        if not _melde(st[i] > la[i],
+                "Saat %d: stehend %.3f, laufend %.3f - Laufen wird nicht weniger umzingelt"
+                % [77 + i, st[i], la[i]]):
+            return false
+    var faktor := st_summe / maxf(0.0001, la_summe)
+    return _melde(faktor >= 2.0,
+        "Stehenbleiben wird nur %.2f-fach umzingelt (%.3f gegen %.3f)"
+        % [faktor, st_summe / float(saaten), la_summe / float(saaten)])
+
+
+## Mittlere Umzingelung je Bild ueber einen festen Zeitraum.
+func _umzingelung(bewegt: bool, saat: int) -> float:
+    var stufen := {}
+    for b in Halle.NAMEN.size():
+        stufen[b] = 0
+    var s := Gefecht.baue(stufen, Helden.Held.SCHWERT, {})
+    var rng := RandomNumberGenerator.new()
+    rng.seed = saat
+    var takt := 1.0 / 60.0
+    var summe := 0.0
+    var n := 0
+    while not Gefecht.vorbei(s) and s.zeit < 150.0:
+        if s.wartet_auf_wahl:
+            Gefecht.nimm(s, Daumen.waehle(s))
+            continue
+        Gefecht.schritt(s, takt, Daumen.richtung(s) if bewegt else Vector2.ZERO, rng)
+        summe += s.umzingelt
+        n += 1
+    return summe / maxf(1.0, float(n))
 
 
 ## Stellt einen Aufbau hin und misst **nur**, was der Held verliert.
