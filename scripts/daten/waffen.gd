@@ -75,43 +75,21 @@ const WEITE: PackedFloat32Array = [132.0, 168.0, 70.0, 520.0, 138.0, 460.0]
 ## jede andere Nahkampfwaffe nimmt den naechsten Feind, ihr Kegel enthaelt
 ## also immer ein Ziel. Beim Speer ist es Gluecksache.
 ##
-## Das ist ein echter Mangel und **er ist trotzdem nicht behoben.** Vier
-## Fassungen wurden ueber je acht Saaten gemessen - `Speertraeger` ist die
-## Quote aus `_test_ein_laeufer_haelt_die_ersten_minuten` (gefordert 7/8),
-## `Verhaeltnis` das aus `_test_stehenbleiben_verliert` (gefordert < 0,60):
+## **Behoben - durch das Zielen, nicht durch die Breite.** Der Speer sucht
+## beim Laufen jetzt den naechsten Feind in der hinteren Halbebene
+## (`Gefecht._schlage`). Die Breite bleibt 0,58; mit garantiertem Ziel ist der
+## schmale Keil kein Mangel mehr, sondern sein Charakter.
 ##
-##     Fassung                  Speertraeger   steht  laeuft  Verhaeltnis
-##     blind,  BREITE 0,58          5/8         323     552      0,585  ok
-##     blind,  BREITE 1,10          6/8          -       -         -
-##     naechster dahinter, 0,58     8/8         323     428      0,754
-##     naechster dahinter, 1,10     7/8         382     461      0,829
+## Vier Fassungen wurden gemessen, und eine Zeit lang schien **jede**, die den
+## Speertraeger hob, `_test_stehenbleiben_verliert` zu kippen (0,585 -> 0,754).
+## Das war das Messgeraet: es verglich Mittelwerte aus bei 600 s
+## abgeschnittenen Laeufen. Paarweise je Saat gemessen besteht der Griff -
+## Stehen gewinnt auf 1 von 8 Saaten, Median der Differenz +53 s -, und die
+## Umzingelung des Laufenden sinkt sogar (Faktor stehend/laufend 2,82 -> 3,14).
+## Speertraeger 7/8, Speer allein 8/8.
 ##
-## **Jede Fassung, die den Speertraeger hebt, verschlechtert das
-## Verhaeltnis** - und die letzte Zeile sagt, warum: dort steigt auch
-## `steht`, von 323 auf 382. Der Stehende fuehrt den Speer ja auch, und er
-## ist **rundum** von Zielen umgeben. Eine bessere Waffe nuetzt ihm deshalb
-## *mehr* als dem Fliehenden, der nur nach hinten trifft.
-##
-## Das ist keine Eigenheit des Speers: **dieser Waechter steht jeder
-## Waffenverbesserung im Weg.** Wer ihn anfasst, sollte das zuerst
-## auseinandernehmen - zwei Erklaerungen sind dabei bereits gemessen und
-## **widerlegt** worden:
-##
-##   * *Der bessere Speer reisst die Luecke auf, durch die sich der Ring
-##     schliesst.* Waere das der Kanal, muesste eine halbierte Umzingelung
-##     (`UMZINGELT_VOLL` 4,0 -> 2,5) den Laufenden zurueckholen. Sie gibt ihm
-##     zehn Sekunden von hundertvierundzwanzig, und sie schenkt dem
-##     Stehenden siebzig - das Verhaeltnis wird schlechter, nicht besser.
-##   * *Mehr Erschlagene heisst mehr Aufstiege, und `Daumen` verzettelt sich
-##     in neuen Waffen.* Gemessen bei 300 s traegt er mit und ohne Griff
-##     genau 4,00 Waffen auf mittlerer Stufe 1,50 - und er erschlaegt mit
-##     dem klugen Speer **weniger** (697 gegen 758) und ist **weniger**
-##     umzingelt (0,090 gegen 0,115).
-##
-## **Offener Posten.** Der Speer traegt seine ersten drei Minuten schlechter
-## als jede andere Waffe. Wer ihn angeht, misst ueber acht Saaten und prueft
-## **beide** Schranken - drei Saaten melden hier den Wurf und nicht die
-## Regel.
+## Verworfen und gemessen schlechter: `BREITE 1.10` (blind 6/8; mit Zielen
+## 7/8 bei nur +15 s Median) und ein 120-Grad-Kegel statt der Halbebene (5/8).
 const BREITE: PackedFloat32Array = [1.55, 0.58, 0.0, 0.0, TAU, 0.0]
 
 ## Wie viele Geschosse oder Köpfe auf Stufe eins.

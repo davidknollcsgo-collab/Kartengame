@@ -593,8 +593,25 @@ static func _schlage(s: Stand, w: int, stufe: int, rng: RandomNumberGenerator) -
         # steht andersherum: er spiesst auf, was sich an die Fersen heftet.
         # Damit ist er die einzige Waffe, die belohnt, dass man gerade
         # flieht, und das ist ein Charakter, den keine andere hat.
+        #
+        # **Und er zielt auf den Naechsten dahinter, nicht auf die Achse.**
+        #
+        # Blind `-s.lauf` entlang traf sein Keil von dreiunddreissig Grad nur
+        # zufaellig jemanden; jede andere Nahkampfwaffe zielt auf den
+        # Naechsten. Ueber Kreuz gemessen folgte die Schwaeche der Waffe
+        # (Speertraeger 5/8 mit Speer, 7/8 mit Schwert). Mit der ganzen
+        # hinteren Halbebene steht er 8/8.
+        #
+        # Zurueckgenommen wurde das einmal - allein wegen des alten
+        # Mittelwert-Waechters, der bei 600 s abgeschnittene Laeufe
+        # verglich. Gegen den paarweisen hat es bestanden. Zusicherung 4
+        # bleibt: nur nach hinten, nur beim Laufen, weg faellt das Glueck.
         if s.lauf.length_squared() > 0.02:
-            mitte = -s.lauf.normalized()
+            var zurueck := -s.lauf.normalized()
+            mitte = zurueck
+            var hinter_lauf := _naechste(s, weite * 1.6, 1, zurueck, 0.0)
+            if not hinter_lauf.is_empty():
+                mitte = (hinter_lauf[0].ort - s.ort).normalized()
         else:
             # Steht man, gibt es keinen Laufweg - dann nimmt auch er den
             # Naechsten, statt in eine Himmelsrichtung zu stossen.
@@ -669,11 +686,24 @@ static func _treffe(s: Stand, f: Feind, schaden: float, richtung: Vector2,
     s.vorfaelle.append([Vorfall.FEIND_FAELLT, f])
 
 
-static func _naechste(s: Stand, weite: float, zahl: int) -> Array:
+## Die naechsten `zahl` Feinde im Umkreis `weite`.
+##
+## `richtung` und `kosinus` schraenken die Suche auf einen Kegel ein. Die
+## Vorgabe bedeutet den ganzen Kreis, also bleiben alle bisherigen Aufrufer
+## unveraendert - und es gibt weiterhin **eine** Suche.
+static func _naechste(s: Stand, weite: float, zahl: int,
+        richtung := Vector2.ZERO, kosinus := -1.0) -> Array:
     var nah: Array = []
     var w2 := weite * weite
+    var kegel := richtung.length_squared() > 0.0001
     for f in s.feinde:
         if f.lebt and f.ort.distance_squared_to(s.ort) <= w2:
+            if kegel:
+                var zu := f.ort - s.ort
+                if zu.length_squared() < 0.0001:
+                    continue
+                if zu.normalized().dot(richtung) < kosinus:
+                    continue
             nah.append(f)
     nah.sort_custom(func(a, b):
         return a.ort.distance_squared_to(s.ort) < b.ort.distance_squared_to(s.ort))

@@ -349,19 +349,17 @@ gemittelt über Bilder in 150 Sekunden: 0,176 gegen 0,062, und der niedrigste
 stehende Wert liegt über dem höchsten laufenden. Dieselbe Aussage, ein Viertel
 der Rechenzeit, keine Decke.
 
-**Eine Waffenverbesserung nuetzt dem Stehenden mehr als dem Laufenden.** Der
-Speer ist die schwaechste Waffe — er zielt als einziger blind (`-s.lauf`
-statt auf den Naechsten), und sein Kegel ist mit `BREITE 0.58` nur
-dreiunddreissig Grad breit. Vier Fassungen wurden ueber je acht Saaten
-gemessen, und **jede, die den Speertraeger auf die Quote hebt, schiebt
-`_test_stehenbleiben_verliert` ueber seine Schranke** (0,585 → 0,754 → 0,829).
-Der Grund steht in der letzten Messung: dort stieg auch die Zeit des
-**Stehenden**, von 323 auf 382 Sekunden. Er fuehrt dieselbe Waffe und ist
-dabei *rundum* von Zielen umgeben, waehrend der Fliehende nur nach hinten
-trifft. Das ist keine Eigenheit des Speers — dieser Waechter steht **jeder**
-Waffenverbesserung im Weg, und wer ihn anfasst, nimmt das zuerst
-auseinander. Die Einzelheiten und zwei bereits **widerlegte** Erklaerungen
-stehen bei `Waffen.BREITE`.
+**Ein Befund über das Spiel kann ein Befund über das Messgerät sein.** Der
+Speer zielte als einzige Nahkampfwaffe blind (`-s.lauf`), und jede Fassung,
+die ihn verbesserte, schob den alten Stehen-gegen-Laufen-Wächter über seine
+Schranke (0,585 → 0,754 → 0,829). Das stand hier eine Weile als Gesetz:
+*eine Waffenverbesserung nützt dem Stehenden mehr als dem Laufenden*, samt
+zwei gemessen widerlegten Erklärungen. Tatsächlich verglich der Wächter
+Mittelwerte aus abgeschnittenen Läufen. Paarweise gemessen besteht derselbe
+Speer-Griff ohne Mühe — und der Gefährte, der an derselben Wand gescheitert
+war, ebenso. **Drei gescheiterte Änderungen hintereinander an derselben
+Schranke sind ein Hinweis auf die Schranke**, bevor sie einer auf die
+Änderungen sind.
 
 **Eine Einzelmessung aus einer streuenden Verteilung ist ein Zug und kein
 Befund** — und dieses Genre streut enorm. Derselbe Stand meldete für den

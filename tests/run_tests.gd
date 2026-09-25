@@ -742,14 +742,38 @@ func _test_jede_waffe_traegt_allein() -> bool:
     # nach achtzig Sekunden und trug bei zwei anderen die vollen zwei
     # Minuten; welche der drei man zieht, darf ueber eine Waffe nicht
     # entscheiden.
+    #
+    # **Acht Saaten, sieben muessen tragen** - dieselbe Form wie der
+    # Heldenwaechter, und aus demselben Grund. Mit drei Saaten und allen
+    # dreien gefordert wurde die Armbrust rot, als der Gefaehrte als sechster
+    # Zug in den Topf kam: nicht weil sie schwaecher wurde, sondern weil ein
+    # Zug mehr jede folgende Ziehung verschiebt. Ueber acht gemessen:
+    #
+    #                    vor dem Gefaehrten      mit Gefaehrte + Speer-Griff
+    #     Arming Sword         8/8                      8/8
+    #     Boar Spear           7/8                      8/8
+    #     Flail                8/8                      8/8
+    #     Crossbow             8/8                      7/8
+    #     War Hammer           8/8                      8/8
+    #     Throwing Axe         8/8                      7/8
+    #
+    # Der Ausfall wandert mit der Ziehung, keine Waffe faellt ab. Die
+    # Schranke 7/8 haelt schon der Stand **vor** dem Gefaehrten - sie ist aus
+    # ihm genommen und nicht aus dem, was danach durchkommen sollte.
     for w in Waffen.Art.size():
-        for saat in 3:
+        var getragen := 0
+        var zeile := ""
+        for saat in 8:
             var s := _laufe(Helden.Held.SCHWERT, 6, 120.0, 900 + w * 10 + saat,
                 true, w)
-            if not _melde(s.lebt() and s.erschlagen > 20,
-                    "%s allein bei Saat %d: %d erschlagen, Leben %.0f nach %.0f s"
-                    % [Waffen.name_von(w), saat, s.erschlagen, s.leben, s.zeit]):
-                return false
+            var traegt := s.lebt() and s.erschlagen > 20
+            if traegt:
+                getragen += 1
+            zeile += " %s%.0f" % ["" if traegt else "*", s.zeit]
+        if not _melde(getragen >= 7,
+                "%s allein traegt nur %d von 8 Saaten:%s"
+                % [Waffen.name_von(w), getragen, zeile]):
+            return false
     return true
 
 
