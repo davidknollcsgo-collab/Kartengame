@@ -281,7 +281,7 @@ func _zeichne_feind(f: Gefecht.Feind, knapp: bool) -> void:
     if f.stuermt:
         _tu.zug(f.ort, f.ort + f.stoss * 90.0, 6.0,
             Color(ZINNOBER.r, ZINNOBER.g, ZINNOBER.b, 0.7), 0.7, 0.4, 0.0, 4)
-    _zeichne_leben(f, h)
+    _zeichne_leben(f, h, knapp)
 
 
 ## **Ein Balken nur ueber den Schweren.** Der Ritter und der Warlord sind die
@@ -289,8 +289,19 @@ func _zeichne_feind(f: Gefecht.Feind, knapp: bool) -> void:
 ## Strolch faellt beim ersten oder zweiten Schlag. Hundertfuenfzig Balken
 ## waeren hundertfuenfzig Dinge im Bild, die kein Feind sind - und was einen
 ## Hintergrund laut macht, ist die Zahl der getrennten Dinge darin.
-func _zeichne_leben(f: Gefecht.Feind, h: float) -> void:
+##
+## **Und im Gedraenge nur ueber denen, die nah sind.** Die Ritter sind zaeh
+## und bleiben uebrig, waehrend das Fussvolk faellt; in Minute acht stand ein
+## Block aus zwanzig Rittern im Bild, fast alle angeschlagen, und darueber
+## zwanzig Balken. Wie lange einer noch steht, fragt man bei dem, der gleich
+## zuschlaegt - nicht bei dem am Bildrand. Der Warlord behaelt seinen immer.
+const BALKEN_NAH := 280.0
+
+func _zeichne_leben(f: Gefecht.Feind, h: float, knapp := false) -> void:
     if f.art != Feinde.Art.RITTER and f.art != Feinde.Art.WARLORD:
+        return
+    if knapp and f.art == Feinde.Art.RITTER \
+            and f.ort.distance_to(_stand.ort) > BALKEN_NAH:
         return
     var teil := clampf(f.leben / maxf(1.0, f.leben_voll), 0.0, 1.0)
     if teil >= 0.999:

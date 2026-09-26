@@ -24,10 +24,14 @@ const SICHT := 420.0
 ## Messstand nicht tun.
 const GIER := 0.35
 
-## Ab wann ihm die Mitte des Feldes lieber ist als die Flucht. Ohne das
-## laeuft er ewig geradeaus und zieht eine Schlange hinter sich her, die ihn
-## nie erreicht - das waere kein Spiel, sondern ein Marathon.
-const HEIMWEH := 900.0
+## **Hier stand ein Heimweh** (`HEIMWEH = 900`): ab dieser Entfernung vom
+## Ursprung zog es ihn zurück zur Mitte. Gebaut war es gegen den Marathon -
+## ohne es lief er ewig geradeaus und zog eine Schleppe hinter sich her, die
+## ihn nie erreichte. Seit die Horde beim Helden bleibt (Zusicherung 23), gibt
+## es diese Schleppe nicht mehr, und das Heimweh zog ihn nur noch quer durch
+## die Horde zurück. Gemessen verdoppelte es mit mehr Tempo den Schaden durch
+## Berührung (78 -> 144), und der Speerträger hielt mit Tempo 1,40 nur 8 von
+## 16 Saaten. Ohne es hält er 23 bis 24 von 24, bei jedem Tempo.
 
 
 ## Wohin er im naechsten Schritt laeuft. Laenge hoechstens eins.
@@ -51,12 +55,7 @@ static func richtung(s: Gefecht.Stand) -> Vector2:
             nah = d2
             gier = (m.ort - s.ort).normalized()
 
-    var heim := Vector2.ZERO
-    var weit := s.ort.length()
-    if weit > HEIMWEH:
-        heim = -s.ort / weit * ((weit - HEIMWEH) / HEIMWEH)
-
-    var summe := flucht.normalized() + gier * GIER + heim
+    var summe := flucht.normalized() + gier * GIER
     if summe.length_squared() < 0.0001:
         return Vector2.ZERO
     return summe.limit_length(1.0)

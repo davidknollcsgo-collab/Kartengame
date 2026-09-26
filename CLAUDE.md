@@ -335,10 +335,20 @@ hielt 12 von 16 Saaten, mit 1,25 nur 10, mit 1,40 nur 8 — er läuft schneller
 in die Horde hinein. Seine Eigenart („Outpaces the press“) ist damit ein
 **offener Posten**; getragen wird er vorläufig von der Reichweite seines
 Speers.
-Dasselbe gilt für den **Stall**: gepaart über acht Saaten auf Stufe 14 im
+Dasselbe galt für den **Stall**: gepaart über acht Saaten auf Stufe 14 im
 Median 249 s gegen 231 s ohne Burg, aber in vier Saaten früher gefallen.
-Eine flachere Kurve machte ihn nur unwirksamer, nicht nützlich — die Frage
-ist, wozu Tempo in einer Horde taugt, die rundum steht.
+
+**Nachgemessen, und die Hälfte davon war das Messgerät.** Der Schaden durch
+Berührung verdoppelte sich mit Tempo (78 → 144), bei gleich vielen
+Erschlagenen und gleich viel eingesammeltem Sold. Schuld war das **Heimweh**
+des Daumens: gebaut gegen die Schleppe, die es seit Zusicherung 23 nicht mehr
+gibt, zog es ihn nur noch quer durch die Horde zur Mitte zurück. Ohne es hält
+der Speerträger bei Tempo 1,0 / 1,12 / 1,25 jeweils 23 bis 24 von 24, und
+der Stall liegt mit 6 von 8 Saaten über „ohne Burg“ gleichauf mit der
+Schmiede. **Offen bleibt:** einen *Vorteil* bringt Tempo nicht. Gepaart bis
+300 s gewinnt 1,25 gegen 1,0 genau 4 von 8 Saaten, auch mit gierigerem Daumen
+oder kürzer liegendem Sold. Tempo ist neutral — ein Zweck dafür wäre eine
+neue Regel im Spiel, keine neue Zahl.
 
 **Ein Bau mit zwei Wirkungen wird an der stärkeren gewählt.** Die Münze
 buchte ihren Faktor auch als Erfahrung und war damit gemessen der stärkste
