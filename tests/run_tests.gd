@@ -508,6 +508,7 @@ func _horde_proben() -> Dictionary:
         return _horde
     var anteile: Array[float] = []
     var stapel: Array[float] = []
+    var ueberlappt: Array[float] = []
     var meiste := 0
     for saat in 6:
         var stufen := {}
@@ -540,15 +541,23 @@ func _horde_proben() -> Dictionary:
             if im_bild.size() < 20:
                 continue
             var gedeckt := 0
+            var halb := 0
             for a in im_bild:
                 for b in im_bild:
                     if a != b and a.ort.distance_to(b.ort) < a.radius * 0.25:
                         gedeckt += 1
                         break
+                for b in im_bild:
+                    if a != b and a.ort.distance_to(b.ort) < Feinde.abstand(a.art):
+                        halb += 1
+                        break
             stapel.append(float(gedeckt) / float(im_bild.size()))
+            ueberlappt.append(float(halb) / float(im_bild.size()))
     anteile.sort()
     stapel.sort()
-    _horde = {"anteile": anteile, "stapel": stapel, "meiste": meiste}
+    ueberlappt.sort()
+    _horde = {"anteile": anteile, "stapel": stapel, "ueberlappt": ueberlappt,
+        "meiste": meiste}
     return _horde
 
 
@@ -599,8 +608,23 @@ func _test_feinde_stehen_nicht_aufeinander() -> bool:
             "nur %d Proben mit zwanzig oder mehr Feinden im Bild" % stapel.size()):
         return false
     var hoechste := stapel[stapel.size() - 1]
-    return _melde(hoechste <= 0.05,
-        "in einer Probe decken sich %.0f %% der Feinde im Bild" % (hoechste * 100.0))
+    if not _melde(hoechste <= 0.05,
+            "in einer Probe decken sich %.0f %% der Feinde im Bild" % (hoechste * 100.0)):
+        return false
+    # **Und was man sieht, nicht nur die Mitten.** Die Zaehlung oben sah den
+    # Wolfsklumpen nicht: die Mitten der Woelfe hielten Abstand, ihre quer
+    # liegenden Koerper deckten sich - auf dem Ladenbild ein dunkler Fleck.
+    # Hier zaehlt, wer zu mehr als der Haelfte auf einem anderen liegt,
+    # gemessen an seiner gezeichneten Breite (`Feinde.abstand`). Das 95.
+    # Perzentil der Proben, mit genau diesen Laeufen:
+    #
+    #     vorher (Wolf nach Trefferradius)     0,128
+    #     nachher (Wolf gestaucht, Abstand 22)  0,011
+    var ueberlappt: Array[float] = p["ueberlappt"]
+    var p95 := ueberlappt[int(float(ueberlappt.size()) * 0.95)]
+    return _melde(p95 <= 0.04,
+        "im 95. Perzentil liegen %.0f %% der Feinde zur Haelfte auf einem anderen"
+        % (p95 * 100.0))
 
 
 func _test_ein_laeufer_haelt_die_ersten_minuten() -> bool:

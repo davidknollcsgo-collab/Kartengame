@@ -198,8 +198,18 @@ static func gefaehrte(tu: Tusche, ort: Vector2, h: float, blick: float,
 
 ## --- Die Feinde ---
 
+## **Der Wolf steht kleiner im Bild, als seine Hoehe sagt.** Er liegt quer:
+## in voller Groesse war er fast vierzig Punkte breit je Seite, waehrend die
+## Horde nach seinem Trefferradius von fuenfzehn auswich. Die Mitten hielten
+## Abstand, die Koerper deckten sich, und ein Rudel war ein dunkler Fleck.
+## Gestaucht passt er zu `Feinde.ABSTAND` - was die Simulation fuer breit
+## haelt, muss das Bild auch so zeichnen.
+const WOLF_MASS := 0.72
+
 static func feind(tu: Tusche, ort: Vector2, h: float, blick: float, art: int,
         phase: float, zuckt: float, knapp: bool) -> void:
+    if art == Feinde.Art.WOLF:
+        h *= WOLF_MASS
     var farbe := Palette.sorte(art)
     if zuckt > 0.0:
         # **Ein Getroffener blitzt auf, er verblasst nicht.** Vorher senkte

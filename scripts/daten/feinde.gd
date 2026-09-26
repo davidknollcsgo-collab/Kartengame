@@ -32,6 +32,17 @@ const TEMPO: PackedFloat32Array = [92.0, 172.0, 70.0, 58.0, 76.0, 88.0, 74.0]
 ## sie anliegen - `Gefecht.BISS_TAKT` sagt, wie oft.
 const SCHADEN: PackedFloat32Array = [6.0, 5.0, 12.0, 9.0, 7.0, 17.0, 26.0]
 const RADIUS: PackedFloat32Array = [17.0, 15.0, 20.0, 17.0, 20.0, 24.0, 52.0]
+## **Wie weit einer den anderen fernhaelt** - nicht dasselbe wie `RADIUS`.
+## `RADIUS` sagt, wer getroffen wird und wer anliegt; dieser hier, wie breit
+## eine Figur im Bild steht. Fuer Aufrechte ist beides gleich, der Wolf aber
+## liegt quer (`Streiter.WOLF_MASS`). Mit dem Trefferradius lagen 551 von 812
+## Woelfen im Bild zu mehr als der Haelfte auf einem anderen.
+##
+## **22 und nicht die vollen 40 der alten Zeichnung.** Mit 28 wich das Rudel
+## so weit aus, dass es auch den Laufenden umstellte: die Umzingelung stehend
+## gegen laufend fiel auf Faktor 1,84, und die Wurfaxt trug allein 6 von 8.
+## Also wurde der Wolf kleiner gezeichnet statt die Horde breiter gemacht.
+const ABSTAND: PackedFloat32Array = [17.0, 22.0, 20.0, 17.0, 20.0, 24.0, 52.0]
 const SINN: PackedInt32Array = [
     Sinn.LAEUFT, Sinn.LAEUFT, Sinn.LAEUFT, Sinn.HAELT_ABSTAND,
     Sinn.TREIBT, Sinn.STUERMT, Sinn.STUERMT,
@@ -58,6 +69,10 @@ static func schaden(a: int) -> float:
 
 static func radius(a: int) -> float:
     return RADIUS[clampi(a, 0, RADIUS.size() - 1)]
+
+
+static func abstand(a: int) -> float:
+    return ABSTAND[clampi(a, 0, ABSTAND.size() - 1)]
 
 
 static func sinn(a: int) -> int:

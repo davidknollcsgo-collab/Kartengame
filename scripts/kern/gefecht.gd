@@ -610,7 +610,8 @@ static func _trenne_feinde(s: Stand, dt: float) -> void:
                     geprueft += 1
                     var b: Feind = liste[m]
                     var d := b.ort - a.ort
-                    var eng := (a.radius + b.radius) * TRENN_ENGE
+                    var eng := (Feinde.abstand(a.art) + Feinde.abstand(b.art)) \
+                        * TRENN_ENGE
                     var l2 := d.length_squared()
                     if l2 >= eng * eng:
                         continue

@@ -295,7 +295,10 @@ keinem Schuss zu sehen, obwohl er im Spiel steht.
     Wer weiter als 950 Punkte zurückfällt, wird auf den Eintrittsring geholt,
     **rundum** und nicht nach vorn (nach vorn trug der Speerträger 2 von 8,
     weil hinter ihm niemand mehr stand). Feinde **weichen einander aus**, im
-    Raster, 30-mal je Sekunde. Und **höchstens 300 leben**, gemessen an
+    Raster, 30-mal je Sekunde, nach ihrer **gezeichneten Breite**
+    (`Feinde.ABSTAND`) und nicht nach dem Trefferradius. Der quer liegende
+    Wolf wird dafür gestaucht gezeichnet (`Streiter.WOLF_MASS`): was die
+    Simulation für breit hält, muss das Bild auch so zeichnen. Und **höchstens 300 leben**, gemessen an
     der Rechenzeit (200 Lebende 1,3 ms je Schritt, 400 schon 2,7 ms). Vorher
     lief der Held der Horde davon: nach zehn Minuten lebten 2269, im Bild
     standen meist 10 bis 60, und von 880 im Bild standen 779 auf einem
