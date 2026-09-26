@@ -47,7 +47,12 @@ const HOECHSTSTUFE := 5
 const SCHADEN: PackedFloat32Array = [16.0, 21.0, 13.0, 11.0, 24.0, 12.0]
 
 ## **Sekunden zwischen zwei Schlägen** auf Stufe eins.
-const TAKT: PackedFloat32Array = [0.66, 0.78, 0.42, 0.80, 1.90, 1.45]
+##
+## Die Armbrust von 0,80 auf 0,68: seit die Horde als Menge beim Helden steht
+## und nicht mehr als Klumpen hinter ihm, trug sie allein 6 von 8 Saaten,
+## beide Ausfaelle kurz vor Schluss (117 und 119 s). Mit 0,68 sind es 8 von 8;
+## mehr Schaden (13 statt 11) gab nur 7.
+const TAKT: PackedFloat32Array = [0.66, 0.78, 0.42, 0.68, 1.90, 1.45]
 
 ## **Reichweite** in Weltpunkten. Der Flegel führt hier den Bahnradius.
 ##
@@ -57,7 +62,18 @@ const TAKT: PackedFloat32Array = [0.66, 0.78, 0.42, 0.80, 1.90, 1.45]
 ## zweihundertachtundsechzig bei der Axt. Er kreist jetzt dort, wo das
 ## Gedraenge wirklich steht, und das ist zugleich seine Aussage: *lass sie
 ## nah heran.*
-const WEITE: PackedFloat32Array = [132.0, 168.0, 70.0, 520.0, 138.0, 460.0]
+##
+## **Speer 310 statt 168, Hammer 160 statt 138** - nachgezogen, als die Horde
+## zur Menge wurde. Solange Feinde aufeinander standen, traf ein Stoß in
+## einen Klumpen ein Dutzend auf einmal; aufgelockert trifft er einen. Ueber
+## Kreuz gemessen hing die Schwaeche am Speerträger-Helden und nicht am
+## Speer (mit Schwert 12/16, der Schwertkaempfer mit Speer 16/16), und der
+## Hebel war die Reichweite: 168 -> 5/16, 210 -> 12/16, 250 -> 22/24,
+## 280 -> 23/24, 310 -> 24/24 (Speertraeger bei 180 s). Mehr
+## Tempo fuer den Helden machte ihn *schlechter* (1,25 -> 10/16, 1,40 -> 8/16),
+## weil schneller laufen jetzt heisst, schneller in die Horde zu laufen.
+## Der Hammer trug allein 6 von 8, mit 160 sind es 8 von 8.
+const WEITE: PackedFloat32Array = [132.0, 310.0, 70.0, 520.0, 160.0, 460.0]
 
 ## **Wie breit der Schlag streut**, im Bogenmaß. Null heißt: ein Punkt oder
 ## eine Bahn, kein Kegel.

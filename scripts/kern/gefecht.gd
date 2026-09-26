@@ -108,8 +108,41 @@ const SOLD_DAUER := 22.0
 ## Wo Feinde eintreten: knapp außerhalb dessen, was man sieht. Näher wäre
 ## ein Erscheinen aus dem Nichts, weiter kostet nur Laufzeit.
 const EINTRITT_RADIUS := 760.0
-## Und wer zu weit zurückfällt, wird versetzt statt ewig hinterherzulaufen.
-const HEIMHOL_RADIUS := 1500.0
+## **Wer zurückfällt, wird zurückgeholt** - auf den Eintrittsring, knapp
+## außerhalb der Sicht. Hier stand `HEIMHOL_RADIUS = 1500`, und der Held lief
+## der Horde davon: Tempo 200 gegen 58 bis 92. Gemessen lebten nach zehn Minuten 2269 Feinde, im
+## Bild standen meist 10 bis 60, und kehrte der Daumen um, kamen tausend auf
+## einmal herein. Eine Horde, die man nicht sieht, ist keine.
+##
+## Knapp außerhalb der halben Bilddiagonale (734): wer weiter weg ist, ist
+## für das Bild verloren und für das Gefecht auch.
+const NACHHOL_RADIUS := 950.0
+## Halber Öffnungswinkel des Kegels um den Laufweg, in den nachgeholt wird.
+##
+## **PI, also rundum - nicht nach vorn.** Der erste Anlauf holte in einen
+## Kegel von 70 Grad vor den Helden, wie es das Genre gern tut. Gemessen
+## trug der Speerträger danach 2 von 8 Saaten statt 7: sein Speer stößt nach
+## hinten (Zusicherung 4), und hinter ihm stand niemand mehr. Rundum holt die
+## Schleppe genauso ins Bild und lässt der einzigen Waffe, die nach dem
+## Laufweg fragt, ihre Antwort.
+const NACHHOL_KEGEL := PI
+
+## **Feinde weichen einander aus.** Ohne das lief jeder gerade auf den
+## Helden zu, und Feinde derselben Sorte liefen auf derselben Bahn: bei 360 s
+## standen von 880 Feinden im Bild 779 praktisch auf einem anderen. Die Horde
+## war ein paar Klumpen und keine Menge.
+##
+## Ein Raster statt jeder gegen jeden, und je Feind höchstens
+## `TRENN_NACHBARN` Prüfungen - sonst wird ein Stapel in einer Zelle
+## quadratisch. `TRENN_ENGE` unter eins: eine Menge darf sich überlappen,
+## nur nicht decken.
+const TRENN_ZELLE := 64.0
+const TRENN_FEDER := 12.0
+const TRENN_NACHBARN := 10
+const TRENN_ENGE := 0.85
+## Wie oft getrennt wird. Eine Menge ordnet sich nicht sechzigmal je Sekunde
+## neu, und der Durchgang ist der teuerste des ganzen Schritts.
+const TRENN_TAKT := 1.0 / 30.0
 
 ## Wie lange ein Treffer einen Feind zurückwirft. Klein: Rückstoß, der die
 ## Horde aufhält, nimmt dem Gedränge seinen Sinn.
@@ -227,10 +260,19 @@ class Stand extends RefCounted:
     var angebote: Array = []
 
     var _eintritt_rest := 0.0
+    var _trenn_uhr := 0.0
     var vorfaelle: Array = []
 
+    ## **Wer gefallen ist, bleibt gefallen.** `lebt()` fragte nur nach
+    ## `leben > 0` - und `_zehre()` heilte im selben Schritt ein Zehntel
+    ## nach. Mit dem Zug *Rations* endete damit kein Lauf mehr: gemessen
+    ## steckte ein Stehender bei null Leben in achtzig Sekunden 10692 Schaden
+    ## durch Bolzen ein und stand weiter. Das galt im Spiel wie im Messstand,
+    ## und jede Messung mit "600 s durchgehalten" konnte ein Untoter sein.
+    var gefallen := false
+
     func lebt() -> bool:
-        return leben > 0.0
+        return not gefallen and leben > 0.0
 
     func waffe_stufe(w: int) -> int:
         return int(waffen.get(w, 0))
@@ -325,6 +367,7 @@ static func schritt(s: Stand, dt: float, eingabe: Vector2,
     _bewege_streiter(s, dt, eingabe)
     _speise_nach(s, dt, rng)
     _bewege_feinde(s, dt, rng)
+    _trenne_feinde(s, dt)
     _fuehre_waffen(s, dt, rng)
     _fuehre_gefaehrten(s, dt)
     _bewege_geschosse(s, dt)
@@ -366,10 +409,15 @@ static func _speise_nach(s: Stand, dt: float, rng: RandomNumberGenerator) -> voi
         return
     s._eintritt_rest -= dt * Andrang.rate(s.zeit)
     var sicherung := 0
-    while s._eintritt_rest <= 0.0 and sicherung < 40:
+    while s._eintritt_rest <= 0.0 and sicherung < 40 \
+            and s.feinde.size() < Andrang.HOECHSTENS_LEBEND:
         s._eintritt_rest += 1.0
         _setze_ein(s, Andrang.ziehe(s.zeit, rng), rng)
         sicherung += 1
+    # **Voll ist voll.** Was über der Obergrenze nachkäme, wird verworfen und
+    # nicht aufgestaut - sonst ergösse sich nach dem ersten Luftholen die
+    # ganze aufgestaute Horde auf einmal.
+    s._eintritt_rest = maxf(s._eintritt_rest, 0.0)
 
 
 static func _setze_ein(s: Stand, art: int, rng: RandomNumberGenerator) -> void:
@@ -474,11 +522,10 @@ static func _bewege_feinde(s: Stand, dt: float, rng: RandomNumberGenerator) -> v
             var fach := int(winkel / TAU * float(SEKTOREN)) % SEKTOREN
             faecher |= 1 << fach
 
-        # Wer weit zurückfällt, wird versetzt. Ein Feind, der zwei Minuten
-        # hinterherläuft, ist kein Gegner, sondern ein Kostenpunkt.
-        if abstand > HEIMHOL_RADIUS:
-            var w := rng.randf() * TAU
-            f.ort = s.ort + Vector2(cos(w), sin(w)) * EINTRITT_RADIUS
+        # Wer weit zurückfällt, wird nach vorn geholt. Ein Feind, der zwei
+        # Minuten hinterherläuft, ist kein Gegner, sondern ein Kostenpunkt.
+        if abstand > NACHHOL_RADIUS:
+            _hole_nach(s, f, rng)
 
     var besetzt := 0
     for i in SEKTOREN:
@@ -493,13 +540,115 @@ static func _bewege_feinde(s: Stand, dt: float, rng: RandomNumberGenerator) -> v
             s.umzingelt))
 
 
+## Setzt einen Zurückgefallenen auf den Eintrittsring. Leben und Sorte
+## bleiben - es ist derselbe Feind, nicht ein neuer.
+static func _hole_nach(s: Stand, f: Feind, rng: RandomNumberGenerator) -> void:
+    var w := rng.randf() * TAU
+    if s.lauf.length_squared() > 0.02:
+        w = s.lauf.angle() + (rng.randf() * 2.0 - 1.0) * NACHHOL_KEGEL
+    f.ort = s.ort + Vector2(cos(w), sin(w)) * EINTRITT_RADIUS
+    f.stoss_rest = 0.0
+    f.stuermt = false
+    f.uhr = Feinde.STURM_SAMMELN
+
+
+## **Die Horde als Menge.** Überlappende Paare werden hälftig auseinander
+## geschoben, gedämpft mit der Zeit und nicht je Bild - sonst stünde die
+## Menge auf einem 120-Hz-Telefon lockerer als auf einem mit 60.
+static func _trenne_feinde(s: Stand, dt: float) -> void:
+    s._trenn_uhr += dt
+    if s._trenn_uhr < TRENN_TAKT:
+        return
+    var zeit := s._trenn_uhr
+    s._trenn_uhr = 0.0
+    var n := s.feinde.size()
+    if n == 0:
+        return
+    var anteil := minf(1.0, TRENN_FEDER * zeit)
+    # Schlüssel als eine Zahl statt als Vector2i: schneller zu streuen, und
+    # 2^16 Zellen je Achse sind 4 Millionen Punkte Feld.
+    var gitter := {}
+    var schwere: Array[Feind] = []
+    for i in n:
+        var f := s.feinde[i]
+        if not f.lebt:
+            continue
+        if Feinde.ist_warlord(f.art):
+            schwere.append(f)
+            continue
+        var z := (floori(f.ort.x / TRENN_ZELLE) + 32768) * 65536 \
+            + floori(f.ort.y / TRENN_ZELLE) + 32768
+        if gitter.has(z):
+            gitter[z].append(f)
+        else:
+            gitter[z] = [f]
+    # **Jedes Paar genau einmal**, ohne es erst zu finden und dann zu
+    # verwerfen: dieselbe Zelle nur nach vorn, dazu die vier Nachbarn auf
+    # einer Seite. Der erste Anlauf lief je Feind über alle neun Zellen und
+    # übersprang die Hälfte: bei 400 Feinden 5,8 ms je Schritt, so 3,6.
+    for z in gitter:
+        var hier: Array = gitter[z]
+        var nachbarn: Array = [hier]
+        for versatz in [65536 - 1, 65536, 65536 + 1, 1]:
+            if gitter.has(z + versatz):
+                nachbarn.append(gitter[z + versatz])
+        for k in hier.size():
+            var a: Feind = hier[k]
+            var geprueft := 0
+            for liste_i in nachbarn.size():
+                var liste: Array = nachbarn[liste_i]
+                var ab := k + 1 if liste_i == 0 else 0
+                for m in range(ab, liste.size()):
+                    if geprueft >= TRENN_NACHBARN:
+                        break
+                    geprueft += 1
+                    var b: Feind = liste[m]
+                    var d := b.ort - a.ort
+                    var eng := (a.radius + b.radius) * TRENN_ENGE
+                    var l2 := d.length_squared()
+                    if l2 >= eng * eng:
+                        continue
+                    var l := sqrt(l2)
+                    # Genau aufeinander: eine feste Richtung aus der Lage im
+                    # Stapel, kein Wurf - der Kern zieht nur aus dem rng.
+                    var richt := d / l if l > 0.001 \
+                        else Vector2(cos(float(k + m)), sin(float(k + m)))
+                    var schub := (eng - l) * 0.5 * anteil
+                    a.ort -= richt * schub
+                    b.ort += richt * schub
+    # Der Warlord passt nicht ins Raster. Es gibt nur einen, also schiebt er
+    # in einem eigenen Durchgang - und nur die anderen weichen.
+    for w in schwere:
+        for f in s.feinde:
+            if f == w or not f.lebt:
+                continue
+            var d := f.ort - w.ort
+            var eng := (w.radius + f.radius) * TRENN_ENGE
+            var l2 := d.length_squared()
+            if l2 < eng * eng and l2 > 0.000001:
+                var l := sqrt(l2)
+                f.ort += d / l * (eng - l) * anteil
+    # **Der Held ist ein Hindernis.** Wer in ihn hineinläuft, wird auf den
+    # Rand geschoben - knapp innerhalb der Berührung, damit sie bleibt. So
+    # steht die Horde als Ring um ihn und nicht als Stapel auf ihm.
+    for f in s.feinde:
+        if not f.lebt:
+            continue
+        var d := f.ort - s.ort
+        var rand := (f.radius + STREITER_RADIUS) * 0.9
+        var l2 := d.length_squared()
+        if l2 < rand * rand and l2 > 0.000001:
+            f.ort = s.ort + d / sqrt(l2) * rand
+
+
 static func _verwunde(s: Stand, roh: float) -> void:
     var panzer := Gunst.panzer(s.zug_stufe(Gunst.Zug.RUESTUNG)) + s.panzer_zusatz
     var wirklich := roh * (1.0 - clampf(panzer, 0.0, 0.85))
     s.leben -= wirklich
     s.vorfaelle.append([Vorfall.STREITER_GETROFFEN, null])
-    if s.leben <= 0.0:
+    if s.leben <= 0.0 and not s.gefallen:
         s.leben = 0.0
+        s.gefallen = true
         s.vorfaelle.append([Vorfall.ENDE, null])
 
 
@@ -872,7 +1021,7 @@ static func _sammle(s: Stand, dt: float) -> void:
 
 static func _zehre(s: Stand, dt: float) -> void:
     var z := Gunst.zehrung(s.zug_stufe(Gunst.Zug.ZEHRUNG))
-    if z <= 0.0:
+    if z <= 0.0 or s.gefallen:
         return
     s.leben = minf(s.leben_voll, s.leben + z * dt)
 

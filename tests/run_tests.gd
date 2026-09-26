@@ -35,13 +35,18 @@ const TESTS: PackedStringArray = [
     "_test_stehen_wird_umzingelt",
     "_test_stehenbleiben_verliert",
     "_test_umzingelung_kostet_mehr_als_eine_flanke",
+    "_test_die_horde_steht_im_bild",
+    "_test_feinde_stehen_nicht_aufeinander",
     "_test_jede_waffe_traegt_allein",
     "_test_keine_waffe_ist_die_beste",
     "_test_flegel_haengt_nicht_an_der_bildrate",
     "_test_sold_kommt_an",
+    "_test_der_tod_ist_endgueltig",
 ]
 
 var _fehler: Array[String] = []
+## Die Proben der Horde, einmal gerechnet fuer zwei Waechter.
+var _horde: Dictionary = {}
 
 
 func _init() -> void:
@@ -488,6 +493,116 @@ func _test_angebote_bleiben_annehmbar() -> bool:
 
 # --- Das Gefecht ------------------------------------------------------------
 
+## **Die Horde, gezaehlt, wo man sie sieht.** Schwertkaempfer auf Burg 0,
+## der Daumen fuehrt, sechs Saaten, Proben alle 30 s von 120 bis 360 s.
+##
+## **Der Held ist dabei unsterblich.** Gefragt ist, wo die Horde steht, nicht
+## wer stirbt - ein Lauf, der nach 200 s endet, haette die spaeten Proben gar
+## nicht, und dann misst man die Todeszeit mit. Eine Messung, die an eine
+## Decke stoesst, ist keine.
+##
+## Einmal gerechnet und fuer beide Waechter aufgehoben: es sind dieselben
+## Laeufe, und sie kosten je eine Minute.
+func _horde_proben() -> Dictionary:
+    if not _horde.is_empty():
+        return _horde
+    var anteile: Array[float] = []
+    var stapel: Array[float] = []
+    var meiste := 0
+    for saat in 6:
+        var stufen := {}
+        for b in Halle.NAMEN.size():
+            stufen[b] = 0
+        var s := Gefecht.baue(stufen, Helden.Held.SCHWERT, {})
+        s.leben_voll = 1e9
+        s.leben = 1e9
+        var rng := RandomNumberGenerator.new()
+        rng.seed = 700 + saat
+        var takt := 1.0 / 60.0
+        var naechste := 120.0
+        while s.zeit < 360.0:
+            if s.wartet_auf_wahl:
+                Gefecht.nimm(s, Daumen.waehle(s))
+                continue
+            Gefecht.schritt(s, takt, Daumen.richtung(s), rng)
+            meiste = maxi(meiste, s.feinde.size())
+            if s.zeit < naechste:
+                continue
+            naechste += 30.0
+            # Das Sichtfeld des Entwurfs: 720 x 1280 um den Helden.
+            var im_bild: Array[Gefecht.Feind] = []
+            for f in s.feinde:
+                var d := f.ort - s.ort
+                if absf(d.x) < 360.0 and absf(d.y) < 640.0:
+                    im_bild.append(f)
+            anteile.append(float(im_bild.size()) / maxf(1.0, float(s.feinde.size())))
+            # Unter zwanzig im Bild ist ein Anteil ein Wurf.
+            if im_bild.size() < 20:
+                continue
+            var gedeckt := 0
+            for a in im_bild:
+                for b in im_bild:
+                    if a != b and a.ort.distance_to(b.ort) < a.radius * 0.25:
+                        gedeckt += 1
+                        break
+            stapel.append(float(gedeckt) / float(im_bild.size()))
+    anteile.sort()
+    stapel.sort()
+    _horde = {"anteile": anteile, "stapel": stapel, "meiste": meiste}
+    return _horde
+
+
+func _test_die_horde_steht_im_bild() -> bool:
+    # **Eine Horde, die man nicht sieht, ist keine.** Der Held ist schneller
+    # als fast alles, was ihn jagt (200 gegen 58 bis 92), und zurueckgefallene
+    # Feinde wurden erst bei 1500 Punkten versetzt. Also lief der Daumen
+    # davon, und hinter ihm trottete die Horde ausser Sicht: nach zehn Minuten
+    # lebten 2269, im Bild standen meist 10 bis 60.
+    #
+    # Gemessen mit genau diesen Laeufen, vorher und nachher:
+    #
+    #                              vorher        nachher
+    #     Anteil im Bild, Median    0,09          0,22
+    #     unteres Viertel           0,04          0,15
+    #     meiste Lebende            1256          300
+    #
+    # Gefordert ist ein Median von 0,16 - fast das Doppelte des alten und
+    # mit Abstand unter dem neuen -, und nie mehr Lebende als die
+    # Obergrenze. Wer das rot sieht, hat wieder eine Schleppe gebaut.
+    var p := _horde_proben()
+    var anteile: Array[float] = p["anteile"]
+    var median := anteile[anteile.size() / 2]
+    if not _melde(int(p["meiste"]) <= Andrang.HOECHSTENS_LEBEND,
+            "es lebten %d Feinde, Obergrenze %d" % [p["meiste"],
+            Andrang.HOECHSTENS_LEBEND]):
+        return false
+    return _melde(median >= 0.16,
+        "im Bild steht im Median nur %.2f der Lebenden" % median)
+
+
+func _test_feinde_stehen_nicht_aufeinander() -> bool:
+    # **Eine Menge, keine Klumpen.** Ohne Abstossung lief jeder Feind gerade
+    # auf den Helden zu, und Feinde derselben Sorte auf derselben Bahn. Bei
+    # 360 s standen von 880 Feinden im Bild 779 auf einem anderen - der
+    # Bildschirm zeigte ein paar Klumpen, und hundert Figuren lasen sich wie
+    # fuenf.
+    #
+    # Gezaehlt: wer naeher als ein Viertel seines Radius an einem anderen
+    # steht, deckt ihn praktisch. Mit genau diesen Laeufen:
+    #
+    #                                 vorher        nachher
+    #     gedeckt, Median             0,15          0,00
+    #     gedeckt, hoechste Probe     0,94          0,00
+    var p := _horde_proben()
+    var stapel: Array[float] = p["stapel"]
+    if not _melde(stapel.size() >= 20,
+            "nur %d Proben mit zwanzig oder mehr Feinden im Bild" % stapel.size()):
+        return false
+    var hoechste := stapel[stapel.size() - 1]
+    return _melde(hoechste <= 0.05,
+        "in einer Probe decken sich %.0f %% der Feinde im Bild" % (hoechste * 100.0))
+
+
 func _test_ein_laeufer_haelt_die_ersten_minuten() -> bool:
     # **Die untere Schranke.** Der simulierte Daumen kitet und sammelt, mehr
     # nicht. Die vollen zehn Minuten misst `tools/probe.gd`; hier reicht der
@@ -859,3 +974,22 @@ func _test_sold_kommt_an() -> bool:
     return _melde(s.sold > 0 and s.stufe > 1,
         "%d erschlagen, aber nur %d Sold und Stufe %d"
         % [s.erschlagen, s.sold, s.stufe])
+
+
+func _test_der_tod_ist_endgueltig() -> bool:
+    # **Mit Rations starb niemand.** `_zehre()` heilte nach dem tödlichen
+    # Treffer im selben Schritt nach, `lebt()` fragte nur nach dem Leben, und
+    # der Lauf ging weiter - im Spiel wie im Messstand. Gemessen stand ein
+    # Held bei null Leben achtzig Sekunden im Bolzenhagel.
+    var s := Gefecht.baue({}, Helden.Held.SCHWERT, {})
+    s.zuege[Gunst.Zug.ZEHRUNG] = Gunst.ZUG_HOECHSTSTUFE
+    Gefecht._verwunde(s, s.leben_voll * 10.0)
+    if not _melde(Gefecht.vorbei(s), "nach dem toedlichen Treffer ist der Lauf nicht vorbei"):
+        return false
+    var rng := RandomNumberGenerator.new()
+    rng.seed = 1
+    for i in 120:
+        Gefecht._zehre(s, 1.0 / 60.0)
+        Gefecht.schritt(s, 1.0 / 60.0, Vector2.ZERO, rng)
+    return _melde(Gefecht.vorbei(s) and not s.lebt(),
+        "mit Rations steht der Held nach dem Tod wieder auf (Leben %.1f)" % s.leben)

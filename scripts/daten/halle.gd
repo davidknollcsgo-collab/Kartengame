@@ -63,8 +63,14 @@ static func _kurve(stufe: int) -> float:
     return 1.0 - pow(1.0 - t, 1.6)
 
 
-const LEBEN_GRUND := 100.0
-const LEBEN_HOECHST := 260.0
+## **140 statt 100, und die ganze Kurve mit.** Zwei Dinge kamen zugleich: die
+## Horde steht jetzt beim Helden statt in einer Schleppe außer Sicht, und
+## ein Held mit *Rations* stirbt wieder, wenn er stirbt (`Stand.gefallen`).
+## Beides machte die ersten drei Minuten härter; gemessen hielt der
+## Speerträger bei 100 Leben 2 bis 5 von 8 Saaten. Die Obergrenze wächst im
+## selben Verhältnis, damit die Mauer nicht flacher wird.
+const LEBEN_GRUND := 140.0
+const LEBEN_HOECHST := 364.0
 
 static func leben(stufe: int) -> float:
     return lerpf(LEBEN_GRUND, LEBEN_HOECHST, _kurve(stufe))

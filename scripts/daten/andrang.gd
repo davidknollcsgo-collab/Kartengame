@@ -23,8 +23,19 @@ const LAUF_SEKUNDEN := 600.0
 ## Ein Höhepunkt, den man im Gedränge nicht sieht, ist keiner.
 const WARLORD_ZEIT := LAUF_SEKUNDEN - 30.0
 
+## **Wie viele höchstens leben.** Ist die Zahl erreicht, kommt nichts nach.
+##
+## Gemessen an der Rechenzeit je `Gefecht.schritt()` auf dem Entwicklungs-
+## rechner, mit Abstoßung: 200 Lebende 1,3 ms, 400 Lebende 2,7 ms, 800
+## Lebende 5,8 ms. Dreihundert sind rund zwei Millisekunden - auf einem
+## Telefon ein Mehrfaches, und das Zeichnen kommt noch dazu. Vorher gab es
+## keine Grenze, und in Minute neun lebten 3000.
+const HOECHSTENS_LEBEND := 300
+
 ## Eintritte je Sekunde, von bequem auf dicht.
-const RATE_ANFANG := 1.6
+## **1,3 statt 1,6**, seit die Horde beim Helden bleibt: was vorher in der
+## Schleppe außer Sicht verpuffte, kommt jetzt an.
+const RATE_ANFANG := 1.3
 const RATE_ENDE := 11.0
 
 ## Alle so viele Sekunden ein Schwall: dreifache Rate für ein paar Sekunden.

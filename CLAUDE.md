@@ -78,7 +78,7 @@ mv "/tmp/g/Godot_v${V}_linux.x86_64" /usr/local/bin/godot && chmod +x /usr/local
 
 ```bash
 godot --headless --import                               # class_name-Registry
-godot --headless --path . --script tests/run_tests.gd   # ~45 min, Exitcode 1 bei Fehler
+godot --headless --path . --script tests/run_tests.gd   # ~15 min, Exitcode 1 bei Fehler
 godot --headless --path . --script tools/probe.gd       # volle Läufe, Auskunft, ~40 min
 godot --headless --path . --script tools/probe.gd -- --held 1 --stufen 8
 godot --headless --path . --quit-after 180              # startet das Spiel wirklich
@@ -287,9 +287,54 @@ keinem Schuss zu sehen, obwohl er im Spiel steht.
 22. **Der Ton wird gemessen, nicht gehört.** Anfang und Ende jedes Puffers
     stehen konstruktionsbedingt auf null (`_huelle`); ein Puffer, der bei
     halber Auslenkung einsetzt, ist ein Knacks und kein Schlag. Und er wird
-    **gedrosselt**: in Minute neun fallen dreißig Feinde je Sekunde.
+    **gedrosselt**: in den dichten Minuten fallen Feinde im Dutzend je
+    Sekunde.
+
+23. **Die Horde bleibt beim Helden.** Drei Teile, und keiner reicht allein
+    (`Gefecht.NACHHOL_RADIUS`, `_trenne_feinde`, `Andrang.HOECHSTENS_LEBEND`):
+    Wer weiter als 950 Punkte zurückfällt, wird auf den Eintrittsring geholt,
+    **rundum** und nicht nach vorn (nach vorn trug der Speerträger 2 von 8,
+    weil hinter ihm niemand mehr stand). Feinde **weichen einander aus**, im
+    Raster, 30-mal je Sekunde. Und **höchstens 300 leben**, gemessen an
+    der Rechenzeit (200 Lebende 1,3 ms je Schritt, 400 schon 2,7 ms). Vorher
+    lief der Held der Horde davon: nach zehn Minuten lebten 2269, im Bild
+    standen meist 10 bis 60, und von 880 im Bild standen 779 auf einem
+    anderen. Bewacht von `_test_die_horde_steht_im_bild` (Anteil im Bild,
+    Median 0,09 vorher, 0,22 nachher) und
+    `_test_feinde_stehen_nicht_aufeinander` (gedeckt 0,94 vorher, 0,00 nachher).
+
+24. **Wer gefallen ist, bleibt gefallen** (`Stand.gefallen`). `lebt()`
+    fragte nur nach `leben > 0`, und `_zehre()` heilte nach dem tödlichen
+    Treffer im selben Schritt nach. Mit *Rations* endete kein Lauf mehr, im
+    Spiel wie im Messstand.
 
 ## Was beim Bau gelernt wurde
+
+**Ein Untoter sieht in jeder Tabelle aus wie ein Überlebender.** Mit
+*Rations* stand der Held nach dem Tod mit einem Zehntel Leben wieder auf,
+und jeder Messstand zählte ihn als „600 s durchgehalten“. Stehenbleiben
+schien dadurch gleichauf mit Laufen (in der Hälfte der Saaten „600 s“), und
+jede Messung der vollen zehn Minuten war zweigeteilt. Gefunden hat es erst eine
+Aufschlüsselung des Schadens nach Quelle: 10692 Schaden durch Bolzen bei
+einem Helden mit 156 Leben. **Wenn eine Verteilung zweigeteilt ist, schaut
+man nach, was die eine Hälfte am Leben hält**, bevor man sie erklärt.
+
+**Eine Horde, die man nicht sieht, ist keine.** Gezählt wurde lange, wie
+viele leben — nicht, wie viele im Bild stehen. Der Held ist zwei- bis
+dreimal so schnell wie das Fußvolk; er lief ihm davon, und die Horde stand
+als Schleppe außer Sicht. **Zu zählen ist, was im Bild steht.**
+
+**Ein Klumpen ist eine Flächenwaffe wert.** Solange Feinde aufeinander
+standen, traf jeder Stoß ein Dutzend. Als sie einander auswichen, fielen der
+Speer, der Hammer und die Armbrust unter ihre Schranken — nicht weil sie
+schwächer wurden, sondern weil ihr Ziel nicht mehr gestapelt war.
+
+**Tempo ist kein Wert an sich.** Seit die Horde rundum steht, macht mehr
+Tempo den simulierten Daumen schlechter: der Speerträger mit Faktor 1,12
+hielt 12 von 16 Saaten, mit 1,25 nur 10, mit 1,40 nur 8 — er läuft schneller
+in die Horde hinein. Seine Eigenart („Outpaces the press“) ist damit ein
+**offener Posten**; getragen wird er vorläufig von der Reichweite seines
+Speers.
 
 **Die Sparfassung ist nicht der Randfall, sondern der Normalfall.** Bei
 `DICHT_AB = 70` steht ein Lauf ab Minute drei fast durchgehend in ihr — und
