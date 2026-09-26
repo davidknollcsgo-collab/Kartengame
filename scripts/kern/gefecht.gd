@@ -208,6 +208,12 @@ class Gefaehrte extends RefCounted:
 class Muenze extends RefCounted:
     var ort := Vector2.ZERO
     var wert := 1
+    ## **Erfahrung ohne die Münze der Burg.** `wert` trägt den Faktor der
+    ## Münze, und `_sammle()` buchte ihn auch als Erfahrung. Damit war die
+    ## Münze kein Geldbau, sondern ein Stufenbeschleuniger - und gemessen
+    ## der stärkste Bau (6 von 8 vollen Läufen auf Stufe 14, die Mauer 0).
+    ## Ihre Beschreibung sagt nur: mehr Sold.
+    var erfahrung := 1
     var alter := 0.0
     var gefasst := false
     var lebt := true
@@ -831,6 +837,7 @@ static func _treffe(s: Stand, f: Feind, schaden: float, richtung: Vector2,
     var m := Muenze.new()
     m.ort = f.ort
     m.wert = maxi(1, int(round(float(Feinde.sold(f.art)) * s.sold_faktor)))
+    m.erfahrung = Feinde.sold(f.art)
     s.muenzen.append(m)
     s.vorfaelle.append([Vorfall.FEIND_FAELLT, f])
 
@@ -1010,7 +1017,7 @@ static func _sammle(s: Stand, dt: float) -> void:
             m.gefasst = true
             var d := zu.length()
             if d < STREITER_RADIUS:
-                s.erfahrung += m.wert
+                s.erfahrung += m.erfahrung
                 s.sold += m.wert
                 s.vorfaelle.append([Vorfall.MUENZE, m])
                 continue

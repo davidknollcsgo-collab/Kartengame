@@ -335,6 +335,16 @@ hielt 12 von 16 Saaten, mit 1,25 nur 10, mit 1,40 nur 8 — er läuft schneller
 in die Horde hinein. Seine Eigenart („Outpaces the press“) ist damit ein
 **offener Posten**; getragen wird er vorläufig von der Reichweite seines
 Speers.
+Dasselbe gilt für den **Stall**: gepaart über acht Saaten auf Stufe 14 im
+Median 249 s gegen 231 s ohne Burg, aber in vier Saaten früher gefallen.
+Eine flachere Kurve machte ihn nur unwirksamer, nicht nützlich — die Frage
+ist, wozu Tempo in einer Horde taugt, die rundum steht.
+
+**Ein Bau mit zwei Wirkungen wird an der stärkeren gewählt.** Die Münze
+buchte ihren Faktor auch als Erfahrung und war damit gemessen der stärkste
+Bau, obwohl sie laut Beschreibung nur Sold bringt. Seit `Muenze.erfahrung`
+liefert sie auf Stufe 14 Saat für Saat dieselben Zeiten wie gar keine Burg —
+genau das, was ein reiner Geldbau tun soll.
 
 **Die Sparfassung ist nicht der Randfall, sondern der Normalfall.** Bei
 `DICHT_AB = 70` steht ein Lauf ab Minute drei fast durchgehend in ihr — und
