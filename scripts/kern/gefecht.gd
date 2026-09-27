@@ -127,6 +127,25 @@ const NACHHOL_RADIUS := 950.0
 ## Laufweg fragt, ihre Antwort.
 const NACHHOL_KEGEL := PI
 
+## **Der Warlord stellt sich** - an einer Leine statt durch Nachholen.
+##
+## Er hatte den Sinn des Ritters: sammeln mit 0,45 seines Tempos (33 Punkte
+## je Sekunde gegen rund 200 beim Helden), fiel damit zurueck, wurde ab 950
+## auf den Eintrittsring bei 760 gesetzt - ausserhalb des Bildes - und
+## pendelte dort. Gemessen stand in 9 von 96 vollen Laeufen der Held bei
+## 900 s noch, den Warlord mit bis zu 8800 Leben irgendwo draussen. Ein
+## Endgegner, den man nicht sieht, ist keiner.
+##
+## Jetzt sammelt er mit vollem Tempo, und liegt er weiter als die Leine weg,
+## holt er auf - mit `WARLORD_AUFHOLEN` mal dem Tempo **des Helden**, sichtbar
+## heranstuermend und nicht versetzt. An den Helden gebunden und nicht an
+## eine feste Zahl: der Stall hebt dessen Tempo auf 272, Stiefel darueber,
+## und eine feste Zahl waere irgendwann die langsamere. Die Leine liegt knapp
+## unter der halben Bild**breite** (360) und nicht der halben Hoehe: das Bild
+## steht hochkant, und wer nach der Seite flieht, haette ihn sonst am Rand.
+const WARLORD_LEINE := 330.0
+const WARLORD_AUFHOLEN := 1.25
+
 ## **Feinde weichen einander aus.** Ohne das lief jeder gerade auf den
 ## Helden zu, und Feinde derselben Sorte liefen auf derselben Bahn: bei 360 s
 ## standen von 880 Feinden im Bild 779 praktisch auf einem anderen. Die Horde
@@ -440,7 +459,12 @@ static func _speise_nach(s: Stand, dt: float, rng: RandomNumberGenerator) -> voi
 static func _setze_ein(s: Stand, art: int, rng: RandomNumberGenerator) -> void:
     var f := Feind.new()
     f.art = art
-    f.leben_voll = Feinde.leben(art) * Andrang.zaehigkeit(s.zeit)
+    # Der Warlord ohne Zaehigkeit: sein Leben ist eine Kampfdauer und steht
+    # als feste Zahl in `Feinde.LEBEN`. Mit ihr (x 3,4 bei 570 s) wurde aus
+    # dem Endkampf eine Wartezeit, und die Schmiede spuerte man darin nicht.
+    f.leben_voll = Feinde.leben(art)
+    if not Feinde.ist_warlord(art):
+        f.leben_voll *= Andrang.zaehigkeit(s.zeit)
     f.leben = f.leben_voll
     f.radius = Feinde.radius(art)
     var w := rng.randf() * TAU
@@ -519,7 +543,12 @@ static func _bewege_feinde(s: Stand, dt: float, rng: RandomNumberGenerator) -> v
                         f.angesagt = false
                         f.uhr = Feinde.STURM_SAMMELN
                 else:
-                    f.ort += richtung * tempo * 0.45 * dt
+                    var zug := tempo * 0.45
+                    if Feinde.ist_warlord(f.art):
+                        zug = tempo
+                        if abstand > WARLORD_LEINE:
+                            zug = maxf(tempo, tempo_von(s) * WARLORD_AUFHOLEN)
+                    f.ort += richtung * zug * dt
                     # **Die Bahn wird angesagt und dann nicht mehr
                     # nachgeführt.** Er prescht dorthin, wo der Spieler zur
                     # Ansage stand - nicht vorgehalten, nicht nachgelenkt.
@@ -552,7 +581,7 @@ static func _bewege_feinde(s: Stand, dt: float, rng: RandomNumberGenerator) -> v
 
         # Wer weit zurückfällt, wird nach vorn geholt. Ein Feind, der zwei
         # Minuten hinterherläuft, ist kein Gegner, sondern ein Kostenpunkt.
-        if abstand > NACHHOL_RADIUS:
+        if abstand > NACHHOL_RADIUS and not Feinde.ist_warlord(f.art):
             _hole_nach(s, f, rng)
 
     var besetzt := 0
@@ -849,7 +878,11 @@ static func _treffe(s: Stand, f: Feind, schaden: float, richtung: Vector2,
         mit_stoss := true) -> void:
     f.leben -= schaden
     f.zuckt = 0.14
-    if mit_stoss:
+    # **Den Warlord stoesst niemand zurueck.** Mit Rueckstoss schob ein
+    # Bogenschuetze, der schnell genug schoss, ihn Treffer fuer Treffer aus
+    # dem Bild - gemessen stand er dann nur 33 % der Zeit im Sichtfeld, und
+    # genau in den Laeufen mit dem meisten Schaden.
+    if mit_stoss and not Feinde.ist_warlord(f.art):
         f.stoss = richtung
         f.stoss_rest = STOSS_DAUER
     if f.leben > 0.0:

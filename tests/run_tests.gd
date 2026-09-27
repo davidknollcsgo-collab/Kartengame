@@ -44,6 +44,7 @@ const TESTS: PackedStringArray = [
     "_test_sold_kommt_an",
     "_test_der_tod_ist_endgueltig",
     "_test_ansturm_ist_auszuweichen",
+    "_test_der_warlord_stellt_sich",
 ]
 
 var _fehler: Array[String] = []
@@ -1080,6 +1081,54 @@ func _ansturm(quer: bool) -> float:
         if f.sturm_traf:
             break
     return 1e6 - s.leben
+
+
+func _test_der_warlord_stellt_sich() -> bool:
+    # **Der Warlord stellt sich** (Zusicherung 26). Gestellt: der Held ist
+    # unsterblich, hat keine Waffe und flieht eine Minute geradeaus mit
+    # vollem Tempo - das Schlimmste, was ein Daumen tun kann. Vorher sammelte
+    # der Warlord mit 33 Punkten je Sekunde, wurde ab 950 ausserhalb des
+    # Bildes wieder eingesetzt und stand dort; gemessen in 9 von 96 vollen
+    # Laeufen bei 900 s noch.
+    #
+    # Gezaehlt wird ab dem Augenblick, in dem er zum ersten Mal im Bild
+    # steht: er tritt wie alle knapp ausserhalb ein.
+    var s := Gefecht.baue({Halle.Bau.STALL: Halle.HOECHSTSTUFE}, Helden.Held.SCHWERT, {})
+    s.waffen.clear()
+    s.takte.clear()
+    s.leben_voll = 1e9
+    s.leben = 1e9
+    s.zeit = Andrang.WARLORD_ZEIT
+    var rng := RandomNumberGenerator.new()
+    rng.seed = 11
+    Gefecht.schritt(s, 1.0 / 60.0, Vector2.ZERO, rng)
+    var warlord: Gefecht.Feind = null
+    for f in s.feinde:
+        if Feinde.ist_warlord(f.art):
+            warlord = f
+    if not _melde(warlord != null, "der Warlord ist nicht erschienen"):
+        return false
+    if not _melde(is_equal_approx(warlord.leben_voll, Feinde.leben(Feinde.Art.WARLORD)),
+            "der Warlord hat %.0f Leben statt %.0f - die Zaehigkeit gilt fuer ihn nicht"
+            % [warlord.leben_voll, Feinde.leben(Feinde.Art.WARLORD)]):
+        return false
+    var bilder := 0
+    var im_bild := 0
+    var gesehen := false
+    var zeit := 0.0
+    while zeit < 60.0:
+        zeit += 1.0 / 60.0
+        Gefecht.schritt(s, 1.0 / 60.0, Vector2.RIGHT, rng)
+        var d := warlord.ort - s.ort
+        var drin := absf(d.x) < 360.0 and absf(d.y) < 640.0
+        gesehen = gesehen or drin
+        if gesehen:
+            bilder += 1
+            if drin:
+                im_bild += 1
+    var anteil := float(im_bild) / maxf(1.0, float(bilder))
+    return _melde(gesehen and anteil >= 0.9,
+        "der Warlord steht nur in %.0f %% der Bilder im Sichtfeld" % (anteil * 100.0))
 
 
 func _test_ansturm_ist_auszuweichen() -> bool:

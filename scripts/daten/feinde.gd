@@ -26,7 +26,12 @@ const NAMEN: PackedStringArray = [
     "Knight", "The Warlord",
 ]
 
-const LEBEN: PackedFloat32Array = [11.0, 8.0, 30.0, 16.0, 44.0, 85.0, 2600.0]
+## **Der Warlord: 8000, fest und ohne `Andrang.zaehigkeit`.** Sein Leben ist
+## eine Kampfdauer. Gemessen (Daumen, Held unsterblich, 96 Laeufe) nimmt er im
+## Median 120 Schaden je Sekunde, im unteren Viertel 60; 8000 sind damit gut
+## eine Minute im Median. Vorher 2600 x Zaehigkeit, bei 570 s rund 8870 -
+## fast dieselbe Zahl, aber er stand die Haelfte der Zeit ausserhalb des Bildes.
+const LEBEN: PackedFloat32Array = [11.0, 8.0, 30.0, 16.0, 44.0, 85.0, 8000.0]
 const TEMPO: PackedFloat32Array = [92.0, 172.0, 70.0, 58.0, 76.0, 88.0, 74.0]
 ## Was ein Treffer kostet. Feinde schlagen im Nahkampf dauernd zu, solange
 ## sie anliegen - `Gefecht.BISS_TAKT` sagt, wie oft.

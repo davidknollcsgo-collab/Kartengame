@@ -321,6 +321,18 @@ keinem Schuss zu sehen, obwohl er im Spiel steht.
     Bewacht von `_test_ansturm_ist_auszuweichen` (gestellt). Der Daumen
     weicht aus angesagten Bahnen und Bolzen aus (`Daumen._ausweichen`).
 
+26. **Der Warlord stellt sich.** Er hatte den Sinn des Ritters, sammelte mit
+    33 Punkten je Sekunde, fiel zurück und wurde vom Nachholen auf den
+    Eintrittsring **außerhalb des Bildes** gesetzt; jeder Treffer stieß ihn
+    zusätzlich zurück. Gemessen stand er dadurch in einem gestellten Lauf
+    16 % der Zeit im Sichtfeld, und in 9 von 96 vollen Läufen stand der Held
+    bei 900 s noch. Jetzt: er sammelt mit vollem Tempo, holt jenseits von
+    `Gefecht.WARLORD_LEINE` (330, **unter der halben Bildbreite**, nicht der
+    Höhe) mit `WARLORD_AUFHOLEN` × dem Tempo **des Helden** auf, wird nie
+    versetzt und von keinem Treffer zurückgestoßen. Sein Leben ist fest
+    (`Feinde.LEBEN`, 8000) und **ohne** `Andrang.zaehigkeit`: es ist eine
+    Kampfdauer, keine Wand. Bewacht von `_test_der_warlord_stellt_sich`.
+
 ## Was beim Bau gelernt wurde
 
 **Ein Untoter sieht in jeder Tabelle aus wie ein Überlebender.** Mit
@@ -409,7 +421,12 @@ Und **der Warlord ist zäh**: wer ihn erreicht, braucht im Median gut zwei
 Minuten für ihn, und in 9 von 96 Läufen stand der Held bei 900 s noch mit
 vollem oder halbem Leben da, den Warlord mit 1800 bis 8800 Leben irgendwo
 **außerhalb des Bildes** — der Daumen flieht auch vor dem letzten Feind.
-Ob das der Daumen ist oder das Spiel, ist offen.
+Es war das Spiel (Zusicherung 26): Nachholen setzte ihn außerhalb des Bildes
+ab, und jeder Treffer stieß ihn weiter weg. Danach, dieselben 96 Läufe:
+**1** statt 9 stehen bei 900 s, **30** statt 22 Siege, der Endkampf dauert im
+Median **72 s** (Quartile 49 / 111), und er steht 97 bis 99 % der Zeit im
+Bild. Der eine übrige Lauf ist ein Speerträger, dessen Waffen lieber die
+letzten vierzig Feinde der Horde treffen (Zusicherung 3: auf den Nächsten).
 
 Dazu ein Messfehler: `tools/probe.gd` zählte jeden Lauf, der 600 s
 erreichte, als „heil“. Das Spiel kennt aber keine Zeitgrenze
