@@ -374,6 +374,17 @@ hineinläuft. **Tempo bleibt ein offener Posten, und der Engpass ist der
 Daumen:** ein Fluchtvektor nutzt Tempo nicht. Was ein Mensch mit Tempo tut —
 eine Lücke erreichen, bevor sie sich schließt —, kann er nicht.
 
+**Ein Schuss ist ein Augenblick, keine Verteilung.** Auf einem Bild aus
+Minute 6 stand ein Block aus Rittern und Wölfen, und die naheliegende
+Erklärung war, dass die Zähen die Obergrenze füllen, weil die Schwachen
+zuerst fallen. Gemessen (Daumen, Held unsterblich, vier Saaten, Burg 4 und 8)
+liegt der Ritter bei 7 bis 17 % der Lebenden gegen 9 % der Gezogenen, also
+höchstens beim Doppelten, und der Wolf darunter. Am stärksten verschoben sind
+die **Armbrustschützen** (22 bis 27 % gegen 11 %), und zwar mit Absicht: sie
+halten Abstand und sind deshalb schwer zu erreichen. Der Block war ein
+Rudel, das zufällig mit Rittern zusammenlief. **Bevor man eine Regel gegen
+ein Bild baut, zählt man, ob das Bild die Regel zeigt.**
+
 **Ein Bau mit zwei Wirkungen wird an der stärkeren gewählt.** Die Münze
 buchte ihren Faktor auch als Erfahrung und war damit gemessen der stärkste
 Bau, obwohl sie laut Beschreibung nur Sold bringt. Seit `Muenze.erfahrung`
