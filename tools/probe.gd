@@ -41,6 +41,7 @@ extends SceneTree
 ## im Protokoll, wenn jemand eine Aenderung nachschlagen will.
 
 const TAKT := 1.0 / 60.0
+const ENDE := 900.0
 
 
 func _init() -> void:
@@ -53,8 +54,9 @@ func _init() -> void:
         if args[i] == "--stufen" and i + 1 < args.size():
             stufe = int(args[i + 1])
 
-    print("Held        | Burgstufe | haelt    | erschlagen | Stufe | Waffen")
+    print("Held        | Burgstufe | Ausgang       | erschlagen | Stufe | Waffen")
     var gefallen := 0
+    var steht := 0
     var gesamt := 0
     var haengt := 0
     for held in Helden.NAMEN.size():
@@ -64,19 +66,29 @@ func _init() -> void:
             var e := spiele(held, s, 7000 + held * 13 + s)
             gesamt += 1
             var zeit: float = e["zeit"]
-            var heil: bool = zeit >= Andrang.LAUF_SEKUNDEN - 1.0 or bool(e["warlord"])
-            if not heil:
-                gefallen += 1
+            # **Gewonnen ist erst, wenn der Warlord faellt.** Das Spiel kennt
+            # keine Zeitgrenze (`Gefecht.vorbei`): wer bei 600 s steht und
+            # ihn nicht bezwingt, hat noch nicht gewonnen. Hier stand bis
+            # dahin "heil" fuer jeden, der 600 s erreichte.
+            var ausgang := "Sieg"
+            if not bool(e["warlord"]):
+                if bool(e["lebt"]):
+                    ausgang = "steht"
+                    steht += 1
+                else:
+                    ausgang = "faellt"
+                    gefallen += 1
             if not bool(e["zu_ende"]):
                 haengt += 1
-            print("%-11s | %9d | %s %3d:%02d | %10d | %5d | %s" % [
-                Helden.name_von(held), s, " " if heil else "!",
+            print("%-11s | %9d | %-6s %3d:%02d | %10d | %5d | %s" % [
+                Helden.name_von(held), s, ausgang,
                 int(zeit) / 60, int(zeit) % 60,
                 e["erschlagen"], e["stufe"], e["waffen"]])
     print("")
-    print("%d von %d Laeufen durchgestanden, %d gefallen - je eine Saat, also"
-        % [gesamt - gefallen, gesamt, gefallen])
-    print("Auskunft und keine Schranke. Die Schranken stehen in tests/run_tests.gd.")
+    print("%d von %d Laeufen gewonnen, %d stehen ohne Sieg, %d gefallen."
+        % [gesamt - gefallen - steht, gesamt, steht, gefallen])
+    print("Je eine Saat, also Auskunft und keine Schranke. Die Schranken stehen")
+    print("in tests/run_tests.gd.")
     if haengt > 0:
         print("FEHLER: %d von %d Laeufen sind nicht zu Ende gekommen - weder"
             % [haengt, gesamt])
@@ -93,7 +105,9 @@ static func spiele(held: int, burgstufe: int, saat: int) -> Dictionary:
     var s := Gefecht.baue(stufen, held, {})
     var rng := RandomNumberGenerator.new()
     rng.seed = saat
-    var sicherung := int(Andrang.LAUF_SEKUNDEN / TAKT) + 600
+    # Bis 900 s: der Warlord kommt bei 570, und wer ihn bis dahin nicht
+    # bezwungen hat, steht als eigener Ausgang in der Tabelle.
+    var sicherung := int(ENDE / TAKT)
     while not Gefecht.vorbei(s) and sicherung > 0:
         sicherung -= 1
         if s.wartet_auf_wahl:
@@ -105,5 +119,6 @@ static func spiele(held: int, burgstufe: int, saat: int) -> Dictionary:
         liste += "%s %d  " % [Waffen.name_von(w), s.waffe_stufe(w)]
     return {"zeit": s.zeit, "erschlagen": s.erschlagen, "stufe": s.stufe,
         "waffen": liste, "warlord": s.warlord_gefallen, "leben": s.leben,
+        "lebt": s.lebt(),
         "zu_ende": is_finite(s.zeit) and is_finite(s.leben)
-            and (Gefecht.vorbei(s) or s.zeit >= Andrang.LAUF_SEKUNDEN)}
+            and (Gefecht.vorbei(s) or s.zeit >= ENDE - 1.0)}

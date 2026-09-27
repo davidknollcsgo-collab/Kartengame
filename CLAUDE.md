@@ -391,6 +391,31 @@ allein 8 von 8. Eine kürzere Grundweite mit größerem Faktor (168 × 1,85)
 hielt den Helden, riss aber den Speer für alle anderen (4 von 8).
 Bewacht von `_test_speerlaenge_gilt_nur_dem_speer`.
 
+**Drei Minuten sind nicht zehn.** Jeder Wächter endet bei 180 s, und dort
+hielten alle vier Helden 24 von 24. Über die vollen Läufe (Daumen, bis
+Sieg, Tod oder 900 s, acht Saaten je Zelle) sieht es anders aus:
+
+| Held | Burg 0 | Burg 8 | Burg 14 |
+|---|---|---|---|
+| Swordsman | 0 Siege, Median 267 s | 0, 420 s | 3, 674 s |
+| Archer | 3, 338 s | 3, 690 s | 7, 687 s |
+| Spearman | 0, 304 s | 1, 446 s | 4, 686 s |
+| Hammerman | 1, 259 s | 0, 396 s | 2, 465 s |
+
+Drei Befunde. **Die Burg trägt**, und zwar deutlich — was bei 180 s gleich
+aussah, trennt sich ab Minute vier. **Gestorben wird in Minute vier bis
+sieben**, fast nur durch Berührung; Stürme und Bolzen bleiben Nebensache.
+Und **der Warlord ist zäh**: wer ihn erreicht, braucht im Median gut zwei
+Minuten für ihn, und in 9 von 96 Läufen stand der Held bei 900 s noch mit
+vollem oder halbem Leben da, den Warlord mit 1800 bis 8800 Leben irgendwo
+**außerhalb des Bildes** — der Daumen flieht auch vor dem letzten Feind.
+Ob das der Daumen ist oder das Spiel, ist offen.
+
+Dazu ein Messfehler: `tools/probe.gd` zählte jeden Lauf, der 600 s
+erreichte, als „heil“. Das Spiel kennt aber keine Zeitgrenze
+(`Gefecht.vorbei`) — gewonnen ist erst, wenn der Warlord fällt. Jetzt
+rechnet er bis 900 s und unterscheidet Sieg, „steht“ und Fall.
+
 **Ein Schuss ist ein Augenblick, keine Verteilung.** Auf einem Bild aus
 Minute 6 stand ein Block aus Rittern und Wölfen, und die naheliegende
 Erklärung war, dass die Zähen die Obergrenze füllen, weil die Schwachen
