@@ -73,7 +73,11 @@ const TAKT: PackedFloat32Array = [0.66, 0.78, 0.42, 0.68, 1.90, 1.45]
 ## Tempo fuer den Helden machte ihn *schlechter* (1,25 -> 10/16, 1,40 -> 8/16),
 ## weil schneller laufen jetzt heisst, schneller in die Horde zu laufen.
 ## Der Hammer trug allein 6 von 8, mit 160 sind es 8 von 8.
-const WEITE: PackedFloat32Array = [132.0, 310.0, 70.0, 520.0, 160.0, 460.0]
+##
+## **Und wieder 250 statt 310**, seit die Laenge beim Speertraeger steht
+## (`Helden.SPEER_FAKTOR`, 1,25). 310 war ein Notbehelf fuer einen Helden und
+## galt fuer alle; 250 traegt den Speer allein weiter 8 von 8, 168 nur 4.
+const WEITE: PackedFloat32Array = [132.0, 250.0, 70.0, 520.0, 160.0, 460.0]
 
 ## **Wie breit der Schlag streut**, im Bogenmaß. Null heißt: ein Punkt oder
 ## eine Bahn, kein Kegel.

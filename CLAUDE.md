@@ -345,9 +345,10 @@ schwächer wurden, sondern weil ihr Ziel nicht mehr gestapelt war.
 **Tempo ist kein Wert an sich.** Seit die Horde rundum steht, macht mehr
 Tempo den simulierten Daumen schlechter: der Speerträger mit Faktor 1,12
 hielt 12 von 16 Saaten, mit 1,25 nur 10, mit 1,40 nur 8 — er läuft schneller
-in die Horde hinein. Seine Eigenart („Outpaces the press“) ist damit ein
-**offener Posten**; getragen wird er vorläufig von der Reichweite seines
-Speers.
+in die Horde hinein. Seine Eigenart („Outpaces the press“) war damit ein
+**offener Posten**; getragen wurde er von der Reichweite seines Speers, und
+die stand als Notbehelf für **jeden** Helden auf 310. **Aufgelöst** (siehe
+unten): Tempo bleibt neutral, und die Reichweite ist jetzt seine Eigenart.
 Dasselbe galt für den **Stall**: gepaart über acht Saaten auf Stufe 14 im
 Median 249 s gegen 231 s ohne Burg, aber in vier Saaten früher gefallen.
 
@@ -373,6 +374,16 @@ weil der schnellere Daumen nicht besser ausweicht, sondern in mehr
 hineinläuft. **Tempo bleibt ein offener Posten, und der Engpass ist der
 Daumen:** ein Fluchtvektor nutzt Tempo nicht. Was ein Mensch mit Tempo tut —
 eine Lücke erreichen, bevor sie sich schließt —, kann er nicht.
+
+**Eine Eigenart gehört dahin, wo sie gemessen trägt, nicht wo ihr Satz
+klingt.** Der Speerträger hieß „Outpaces the press“ und lief 1,12-mal so
+schnell; getragen hat ihn die Weite seines Speers, und die stand für alle
+Helden auf 310. Jetzt läuft er so schnell wie jeder, und nur *sein* Speer
+reicht weiter (`Helden.SPEER_FAKTOR` 1,25 auf eine Grundweite von 250):
+24 von 24 Saaten statt 23 bis 24, der Schwertkämpfer 16 von 16, der Speer
+allein 8 von 8. Eine kürzere Grundweite mit größerem Faktor (168 × 1,85)
+hielt den Helden, riss aber den Speer für alle anderen (4 von 8).
+Bewacht von `_test_speerlaenge_gilt_nur_dem_speer`.
 
 **Ein Schuss ist ein Augenblick, keine Verteilung.** Auf einem Bild aus
 Minute 6 stand ein Block aus Rittern und Wölfen, und die naheliegende

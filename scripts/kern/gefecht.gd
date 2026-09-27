@@ -246,6 +246,7 @@ class Stand extends RefCounted:
     var schaden_faktor := 1.0
     var sold_faktor := 1.0
     var weite_faktor := 1.0
+    var speer_faktor := 1.0
     var sog_zusatz := 0.0
     var panzer_zusatz := 0.0
     var held := 0
@@ -315,6 +316,7 @@ static func baue(burg_stufen: Dictionary, held := Helden.Held.SCHWERT,
         * Ausruestung.summe(getragen, Ausruestung.Wirkt.SCHADEN)
     s.sold_faktor = Halle.sold_faktor(int(burg_stufen.get(Halle.Bau.MUENZE, 0)))
     s.weite_faktor = Helden.weite_faktor(held)
+    s.speer_faktor = Helden.speer_faktor(held)
     s.sog_zusatz = Ausruestung.summe(getragen, Ausruestung.Wirkt.SOG) - 1.0
     s.panzer_zusatz = Ausruestung.summe(getragen, Ausruestung.Wirkt.PANZER) - 1.0
     # **Man beginnt mit genau einer Waffe**, und zwar der seines Helden. Ohne
@@ -346,7 +348,10 @@ static func sog_von(s: Stand) -> float:
 ##
 ## **Die kreisende Waffe bleibt aussen vor** - siehe `bahn_von()` darunter.
 static func weite_von(s: Stand, w: int) -> float:
-    return Waffen.weite(w, s.waffe_stufe(w)) * s.weite_faktor
+    var weite := Waffen.weite(w, s.waffe_stufe(w)) * s.weite_faktor
+    if w == Waffen.Art.SPEER:
+        weite *= s.speer_faktor
+    return weite
 
 
 ## Der Bahnradius der kreisenden Waffe - **ohne** den Helden darin.

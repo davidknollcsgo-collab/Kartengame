@@ -22,7 +22,7 @@ const NAMEN: PackedStringArray = ["Swordsman", "Archer", "Spearman", "Hammerman"
 const LEHREN: PackedStringArray = [
     "Stands where others fall. Begins with the arming sword.",
     "Reaches further than they can. Begins with the crossbow.",
-    "Outpaces the press. Begins with the boar spear.",
+    "Keeps them at spear's length. Begins with the boar spear.",
     "Slow, and it does not matter. Begins with the war hammer.",
 ]
 
@@ -32,7 +32,7 @@ const STARTWAFFE: PackedInt32Array = [
     Waffen.Art.SCHWERT, Waffen.Art.ARMBRUST, Waffen.Art.SPEER, Waffen.Art.HAMMER,
 ]
 
-## Die Eigenart, als vier Faktoren - aber je Held ist hoechstens einer davon
+## Die Eigenart, als fuenf Faktoren - aber je Held ist hoechstens einer davon
 ## ungleich eins (der Hammertraeger zahlt seinen Schaden mit Tempo, und das
 ## ist der einzige Handel im Satz).
 ##
@@ -53,8 +53,30 @@ const STARTWAFFE: PackedInt32Array = [
 ## nicht in eine Zahl hier.
 const LEBEN_FAKTOR: PackedFloat32Array = [1.25, 1.00, 1.00, 1.00]
 const WEITE_FAKTOR: PackedFloat32Array = [1.00, 1.60, 1.00, 1.00]
-const TEMPO_FAKTOR: PackedFloat32Array = [1.00, 1.00, 1.12, 0.92]
+const TEMPO_FAKTOR: PackedFloat32Array = [1.00, 1.00, 1.00, 0.92]
 const SCHADEN_FAKTOR: PackedFloat32Array = [1.00, 1.00, 1.00, 1.20]
+
+## **Der Speertraeger haelt sie auf Speereslaenge** - seine Eigenart wirkt auf
+## genau einen Wert: die Weite des Speers, und nur des Speers.
+##
+## Vorher hiess sie "Outpaces the press" und war Tempo (1,12). Gemessen bringt
+## Tempo dem Daumen nichts: gepaart bis 300 s gewinnt 1,25 gegen 1,0 genau 2
+## bis 4 von 8 Saaten, und mehr Tempo heisst im Gedraenge nur, schneller in die
+## Horde zu laufen. Getragen wurde er in Wahrheit von `Waffen.WEITE[SPEER]` =
+## 310 - einem Notbehelf, der den Speer fuer **jeden** Helden so lang machte.
+## Jetzt steht die Laenge dort, wo sie hingehoert: bei ihm.
+##
+## Gemessen (Grundweite x Faktor, Speertraeger 24 Saaten / Schwertkaempfer
+## 16 / Schwertkaempfer mit Speer allein 8, je 180 bzw. 120 s):
+##
+##     vorher 310 x 1,00, Tempo 1,12    23-24/24   -       8/8
+##     168 x 1,85                       23/24      15/16   4/8
+##     210 x 1,50                       23/24      14/16   8/8
+##     250 x 1,25                       24/24      16/16   8/8
+##
+## Nicht `WEITE_FAKTOR`: das ist die Eigenart des Bogenschuetzen, und zwei
+## Helden mit derselben Eigenart waeren einer.
+const SPEER_FAKTOR: PackedFloat32Array = [1.00, 1.00, 1.25, 1.00]
 
 ## Was er tun muss, damit er frei wird. Der erste ist von Anfang an da.
 enum Tat { KEINE, ZEIT, ERSCHLAGEN, WARLORD }
@@ -92,6 +114,10 @@ static func weite_faktor(h: int) -> float:
 
 static func tempo_faktor(h: int) -> float:
     return TEMPO_FAKTOR[clampi(h, 0, TEMPO_FAKTOR.size() - 1)]
+
+
+static func speer_faktor(h: int) -> float:
+    return SPEER_FAKTOR[clampi(h, 0, SPEER_FAKTOR.size() - 1)]
 
 
 static func schaden_faktor(h: int) -> float:

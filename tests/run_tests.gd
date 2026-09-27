@@ -24,6 +24,7 @@ const TESTS: PackedStringArray = [
     "_test_sorten_treten_gestaffelt_ein",
     "_test_helden_tabelle_vollstaendig",
     "_test_jeder_held_ist_zu_erkennen",
+    "_test_speerlaenge_gilt_nur_dem_speer",
     "_test_ausruestung_tabelle_vollstaendig",
     "_test_ausruestung_verschlechtert_nichts",
     "_test_kein_ausbau_verschlechtert",
@@ -298,6 +299,7 @@ func _test_helden_tabelle_vollstaendig() -> bool:
         "LEBEN_FAKTOR": Helden.LEBEN_FAKTOR.size(),
         "WEITE_FAKTOR": Helden.WEITE_FAKTOR.size(),
         "TEMPO_FAKTOR": Helden.TEMPO_FAKTOR.size(),
+        "SPEER_FAKTOR": Helden.SPEER_FAKTOR.size(),
         "SCHADEN_FAKTOR": Helden.SCHADEN_FAKTOR.size(),
         "BEDINGUNG": Helden.BEDINGUNG.size(),
         "SCHWELLE": Helden.SCHWELLE.size(),
@@ -316,10 +318,10 @@ func _test_jeder_held_ist_zu_erkennen() -> bool:
     # fuenf kleinen Vorteilen fuehlt sich an wie der Grundheld mit Rauschen.
     var gesehen := {}
     for h in Helden.Held.size():
-        var wort := "%.2f|%.2f|%.2f|%.2f|%d" % [
+        var wort := "%.2f|%.2f|%.2f|%.2f|%.2f|%d" % [
             Helden.leben_faktor(h), Helden.weite_faktor(h),
             Helden.tempo_faktor(h), Helden.schaden_faktor(h),
-            Helden.startwaffe(h)]
+            Helden.speer_faktor(h), Helden.startwaffe(h)]
         if not _melde(not gesehen.has(wort),
                 "%s ist derselbe Held wie %s"
                 % [Helden.name_von(h), String(gesehen.get(wort, ""))]):
@@ -327,13 +329,41 @@ func _test_jeder_held_ist_zu_erkennen() -> bool:
         gesehen[wort] = Helden.name_von(h)
         var abweichungen := 0
         for f in [Helden.leben_faktor(h), Helden.weite_faktor(h),
-                Helden.schaden_faktor(h)]:
+                Helden.schaden_faktor(h), Helden.speer_faktor(h)]:
             if not is_equal_approx(f, 1.0):
                 abweichungen += 1
         if not _melde(abweichungen <= 1,
                 "%s hat %d Vorteile - einer muss genuegen"
                 % [Helden.name_von(h), abweichungen]):
             return false
+    return true
+
+
+func _test_speerlaenge_gilt_nur_dem_speer() -> bool:
+    # **Die Eigenart des Speertraegers wirkt auf genau einen Wert.** Er und
+    # der Schwertkaempfer fuehren jede andere Waffe gleich weit und laufen
+    # gleich schnell; nur ihr Speer ist verschieden lang, und seiner laenger.
+    # Hier stand vorher Tempo - gemessen neutral, also keine Eigenart.
+    var speer := Gefecht.baue({}, Helden.Held.SPEER)
+    var schwert := Gefecht.baue({}, Helden.Held.SCHWERT)
+    for w in Waffen.Art.size():
+        speer.waffen[w] = 1
+        schwert.waffen[w] = 1
+        var a := Gefecht.weite_von(speer, w)
+        var b := Gefecht.weite_von(schwert, w)
+        if w == Waffen.Art.SPEER:
+            if not _melde(a > b * 1.2,
+                    "der Speer des Speertraegers reicht %.0f, sonst %.0f" % [a, b]):
+                return false
+        elif not _melde(is_equal_approx(a, b),
+                "%s reicht beim Speertraeger %.0f statt %.0f"
+                % [Waffen.name_von(w), a, b]):
+            return false
+    if not _melde(is_equal_approx(Gefecht.tempo_von(speer),
+            Gefecht.tempo_von(schwert)),
+            "der Speertraeger laeuft %.0f statt %.0f"
+            % [Gefecht.tempo_von(speer), Gefecht.tempo_von(schwert)]):
+        return false
     return true
 
 
