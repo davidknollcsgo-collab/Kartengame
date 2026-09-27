@@ -34,6 +34,51 @@ const GIER := 0.35
 ## 16 Saaten. Ohne es hält er 23 bis 24 von 24, bei jedem Tempo.
 
 
+## **Er tritt aus angesagten Bahnen.** Seit ein Sturm angesagt ist und hart
+## trifft und Bolzen schwer wiegen, ist Ausweichen eine Regel des Spiels -
+## und ein Messstand, der blind in jede Bahn laeuft, misst sie nicht. Er
+## sieht nur, was auch das Bild zeigt: das Band eines angesagten Sturms und
+## einen fliegenden Bolzen. Kein Vorhalten, nichts ueber die Ansage hinaus.
+const AUSWEICHEN := 1.6
+## Wie weit voraus er einen Bolzen ernst nimmt, in Sekunden.
+const BOLZEN_BLICK := 0.6
+
+
+## Quer aus der Bahn: fuer jeden angesagten oder laufenden Sturm und jeden
+## Bolzen, der ihn traefe, ein Schub senkrecht zur Bahn, weg von ihr.
+static func _ausweichen(s: Gefecht.Stand) -> Vector2:
+    var weg := Vector2.ZERO
+    for f in s.feinde:
+        if not (f.angesagt or f.stuermt):
+            continue
+        var weite := Feinde.sturm_weite(f.art) + f.radius
+        var zu := s.ort - f.ort
+        var laengs := zu.dot(f.bahn)
+        if laengs < 0.0 or laengs > weite:
+            continue
+        var quer := zu - f.bahn * laengs
+        var breit := f.radius + Gefecht.STREITER_RADIUS + 12.0
+        if quer.length() > breit:
+            continue
+        var seite := quer.normalized() if quer.length_squared() > 0.01 \
+            else f.bahn.orthogonal()
+        weg += seite
+    for g in s.geschosse:
+        if not g.feindlich:
+            continue
+        var zu := s.ort - g.ort
+        var laengs := zu.dot(g.richtung)
+        if laengs < 0.0 or laengs > g.tempo * BOLZEN_BLICK:
+            continue
+        var quer := zu - g.richtung * laengs
+        if quer.length() > Gefecht.STREITER_RADIUS + 14.0:
+            continue
+        var seite := quer.normalized() if quer.length_squared() > 0.01 \
+            else g.richtung.orthogonal()
+        weg += seite
+    return weg.limit_length(1.0)
+
+
 ## Wohin er im naechsten Schritt laeuft. Laenge hoechstens eins.
 static func richtung(s: Gefecht.Stand) -> Vector2:
     var flucht := Vector2.ZERO
@@ -55,7 +100,7 @@ static func richtung(s: Gefecht.Stand) -> Vector2:
             nah = d2
             gier = (m.ort - s.ort).normalized()
 
-    var summe := flucht.normalized() + gier * GIER
+    var summe := flucht.normalized() + gier * GIER + _ausweichen(s) * AUSWEICHEN
     if summe.length_squared() < 0.0001:
         return Vector2.ZERO
     return summe.limit_length(1.0)

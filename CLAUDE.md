@@ -311,6 +311,16 @@ keinem Schuss zu sehen, obwohl er im Spiel steht.
     Treffer im selben Schritt nach. Mit *Rations* endete kein Lauf mehr, im
     Spiel wie im Messstand.
 
+25. **Ein harter Treffer ist angesagt, und wer rechtzeitig aus der Bahn
+    tritt, bleibt heil.** Der Ritter legt seine Sturmbahn `STURM_ANSAGE`
+    (0,6 s) vorher fest, sie liegt als Zinnoberband am Boden und wird nicht
+    nachgeführt; getroffen wird einmal je Sturm mit `STURM_WUCHT`, wie von
+    einem Geschoss. Bolzen wiegen doppelt und ziehen einen Schweif. Die
+    Sturmbahn hat ihr eigenes Feld (`Feind.bahn`) — vorher lag sie in
+    `stoss`, dem Rückstoß der Waffen, und ein Treffer lenkte den Sturm um.
+    Bewacht von `_test_ansturm_ist_auszuweichen` (gestellt). Der Daumen
+    weicht aus angesagten Bahnen und Bolzen aus (`Daumen._ausweichen`).
+
 ## Was beim Bau gelernt wurde
 
 **Ein Untoter sieht in jeder Tabelle aus wie ein Überlebender.** Mit
@@ -352,6 +362,17 @@ Schmiede. **Offen bleibt:** einen *Vorteil* bringt Tempo nicht. Gepaart bis
 300 s gewinnt 1,25 gegen 1,0 genau 4 von 8 Saaten, auch mit gierigerem Daumen
 oder kürzer liegendem Sold. Tempo ist neutral — ein Zweck dafür wäre eine
 neue Regel im Spiel, keine neue Zahl.
+
+**Die Regel kam, der Vorteil nicht.** Angesagte Stürme und schwere Bolzen
+(Zusicherung 25) machen das Spiel lesbarer und fairer, aber gemessen tragen
+sie kaum Schaden: bis 420 s brachten Stürme meist 0, Bolzen 0 bis 50, die
+Berührung 150 bis 500. Mit 0,6 s Ansage reicht schon das Grundtempo zum
+Ausweichen (120 Punkte gegen eine Bahn von gut 110). Mit 0,3 s und
+schnelleren Bolzen traf es öfter — aber 1,25 gewann dann nur 2 von 8,
+weil der schnellere Daumen nicht besser ausweicht, sondern in mehr
+hineinläuft. **Tempo bleibt ein offener Posten, und der Engpass ist der
+Daumen:** ein Fluchtvektor nutzt Tempo nicht. Was ein Mensch mit Tempo tut —
+eine Lücke erreichen, bevor sie sich schließt —, kann er nicht.
 
 **Ein Bau mit zwei Wirkungen wird an der stärkeren gewählt.** Die Münze
 buchte ihren Faktor auch als Erfahrung und war damit gemessen der stärkste

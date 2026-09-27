@@ -161,6 +161,12 @@ class Feind extends RefCounted:
     ## Nur für den Stürmer: sammeln, preschen, ruhen.
     var uhr := 0.0
     var stuermt := false
+    ## Die angesagte Bahn des Sturms - eigen, weil `stoss` der Rückstoß der
+    ## Waffen ist. Beides in einem Feld hieß: ein Treffer lenkte den Sturm um.
+    var bahn := Vector2.ZERO
+    var angesagt := false
+    ## Hat dieser Sturm schon getroffen? Einmal je Sturm.
+    var sturm_traf := false
     ## Nur für den Schützen.
     var schuss_frei := 0.0
     ## Vom Treiber angetrieben? Wird je Schritt neu gesetzt.
@@ -491,7 +497,7 @@ static func _bewege_feinde(s: Stand, dt: float, rng: RandomNumberGenerator) -> v
                     g.ort = f.ort
                     g.richtung = richtung
                     g.tempo = Feinde.BOLZEN_TEMPO
-                    g.schaden = Feinde.schaden(f.art)
+                    g.schaden = Feinde.schaden(f.art) * Feinde.BOLZEN_WUCHT
                     g.feindlich = true
                     g.dauer = 4.0
                     s.geschosse.append(g)
@@ -499,19 +505,30 @@ static func _bewege_feinde(s: Stand, dt: float, rng: RandomNumberGenerator) -> v
             Feinde.Sinn.STUERMT:
                 f.uhr -= dt
                 if f.stuermt:
-                    f.ort += f.stoss.normalized() * tempo * Feinde.STURM_TEMPO * dt
+                    f.ort += f.bahn * tempo * Feinde.STURM_TEMPO * dt
+                    if not f.sturm_traf and abstand < f.radius + STREITER_RADIUS:
+                        f.sturm_traf = true
+                        _verwunde(s, Feinde.schaden(f.art) * Feinde.STURM_WUCHT)
                     if f.uhr <= 0.0:
                         f.stuermt = false
+                        f.angesagt = false
                         f.uhr = Feinde.STURM_SAMMELN
                 else:
                     f.ort += richtung * tempo * 0.45 * dt
+                    # **Die Bahn wird angesagt und dann nicht mehr
+                    # nachgeführt.** Er prescht dorthin, wo der Spieler zur
+                    # Ansage stand - nicht vorgehalten, nicht nachgelenkt.
+                    # Was man nicht vermeiden kann, ist eine Steuer; was man
+                    # kommen sieht und nicht vermeidet, ist ein Fehler.
+                    if not f.angesagt and f.uhr <= Feinde.STURM_ANSAGE:
+                        f.angesagt = true
+                        f.bahn = richtung
                     if f.uhr <= 0.0:
+                        if not f.angesagt:
+                            f.bahn = richtung
                         f.stuermt = true
+                        f.sturm_traf = false
                         f.uhr = Feinde.STURM_DAUER
-                        # Er prescht dorthin, wo der Spieler **jetzt** steht.
-                        # Vorhalten wäre unausweichlich, und was man nicht
-                        # vermeiden kann, ist kein Angriff, sondern eine Steuer.
-                        f.stoss = richtung
             _:
                 f.ort += richtung * tempo * dt
 
@@ -555,6 +572,7 @@ static func _hole_nach(s: Stand, f: Feind, rng: RandomNumberGenerator) -> void:
     f.ort = s.ort + Vector2(cos(w), sin(w)) * EINTRITT_RADIUS
     f.stoss_rest = 0.0
     f.stuermt = false
+    f.angesagt = false
     f.uhr = Feinde.STURM_SAMMELN
 
 

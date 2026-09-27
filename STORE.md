@@ -113,7 +113,8 @@ ground.
 
 SEVEN FOES, EACH ITS OWN QUESTION
 Brigands, wolves and pikemen simply come. Crossbowmen keep their distance and
-shoot, so you must go to them. Knights gather and charge. The standard bearer
+shoot heavy bolts you can sidestep. Knights mark their charge on the ground
+before they come - step out of the line in time and it misses. The standard bearer
 drives the men around him faster — take him first. Each arrives in its own
 time, so you learn one before the next.
 

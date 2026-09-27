@@ -233,6 +233,20 @@ func _draw() -> void:
     sichtbar.sort_custom(func(a, b): return a.ort.y < b.ort.y)
     var knapp := sichtbar.size() > Streiter.DICHT_AB
 
+    # **Die Ansage liegt am Boden, unter allen Figuren.** Ein Band in
+    # Zinnober entlang der Bahn, das sich bis zum Sturm füllt: so weit trägt
+    # er, und so viel Zeit bleibt. Zinnober heißt Schaden am Spieler - und
+    # genau den kündigt es an.
+    for f in sichtbar:
+        if f.angesagt and not f.stuermt:
+            var weite: float = Feinde.sturm_weite(f.art)
+            var voll: float = clampf(1.0 - f.uhr / Feinde.STURM_ANSAGE, 0.0, 1.0)
+            var breite: float = f.radius * 0.9
+            _tu.zug(f.ort, f.ort + f.bahn * weite, breite,
+                Color(ZINNOBER.r, ZINNOBER.g, ZINNOBER.b, 0.24), 0.2, 0.2, 0.0, 4)
+            _tu.zug(f.ort, f.ort + f.bahn * weite * voll, breite * 0.7,
+                Color(ZINNOBER.r, ZINNOBER.g, ZINNOBER.b, 0.50), 0.2, 0.4, 0.0, 4)
+
     # **Die Gefaehrten laufen in derselben Sortierung mit.** In einem Bild
     # ohne Perspektive ist die Zeichenreihenfolge die einzige Tiefe, die es
     # gibt - ein Begleiter, der immer oben liegt, steht vor Feinden, hinter
@@ -259,7 +273,10 @@ func _draw() -> void:
 
     for g in _stand.geschosse:
         var farbe := ZINNOBER if g.feindlich else TINTE
-        _tu.zug(g.ort - g.richtung * 18.0, g.ort + g.richtung * 12.0, 5.0,
+        # Ein Bolzen zieht einen Schweif: wohin er fliegt, muss man sehen,
+        # bevor er da ist - sonst kann man ihm nicht ausweichen.
+        var schweif := 40.0 if g.feindlich else 18.0
+        _tu.zug(g.ort - g.richtung * schweif, g.ort + g.richtung * 12.0, 5.0,
             farbe, 0.6, 0.3, 0.0, 4)
 
     for f in _funken:
@@ -279,7 +296,7 @@ func _zeichne_feind(f: Gefecht.Feind, knapp: bool) -> void:
     # ist kein Angriff, sondern eine Steuer - dieselbe Regel wie im vorigen
     # Spiel, nur mit einem anderen Zeichen.
     if f.stuermt:
-        _tu.zug(f.ort, f.ort + f.stoss * 90.0, 6.0,
+        _tu.zug(f.ort, f.ort + f.bahn * 90.0, 6.0,
             Color(ZINNOBER.r, ZINNOBER.g, ZINNOBER.b, 0.7), 0.7, 0.4, 0.0, 4)
     _zeichne_leben(f, h, knapp)
 

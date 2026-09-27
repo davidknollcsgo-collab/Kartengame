@@ -92,12 +92,30 @@ static func ist_warlord(a: int) -> bool:
 ## einem Strolch mit Bogen.
 const SCHUSS_WEITE := 330.0
 const SCHUSS_TAKT := 2.3
-const BOLZEN_TEMPO := 300.0
+const BOLZEN_TEMPO := 340.0
+## Wie schwer ein Bolzen wiegt, als Vielfaches des Schadens des Schützen.
+## Ein Bolzen fliegt sichtbar und geradeaus - wer quer geht, bleibt heil.
+## Was man meiden kann, darf wehtun.
+const BOLZEN_WUCHT := 2.0
 
 ## Der Stürmer: sammelt, prescht, ruht.
 const STURM_SAMMELN := 0.9
 const STURM_DAUER := 0.55
 const STURM_TEMPO := 3.4
+
+## **Ein harter Treffer ist angesagt.** So lange vor dem Sturm legt der
+## Stürmer seine Bahn fest - auf den Ort, an dem der Held in diesem
+## Augenblick steht - und sie liegt als Band am Boden. Wer in dieser Zeit
+## aus der Bahn tritt, bleibt heil. Das ist der Zweck von Tempo: bis hierher
+## brachte es gepaart gemessen keinen Vorteil (4 von 8 Saaten).
+const STURM_ANSAGE := 0.6
+## Wie hart der Sturm trifft, als Vielfaches des Schadens der Sorte. Er
+## trifft **einmal je Sturm**, wie ein Geschoss, und nicht über die
+## Berührung - Zusicherung 1 bleibt, wie sie ist.
+const STURM_WUCHT := 3.0
+## Wie weit ein Sturm trägt - für das Band am Boden.
+static func sturm_weite(a: int) -> float:
+    return tempo(a) * STURM_TEMPO * STURM_DAUER
 
 ## Der Treiber macht alles in seinem Umkreis schneller. Er ist damit die
 ## einzige Sorte, die **andere** gefährlich macht - wer ihn stehen lässt,

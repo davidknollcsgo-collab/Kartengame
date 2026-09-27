@@ -42,6 +42,7 @@ const TESTS: PackedStringArray = [
     "_test_flegel_haengt_nicht_an_der_bildrate",
     "_test_sold_kommt_an",
     "_test_der_tod_ist_endgueltig",
+    "_test_ansturm_ist_auszuweichen",
 ]
 
 var _fehler: Array[String] = []
@@ -1017,3 +1018,55 @@ func _test_der_tod_ist_endgueltig() -> bool:
         Gefecht.schritt(s, 1.0 / 60.0, Vector2.ZERO, rng)
     return _melde(Gefecht.vorbei(s) and not s.lebt(),
         "mit Rations steht der Held nach dem Tod wieder auf (Leben %.1f)" % s.leben)
+
+
+## Ein Ritter kurz vor der Ansage, genau vor dem Helden, und sonst nichts.
+## `quer` sagt, ob der Held ab der Ansage mit Grundtempo quer zur Bahn geht.
+func _ansturm(quer: bool) -> float:
+    var s := Gefecht.baue({}, Helden.Held.SCHWERT, {})
+    s.waffen.clear()
+    s.takte.clear()
+    s.leben_voll = 1e6
+    s.leben = 1e6
+    s._eintritt_rest = 1e9
+    var f := Gefecht.Feind.new()
+    f.art = Feinde.Art.RITTER
+    f.leben = 1e9
+    f.leben_voll = 1e9
+    f.radius = Feinde.radius(f.art)
+    f.ort = s.ort + Vector2(-150.0, 0.0)
+    f.uhr = Feinde.STURM_ANSAGE + 0.05
+    s.feinde.append(f)
+    var rng := RandomNumberGenerator.new()
+    rng.seed = 3
+    var zeit := 0.0
+    while zeit < 1.6:
+        zeit += 1.0 / 60.0
+        var eingabe := Vector2.ZERO
+        if quer and f.angesagt:
+            eingabe = Vector2.DOWN
+        Gefecht.schritt(s, 1.0 / 60.0, eingabe, rng)
+        s._eintritt_rest = 1e9
+        if f.sturm_traf:
+            break
+    return 1e6 - s.leben
+
+
+func _test_ansturm_ist_auszuweichen() -> bool:
+    # **Ein harter Treffer ist angesagt, und wer rechtzeitig aus der Bahn
+    # tritt, bleibt heil.** Der Ritter legt seine Bahn `STURM_ANSAGE` vor dem
+    # Sturm fest und fuehrt sie nicht nach; er trifft einmal je Sturm mit
+    # `STURM_WUCHT`. Gestellt, weil gefragt ist, ob die Regel greift - nicht,
+    # wie oft ein Lauf in sie hineingeraet.
+    #
+    # Nebenbei ein alter Fehler: die Sturmrichtung stand in `stoss`, und das
+    # ist auch der Rueckstoss der Waffen. Ein Treffer lenkte den Sturm um.
+    var steht := _ansturm(false)
+    var weicht := _ansturm(true)
+    var stoss := Feinde.schaden(Feinde.Art.RITTER) * Feinde.STURM_WUCHT
+    if not _melde(steht >= stoss * 0.5,
+            "wer stehen bleibt, verliert nur %.0f - der Sturm trifft nicht" % steht):
+        return false
+    return _melde(weicht < stoss * 0.5,
+        "wer quer aus der Bahn geht, verliert %.0f - der Sturm ist nicht auszuweichen"
+        % weicht)
