@@ -45,12 +45,22 @@ const STARTWAFFE: PackedInt32Array = [
 ## Mit 1,60 traegt der Faktor, sobald er die zweite Waffe aufnimmt - gemessen
 ## stieg er von 425 auf 607 Erschlagene und von 210 auf 234 Sekunden.
 ##
-## Es bleibt ein **offener Posten**: eine von drei Saaten faellt er weiter
-## vor der dritten Minute. Die Ursache ist nicht sein Faktor, sondern sein
-## Anfang - die Armbrust ist die einzige Startwaffe ohne Flaeche
-## (`Waffen.BREITE` null, `ZAHL` eins), und in der ersten Minute duennt er
-## die Horde damit nicht aus. Das gehoert in einen eigenen Durchgang und
-## nicht in eine Zahl hier.
+## Hier stand ein **offener Posten**: eine von drei Saaten fiel er vor der
+## dritten Minute, und die Armbrust als einzige Startwaffe ohne Flaeche
+## (`Waffen.BREITE` null, `ZAHL` eins) galt als Ursache. **Nachgemessen, und
+## er ist geschlossen** - nicht durch eine Aenderung an ihm, sondern weil sich
+## die Horde geaendert hat (Zusicherung 23): seit sie einander ausweicht,
+## steht nichts mehr gestapelt, und eine Flaechenwaffe hat keinen Klumpen
+## mehr, den sie der Armbrust voraushaette. Ueber 24 Saaten (180 s, Burg 0):
+##
+##                  gehalten   Leben am Ende (Median)   erschlagen nach 60 s
+##     Swordsman     24/24           50 %                       33
+##     Archer        24/24           95 %                       49
+##     Spearman      24/24           70 %                       49
+##     Hammerman     24/24           67 %                       36
+##
+## Der Bogenschuetze ist damit am Anfang der sicherste der vier. Wer an der
+## Armbrust dreht, misst das zuerst nach.
 const LEBEN_FAKTOR: PackedFloat32Array = [1.25, 1.00, 1.00, 1.00]
 const WEITE_FAKTOR: PackedFloat32Array = [1.00, 1.60, 1.00, 1.00]
 const TEMPO_FAKTOR: PackedFloat32Array = [1.00, 1.00, 1.00, 0.92]

@@ -340,7 +340,13 @@ als Schleppe außer Sicht. **Zu zählen ist, was im Bild steht.**
 **Ein Klumpen ist eine Flächenwaffe wert.** Solange Feinde aufeinander
 standen, traf jeder Stoß ein Dutzend. Als sie einander auswichen, fielen der
 Speer, der Hammer und die Armbrust unter ihre Schranken — nicht weil sie
-schwächer wurden, sondern weil ihr Ziel nicht mehr gestapelt war.
+schwächer wurden, sondern weil ihr Ziel nicht mehr gestapelt war. Die
+Kehrseite: der Bogenschütze, dessen Armbrust als einzige Startwaffe keine
+Fläche hat, stand deshalb als offener Posten in `Helden` (fiel bei einer von
+drei Saaten vor Minute drei). Nachgemessen hält er 24 von 24 Saaten mit dem
+meisten Leben der vier — einer Flächenwaffe fehlt ohne Klumpen der Vorsprung.
+**Ein offener Posten wird nach jedem großen Umbau neu gemessen, bevor man ihn
+behebt.**
 
 **Tempo ist kein Wert an sich.** Seit die Horde rundum steht, macht mehr
 Tempo den simulierten Daumen schlechter: der Speerträger mit Faktor 1,12
@@ -371,8 +377,8 @@ Berührung 150 bis 500. Mit 0,6 s Ansage reicht schon das Grundtempo zum
 Ausweichen (120 Punkte gegen eine Bahn von gut 110). Mit 0,3 s und
 schnelleren Bolzen traf es öfter — aber 1,25 gewann dann nur 2 von 8,
 weil der schnellere Daumen nicht besser ausweicht, sondern in mehr
-hineinläuft. **Tempo bleibt ein offener Posten, und der Engpass ist der
-Daumen:** ein Fluchtvektor nutzt Tempo nicht. Was ein Mensch mit Tempo tut —
+hineinläuft. **Tempo bleibt neutral** — keine Eigenart hängt mehr daran
+(siehe den Speerträger unten) —, **und der Engpass ist der Daumen:** ein Fluchtvektor nutzt Tempo nicht. Was ein Mensch mit Tempo tut —
 eine Lücke erreichen, bevor sie sich schließt —, kann er nicht.
 
 **Eine Eigenart gehört dahin, wo sie gemessen trägt, nicht wo ihr Satz
