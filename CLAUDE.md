@@ -138,6 +138,7 @@ xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 720x1600 \
 | `--zeit <s>` | rechnet s Sekunden Gefecht mit festem Takt vor |
 | `--stufen <n>` | setzt alle vier Bauten auf Stufe n, **den Beutel und die Züge** |
 | `--lage <n>` | zeigt Titel (0), Burg (3), Beutel (4) statt des Laufs |
+| `--neu` | mit `--held`: als erster Lauf, also mit Einstiegshinweis |
 
 **`--zeit` führt `Daumen`**, denselben simulierten Daumen wie `tools/probe.gd`.
 Ohne ihn zeigte jeder Schuss denselben Stillstandstod nach vierzehn Sekunden.
@@ -332,6 +333,15 @@ keinem Schuss zu sehen, obwohl er im Spiel steht.
     versetzt und von keinem Treffer zurückgestoßen. Sein Leben ist fest
     (`Feinde.LEBEN`, 8000) und **ohne** `Andrang.zaehigkeit`: es ist eine
     Kampfdauer, keine Wand. Bewacht von `_test_der_warlord_stellt_sich`.
+
+27. **Der erste Lauf erklärt sich, einmal.** Zwei Zeilen im unteren Drittel
+    — „Drag anywhere to move. / Your weapons strike on their own.“ —, solange
+    `BurgStand.einstieg` null ist, also bis zum Ende des ersten Laufs. Sie
+    blenden aus, sobald der Held 0,8 s geführt wurde (`HINWEIS_WEG`), und
+    haben **kein Zeitlimit**: wer nicht zieht, braucht sie noch. Keine Tafel
+    dahinter, keine Pause, kein Knopf — Zusicherung 19 gilt auch hier. Das
+    Feld `einstieg` stand schon im Spielstand und wurde nur gesetzt, nie
+    gelesen.
 
 ## Was beim Bau gelernt wurde
 

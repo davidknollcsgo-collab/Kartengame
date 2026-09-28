@@ -102,6 +102,17 @@ func _mitte(text: String, r: Rect2, groesse: int, farbe: Color) -> void:
         "groesse": groesse, "farbe": farbe})
 
 
+## Mittig wie `_mitte`, und kleiner, bis der Satz mit Rand hineingeht - aus
+## demselben Grund wie `_zeile_eng`.
+func _mitte_eng(text: String, r: Rect2, groesse: int, farbe: Color) -> void:
+    var f := ThemeDB.fallback_font
+    var g := groesse
+    while g > KLEINSTE and f.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT,
+            -1, g).x > r.size.x - 52.0:
+        g -= 1
+    _mitte(text, r, g, farbe)
+
+
 func _zeile(text: String, wo: Vector2, groesse: int, farbe: Color) -> void:
     _worte.append({"f": ThemeDB.fallback_font, "wo": wo, "text": text,
         "groesse": groesse, "farbe": farbe})
@@ -314,6 +325,18 @@ func _im_lauf() -> void:
     if st.wartet_auf_wahl:
         _aufstieg(st)
         return
+
+    # **Der erste Lauf erklaert sich, einmal** (Zusicherung 27). Im unteren
+    # Drittel: der Held steht in der Mitte, oben liegen die Balken. Keine
+    # Tafel - sie verdeckte Figuren, und die Kante der Laufschrift genuegt.
+    var hin: float = _lauf.hinweis()
+    if hin > 0.0:
+        var y := size.y * 0.70
+        _mitte_eng("Drag anywhere to move.", Rect2(0.0, y, b, 40.0), 30,
+            Color(TINTE.r, TINTE.g, TINTE.b, hin))
+        _mitte_eng("Your weapons strike on their own.",
+            Rect2(0.0, y + 42.0, b, 34.0), 24,
+            Color(SEPIA.r, SEPIA.g, SEPIA.b, hin))
 
     # Der Stick wird gezeichnet, wo der Daumen ihn aufgesetzt hat.
     if _lauf.zieht():

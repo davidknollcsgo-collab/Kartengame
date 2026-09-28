@@ -44,6 +44,11 @@ var _hieb_sperre := 0.0
 var _waffe_winkel := 0.0
 
 var _zieht := false
+## **Der erste Lauf erklaert sich, einmal.** Sekunden, die der Held in diesem
+## Lauf schon gefuehrt wurde; der Hinweis blendet darueber aus. Kein
+## Zeitlimit: wer nicht zieht, braucht ihn noch.
+var _gezogen := 0.0
+const HINWEIS_WEG := 0.8
 var _von := Vector2.ZERO
 var _jetzt := Vector2.ZERO
 
@@ -73,6 +78,7 @@ func beginne(held: int) -> void:
     _stand = Gefecht.baue(Burg.stand.stufen, held, Burg.stand.getragen())
     _funken.clear()
     _fund = -1
+    _gezogen = 0.0
     _kamera_ort = Vector2.ZERO
     lage = Lage.LAUF
     Klang.spiele(Klang.Ton.TIPP)
@@ -88,7 +94,10 @@ func _process(delta: float) -> void:
     _funken = _funken.filter(func(f): return f.alter < 0.55)
 
     if lage == Lage.LAUF and _stand != null:
-        Gefecht.schritt(_stand, minf(delta, 1.0 / 30.0), _eingabe(), _rng)
+        var eingabe := _eingabe()
+        if eingabe.length_squared() > 0.0025 and not _stand.wartet_auf_wahl:
+            _gezogen += delta
+        Gefecht.schritt(_stand, minf(delta, 1.0 / 30.0), eingabe, _rng)
         _werte_aus()
         _kamera_ort = _kamera_ort.lerp(_stand.ort, clampf(delta * 7.0, 0.0, 1.0))
         _kamera.position = _kamera_ort
@@ -466,6 +475,16 @@ func zieht() -> bool:
     return _zieht
 
 
+## Deckung des Einstiegshinweises, null bis eins. Er gilt nur, solange
+## `einstieg` null ist - bis zum Ende des ersten Laufs -, und geht, sobald
+## man sich bewegt hat. Das Feld stand schon im Spielstand und wurde nur
+## gesetzt, nie gelesen.
+func hinweis() -> float:
+    if Burg.stand.einstieg != 0:
+        return 0.0
+    return clampf(1.0 - _gezogen / HINWEIS_WEG, 0.0, 1.0)
+
+
 func fund() -> int:
     return _fund
 
@@ -489,6 +508,7 @@ func _lies_schalter() -> void:
     var zeit := 0.0
     var held := -1
     var stufen_n := 0
+    var neu := false
     for i in args.size():
         match args[i]:
             "--schuss":
@@ -502,6 +522,10 @@ func _lies_schalter() -> void:
                     held = int(args[i + 1])
             "--marke":
                 marke = true
+            "--neu":
+                # Fuer den Schuss des Einstiegshinweises: `--held` setzt
+                # `einstieg`, dieser Schalter nimmt es danach zurueck.
+                neu = true
             "--lage":
                 # Fuer Schuesse von Titel, Burg und Beutel. Was man nicht
                 # angesehen hat, ist geraten.
@@ -520,7 +544,7 @@ func _lies_schalter() -> void:
                     Burg.stand.meiste_erschlagen = 400
                     Burg.stand.warlord_gefallen = true
     if held >= 0:
-        Burg.stand.einstieg = 1
+        Burg.stand.einstieg = 0 if neu else 1
         _mit_daumen = true
         beginne(held)
         # **Auch die Zuege.** Derselbe Grundsatz wie beim Beutel: ein
