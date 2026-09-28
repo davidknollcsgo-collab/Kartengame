@@ -428,6 +428,24 @@ Median **72 s** (Quartile 49 / 111), und er steht 97 bis 99 % der Zeit im
 Bild. Der eine übrige Lauf ist ein Speerträger, dessen Waffen lieber die
 letzten vierzig Feinde der Horde treffen (Zusicherung 3: auf den Nächsten).
 
+**Und die Tabelle vergleicht keine Helden.** Ihre Saat enthielt die Nummer
+des Helden, also spielte jeder Held andere Läufe. Der Hammerträger sah darin
+wie der schwächste aus (0 / 0 / 2 Siege). Auf **denselben** 16 Saaten
+(Burg 8, bis 480 s) steht er mit den anderen gleichauf, und keiner der
+beiden naheliegenden Hebel hilft ihm:
+
+| Held | Median | bis 480 s | gepaart gegen Hammerträger |
+|---|---|---|---|
+| Swordsman | 454 s | 7/16 | 8 besser, 5 schlechter |
+| Archer | 480 s | 14/16 | 10 besser, 2 schlechter |
+| Spearman | 409 s | 6/16 | 6 besser, 8 schlechter |
+| Hammerman | 434 s | 6/16 | — |
+| Hammerman, Tempo 1,0 | 408 s | 2/16 | 5 besser, 9 schlechter |
+| Hammerman, Schaden 1,5 | 456 s | 7/16 | 6 besser, 7 schlechter |
+
+Der Ausreißer ist der **Bogenschütze**, nach oben. **Wer Helden vergleicht,
+gibt ihnen dieselben Saaten** — sonst vergleicht er Würfel.
+
 Dazu ein Messfehler: `tools/probe.gd` zählte jeden Lauf, der 600 s
 erreichte, als „heil“. Das Spiel kennt aber keine Zeitgrenze
 (`Gefecht.vorbei`) — gewonnen ist erst, wenn der Warlord fällt. Jetzt
