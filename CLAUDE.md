@@ -446,6 +446,15 @@ beiden naheliegenden Hebel hilft ihm:
 Der Ausreißer ist der **Bogenschütze**, nach oben. **Wer Helden vergleicht,
 gibt ihnen dieselben Saaten** — sonst vergleicht er Würfel.
 
+**Und seine Eigenart ist es nicht.** `WEITE_FAKTOR` 1,60 / 1,45 / 1,30 / 1,15
+brachte auf Burg 8 14 / 10 / 6 / 9 von 16 bis 480 s — keine Kurve, sondern
+Streuung —, und auf Burg 14 hielten 1,60 und 1,30 beide 14 von 16
+(Schwertkämpfer 8, Hammerträger 11). Der Faktor blieb deshalb stehen. Wo der
+Vorsprung sitzt, ist **offen**; naheliegend ist die Armbrust als einzige
+Startwaffe, die aus der Ferne trifft, sodass der Daumen gar nicht erst in die
+Horde muss. **Eine Zahl, die man senkt, ohne dass die Messung mitgeht, war
+nicht die Ursache.**
+
 Dazu ein Messfehler: `tools/probe.gd` zählte jeden Lauf, der 600 s
 erreichte, als „heil“. Das Spiel kennt aber keine Zeitgrenze
 (`Gefecht.vorbei`) — gewonnen ist erst, wenn der Warlord fällt. Jetzt
