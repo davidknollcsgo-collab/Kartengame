@@ -294,6 +294,7 @@ func _draw() -> void:
         _tu.zug(f.ort, f.ort + f.richtung * t, f.gross * (1.0 - t * 0.6),
             Color(c.r, c.g, c.b, (1.0 - t) * 0.85), 0.0, 0.7, 0.0, 3)
 
+    _zeichne_randpfeil()
     _tu.spuele(get_canvas_item())
 
 
@@ -370,6 +371,45 @@ func _zeichne_marke() -> void:
         HELD_HOEHE * 0.024,
         clampf(s.leben / maxf(1.0, s.leben_voll), 0.0, 1.0),
         Palette.LEBEN_VOLL)
+
+
+## **Ein Pfeil zeigt, woher der Warlord kommt.** Er tritt wie alle auf dem
+## Eintrittsring ein, ausserhalb des Bildes, und braucht Sekunden bis zur
+## Leine; man hoert sein Horn und sieht nichts. Eine Ansage, die man nicht
+## orten kann, ist nur ein Geraeusch. Der Pfeil sitzt am Bildrand, dort wo die
+## Linie von der Mitte zu ihm hinausgeht, in Zinnober wie das Sturmband - er
+## kuendigt Schaden am Spieler an. Wie Ring und Lebensbalken eine Marke und
+## keine Figur, also ueber allem. Kein Text: er beantwortet *woher*, und naeher
+## kommt der Warlord ohnehin.
+const PFEIL_RAND := 56.0
+
+func _zeichne_randpfeil() -> void:
+    var warlord: Gefecht.Feind = null
+    for f in _stand.feinde:
+        if f.lebt and Feinde.ist_warlord(f.art):
+            warlord = f
+            break
+    if warlord == null:
+        return
+    var halb := get_viewport_rect().size * 0.5 - Vector2(PFEIL_RAND, PFEIL_RAND)
+    var d := warlord.ort - _kamera_ort
+    if absf(d.x) <= halb.x + PFEIL_RAND and absf(d.y) <= halb.y + PFEIL_RAND:
+        return
+    var faktor := minf(halb.x / maxf(0.001, absf(d.x)),
+        halb.y / maxf(0.001, absf(d.y)))
+    var richtung := d.normalized()
+    var spitze := _kamera_ort + d * faktor
+    var quer := Vector2(-richtung.y, richtung.x)
+    # Gross genug, dass er nicht wie ein Spritzer aussieht: der erste Schuss
+    # mit 34 Punkten las sich als Blut am Bildrand.
+    var gross := 52.0 * (1.0 + 0.10 * sin(_zeit * 6.0))
+    var farbe := Color(ZINNOBER.r, ZINNOBER.g, ZINNOBER.b, 0.95)
+    var fuss := spitze - richtung * gross
+    _tu.zug(fuss + quer * gross * 0.62, spitze, 11.0, farbe, 0.5, 0.2, 0.0, 5,
+        TINTE)
+    _tu.zug(fuss - quer * gross * 0.62, spitze, 11.0, farbe, 0.5, 0.2, 0.0, 5,
+        TINTE)
+    _tu.klecks(fuss - richtung * gross * 0.30, 8.0, farbe, 3, TINTE)
 
 
 func _zeichne_gefaehrte(g: Gefecht.Gefaehrte) -> void:

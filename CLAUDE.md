@@ -333,6 +333,11 @@ keinem Schuss zu sehen, obwohl er im Spiel steht.
     versetzt und von keinem Treffer zurückgestoßen. Sein Leben ist fest
     (`Feinde.LEBEN`, 8000) und **ohne** `Andrang.zaehigkeit`: es ist eine
     Kampfdauer, keine Wand. Bewacht von `_test_der_warlord_stellt_sich`.
+    Steht er außerhalb des Bildes — beim Eintritt immer, er kommt auf dem
+    Eintrittsring —, zeigt ein **Pfeil in Zinnober** am Bildrand auf ihn
+    (`zug_lauf._zeichne_randpfeil`). Ein Horn, das man nicht orten kann, ist
+    nur ein Geräusch. Der erste Pfeil mit 34 Punkten las sich als Blut am
+    Rand; er ist jetzt 52 groß.
 
 27. **Der erste Lauf erklärt sich, einmal.** Zwei Zeilen im unteren Drittel
     — „Drag anywhere to move. / Your weapons strike on their own.“ —, solange
