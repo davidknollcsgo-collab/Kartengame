@@ -118,6 +118,13 @@ Regeln, die dabei entstanden:
   verschoben. Flach, weil ein Index je Vorlage um ihren Platz verschoben
   werden müsste, und das wäre wieder eine Schleife je Eckpunkt. Wer gerade
   aufblitzt, wird frisch gezeichnet.
+
+  **Gemessen, alles zusammen** (Saat 7, Debug-Build in diesem Container,
+  Median je Bild): Minute 1 **13–14 ms**, Minute 6 (300 Feinde) **22–23 ms**
+  statt 34–36 ms vor dem ganzen Durchgang, Minute 9 18–27 ms (zwei Läufe,
+  so weit streut es). `VOLL_NAH` 24 kostete 21 ms, 60 schon 30 ms.
+  **Messungen nacheinander**, nie parallel: zwei gleichzeitige Läufe
+  verfälschen sich gegenseitig.
 * **Menüs haben Bilder** (`Zeichen`, 27 Stück auf `Tusche`): Waffen, Züge,
   Bauten, Ausrüstung, Herz, Münze, Schädel. Der Titel zeigt den Helden
   zwischen den Sorten, jede Heldenkarte ihren Helden (gesperrte als
