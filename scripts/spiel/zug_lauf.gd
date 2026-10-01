@@ -35,6 +35,12 @@ const HIEB_SPERRE := 0.07
 var lage := Lage.TITEL
 var _stand: Gefecht.Stand = null
 var _rng := RandomNumberGenerator.new()
+## **Zierde wuerfelt mit eigenen Wuerfeln.** Funken und Staub zogen aus `_rng`,
+## demselben Generator, mit dem das Gefecht rechnet: jedes Woelkchen
+## verschob die Wuerfel, und dieselbe Saat spielte mit einer neuen Zierde ein
+## anderes Gefecht. Gemessen sah der Umbau dadurch doppelt so teuer aus, weil
+## im Schuss eine andere Zahl Figuren im Bild stand.
+var _zier := RandomNumberGenerator.new()
 var _tu := Tusche.new()
 var _zeit := 0.0
 var _kamera_ort := Vector2.ZERO
@@ -53,6 +59,19 @@ var _von := Vector2.ZERO
 var _jetzt := Vector2.ZERO
 
 var _funken: Array = []
+## **Gefallene liegen einen Augenblick** (`GEFALLEN_DAUER`), hoechstens
+## `GEFALLEN_HOECHSTENS` zugleich - in den dichten Minuten fallen Feinde im
+## Dutzend je Sekunde, und ein Leichenfeld waere ein Hintergrund aus Figuren.
+var _gefallene: Array = []
+const GEFALLEN_DAUER := 0.7
+const GEFALLEN_HOECHSTENS := 40
+## Staub: unter Gefallenen, hinter dem laufenden Helden, beim Aufsammeln.
+var _staub: Array = []
+var _staub_uhr := 0.0
+## Ringe: goldener Ring beim Aufsammeln, heller beim Aufstieg.
+var _ringe: Array = []
+## Wie frisch der letzte Treffer am Helden ist: 1 gerade getroffen, 0 lange her.
+var _wunde := 0.0
 ## **Schlagbilder.** Schwert, Speer und Hammer trafen unsichtbar: man hoerte
 ## einen Hieb und sah ein Ziel aufblitzen, aber keinen Schlag. Jeder Schlag
 ## hinterlaesst jetzt fuer einen Augenblick seine Form - die Sichel des
@@ -89,6 +108,10 @@ func beginne(held: int) -> void:
     _stand = Gefecht.baue(Burg.stand.stufen, held, Burg.stand.getragen())
     _funken.clear()
     _hiebe.clear()
+    _gefallene.clear()
+    _staub.clear()
+    _ringe.clear()
+    _wunde = 0.0
     _fund = -1
     _gezogen = 0.0
     _kamera_ort = Vector2.ZERO
@@ -108,6 +131,25 @@ func _process(delta: float) -> void:
         h.alter += delta
     _hiebe = _hiebe.filter(func(h): return h.alter < h.dauer)
     _schlag_alter += delta
+    for g in _gefallene:
+        g.alter += delta
+    _gefallene = _gefallene.filter(func(g): return g.alter < GEFALLEN_DAUER)
+    for s in _staub:
+        s.alter += delta
+    _staub = _staub.filter(func(s): return s.alter < s.dauer)
+    for r in _ringe:
+        r.alter += delta
+    _ringe = _ringe.filter(func(r): return r.alter < r.dauer)
+    _wunde = maxf(0.0, _wunde - delta * 2.5)
+    # Laufstaub: wenige blasse Woelkchen an den Fersen, nur wer rennt.
+    if lage == Lage.LAUF and _stand != null and not _stand.wartet_auf_wahl \
+            and _stand.lauf.length_squared() > 0.35:
+        _staub_uhr -= delta
+        if _staub_uhr <= 0.0 and _staub.size() < 14:
+            _staub_uhr = 0.11
+            _staub.append({"ort": _stand.ort - _stand.lauf.normalized() * 14.0
+                + Vector2((_zier.randf() - 0.5) * 16.0, 2.0), "alter": 0.0,
+                "dauer": 0.45, "gross": 7.0})
 
     if lage == Lage.LAUF and _stand != null:
         var eingabe := _eingabe()
@@ -171,18 +213,32 @@ func _werte_aus() -> void:
                 # bleibt dem Schaden am Spieler vorbehalten - darf alles rot
                 # spritzen, heisst Rot nichts mehr.
                 _spritz(f.ort, Palette.sorte(f.art), 4)
+                if _gefallene.size() < GEFALLEN_HOECHSTENS and _im_bild(f.ort, 60.0):
+                    _gefallene.append({"ort": f.ort, "art": f.art,
+                        "blick": f.blick, "alter": 0.0,
+                        "h": FEIND_HOEHE * (f.radius / 17.0)})
+                    _staub.append({"ort": f.ort, "alter": 0.0, "dauer": 0.5,
+                        "gross": 13.0})
             Gefecht.Vorfall.STREITER_GETROFFEN:
                 Klang.spiele(Klang.Ton.WUNDE)
                 Tastsinn.gib(Tastsinn.Art.WUNDE)
                 _ruettel = 1.0
+                _wunde = 1.0
                 _spritz(_stand.ort + Vector2(0.0, -HELD_HOEHE * 0.5), ZINNOBER, 6)
             Gefecht.Vorfall.SCHUSS:
                 Klang.spiele(Klang.Ton.BOLZEN, 1.0, 0.45)
             Gefecht.Vorfall.MUENZE:
                 Klang.spiele(Klang.Ton.MUENZE, 0.95 + randf() * 0.3, 0.35)
+                if _ringe.size() < 12:
+                    _ringe.append({"ort": _stand.ort + Vector2(0.0, -HELD_HOEHE * 0.25),
+                        "alter": 0.0, "dauer": 0.3, "von": 6.0, "bis": 26.0,
+                        "farbe": GOLD})
             Gefecht.Vorfall.AUFSTIEG:
                 Klang.spiele(Klang.Ton.AUFSTIEG)
                 Tastsinn.gib(Tastsinn.Art.SCHNITT)
+                var glanz := Skins.glanz(_stand.held, Burg.stand.skin(_stand.held))
+                _ringe.append({"ort": _stand.ort, "alter": 0.0, "dauer": 0.7,
+                    "von": 20.0, "bis": HELD_HOEHE * 1.6, "farbe": glanz})
             Gefecht.Vorfall.WARLORD:
                 Klang.spiele(Klang.Ton.HORN)
                 Tastsinn.gib(Tastsinn.Art.ENDE)
@@ -191,10 +247,10 @@ func _werte_aus() -> void:
 
 func _spritz(ort: Vector2, farbe: Color, zahl: int) -> void:
     for i in zahl:
-        var w := _rng.randf() * TAU
+        var w := _zier.randf() * TAU
         _funken.append({"ort": ort, "farbe": farbe, "alter": 0.0,
-            "richtung": Vector2(cos(w), sin(w)) * (70.0 + _rng.randf() * 150.0),
-            "gross": 2.0 + _rng.randf() * 3.4})
+            "richtung": Vector2(cos(w), sin(w)) * (70.0 + _zier.randf() * 150.0),
+            "gross": 2.0 + _zier.randf() * 3.4})
 
 
 func _beende() -> void:
@@ -253,12 +309,26 @@ func _draw() -> void:
 
     _sicht = get_viewport_rect().size * 0.5
 
-    # Sold zuerst: er liegt am Boden, also unter allem.
+    # Was am Boden liegt, zuerst: Staub, Gefallene, Sold.
+    for st in _staub:
+        var u: float = st.alter / st.dauer
+        var erde := Palette.ERDE.darkened(0.15)
+        _tu.klecks(st.ort + Vector2(0.0, -u * 8.0), st.gross * (0.6 + u),
+            Color(erde.r, erde.g, erde.b, 0.45 * (1.0 - u)), int(st.ort.x))
+    for g in _gefallene:
+        var u: float = g.alter / GEFALLEN_DAUER
+        Streiter.gefallen(_tu, g.ort, g.h, g.blick, g.art,
+            1.0 if u < 0.5 else 1.0 - (u - 0.5) * 2.0)
+    # **Eine Muenze glaenzt.** Vorher ein blinkender gelber Fleck; jetzt mit
+    # dunklerem Rand und einem Lichtpunkt, der ueber sie wandert.
+    var gold_rand := GOLD.darkened(0.35)
     for m in _stand.muenzen:
         if not _im_bild(m.ort, 20.0):
             continue
-        var blinkt := 0.75 + 0.25 * sin(_zeit * 7.0 + m.ort.x * 0.05)
-        _tu.klecks(m.ort, 7.0, Color(GOLD.r, GOLD.g, GOLD.b, blinkt), int(m.ort.x))
+        var schein := 0.5 + 0.5 * sin(_zeit * 5.0 + m.ort.x * 0.05)
+        _tu.klecks(m.ort, 7.5, GOLD, int(m.ort.x), gold_rand)
+        _tu.klecks(m.ort + Vector2(-2.2, -2.4), 2.4,
+            Color(1.0, 0.98, 0.85, 0.5 + 0.5 * schein), int(m.ort.y))
 
     # **Nach y sortiert, nicht nach Listenplatz.** Ohne das steht ein Feind
     # vor dem Helden, der hinter ihm ist - und in einem Bild ohne Perspektive
@@ -269,6 +339,20 @@ func _draw() -> void:
             sichtbar.append(f)
     sichtbar.sort_custom(func(a, b): return a.ort.y < b.ort.y)
     var knapp := sichtbar.size() > Streiter.DICHT_AB
+    # **Die Naechsten voll, der Rest sparsam.** Vorher galt alles oder
+    # nichts: bis `DICHT_AB` Figuren jede in voller Fassung, darueber jede
+    # sparsam. An dieser Klippe kostete ein Bild mit siebzig Vollfiguren
+    # doppelt so viel wie eines mit einundsiebzig sparsamen, und im Gedraenge
+    # hatte auch der Feind direkt vor dem Helden keine Haende. Jetzt bekommen
+    # die `VOLL_NAH` naechsten die volle Fassung - dort schaut man hin -, und
+    # die Kosten sind nach oben begrenzt.
+    _voll_bis = INF
+    if sichtbar.size() > VOLL_NAH:
+        var abstaende := PackedFloat32Array()
+        for f in sichtbar:
+            abstaende.append(f.ort.distance_squared_to(_stand.ort))
+        abstaende.sort()
+        _voll_bis = abstaende[VOLL_NAH - 1]
 
     # **Die Ansage liegt am Boden, unter allen Figuren.** Ein Band in
     # Zinnober entlang der Bahn, das sich bis zum Sturm füllt: so weit trägt
@@ -319,6 +403,19 @@ func _draw() -> void:
         var c: Color = f.farbe
         _tu.zug(f.ort, f.ort + f.richtung * t, f.gross * (1.0 - t * 0.6),
             Color(c.r, c.g, c.b, (1.0 - t) * 0.85), 0.0, 0.7, 0.0, 3)
+
+    for r in _ringe:
+        var u: float = r.alter / r.dauer
+        var rad: float = lerpf(r.von, r.bis, 1.0 - pow(1.0 - u, 2.0))
+        var c: Color = r.farbe
+        var bahn := PackedVector2Array()
+        var breit := PackedFloat32Array()
+        for k in 19:
+            var w := TAU * float(k) / 18.0
+            bahn.append(r.ort + Vector2(cos(w) * rad, sin(w) * rad * 0.5))
+            breit.append(lerpf(5.0, 1.5, u))
+        _tu.band(bahn, breit, Color(c.r, c.g, c.b, 0.9 * (1.0 - u)),
+            PackedFloat32Array())
 
     _zeichne_randpfeil()
     _tu.spuele(get_canvas_item())
@@ -454,10 +551,41 @@ func _im_bild(ort: Vector2, rand: float) -> bool:
         and d.y > -_sicht.y - 30.0 and d.y < _sicht.y + rand
 
 
+const VOLL_NAH := 40
+var _voll_bis := INF
+
+## Die Sparfassung je Sorte und Blickrichtung, einmal gezeichnet
+## (`Tusche.vorlage`). Sie hat keinen Schritt und keinen Schwung - nur wer
+## gerade getroffen aufblitzt, wird frisch gezeichnet.
+var _vorlagen := {}
+
+func _vorlage(art: int, blick: float, h: float) -> Array:
+    var schluessel := art * 2 + (1 if blick > 0.0 else 0)
+    var v: Variant = _vorlagen.get(schluessel)
+    if v == null:
+        var tu := Tusche.new()
+        Streiter.feind(tu, Vector2.ZERO, h, blick, art, 0.0, 0.0, true)
+        v = tu.vorlage()
+        _vorlagen[schluessel] = v
+    return v
+
 func _zeichne_feind(f: Gefecht.Feind, knapp: bool) -> void:
     var h := FEIND_HOEHE * (f.radius / 17.0)
     var phase := _zeit * 7.0 + f.ort.x * 0.05
-    Streiter.feind(_tu, f.ort, h, f.blick, f.art, phase, f.zuckt, knapp)
+    var spar := f.ort.distance_squared_to(_stand.ort) > _voll_bis
+    if spar and f.zuckt <= 0.0:
+        _tu.setze(_vorlage(f.art, f.blick, h), f.ort)
+    else:
+        Streiter.feind(_tu, f.ort, h, f.blick, f.art, phase, f.zuckt, spar)
+    # **Ein Treffer splittert.** Zwei helle Kreuzstriche an der Brust, solange
+    # der Getroffene noch zuckt - kein Zustand, nur was `zuckt` schon weiss.
+    if f.zuckt > 0.06:
+        var u := (0.14 - f.zuckt) / 0.08
+        var p := f.ort + Vector2(0.0, -h * 0.6)
+        var l := h * (0.10 + 0.12 * u)
+        var c := Color(1.0, 0.98, 0.9, 1.0 - u)
+        _tu.zug(p + Vector2(-l, -l * 0.6), p + Vector2(l, l * 0.6), 3.0, c, 0.5, 0.0, 0.0, 3)
+        _tu.zug(p + Vector2(-l, l * 0.6), p + Vector2(l, -l * 0.6), 3.0, c, 0.5, 0.0, 0.0, 3)
     # **Der Stuermer kuendigt an.** Ein Angriff, den man nicht kommen sieht,
     # ist kein Angriff, sondern eine Steuer - dieselbe Regel wie im vorigen
     # Spiel, nur mit einem anderen Zeichen.
@@ -600,6 +728,10 @@ func _zeichne_held() -> void:
     var glanz := Skins.glanz(s.held, n)
     Streiter.frei_gestellt(_tu, s.ort, HELD_HOEHE, Palette.BODEN)
     _zeichne_druck()
+    # Beim Treffer blitzt er in Zinnober - Schaden am Spieler, die eine Stelle,
+    # an der die Farbe des Helden kurz nicht seine eigene ist.
+    if _wunde > 0.0:
+        kleid = kleid.lerp(ZINNOBER, _wunde * 0.7)
     Streiter.held(_tu, s.ort, HELD_HOEHE, blick, phase, _waffe_winkel,
         kleid, glanz)
 
@@ -698,6 +830,11 @@ func stick_jetzt() -> Vector2:
 
 func zieht() -> bool:
     return _zieht
+
+
+## Wie frisch der letzte Treffer am Helden ist - fuer den roten Bildrand.
+func wunde() -> float:
+    return _wunde
 
 
 ## Deckung des Einstiegshinweises, null bis eins. Er gilt nur, solange

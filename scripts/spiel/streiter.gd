@@ -302,6 +302,37 @@ static func feind(tu: Tusche, ort: Vector2, h: float, blick: float, art: int,
             _strolch(tu, ort, h, blick, phase, farbe)
 
 
+## **Ein Gefallener liegt.** Feinde verschwanden beim Tod einfach - vier
+## Funken und eine Muenze blieben, sonst nichts, und hundert Tote je Minute
+## sahen aus wie ein Zeichenfehler. Jetzt liegt die Figur einen Augenblick am
+## Boden und verblasst: quer, der Kopf zur Seite gekippt, so knapp wie die
+## Sparfassung, denn gestorben wird im Gedraenge. `deckung` laeuft von eins
+## gegen null.
+static func gefallen(tu: Tusche, ort: Vector2, h: float, blick: float,
+        art: int, deckung: float) -> void:
+    if art == Feinde.Art.WOLF:
+        h *= WOLF_MASS
+    var farbe := Palette.sorte(art)
+    farbe.a = deckung
+    var kante := Palette.UMRISS
+    kante.a = deckung
+    var schatten := Palette.SCHATTEN
+    schatten.a *= deckung
+    var lang := h * (0.62 if art == Feinde.Art.WOLF else 0.70)
+    var fuss := ort + Vector2(-lang * 0.5 * blick, -h * 0.02)
+    var kopf := ort + Vector2(lang * 0.5 * blick, -h * 0.05)
+    tu.band(PackedVector2Array([fuss + Vector2(0.0, h * 0.04), kopf + Vector2(0.0, h * 0.04)]),
+        PackedFloat32Array([h * 0.05, h * 0.08]), schatten, PackedFloat32Array())
+    tu.strang(PackedVector2Array([fuss, ort + Vector2(0.0, -h * 0.07), kopf]),
+        PackedFloat32Array([h * 0.10, h * 0.20, h * 0.13]), farbe, 5, kante)
+    tu.klecks(kopf + Vector2(h * 0.06 * blick, -h * 0.02), h * 0.06, farbe,
+        int(ort.x), kante)
+    if art == Feinde.Art.RITTER or art == Feinde.Art.WARLORD:
+        # Der Schild liegt daneben.
+        tu.klecks(ort + Vector2(h * 0.05 * blick, h * 0.06), h * 0.09, farbe,
+            int(ort.y), kante)
+
+
 ## **Die Sparfassung.** Drei Zuege je Figur - der Stil darf bei hundertfuenfzig
 ## Feinden nicht aussetzen, aber er darf sich vereinfachen. Was bleibt, ist
 ## genau das, woran man die Sorte erkennt: Umriss und Groesse.

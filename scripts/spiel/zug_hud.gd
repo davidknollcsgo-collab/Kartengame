@@ -304,6 +304,19 @@ func _im_lauf() -> void:
     var b := size.x
     var oben := _rand()
 
+    # **Ein Treffer faerbt den Bildrand.** Kurz und blass in Zinnober, an allen
+    # vier Kanten: Schaden am Spieler, und im Gedraenge sieht man ihn sonst
+    # nur am Balken oben, wohin keiner schaut.
+    var wunde: float = _lauf.wunde()
+    if wunde > 0.0:
+        var c := Color(ZINNOBER.r, ZINNOBER.g, ZINNOBER.b, 0.38 * wunde)
+        var d := 46.0
+        var h := size.y
+        for kante in [[Vector2(0, 0), Vector2(b, 0)], [Vector2(0, h), Vector2(b, h)],
+                [Vector2(0, 0), Vector2(0, h)], [Vector2(b, 0), Vector2(b, h)]]:
+            _tu.band(PackedVector2Array([kante[0], kante[1]]),
+                PackedFloat32Array([d, d]), c, PackedFloat32Array())
+
     # **Das Leben ist die lauteste Anzeige**, denn es ist der einzige Grund,
     # warum ein Lauf endet.
     _balken(Rect2(26.0, oben + 14.0, b - 52.0, 22.0),

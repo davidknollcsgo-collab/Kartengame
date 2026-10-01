@@ -77,28 +77,102 @@ var _punkte := PackedVector2Array()
 var _farben := PackedColorArray()
 var _index := PackedInt32Array()
 
+## **Vorlagen: einmal gebaut, danach nur verschoben.**
+##
+## Die Sparfassung eines Feindes bewegt sich nicht - kein Schritt, kein
+## Schwung -, und trotzdem wurde jede einzelne in jedem Bild Eckpunkt fuer
+## Eckpunkt in GDScript neu gerechnet. Bei zweihundert davon waren das gemessen
+## gut dreissig Millisekunden. Eine Vorlage ist dieselbe Figur, einmal am
+## Ursprung gezeichnet und zu einer flachen Dreiecksliste ausgerollt; `setze()`
+## schiebt sie mit **einer** eingebauten Multiplikation an ihren Ort.
+##
+## Ausgerollt, weil ein Index je Vorlage um ihren Platz im Netz verschoben
+## werden muesste - das waere wieder eine Schleife je Eckpunkt. Flache Dreiecke
+## brauchen keinen Index, also sammeln sie in einem eigenen Puffer. Wechselt
+## die Art, wird der laufende Puffer abgeschlossen: die Reihenfolge - und damit
+## die Tiefe - bleibt, was gezeichnet wurde.
+var _roh_punkte := PackedVector2Array()
+var _roh_farben := PackedColorArray()
+## Abgeschlossene Puffer in Zeichenreihenfolge: `[punkte, farben, index]`,
+## `index` leer bei flachen Dreiecken.
+var _fertig: Array = []
+
 
 func loesche() -> void:
     _punkte.clear()
     _farben.clear()
     _index.clear()
+    _roh_punkte.clear()
+    _roh_farben.clear()
+    _fertig.clear()
 
 
 ## Wie viele Eckpunkte gerade im Netz liegen. Fuer den Messstand, der das
 ## Eckpunkt-Budget prueft - geraten wird es nicht.
 func ecken() -> int:
-    return _punkte.size()
+    var n := _punkte.size() + _roh_punkte.size()
+    for b in _fertig:
+        n += (b[0] as PackedVector2Array).size()
+    return n
 
 
 func leer() -> bool:
-    return _index.is_empty()
+    return _index.is_empty() and _roh_punkte.is_empty() and _fertig.is_empty()
 
 
-## Alles Gesammelte in einem Aufruf absetzen.
-func spuele(ci: RID) -> void:
+## Der Puffer mit Index wird abgeschlossen, bevor flache Dreiecke kommen.
+func _schliesse_netz() -> void:
     if _index.is_empty():
         return
-    RenderingServer.canvas_item_add_triangle_array(ci, _index, _punkte, _farben)
+    _fertig.append([_punkte, _farben, _index])
+    _punkte = PackedVector2Array()
+    _farben = PackedColorArray()
+    _index = PackedInt32Array()
+
+
+## Und der flache, bevor wieder ein Strich mit Index kommt.
+func _schliesse_roh() -> void:
+    if _roh_punkte.is_empty():
+        return
+    _fertig.append([_roh_punkte, _roh_farben, PackedInt32Array()])
+    _roh_punkte = PackedVector2Array()
+    _roh_farben = PackedColorArray()
+
+
+## Was bisher gesammelt wurde, als Vorlage: `[punkte, farben]`, ausgerollt zu
+## einzelnen Dreiecken. Der Pinsel ist danach leer.
+func vorlage() -> Array:
+    _schliesse_netz()
+    var p := PackedVector2Array()
+    var c := PackedColorArray()
+    for b in _fertig:
+        var bp: PackedVector2Array = b[0]
+        var bc: PackedColorArray = b[1]
+        var bi: PackedInt32Array = b[2]
+        if bi.is_empty():
+            p.append_array(bp)
+            c.append_array(bc)
+            continue
+        for i in bi:
+            p.append(bp[i])
+            c.append(bc[i])
+    loesche()
+    return [p, c]
+
+
+## Eine Vorlage an `ort` setzen. Keine Schleife in GDScript.
+func setze(v: Array, ort: Vector2) -> void:
+    _schliesse_netz()
+    _roh_punkte.append_array(Transform2D(0.0, ort) * (v[0] as PackedVector2Array))
+    _roh_farben.append_array(v[1] as PackedColorArray)
+
+
+## Alles Gesammelte absetzen: ein Aufruf je Puffer, im Normalfall einer.
+func spuele(ci: RID) -> void:
+    _schliesse_netz()
+    _schliesse_roh()
+    for b in _fertig:
+        RenderingServer.canvas_item_add_triangle_array(ci, b[2], b[0], b[1])
     loesche()
 
 
@@ -114,6 +188,7 @@ func band(mitte: PackedVector2Array, halb: PackedFloat32Array,
     var n := mitte.size()
     if n < 2:
         return
+    _schliesse_roh()
     var basis := _punkte.size()
     var breit := REIHEN.size()
     var mit_kante := kante.a > 0.0
@@ -276,6 +351,7 @@ func klecks(ort: Vector2, radius: float, farbe: Color, saat := 0,
         # Erst der Umriss, dann der Koerper darueber - ein Umriss ueber der
         # Figur waere ein Fleck, einer unter ihr waere keiner.
         _kranz(ort, radius, radius + maxf(1.6, radius * 0.17), kante, saat, ecken)
+    _schliesse_roh()
     var basis := _punkte.size()
     _punkte.append(ort)
     _farben.append(farbe)
@@ -323,6 +399,7 @@ static func beleuchte(farbe: Color, zum_licht: float) -> Color:
 ## Ein Ring zwischen zwei Radien, mit derselben Welle wie `klecks`.
 func _kranz(ort: Vector2, innen: float, aussen: float, farbe: Color,
         saat: int, ecken: int) -> void:
+    _schliesse_roh()
     var basis := _punkte.size()
     var phase := float((saat * 2654435761) % 1000) * 0.006283
     for i in ecken:
