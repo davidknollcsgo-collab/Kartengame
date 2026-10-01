@@ -68,6 +68,10 @@ const REIHEN_DECKUNG: PackedFloat32Array = [
 ]
 ## Welche Reihen den Umriss tragen statt der Koerperfarbe.
 const REIHEN_KANTE: PackedInt32Array = [1, 1, 1, 0, 0, 0, 1, 1, 1]
+## Die Lichtrichtung. `Palette.LICHT` ist schon ein Einheitsvektor.
+const LICHT_EINS := Palette.LICHT
+const LICHT_HOEHE := Palette.LICHT_HOEHE
+const SCHATTEN_TIEFE := Palette.SCHATTEN_TIEFE
 
 var _punkte := PackedVector2Array()
 var _farben := PackedColorArray()
@@ -113,6 +117,13 @@ func band(mitte: PackedVector2Array, halb: PackedFloat32Array,
     var basis := _punkte.size()
     var breit := REIHEN.size()
     var mit_kante := kante.a > 0.0
+    var hell := farbe
+    var dunkel := farbe
+    if mit_kante:
+        # Eingebaut statt `beleuchte()`: ein Skriptaufruf je Strich ist bei
+        # dreihundert Figuren mit je acht Strichen messbar.
+        hell = farbe.lightened(LICHT_HOEHE)
+        dunkel = farbe.darkened(SCHATTEN_TIEFE)
 
     for i in n:
         # Die Normale aus der lokalen Laufrichtung. An den Enden zaehlt das
@@ -134,13 +145,39 @@ func band(mitte: PackedVector2Array, halb: PackedFloat32Array,
         var d := 1.0
         if not deckung.is_empty():
             d = deckung[mini(i, deckung.size() - 1)]
+        # Wie weit diese Seite des Strichs zum Licht zeigt. Nur Figuren - wer
+        # eine Kante hat - bekommen Licht; Boden, Schraffur und Balken nicht.
+        # **Einmal je Querschnitt, nicht je Eckpunkt.** Der erste Anlauf rief
+        # `beleuchte()` fuer jede Reihe auf: bei dreihundert Sparfiguren stieg
+        # die Rechenzeit fuer das Netz von 26 auf 45 ms. Zwei Farben je
+        # Querschnitt genuegen - eine fuer jede Seite.
+        var plus := farbe
+        var minus := farbe
+        if mit_kante:
+            # Die beiden Endfarben stehen einmal je Strich fest (`hell`,
+            # `dunkel` oben); hier wird nur noch gemischt - ein eingebautes
+            # `lerp` statt zweier Skriptaufrufe je Querschnitt.
+            var z := quer.dot(LICHT_EINS)
+            if z >= 0.0:
+                plus = farbe.lerp(hell, z)
+                minus = farbe.lerp(dunkel, z)
+            else:
+                plus = farbe.lerp(dunkel, -z)
+                minus = farbe.lerp(hell, -z)
+        var mitte_i: Vector2 = mitte[i]
         for r in breit:
-            _punkte.append(mitte[i] + quer * (h * REIHEN[r]))
+            var reihe: float = REIHEN[r]
+            _punkte.append(mitte_i + quer * (h * reihe))
             var c := farbe
-            if mit_kante and REIHEN_KANTE[r] != 0:
-                c = kante
-            _farben.append(Color(c.r, c.g, c.b,
-                c.a * d * REIHEN_DECKUNG[r]))
+            if mit_kante:
+                if REIHEN_KANTE[r] != 0:
+                    c = kante
+                elif reihe > 0.0:
+                    c = plus
+                elif reihe < 0.0:
+                    c = minus
+            c.a *= d * REIHEN_DECKUNG[r]
+            _farben.append(c)
 
     for i in n - 1:
         for r in breit - 1:
@@ -248,16 +285,39 @@ func klecks(ort: Vector2, radius: float, farbe: Color, saat := 0,
     # Zacken. Ein Klecks ist aber an manchen Stellen breiter und an anderen
     # schmaler - das ist eine langsame Welle und kein Rauschen.
     var phase := float((saat * 2654435761) % 1000) * 0.006283
+    # Mit Kante ist es ein Kopf oder Schild und bekommt Licht wie jeder
+    # Strich der Figur; ohne ist es Boden oder Funke und bleibt flach. Die
+    # beiden Endfarben einmal je Klecks, dazwischen nur gemischt.
+    var licht_an := kante.a > 0.0
+    var hell := farbe.lightened(LICHT_HOEHE)
+    var dunkel := farbe.darkened(SCHATTEN_TIEFE)
     for i in ecken:
         var w := TAU * float(i) / float(ecken)
         var r := radius * (1.0 + 0.085 * sin(w * 2.0 + phase)
             + 0.055 * sin(w * 3.0 - phase * 1.7))
-        _punkte.append(ort + Vector2(cos(w), sin(w)) * r)
-        _farben.append(farbe)
+        var richtung := Vector2(cos(w), sin(w))
+        _punkte.append(ort + richtung * r)
+        if licht_an:
+            var z := richtung.dot(LICHT_EINS)
+            _farben.append(farbe.lerp(hell, z) if z >= 0.0 else farbe.lerp(dunkel, -z))
+        else:
+            _farben.append(farbe)
     for i in ecken:
         _index.append(basis)
         _index.append(basis + 1 + i)
         _index.append(basis + 1 + (i + 1) % ecken)
+
+
+## **Licht auf eine Farbe.** `zum_licht` von -1 (abgewandt) bis 1
+## (zugewandt); null laesst sie, wie sie ist. Die Deckung bleibt.
+static func beleuchte(farbe: Color, zum_licht: float) -> Color:
+    var c: Color
+    if zum_licht >= 0.0:
+        c = farbe.lightened(Palette.LICHT_HOEHE * zum_licht)
+    else:
+        c = farbe.darkened(Palette.SCHATTEN_TIEFE * -zum_licht)
+    c.a = farbe.a
+    return c
 
 
 ## Ein Ring zwischen zwei Radien, mit derselben Welle wie `klecks`.

@@ -33,6 +33,14 @@ extends RefCounted
 const BODEN := Color(0.804, 0.776, 0.694)
 ## Was auf dem Boden liegt - Graeser, Steine, Faser.
 const GRUND_ZIER := Color(0.686, 0.663, 0.584)
+## **Der Boden hat Flecken.** Ein einfarbiger Grund liest sich als Papier und
+## nicht als Feld. Erde ist dunkler und waermer, Gras gruenstichig - beide so
+## blass, dass keine Figur darin verschwindet.
+const ERDE := Color(0.690, 0.627, 0.522)
+const GRASGRUND := Color(0.706, 0.722, 0.584)
+const HALM := Color(0.427, 0.478, 0.333)
+## Seltene kleine Blueten. Nicht Gold (Sold), nicht Zinnober (Gefahr).
+const BLUETE := Color(0.902, 0.878, 0.784)
 
 ## --- Die Kante ---
 
@@ -42,6 +50,21 @@ const UMRISS := Color(0.129, 0.114, 0.149)
 ## Der Schlagschatten am Boden. In einem Bild ohne Perspektive ist er das
 ## Einzige, was eine Figur auf den Boden stellt statt sie schweben zu lassen.
 const SCHATTEN := Color(0.129, 0.114, 0.149, 0.22)
+
+## --- Das Licht ---
+##
+## **Jede Figur hat eine Licht- und eine Schattenseite.** Vorher hatte jede
+## genau eine flache Farbe, und hundert flache Farben lasen sich als
+## Skizze. Das Licht kommt von links oben; die abgewandte Seite eines
+## Strichs wird um `SCHATTEN_TIEFE` dunkler, die zugewandte um `LICHT_HOEHE`
+## heller. Es kostet **keinen Eckpunkt**: `Tusche` faerbt ohnehin je Reihe,
+## und die Reihen gibt es schon.
+const LICHT := Vector2(-0.6, -0.8)
+## Erster Anlauf 0,30 / 0,18: beim Warlord sichtbar, bei einer Figur von
+## sechzig Punkten kaum - der Koerper hat nur drei Farbreihen, und die
+## mittlere bleibt, wie sie ist.
+const SCHATTEN_TIEFE := 0.42
+const LICHT_HOEHE := 0.26
 
 ## --- Die zwei Bedeutungen, die geblieben sind ---
 

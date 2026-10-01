@@ -53,6 +53,25 @@ func _kachel(gx: int, gy: int) -> void:
     rng.seed = hash(Vector2i(gx, gy)) & 0x7fffffff
     var ecke := Vector2(float(gx), float(gy)) * KACHEL
 
+    # **Flecken zuerst**: Erde und Grasgrund als grosse, sehr blasse Flaechen.
+    # Sie sind Flaeche und kein Ding - der Grundsatz oben (die Zahl der
+    # getrennten Dinge macht einen Hintergrund laut) bleibt unberuehrt. Ohne
+    # sie las sich der Grund als Papier und nicht als Feld.
+    # Zwei sich kreuzende Wische je Fleck: einer allein war eine Linse mit
+    # spitzen Enden und sichtbaren Facetten, zwei ergeben einen Fleck.
+    for i in 2:
+        var p := ecke + Vector2(rng.randf(), rng.randf()) * KACHEL
+        var farbe := Palette.ERDE if rng.randf() < 0.5 else Palette.GRASGRUND
+        var deck := 0.16 + rng.randf() * 0.10
+        var w := rng.randf() * PI
+        for k in 2:
+            var wk := w + float(k) * 1.2
+            var l := (120.0 + rng.randf() * 140.0) * (1.0 - 0.3 * float(k))
+            var d := Vector2(cos(wk), sin(wk) * 0.5) * l
+            _tu.zug(p - d * 0.5, p + d * 0.5, 80.0 + rng.randf() * 50.0,
+                Color(farbe.r, farbe.g, farbe.b, deck),
+                0.5, 0.0, (rng.randf() - 0.5) * 40.0, 11)
+
     # Faser: sehr blass, sehr kurz. Man sieht sie nie einzeln und merkt
     # sofort, wenn sie fehlt.
     for i in 9:
@@ -72,14 +91,23 @@ func _kachel(gx: int, gy: int) -> void:
             _stein(p, rng)
 
 
+## **Ein Bueschel, nicht drei Haare.** Halme in zwei Toenen - die hinteren
+## dunkler, die vorderen heller -, dichter und gefaechert, und selten eine
+## Bluete. Vorher waren es drei graue Striche nebeneinander.
 func _gras(p: Vector2, rng: RandomNumberGenerator) -> void:
-    var halme := 3 + rng.randi_range(0, 2)
+    var halme := 5 + rng.randi_range(0, 3)
     for i in halme:
+        var t := float(i) / float(halme - 1) - 0.5
         var l := 14.0 + rng.randf() * 22.0
-        var neige := (rng.randf() - 0.5) * 20.0
-        _tu.zug(p + Vector2(float(i) * 5.0 - 6.0, 0.0),
-            p + Vector2(float(i) * 5.0 - 6.0 + neige, -l), 2.6,
-            Color(TINTE.r, TINTE.g, TINTE.b, 0.26), 0.0, 0.7, 2.0, 3)
+        var neige := t * 26.0 + (rng.randf() - 0.5) * 8.0
+        var vorn := i % 2 == 1
+        var c := Palette.HALM.lightened(0.25) if vorn else Palette.HALM
+        _tu.zug(p + Vector2(t * 12.0, 0.0), p + Vector2(t * 12.0 + neige, -l),
+            2.8, Color(c.r, c.g, c.b, 0.55), 0.0, 0.6, 2.0, 3)
+    if rng.randf() < 0.3:
+        _tu.klecks(p + Vector2((rng.randf() - 0.5) * 14.0, -18.0 - rng.randf() * 10.0),
+            2.6, Color(Palette.BLUETE.r, Palette.BLUETE.g, Palette.BLUETE.b, 0.9),
+            int(p.x))
 
 
 func _stein(p: Vector2, rng: RandomNumberGenerator) -> void:

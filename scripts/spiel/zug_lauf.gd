@@ -549,6 +549,12 @@ func _lies_schalter() -> void:
     var held := -1
     var stufen_n := 0
     var neu := false
+    # **Ein Schuss spielt mit leerem Spielstand und schreibt keinen.** Sonst
+    # trug er die Funde aller Schuesse davor, und dieselbe Saat gab zwei
+    # verschiedene Gefechte.
+    if args.has("--schuss"):
+        Burg.schreibt = false
+        Burg.stand = BurgStand.new()
     for i in args.size():
         match args[i]:
             "--schuss":
@@ -562,6 +568,12 @@ func _lies_schalter() -> void:
                     held = int(args[i + 1])
             "--marke":
                 marke = true
+            "--saat":
+                # **Vorher und nachher zeigen dieselbe Szene.** Ohne feste
+                # Saat ist jeder Schuss ein anderer Lauf, und ein Vergleich
+                # zweier Zeichnungen wird ein Vergleich zweier Gefechte.
+                if i + 1 < args.size():
+                    _rng.seed = int(args[i + 1])
             "--neu":
                 # Fuer den Schuss des Einstiegshinweises: `--held` setzt
                 # `einstieg`, dieser Schalter nimmt es danach zurueck.

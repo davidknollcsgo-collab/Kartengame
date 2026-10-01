@@ -30,6 +30,9 @@ extends RefCounted
 
 const TINTE := Palette.UMRISS
 const HELL := Color(0.98, 0.96, 0.90)
+## Klingen und Spitzen der Feinde. Kalt und hell, aber grauer als der Glanz
+## des Helden - sein Blau traegt nichts sonst.
+const STAHL := Color(0.80, 0.80, 0.78)
 const ZINNOBER := Palette.GEFAHR
 
 ## Ab wie vielen Figuren im Bild die Sparfassung gilt. Der Stil darf nicht
@@ -67,20 +70,55 @@ static func _beine(tu: Tusche, hueft: Vector2, h: float, blick: float,
         var fuss := hueft + Vector2(seite * h * blick, h * 0.44)
         var knie := _gelenk(hueft, fuss, h * 0.05 * blick)
         tu.strang(PackedVector2Array([hueft, knie, fuss]),
-            PackedFloat32Array([breite, breite * 0.72, breite * 0.18]),
+            PackedFloat32Array([breite, breite * 0.72, breite * 0.30]),
             farbe, 6, Palette.UMRISS)
+        # **Ein Fuss ist ein Stiefel, keine Nadelspitze.** Kurz, dunkler
+        # als das Bein und nach vorn: daran sieht man, wohin einer geht.
+        tu.zug(fuss + Vector2(-breite * 0.25 * blick, 0.0),
+            fuss + Vector2(breite * 0.95 * blick, h * 0.004), breite * 0.62,
+            farbe.darkened(0.45), 0.35, 0.0, 0.0, 3, Palette.UMRISS)
 
 
-## Der Rumpf als Masse, mit Schraffur darin - das ist der Kettenhemd-Trick:
-## erst eine Flaeche, dann Striche, die man zaehlen kann.
+## **Der Rumpf ist ein Kleidungsstueck, kein Strang.**
+##
+## Vorher lief er von der Huefte zur Brust, gleich breit wie die Beine oben:
+## ein Strichmaennchen mit dickem Bauch. Jetzt beginnt er **unter** der
+## Huefte und ist dort am breitesten - ein Waffenrock, der ueber die Beine
+## faellt -, schnuert sich in der Taille und hat einen **Guertel**. Der
+## Guertel ist der billigste Strich, der aus einer Flaeche eine Kleidung
+## macht: eine Querlinie, und das Auge setzt Stoff oben und unten.
 static func _rumpf(tu: Tusche, hueft: Vector2, brust: Vector2, breite: float,
         farbe: Color, mit_schraffur := true) -> void:
-    tu.strang(PackedVector2Array([hueft, (hueft + brust) * 0.5, brust]),
-        PackedFloat32Array([breite * 0.8, breite, breite * 0.5]), farbe, 7,
-        Palette.UMRISS)
+    var achse := brust - hueft
+    var saum := hueft - achse * 0.30
+    tu.strang(PackedVector2Array([saum, hueft.lerp(brust, 0.30), brust]),
+        PackedFloat32Array([breite * 1.12, breite * 0.86, breite * 0.62]),
+        farbe, 6, Palette.UMRISS)
+    # Brustkorb: breiter als die Taille. Ein zweiter, kurzer Strang oben -
+    # er liegt auf dem ersten, also ohne Kerbe.
+    tu.strang(PackedVector2Array([hueft.lerp(brust, 0.45),
+        hueft.lerp(brust, 0.78), brust + achse * 0.06]),
+        PackedFloat32Array([breite * 0.80, breite * 1.0, breite * 0.55]),
+        farbe, 4, Palette.UMRISS)
     if mit_schraffur:
-        tu.schraffur(hueft, brust, breite * 0.8, 3,
+        tu.schraffur(hueft.lerp(brust, 0.35), brust, breite * 0.8, 3,
             Color(HELL.r, HELL.g, HELL.b, 0.30), 1.4)
+    var quer := achse.orthogonal().normalized()
+    var g := hueft.lerp(brust, 0.12)
+    tu.zug(g - quer * breite * 0.46, g + quer * breite * 0.46, breite * 0.20,
+        farbe.darkened(0.55), 0.5, 0.0, 0.0, 4)
+
+
+## **Ein Arm ist ein Strang mit Ellbogen und hat eine Kante.** Die Feinde
+## trugen ihre Arme als einen geraden Zug ohne Umriss - ein Stock, der aus
+## der Brust ragt, und das Licht fand ihn nicht. Mit Kante kostet er keinen
+## Eckpunkt mehr: jeder Strich hat ohnehin neun Reihen.
+static func _arm(tu: Tusche, schulter: Vector2, hand: Vector2, dicke: float,
+        farbe: Color, blick: float) -> void:
+    var ellbogen := _gelenk(schulter, hand, dicke * 0.45 * blick)
+    tu.strang(PackedVector2Array([schulter, ellbogen, hand]),
+        PackedFloat32Array([dicke, dicke * 0.78, dicke * 0.62]), farbe, 4,
+        Palette.UMRISS)
 
 
 ## --- Der Held ---
@@ -97,22 +135,49 @@ static func held(tu: Tusche, ort: Vector2, h: float, blick: float,
     var kopf := ort + Vector2(h * 0.04 * blick, -h * 0.92)
     var schulter := ort + Vector2(h * 0.01 * blick, -h * 0.74)
 
+    # **Der Umhang, hinter allem.** Er weht gegen die Laufrichtung und
+    # schwingt mit dem Schritt; dunkler als das Gewand, damit er hinter der
+    # Figur liegt und nicht auf ihr. Er ist das groesste Stueck Flaeche am
+    # Helden - und Flaeche ist, was eine Figur von einer Skizze trennt.
+    var weht := sin(phase * 0.5) * h * 0.025
+    var umhang_unten := ort + Vector2(-h * 0.17 * blick + weht, -h * 0.10)
+    tu.strang(PackedVector2Array([schulter + Vector2(-h * 0.03 * blick, 0.0),
+        (schulter + umhang_unten) * 0.5 + Vector2(-h * 0.07 * blick, 0.0),
+        umhang_unten]),
+        PackedFloat32Array([h * 0.16, h * 0.24, h * 0.30]),
+        farbe.darkened(0.38), 8, Palette.UMRISS)
+
     _beine(tu, hueft, h, blick, phase, h * 0.155, farbe)
     _rumpf(tu, hueft, brust, h * 0.22, farbe)
+    # Die Schnalle: ein heller Punkt auf dem Guertel, in seinem Glanz und
+    # nicht in Gold - Gold heisst Sold.
+    tu.klecks(hueft.lerp(brust, 0.12) + Vector2(h * 0.02 * blick, 0.0),
+        h * 0.018, glanz, 3)
 
-    # Der Helm: ein Klecks mit Nasal. Das Nasal ist der ganze Unterschied
-    # zwischen einem Topf und einem Helm.
-    tu.klecks(kopf, h * 0.062, farbe, int(ort.x), Palette.UMRISS)
+    # Der Helm: ein Klecks mit Nasal und Sehschlitz. Das Nasal ist der
+    # Unterschied zwischen einem Topf und einem Helm, der Schlitz der
+    # zwischen einem Helm und einem Kopf.
+    tu.klecks(kopf, h * 0.064, farbe, int(ort.x), Palette.UMRISS)
+    tu.zug(kopf + Vector2(-h * 0.01 * blick, -h * 0.004),
+        kopf + Vector2(h * 0.058 * blick, -h * 0.006), h * 0.016,
+        Palette.UMRISS, 0.6, 0.0, 0.0, 3)
     tu.zug(kopf + Vector2(h * 0.05 * blick, -h * 0.01),
         kopf + Vector2(h * 0.055 * blick, h * 0.045), h * 0.022,
         glanz, 0.4, 0.2, 0.0, 3)
+    # Ein Kamm oben auf dem Helm, nach hinten auslaufend.
+    tu.zug(kopf + Vector2(h * 0.03 * blick, -h * 0.06),
+        kopf + Vector2(-h * 0.07 * blick, -h * 0.03), h * 0.030,
+        glanz, 0.25, 0.4, -h * 0.02 * blick, 4, Palette.UMRISS)
 
     # Der Arm und die Klinge. Der Winkel kommt von aussen: so zeigt die
     # Waffe wirklich dorthin, wo der Schlag gerechnet wurde.
     var hand := schulter + Vector2(cos(waffe_winkel), sin(waffe_winkel)) * h * 0.30
     tu.strang(PackedVector2Array([schulter, _gelenk(schulter, hand, h * 0.05), hand]),
-        PackedFloat32Array([h * 0.10, h * 0.075, h * 0.045]), farbe, 6,
+        PackedFloat32Array([h * 0.10, h * 0.075, h * 0.050]), farbe, 6,
         Palette.UMRISS)
+    # Schulterstueck: ein Klecks im Glanz, wo der Arm ansetzt.
+    tu.klecks(schulter + Vector2(-h * 0.01 * blick, h * 0.01), h * 0.050,
+        glanz.lerp(farbe, 0.45), int(ort.y), Palette.UMRISS)
     # **Die Klinge traegt nicht die Farbe des Helden.** Stahl ist hell und
     # kalt; faerbte man sie wie sein Gewand, waere sie ein dritter Arm.
     var spitze := hand + Vector2(cos(waffe_winkel), sin(waffe_winkel)) * h * 0.52
@@ -191,7 +256,7 @@ static func gefaehrte(tu: Tusche, ort: Vector2, h: float, blick: float,
     # den man nicht sieht, ist eine Zahl im Protokoll und kein Schlag.
     var aus := h * (0.16 + 0.34 * clampf(schlag / 0.18, 0.0, 1.0))
     var hand := brust + Vector2(h * 0.14 * blick, h * 0.02)
-    tu.zug(brust, hand, h * 0.065, farbe, 0.2, 0.3, 0.0, 4, Palette.UMRISS)
+    _arm(tu, brust, hand, h * 0.07, farbe, blick)
     tu.zug(hand, hand + Vector2(aus * blick, -h * 0.05), h * 0.030, glanz,
         0.3, 0.3, 0.0, 4, Palette.UMRISS)
 
@@ -302,12 +367,27 @@ static func _knapp(tu: Tusche, ort: Vector2, h: float, blick: float, art: int,
     var brust := ort + Vector2(0.0, -h * 0.78)
     # Zwei Beine als V: das ist der ganze Unterschied zwischen einer Figur
     # und einem Zapfen.
+    # Kein trockener Auslauf an den Fuessen: ein Bein, das in einer Nadel
+    # endet, steht nicht. Etwas breiter als frueher - Breite kostet nichts.
     for s in [-0.13, 0.13]:
-        tu.zug(hueft, ort + Vector2(h * s * blick, 0.0), h * 0.085, farbe,
-            0.15, 0.3, 0.0, 3, Palette.UMRISS)
-    tu.strang(PackedVector2Array([hueft, (hueft + brust) * 0.5, brust]),
-        PackedFloat32Array([h * 0.17, h * 0.21, h * 0.13]), farbe, 5,
+        tu.zug(hueft, ort + Vector2(h * s * blick, 0.0), h * 0.10, farbe,
+            0.2, 0.0, 0.0, 3, Palette.UMRISS)
+    # **Ein Rock, kein Zapfen.** Breiter unten als in der Taille und unter
+    # der Huefte beginnend, wie in der Vollfassung - dieselben fuenf
+    # Querschnitte wie vorher, nur andere Breiten.
+    tu.strang(PackedVector2Array([hueft + Vector2(0.0, h * 0.08),
+        hueft.lerp(brust, 0.40), brust]),
+        PackedFloat32Array([h * 0.25, h * 0.19, h * 0.17]), farbe, 5,
         Palette.UMRISS)
+    # **Kein Guertel hier.** Er stand eine Fassung lang drin und kostete ein
+    # Siebtel der Eckpunkte; auf zwanzig Bildpunkten Figur sah man ihn kaum.
+    # Den Rock macht die Form, nicht der Strich.
+    # **Und ein Arm.** Ohne ihn war die Sparfassung ein Strichmaennchen ohne
+    # Haende - genau der Eindruck, den sie im Gedraenge ab Minute drei macht.
+    # Einer reicht, der vordere; drei Querschnitte.
+    tu.zug(brust + Vector2(h * 0.04 * blick, h * 0.02),
+        brust + Vector2(h * 0.17 * blick, h * 0.20), h * 0.075, farbe,
+        0.3, 0.0, h * 0.02 * blick, 3, Palette.UMRISS)
     tu.klecks(ort + Vector2(0.0, -h * 0.88), h * 0.058, farbe, int(ort.x),
         Palette.UMRISS)
     if art == Feinde.Art.SPIESSER or art == Feinde.Art.TREIBER:
@@ -333,11 +413,15 @@ static func _strolch(tu: Tusche, ort: Vector2, h: float, blick: float,
         int(ort.x), Palette.UMRISS)
     tu.zug(brust + Vector2(h * 0.03 * blick, -h * 0.15),
         brust + Vector2(-h * 0.12 * blick, -h * 0.08), h * 0.05, farbe,
-        0.2, 0.6, 0.0, 4)
+        0.2, 0.6, 0.0, 4, Palette.UMRISS)
+    # Das Gesicht liegt im Schatten der Kapuze: ein dunkler Fleck vorn.
+    tu.klecks(brust + Vector2(h * 0.065 * blick, -h * 0.125), h * 0.026,
+        farbe.darkened(0.6), int(ort.y))
     var hand := brust + Vector2(h * 0.16 * blick, h * 0.02)
-    tu.zug(brust, hand, h * 0.07, farbe, 0.2, 0.3, 0.0, 4)
-    tu.zug(hand, hand + Vector2(h * 0.16 * blick, -h * 0.06), h * 0.026, farbe,
-        0.2, 0.5, 0.0, 3)
+    _arm(tu, brust, hand, h * 0.075, farbe, blick)
+    # Das Messer blinkt: Stahl ist hell, nicht lederbraun.
+    tu.zug(hand, hand + Vector2(h * 0.16 * blick, -h * 0.06), h * 0.030,
+        STAHL, 0.2, 0.5, 0.0, 3, Palette.UMRISS)
 
 
 ## **Der Wolf.** Der einzige Umriss im Spiel, der nicht steht.
@@ -415,8 +499,14 @@ static func _mit_stange(tu: Tusche, ort: Vector2, h: float, blick: float,
     var brust := ort + Vector2(0.0, -h * 0.78)
     _beine(tu, hueft, h, blick, phase, h * 0.14, farbe)
     _rumpf(tu, hueft, brust, h * 0.20, farbe, not fahne)
-    tu.klecks(ort + Vector2(h * 0.02 * blick, -h * 0.92), h * 0.058, farbe,
-        int(ort.x), Palette.UMRISS)
+    var kopf := ort + Vector2(h * 0.02 * blick, -h * 0.92)
+    tu.klecks(kopf, h * 0.058, farbe, int(ort.x), Palette.UMRISS)
+    if not fahne:
+        # Der Pikenier traegt eine Eisenkappe mit Krempe: ein Strich quer
+        # ueber den Kopf, in Stahl. Ohne sie ist er ein Strolch mit Stange.
+        tu.zug(kopf + Vector2(-h * 0.075, -h * 0.012),
+            kopf + Vector2(h * 0.075, -h * 0.012), h * 0.030, STAHL,
+            0.5, 0.0, -h * 0.02, 4, Palette.UMRISS)
     # **Die Stange quert das eigene Bild** - daran erkennt man beide Sorten
     # auf zwanzig Bildpunkten, und zwar noch im Gedraenge.
     var fuss := ort + Vector2(h * 0.24 * blick, -h * 0.06)
@@ -428,11 +518,15 @@ static func _mit_stange(tu: Tusche, ort: Vector2, h: float, blick: float,
         var quer := (spitze - fuss).normalized().orthogonal() * blick
         tu.strang(PackedVector2Array([spitze, spitze + quer * h * 0.20
             + Vector2(0.0, h * 0.07), spitze + Vector2(0.0, h * 0.24)]),
-            PackedFloat32Array([h * 0.02, h * 0.16, h * 0.03]), farbe, 6)
+            PackedFloat32Array([h * 0.02, h * 0.16, h * 0.03]), farbe, 6,
+            Palette.UMRISS)
+        # Ein Zeichen auf dem Tuch: ein heller Fleck, der es zur Fahne macht.
+        tu.klecks(spitze + quer * h * 0.09 + Vector2(0.0, h * 0.09), h * 0.035,
+            Color(HELL.r, HELL.g, HELL.b, 0.75), int(ort.x))
     else:
         tu.zug(spitze, spitze + (spitze - fuss).normalized() * h * 0.10,
-            h * 0.05, farbe, 0.0, 0.8, 0.0, 3)
-    tu.zug(brust, fuss.lerp(spitze, 0.35), h * 0.062, farbe, 0.2, 0.3, 0.0, 4)
+            h * 0.05, STAHL, 0.0, 0.8, 0.0, 3, Palette.UMRISS)
+    _arm(tu, brust, fuss.lerp(spitze, 0.35), h * 0.068, farbe, blick)
 
 
 static func _armbruster(tu: Tusche, ort: Vector2, h: float, blick: float,
@@ -441,12 +535,22 @@ static func _armbruster(tu: Tusche, ort: Vector2, h: float, blick: float,
     # Brusthoehe im ganzen Spiel.
     var hueft := ort + Vector2(0.0, -h * 0.40)
     var brust := ort + Vector2(-h * 0.04 * blick, -h * 0.68)
+    # Der Koecher am Ruecken, schraeg, mit Federn oben. Er liegt hinter der
+    # Figur und sagt schon von hinten, was der da tut.
+    var koecher := brust + Vector2(-h * 0.10 * blick, -h * 0.04)
+    tu.zug(koecher + Vector2(h * 0.02 * blick, h * 0.20),
+        koecher + Vector2(-h * 0.05 * blick, -h * 0.06), h * 0.075,
+        farbe.darkened(0.5), 0.5, 0.0, 0.0, 4, Palette.UMRISS)
+    for s in [-1.0, 1.0]:
+        tu.zug(koecher + Vector2(-h * 0.05 * blick, -h * 0.06),
+            koecher + Vector2((-h * 0.07 + s * h * 0.03) * blick, -h * 0.12),
+            h * 0.022, HELL, 0.2, 0.4, 0.0, 3)
     _beine(tu, hueft, h, blick, phase * 0.5, h * 0.13, farbe)
     _rumpf(tu, hueft, brust, h * 0.19, farbe)
     tu.klecks(brust + Vector2(h * 0.04 * blick, -h * 0.12), h * 0.052, farbe,
         int(ort.x), Palette.UMRISS)
     var hand := brust + Vector2(h * 0.20 * blick, -h * 0.02)
-    tu.zug(brust, hand, h * 0.07, farbe, 0.2, 0.3, 0.0, 4)
+    _arm(tu, brust, hand, h * 0.07, farbe, blick)
     tu.zug(hand + Vector2(-h * 0.14 * blick, 0.0), hand + Vector2(h * 0.20 * blick, 0.0),
         h * 0.032, farbe, 0.45, 0.1, 0.0, 4)
     tu.zug(hand + Vector2(h * 0.14 * blick, -h * 0.10),
@@ -458,19 +562,44 @@ static func _ritter(tu: Tusche, ort: Vector2, h: float, blick: float,
         phase: float, farbe: Color, warlord: bool) -> void:
     var hueft := ort + Vector2(0.0, -h * 0.44)
     var brust := ort + Vector2(0.0, -h * 0.76)
+    if warlord:
+        # **Der Umhang des Warlords**, hinter allem und weit: er ist allein
+        # im Bild und darf am meisten kosten.
+        var weht := sin(phase * 0.5) * h * 0.02
+        var unten := ort + Vector2(-h * 0.20 * blick + weht, -h * 0.06)
+        tu.strang(PackedVector2Array([brust + Vector2(-h * 0.04 * blick, 0.0),
+            (brust + unten) * 0.5 + Vector2(-h * 0.10 * blick, 0.0), unten]),
+            PackedFloat32Array([h * 0.26, h * 0.38, h * 0.44]),
+            farbe.darkened(0.45), 8, Palette.UMRISS)
     _beine(tu, hueft, h, blick, phase, h * 0.185, farbe)
     # **Breit.** Der Ritter unterscheidet sich vom Strolch nicht durch Groesse
     # allein, sondern durch Masse - ein hochskalierter Strolch waere ein
     # Strolch, der naeher steht.
     _rumpf(tu, hueft, brust, h * 0.30, farbe)
+    # Schulterstuecke: zwei Kleckse, heller als der Rock - Metall.
+    for s in [-1.0, 1.0]:
+        tu.klecks(brust + Vector2(h * 0.12 * s, h * 0.01), h * 0.060,
+            farbe.lightened(0.22), int(ort.x) + int(s), Palette.UMRISS)
     var kopf := ort + Vector2(0.0, -h * 0.90)
     tu.klecks(kopf, h * 0.068, farbe, int(ort.x), Palette.UMRISS)
+    # Der Sehschlitz im Topfhelm.
+    tu.zug(kopf + Vector2(-h * 0.04 * blick, 0.0),
+        kopf + Vector2(h * 0.055 * blick, 0.0), h * 0.016, Palette.UMRISS,
+        0.6, 0.0, 0.0, 3)
     if warlord:
         # Hoerner: der einzige Umriss mit zwei Spitzen ueber dem Kopf.
         for s in [-1.0, 1.0]:
             tu.zug(kopf + Vector2(h * 0.05 * s, -h * 0.02),
-                kopf + Vector2(h * 0.14 * s, -h * 0.13), h * 0.028, farbe,
-                0.3, 0.5, h * 0.015 * s, 4)
+                kopf + Vector2(h * 0.14 * s, -h * 0.13), h * 0.034, HELL,
+                0.3, 0.5, h * 0.015 * s, 4, Palette.UMRISS)
+        # Ein Kamm aus drei Zacken zwischen den Hoernern, in Stahl.
+        for z in [-1.0, 0.0, 1.0]:
+            tu.zug(kopf + Vector2(h * 0.03 * z, -h * 0.05),
+                kopf + Vector2(h * 0.035 * z, -h * (0.10 if z == 0.0 else 0.085)),
+                h * 0.020, STAHL, 0.2, 0.0, 0.0, 3, Palette.UMRISS)
+        # Die Brustplatte glaenzt: ein heller Wisch quer ueber den Rock.
+        tu.zug(brust + Vector2(-h * 0.08, h * 0.05), brust + Vector2(h * 0.06, h * 0.01),
+            h * 0.03, Color(HELL.r, HELL.g, HELL.b, 0.35), 0.5, 0.2, 0.0, 4)
     # Schild an der vorderen Seite: eine geschlossene Flaeche, die der
     # Schraffur widerspricht - deshalb liest man ihn als Ding und nicht als
     # Koerperteil.
@@ -481,6 +610,6 @@ static func _ritter(tu: Tusche, ort: Vector2, h: float, blick: float,
         h * 0.17, 3, Color(HELL.r, HELL.g, HELL.b, 0.34), 1.5)
     # Die Klinge ueber der Schulter, schraeg nach hinten - Ansatz zum Schlag.
     var hand := brust + Vector2(-h * 0.13 * blick, -h * 0.04)
-    tu.zug(brust, hand, h * 0.085, farbe, 0.2, 0.3, 0.0, 4)
+    _arm(tu, brust, hand, h * 0.090, farbe, blick)
     tu.zug(hand, hand + Vector2(-h * 0.30 * blick, -h * (0.46 if warlord else 0.34)),
-        h * 0.040, farbe, 0.2, 0.35, h * 0.014, 5)
+        h * 0.044, STAHL, 0.2, 0.35, h * 0.014, 5, Palette.UMRISS)

@@ -45,7 +45,7 @@ und die wirft die Silhouette weg. Die Regel verlangte genau das, was das Bild
 in seinem dichtesten Moment nicht mehr liefern konnte. Uebrig blieben achtzig
 gleiche schwarze Umrisse, und einer davon war der Spieler selbst.
 
-Fünf Regeln, die für **jede** neue Zeichnung hier gelten:
+Sechs Regeln, die für **jede** neue Zeichnung hier gelten:
 
 * **Kein Strich hat zwei gleiche Enden.** Ein Band gleicher Breite ist ein
   Klebestreifen; ein Pinsel setzt auf, trägt und hebt ab.
@@ -60,6 +60,30 @@ Fünf Regeln, die für **jede** neue Zeichnung hier gelten:
 * **Jede Figur hat eine Kante und einen Schatten.** Die Kante trennt sie von
   der Figur daneben, der Schatten vom Boden darunter — ohne den schwebt in
   einem Bild ohne Perspektive alles.
+* **Jede Figur hat eine Licht- und eine Schattenseite** (`Palette.LICHT`,
+  von links oben). `Tusche.band()` färbt die Körperreihen eines Strichs mit
+  Kante zum Licht hin heller und davon weg dunkler, `klecks()` ebenso über
+  den Randwinkel — **null zusätzliche Eckpunkte**. Bis Oktober 2026 hatte
+  jede Figur eine flache Farbe, und der Nutzer fand zu Recht, das Bild wirke
+  wie eine Skizze. Dazu tragen die Figuren **Kleidung statt Strich**:
+  Waffenrock, der unter der Hüfte beginnt, Gürtel, Arme mit Ellbogen und
+  Kante, Stiefel; der Held einen Umhang und Helm mit Sehschlitz, der Warlord
+  Umhang, Kamm und Brustplatte.
+
+  **Gemessen, nicht geraten** (je Figur, Höhe 104, Voll/Spar):
+  Strolch 331/160 → 459/187, Ritter 518/200 → 730/227, Warlord 596/200 →
+  997/227, Held 451 → 751. Im echten Lauf (Minute 6, 300 Feinde, gleiche
+  Saat) braucht `_draw` damit 34–37 ms statt 31–35 ms je Bild. Der erste
+  Anlauf rief die Lichtfunktion je Eckpunkt auf und kostete im Netzbau
+  +70 % (300 Sparfiguren 26 → 45 ms); **eine Rechnung je Strich, dazwischen
+  nur `lerp`**. Und die
+  Sparfassung bekam einen Arm (ohne ihn war sie ein Strichmännchen ohne
+  Hände), aber keinen Gürtel — er kostete ein Siebtel der Eckpunkte und war
+  auf zwanzig Bildpunkten nicht zu sehen.
+
+  **Offen:** `_draw` braucht schon vor dem Umbau über 30 ms je Bild bei 300
+  Feinden (in diesem Container, Debug-Build). Für 60 Bilder je Sekunde auf
+  einem Telefon ist das zu viel; das ist ein eigener Posten.
 
 ## Godot beschaffen
 
@@ -139,6 +163,12 @@ xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 720x1600 \
 | `--stufen <n>` | setzt alle vier Bauten auf Stufe n, **den Beutel und die Züge** |
 | `--lage <n>` | zeigt Titel (0), Burg (3), Beutel (4) statt des Laufs |
 | `--neu` | mit `--held`: als erster Lauf, also mit Einstiegshinweis |
+| `--saat <n>` | feste Saat — vorher und nachher zeigen dieselbe Szene |
+
+**Ein Schuss spielt mit leerem Spielstand und schreibt keinen**
+(`Burg.schreibt`). Vorher las er die Funde aller Schüsse davor und
+speicherte seine eigenen: dieselbe Saat gab zwei verschiedene Gefechte, und
+ein Vergleich zweier Zeichnungen war ein Vergleich zweier Läufe.
 
 **`--zeit` führt `Daumen`**, denselben simulierten Daumen wie `tools/probe.gd`.
 Ohne ihn zeigte jeder Schuss denselben Stillstandstod nach vierzehn Sekunden.

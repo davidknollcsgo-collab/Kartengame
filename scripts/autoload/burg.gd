@@ -9,6 +9,10 @@ extends Node
 const PFAD := "user://zehntausend.json"
 
 var stand := BurgStand.new()
+## Aus beim Schuss: ein Schuss liest keinen Spielstand und schreibt keinen.
+## Vorher trug jeder Schuss die Funde der Schuesse davor, und dieselbe Saat
+## gab zwei verschiedene Gefechte.
+var schreibt := true
 
 
 func _ready() -> void:
@@ -29,6 +33,8 @@ func lade() -> void:
 
 
 func sichere() -> void:
+    if not schreibt:
+        return
     var datei := FileAccess.open(PFAD, FileAccess.WRITE)
     if datei == null:
         return
