@@ -17,7 +17,14 @@ extends RefCounted
 
 ## Wie weit er schaut. Weiter gedacht hiesse, er wiche Dingen aus, die er im
 ## Bild gar nicht saehe - und dann misst man einen Hellseher.
-const SICHT := Gefecht.BILD_HALB_X * 1.167
+const SICHT := 420.0
+## **Nicht an das Sichtfeld gebunden.** Als die Kamera weiter weg ging
+## (Oktober 2026), stand hier eine Weile `Gefecht.BILD_HALB_X * 1.167` (525).
+## Der Daumen sah den Warlord damit frueher und hielt ihn auf Abstand: in
+## zwei von zwoelf vollen Laeufen stand der Held bei 900 s noch, den Warlord
+## mit 5800 Leben bei 400 Punkten Abstand - kein Schwert reicht so weit. Mit
+## 420 faellt er im selben Lauf bei 12 Minuten. Ein Spieler flieht nicht
+## weiter, nur weil das Bild mehr zeigt; das Messgeraet soll es auch nicht.
 
 ## Wie stark ihn Sold anzieht, gemessen an der Flucht. Klein: wer im Gefecht
 ## Muenzen sammelt statt auszuweichen, stirbt - und genau das soll der

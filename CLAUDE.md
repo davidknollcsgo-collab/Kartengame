@@ -166,8 +166,9 @@ Sortenfarben bleiben (satter), Kamera etwas weiter weg.
   wirkliche Boden scheint durch. Eine Fläche in `BODEN` wäre auf einer Wiese
   ein Sandfleck.
 * **Eine Wahrheit für das Sichtfeld**: `Gefecht.BILD_HALB_X/_Y` (450 × 800
-  bei 720 × 1280, `ZOOM` 0,8). Eintritt, Nachholen, Leine, `Daumen.SICHT`
-  und die Wächter, die zählen, was im Bild steht, hängen daran.
+  bei 720 × 1280, `ZOOM` 0,8). Eintritt, Nachholen, Leine und die Wächter,
+  die zählen, was im Bild steht, hängen daran — **der Daumen nicht** (siehe
+  unten: das Messgerät sah weiter und hielt den Warlord auf Abstand).
 * **Ein Pixel-Soldat hat Farbzonen**: Gesicht in `HAUT`, Rock in der
   Sortenfarbe, Hose dunkler, Stahl am Helm (`Streiter.KOPF` 1,6 für große
   Köpfe, `MASSE` 1,18). Einfarbig war jede Figur eine Silhouette. Die Sorte
@@ -787,6 +788,15 @@ kleinerer; die Größe fällt, bis er hineingeht (`_zeile_eng`).
 waren von oben gesetzt und standen auf einem 720x1600-Telefon im oberen
 Drittel, darunter ein leeres Viertel Pergament. Der Block sitzt mittig in dem,
 was da ist (`_luft`); wird es eng, klebt er wieder oben.
+
+**Ein Messgerät, das mit dem Bild wächst, misst einen anderen Spieler.**
+Beim Zoom auf 0,8 wurde auch `Daumen.SICHT` mitskaliert (420 → 525), weil
+„er sieht ja mehr“. Im vollen Messstand standen danach zwei von zwölf
+Läufen bei 900 s noch, der Warlord mit 5800 Leben konstant 400 Punkte weg
+— der Daumen floh ihn, bevor ein Schwert ihn erreichte. Die Leine war es
+nicht (mit 330 dasselbe), der Daumen schon (mit 420 fällt der Warlord bei
+zwölf Minuten). **Was ein Spieler tut, hängt nicht am Bildausschnitt**; wer
+den Messstand am Bild ausrichtet, misst einen anderen Spieler.
 
 **Wenn im Bild etwas steht, das keine Zeichnung erklärt**, ist der nächste
 Schritt nicht Nachdenken, sondern **einen Knoten stillstellen und noch einmal
