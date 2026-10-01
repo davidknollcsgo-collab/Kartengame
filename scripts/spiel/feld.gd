@@ -83,7 +83,7 @@ func _wiese(gx: int, gy: int) -> float:
     for dx in range(-1, 2):
         for dy in range(-1, 2):
             summe += _wert(gx + dx, gy + dy)
-    return clampf((summe / 9.0 - 0.40) * 3.0, 0.0, 1.0)
+    return clampf((summe / 9.0 - 0.47) * 3.0, 0.0, 1.0)
 
 
 ## Wieviel Wiese an einem Ort steht (grob, ueber seine Kachel).
@@ -243,7 +243,7 @@ func _dinge(gx: int, gy: int, ecke: Vector2, anteil: float) -> void:
             _busch(p, rng)
         elif los < 0.85:
             _steine(p, rng)
-        elif los < 0.92:
+        elif los < 0.90:
             _zaun(p, rng)
         elif los < 0.96:
             _ruine(p, rng)
