@@ -53,6 +53,17 @@ var _von := Vector2.ZERO
 var _jetzt := Vector2.ZERO
 
 var _funken: Array = []
+## **Schlagbilder.** Schwert, Speer und Hammer trafen unsichtbar: man hoerte
+## einen Hieb und sah ein Ziel aufblitzen, aber keinen Schlag. Jeder Schlag
+## hinterlaesst jetzt fuer einen Augenblick seine Form - die Sichel des
+## Schwerts, den Stoss des Speers, die Bodenwelle des Hammers -, in genau
+## der Richtung, Weite und Breite, in der das Gefecht ihn gerechnet hat.
+var _hiebe: Array = []
+## Wie lange ein Schlagbild steht, je Waffe (`Waffen.Art`).
+const HIEB_DAUER: PackedFloat32Array = [0.20, 0.16, 0.0, 0.0, 0.34, 0.0]
+## Wohin und wann der letzte Schlag ging - die Waffe in der Hand zeigt dorthin.
+var _schlag_richtung := Vector2.RIGHT
+var _schlag_alter := 9.0
 var _fund := -1
 var _fund_stufe := 0
 
@@ -77,6 +88,7 @@ func beginne(held: int) -> void:
     Burg.stand.held = held
     _stand = Gefecht.baue(Burg.stand.stufen, held, Burg.stand.getragen())
     _funken.clear()
+    _hiebe.clear()
     _fund = -1
     _gezogen = 0.0
     _kamera_ort = Vector2.ZERO
@@ -92,6 +104,10 @@ func _process(delta: float) -> void:
     for f in _funken:
         f.alter += delta
     _funken = _funken.filter(func(f): return f.alter < 0.55)
+    for h in _hiebe:
+        h.alter += delta
+    _hiebe = _hiebe.filter(func(h): return h.alter < h.dauer)
+    _schlag_alter += delta
 
     if lage == Lage.LAUF and _stand != null:
         var eingabe := _eingabe()
@@ -137,6 +153,15 @@ func _werte_aus() -> void:
                 if _hieb_sperre <= 0.0:
                     _hieb_sperre = HIEB_SPERRE
                     Klang.spiele(Klang.Ton.HIEB, 0.9 + randf() * 0.3, 0.5)
+                var w: int = v[1]
+                var richtung: Vector2 = v[2] if v.size() > 2 else _stand.blick
+                _schlag_richtung = richtung
+                _schlag_alter = 0.0
+                if not Waffen.fliegt(w):
+                    _hiebe.append({"waffe": w, "richtung": richtung,
+                        "alter": 0.0, "dauer": HIEB_DAUER[w],
+                        "weite": Gefecht.weite_von(_stand, w),
+                        "halb": Waffen.breite(w, _stand.waffe_stufe(w)) * 0.5})
             Gefecht.Vorfall.FEIND_FAELLT:
                 if _tod_sperre <= 0.0:
                     _tod_sperre = TOD_SPERRE
@@ -281,17 +306,13 @@ func _draw() -> void:
         if g.ort.y > _stand.ort.y:
             _zeichne_gefaehrte(g)
 
+    _zeichne_hiebe()
     _zeichne_marke()
 
     for g in _stand.geschosse:
         if not _im_bild(g.ort, 50.0):
             continue
-        var farbe := ZINNOBER if g.feindlich else TINTE
-        # Ein Bolzen zieht einen Schweif: wohin er fliegt, muss man sehen,
-        # bevor er da ist - sonst kann man ihm nicht ausweichen.
-        var schweif := 40.0 if g.feindlich else 18.0
-        _tu.zug(g.ort - g.richtung * schweif, g.ort + g.richtung * 12.0, 5.0,
-            farbe, 0.6, 0.3, 0.0, 4)
+        _zeichne_geschoss(g)
 
     for f in _funken:
         var t: float = f.alter / 0.55
@@ -301,6 +322,120 @@ func _draw() -> void:
 
     _zeichne_randpfeil()
     _tu.spuele(get_canvas_item())
+
+
+## Stahl fuer alles, was der Held schwingt und wirft. Hell und kalt, aber nicht
+## sein Blau - das traegt niemand sonst.
+const STAHL := Color(0.86, 0.87, 0.85)
+const HOLZ := Color(0.47, 0.35, 0.22)
+
+## **Die Schlagbilder.** Jedes in der Richtung, Weite und Breite, mit der das
+## Gefecht gerechnet hat - zwei Rechnungen waeren zwei Wahrheiten, und dann
+## saehe man den Schwerthieb dort, wo er nicht traf.
+func _zeichne_hiebe() -> void:
+    var o := _stand.ort
+    for h in _hiebe:
+        var t: float = h.alter / h.dauer
+        var r: Vector2 = h.richtung
+        var weite: float = h.weite
+        match int(h.waffe):
+            Waffen.Art.SCHWERT:
+                # Eine Sichel, die von hinten nach vorn ueber den Kegel faehrt:
+                # vorn breit und hell, hinten duenn und ausgelaufen. Flach
+                # gelegt (y x 0,7), weil das Feld von oben gesehen ist.
+                var halb: float = h.halb
+                var lauf := 1.0 - pow(1.0 - t, 2.0)
+                var a0 := r.angle() - halb
+                var spanne := halb * 2.0 * lauf
+                var mitte := PackedVector2Array()
+                var breit := PackedFloat32Array()
+                var deck := PackedFloat32Array()
+                var n := 9
+                for k in n:
+                    var u := float(k) / float(n - 1)
+                    var w := a0 + spanne * u
+                    var rad := weite * (0.60 + 0.30 * u)
+                    mitte.append(o + Vector2(cos(w) * rad, sin(w) * rad * 0.7)
+                        + Vector2(0.0, -HELD_HOEHE * 0.40))
+                    breit.append(HELD_HOEHE * (0.03 + 0.16 * u))
+                    deck.append((0.15 + 0.85 * u) * (1.0 - t * t))
+                # **Kraeftig genug, um es zu sehen.** Der erste Anlauf lief bis
+                # zur Haelfte durchsichtig aus und war im Schuss ein Splitter.
+                _tu.band(mitte, breit, Color(STAHL.r, STAHL.g, STAHL.b, 0.9), deck)
+                var innen := PackedFloat32Array()
+                for k in n:
+                    innen.append(breit[k] * 0.35)
+                _tu.band(mitte, innen, Color(1.0, 1.0, 1.0, 0.95), deck)
+            Waffen.Art.SPEER:
+                # Ein Stoss: der Strich schiesst hinaus und laeuft hinten aus.
+                var spitze := o + Vector2(0.0, -HELD_HOEHE * 0.35) \
+                    + r * weite * (0.35 + 0.65 * minf(1.0, t * 2.2))
+                var fuss := o + Vector2(0.0, -HELD_HOEHE * 0.35) + r * HELD_HOEHE * 0.2
+                _tu.zug(fuss, spitze, HELD_HOEHE * 0.10,
+                    Color(STAHL.r, STAHL.g, STAHL.b, 0.9 * (1.0 - t * t)), 0.9, 0.0, 0.0, 6)
+                _tu.zug(spitze - r * 26.0, spitze + r * 12.0, HELD_HOEHE * 0.09,
+                    Color(1.0, 1.0, 1.0, 0.95 * (1.0 - t * t)), 0.75, 0.0, 0.0, 4)
+            Waffen.Art.HAMMER:
+                # Eine Bodenwelle: ein flacher Ring, der aufgeht und verblasst,
+                # in Erde und nicht in Zinnober - er trifft Feinde, nicht dich.
+                var rad := weite * (0.25 + 0.75 * (1.0 - pow(1.0 - t, 2.0)))
+                var mitte := PackedVector2Array()
+                var breit := PackedFloat32Array()
+                var n := 20
+                for k in n + 1:
+                    var w := TAU * float(k) / float(n)
+                    mitte.append(o + Vector2(cos(w) * rad, sin(w) * rad * 0.42))
+                    breit.append(HELD_HOEHE * 0.11 * (1.0 - t * 0.6))
+                var erde := Palette.ERDE.darkened(0.40)
+                _tu.band(mitte, breit, Color(erde.r, erde.g, erde.b, 0.85 * (1.0 - t)),
+                    PackedFloat32Array())
+                # Dazu Splitter im Ring - Erde, die aufspritzt.
+                if t < 0.5:
+                    for k in 6:
+                        var w := TAU * float(k) / 6.0 + 0.4
+                        var p := o + Vector2(cos(w) * rad, sin(w) * rad * 0.42)
+                        _tu.klecks(p + Vector2(0.0, -14.0 * (1.0 - t * 2.0)), 4.0,
+                            Color(erde.r, erde.g, erde.b, 0.8 * (1.0 - t * 2.0)), k)
+
+
+## **Ein Geschoss hat eine Form.** Bolzen und Axt waren derselbe Strich mit
+## Schweif. Jetzt: der Bolzen mit Schaft, Spitze und Befiederung, die Axt als
+## Blatt am Stiel, das sich dreht. Der feindliche Bolzen bleibt in Zinnober
+## und zieht seinen langen Schweif - ihm muss man ausweichen.
+func _zeichne_geschoss(g: Gefecht.Geschoss) -> void:
+    var r := g.richtung
+    if g.feindlich:
+        _tu.zug(g.ort - r * 40.0, g.ort + r * 4.0, 4.0,
+            Color(ZINNOBER.r, ZINNOBER.g, ZINNOBER.b, 0.5), 0.9, 0.0, 0.0, 4)
+        _bolzen(g.ort, r, ZINNOBER.darkened(0.3), ZINNOBER)
+        return
+    if g.waffe == Waffen.Art.AXT:
+        var w := g.alter * 16.0 + g.start.x * 0.01
+        var d := Vector2(cos(w), sin(w))
+        var q := d.orthogonal()
+        _tu.zug(g.ort - d * 13.0, g.ort + d * 11.0, 4.5, HOLZ, 0.5, 0.0, 0.0, 3,
+            Palette.UMRISS)
+        _tu.strang(PackedVector2Array([g.ort + d * 6.0 - q * 2.0,
+            g.ort + d * 11.0 + q * 9.0, g.ort + d * 15.0 + q * 2.0]),
+            PackedFloat32Array([5.0, 12.0, 4.0]), STAHL, 4, Palette.UMRISS)
+        # Ein blasser Wirbel um die drehende Axt.
+        _tu.zug(g.ort - q * 16.0, g.ort + q * 16.0, 2.0,
+            Color(STAHL.r, STAHL.g, STAHL.b, 0.25), 0.5, 0.0, 14.0, 5)
+        return
+    _tu.zug(g.ort - r * 26.0, g.ort - r * 6.0, 3.0,
+        Color(STAHL.r, STAHL.g, STAHL.b, 0.35), 0.9, 0.0, 0.0, 3)
+    _bolzen(g.ort, r, HOLZ, STAHL)
+
+
+func _bolzen(ort: Vector2, r: Vector2, schaft: Color, spitze: Color) -> void:
+    var q := r.orthogonal()
+    _tu.zug(ort - r * 14.0, ort + r * 8.0, 3.0, schaft, 0.5, 0.0, 0.0, 3,
+        Palette.UMRISS)
+    _tu.zug(ort + r * 6.0, ort + r * 15.0, 5.0, spitze, 0.1, 0.0, 0.0, 3,
+        Palette.UMRISS)
+    for s in [-1.0, 1.0]:
+        _tu.zug(ort - r * 10.0, ort - r * 16.0 + q * 5.0 * s, 2.6,
+            Color(0.93, 0.91, 0.85), 0.2, 0.0, 0.0, 3)
 
 
 ## **Gezeichnet wird, was im Bild steht - nicht ein Quadrat darum.** Hier
@@ -447,9 +582,17 @@ func _zeichne_held() -> void:
     var blick := 1.0 if s.blick.x >= 0.0 else -1.0
     var laeuft := s.lauf.length_squared() > 0.02
     var phase := _zeit * 9.0 if laeuft else 0.0
-    # Die Waffe zeigt dorthin, wo der Schlag gerechnet wurde - sie schwingt
-    # mit dem Takt der schnellsten Waffe.
-    _waffe_winkel = s.blick.angle() + sin(_zeit * 6.0) * 0.45
+    # **Die Waffe schlaegt, wenn geschlagen wird.** Vorher wackelte sie
+    # dauernd im Takt einer Sinuskurve, unabhaengig von jedem Schlag. Jetzt
+    # zieht sie beim Schlag einmal durch - von hinten nach vorn ueber die
+    # Schlagrichtung - und haengt dazwischen ruhig in Blickrichtung.
+    var ruhe := s.blick.angle() + 0.35 * blick + sin(_zeit * 2.2) * 0.06
+    if _schlag_alter < 0.22:
+        var t := _schlag_alter / 0.22
+        var ziel := _schlag_richtung.angle()
+        _waffe_winkel = ziel + lerpf(-1.1, 0.9, 1.0 - pow(1.0 - t, 3.0)) * blick
+    else:
+        _waffe_winkel = lerp_angle(_waffe_winkel, ruhe, 0.25)
     # Das Gewand kommt aus dem Spielstand und nicht aus dem Gefecht: eine
     # Skin ist Zierde und darf in `Gefecht.Stand` nichts zu suchen haben.
     var n := Burg.stand.skin(s.held)
@@ -469,14 +612,35 @@ func _zeichne_held() -> void:
         # als er im Bild steht.
         var weite := Gefecht.bahn_von(s, Waffen.Art.FLEGEL)
         var zahl := Waffen.zahl(Waffen.Art.FLEGEL, stufe)
+        var eisen := Color(0.60, 0.63, 0.67)
         for i in zahl:
             var w := s.flegel_winkel + TAU * float(i) / float(zahl)
             var ort := s.ort + Vector2(cos(w), sin(w)) * weite
-            _tu.zug(s.ort, ort, 3.0, Color(TINTE.r, TINTE.g, TINTE.b, 0.5),
-                0.5, 0.2, 0.0, 3)
+            # **Eine Kette ist Glieder, kein Faden.** Vier kleine Ringe auf
+            # dem Weg zum Kopf statt eines blassen Strichs.
+            for k in 4:
+                var p := s.ort.lerp(ort, (float(k) + 0.6) / 4.6)
+                _tu.klecks(p, 2.6, Color(eisen.r, eisen.g, eisen.b, 0.9), k)
+            # Die Spur: ein blasser Bogen hinter dem Kopf - er kreist, und das
+            # muss man sehen, ohne auf die Zeit zu achten.
+            var spur := PackedVector2Array()
+            var breit := PackedFloat32Array()
+            var deck := PackedFloat32Array()
+            for k in 6:
+                var u := float(k) / 5.0
+                var wk := w - 0.9 * (1.0 - u)
+                spur.append(s.ort + Vector2(cos(wk), sin(wk)) * weite)
+                breit.append(9.0 * u)
+                deck.append(0.35 * u)
+            _tu.band(spur, breit, eisen, deck)
             # Stahl, nicht der helle Glanz des Helden: als HELD_GLANZ waren
-            # die Koepfe drei helle Scheiben und lasen sich als Blasen.
-            _tu.klecks(ort, 12.0, Color(0.60, 0.63, 0.67), i, Palette.UMRISS)
+            # die Koepfe drei helle Scheiben und lasen sich als Blasen. Dazu
+            # Stacheln, sonst ist es eine Kugel.
+            for k in 5:
+                var ws := w * 2.0 + TAU * float(k) / 5.0
+                _tu.zug(ort, ort + Vector2(cos(ws), sin(ws)) * 17.0, 4.0, eisen,
+                    0.1, 0.0, 0.0, 3, Palette.UMRISS)
+            _tu.klecks(ort, 12.0, eisen, i, Palette.UMRISS)
 
 
 

@@ -772,7 +772,12 @@ static func _schlage(s: Stand, w: int, stufe: int, rng: RandomNumberGenerator) -
                 var teil := 0.0 if zahl <= 1 else (float(i) / float(zahl - 1) - 0.5)
                 g.richtung = Vector2.RIGHT.rotated(mitte + teil * spanne)
             s.geschosse.append(g)
-        s.vorfaelle.append([Vorfall.SCHLAG, w])
+        # Die Richtung reist mit: das Bild zeigt den Schlag dorthin, wo er
+        # gerechnet wurde. Das Gefecht selbst liest sie nie.
+        var richtung := s.blick
+        if not ziele.is_empty():
+            richtung = (ziele[0].ort - s.ort).normalized()
+        s.vorfaelle.append([Vorfall.SCHLAG, w, richtung])
         return
 
     # **Sofortwaffen zielen auf den Naechsten, nicht in die Laufrichtung.**
@@ -844,7 +849,7 @@ static func _schlage(s: Stand, w: int, stufe: int, rng: RandomNumberGenerator) -
             continue
         _treffe(s, f, schaden, zu.normalized())
         traf = true
-    s.vorfaelle.append([Vorfall.SCHLAG, w])
+    s.vorfaelle.append([Vorfall.SCHLAG, w, mitte])
     if traf:
         s.vorfaelle.append([Vorfall.TREFFER, w])
 
