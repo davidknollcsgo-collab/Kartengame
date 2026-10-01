@@ -89,6 +89,9 @@ func _kasten(r: Rect2, farbe: Color, breite := 4.0) -> void:
 ## **Linse** im Bild, mit hellem Bauch und spitzen Enden. Was eine Flaeche
 ## sein soll, braucht ueber ihre ganze Laenge dieselbe Breite - und die
 ## Unregelmaessigkeit gehoert an die Kante, nicht in die Mitte.
+## **Dicht genug, dass der Boden nicht durchscheint.** Die Menues standen
+## auf halber Deckung, solange der Boden aus blassen Flecken bestand; seit er
+## Steine mit Kante und Pfade hat, lagen die quer ueber den Karten.
 func _tafel(r: Rect2, deckung: float) -> void:
     var mitte := PackedVector2Array()
     var halb := PackedFloat32Array()
@@ -107,7 +110,7 @@ func _tafel(r: Rect2, deckung: float) -> void:
 func _knopf(id: String, r: Rect2, text: String, aktiv := true) -> void:
     _felder.append({"id": id, "r": r, "aktiv": aktiv})
     var farbe := TINTE if aktiv else SEPIA
-    _tafel(r, 0.62 if aktiv else 0.3)
+    _tafel(r, 0.85 if aktiv else 0.55)
     _kasten(r, Color(farbe.r, farbe.g, farbe.b, 0.9 if aktiv else 0.4))
     _mitte(text, r, 30, Color(farbe.r, farbe.g, farbe.b, 1.0 if aktiv else 0.5),
         _kopf)
@@ -264,7 +267,7 @@ func _titel() -> void:
         var frei := Helden.ist_frei(h, s.beste_zeit, s.meiste_erschlagen,
             s.warlord_gefallen)
         var r := Rect2(38.0, y, b - 76.0, 118.0)
-        _tafel(r, 0.5 if frei else 0.25)
+        _tafel(r, 0.82 if frei else 0.5)
         _kasten(r, Color(TINTE.r, TINTE.g, TINTE.b, 0.75 if frei else 0.3), 3.0)
         # **Jede Karte zeigt ihren Helden** - in seiner Klasse und dem
         # gewaehlten Gewand. Ein gesperrter steht als Schatten da: man sieht,
@@ -630,7 +633,7 @@ func _burg() -> void:
     var y := oben + 100.0
     for bau in Halle.NAMEN.size():
         var r := Rect2(34.0, y, b - 68.0, 152.0)
-        _tafel(r, 0.5)
+        _tafel(r, 0.82)
         var stufe := s.stufe(bau)
         var voll := stufe >= Halle.HOECHSTSTUFE
         var bild := Vector2(r.position.x + 58.0, y + r.size.y * 0.5)
@@ -683,7 +686,7 @@ func _zeug() -> void:
             var stufe := int(s.besitz.get(stueck, 0))
             var r := Rect2(x, y, (b - 190.0) * 0.5, 100.0)
             var hat := stufe > 0
-            _tafel(r, 0.55 if hat else 0.22)
+            _tafel(r, 0.82 if hat else 0.66)
             _kasten(r, Color(TINTE.r, TINTE.g, TINTE.b,
                 0.9 if stueck == getragen else (0.45 if hat else 0.2)),
                 5.0 if stueck == getragen else 3.0)
