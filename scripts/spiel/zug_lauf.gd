@@ -902,6 +902,8 @@ func _lies_schalter() -> void:
     var held := -1
     var stufen_n := 0
     var neu := false
+    var wahl := false
+    var ende := false
     # **Ein Schuss spielt mit leerem Spielstand und schreibt keinen.** Sonst
     # trug er die Funde aller Schuesse davor, und dieselbe Saat gab zwei
     # verschiedene Gefechte.
@@ -921,6 +923,13 @@ func _lies_schalter() -> void:
                     held = int(args[i + 1])
             "--marke":
                 marke = true
+            "--wahl":
+                # Nach dem Vorlauf steht ein Aufstieg offen: der Schirm der
+                # einzigen Entscheidung im Lauf, sonst auf keinem Schuss.
+                wahl = true
+            "--ende":
+                # Nach dem Vorlauf endet der Lauf: der Bericht.
+                ende = true
             "--saat":
                 # **Vorher und nachher zeigen dieselbe Szene.** Ohne feste
                 # Saat ist jeder Schuss ein anderer Lauf, und ein Vergleich
@@ -962,6 +971,11 @@ func _lies_schalter() -> void:
                 _stand.zuege[z] = clampi(stufen_n, 1, Gunst.ZUG_HOECHSTSTUFE)
     if zeit > 0.0:
         _treibe_vor(zeit)
+    if wahl and _stand != null and not _stand.wartet_auf_wahl:
+        _stand.angebote = Gunst.angebote(_stand.waffen, _stand.zuege, _rng)
+        _stand.wartet_auf_wahl = not _stand.angebote.is_empty()
+    if ende and _stand != null and lage == Lage.LAUF:
+        _beende()
     if schuss != "":
         await RenderingServer.frame_post_draw
         get_viewport().get_texture().get_image().save_png(schuss)

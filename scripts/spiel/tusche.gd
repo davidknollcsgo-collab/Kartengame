@@ -396,6 +396,12 @@ static func beleuchte(farbe: Color, zum_licht: float) -> Color:
     return c
 
 
+## Ein Ring zwischen zwei Radien - fuer Zeichen wie den Siegelring.
+func kranz(ort: Vector2, innen: float, aussen: float, farbe: Color,
+        saat := 0) -> void:
+    _kranz(ort, innen, aussen, farbe, saat, clampi(12 + int(aussen * 0.5), 12, 44))
+
+
 ## Ein Ring zwischen zwei Radien, mit derselben Welle wie `klecks`.
 func _kranz(ort: Vector2, innen: float, aussen: float, farbe: Color,
         saat: int, ecken: int) -> void:

@@ -105,8 +105,9 @@ Anwendungen ausdrücklich erlaubt. Unverändert übernommen. Die Lizenztexte
 liegen als `OFL.txt` neben den Dateien und müssen mit ausgeliefert werden —
 `export_presets.cfg` schließt sie über `include_filter` ein.
 
-Noch nicht im Spiel verwendet: das HUD zeichnet vorerst mit Godots eingebauter
-Standardschrift (Teil der Engine, MIT).
+Seit Oktober 2026 im Spiel: Bricolage (fett, über die `wght`-Achse) für
+Titel, Namen und Knöpfe, Rajdhani für Zahlen. Fließtext bleibt in Godots
+eingebauter Standardschrift (Teil der Engine, MIT).
 
 | Datei | Herkunft | Autor | Lizenz | Quelle | Datum |
 |---|---|---|---|---|---|
