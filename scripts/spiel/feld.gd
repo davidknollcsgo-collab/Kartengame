@@ -18,6 +18,7 @@ extends Node2D
 const PERGAMENT := Palette.BODEN
 const TINTE := Palette.UMRISS
 const SEPIA := Palette.GRUND_ZIER
+const ERDE := Palette.ERDE
 
 const KACHEL := 420.0
 ## Wieviele Dinge auf einer Kachel stehen. Sehr wenige: siehe oben.
@@ -83,12 +84,80 @@ func _kachel(gx: int, gy: int) -> void:
             Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.05 + rng.randf() * 0.04),
             0.5, 0.0, 0.0, 3)
 
+    _pfade(gx, gy, ecke)
+
+    # **Kiesel**: klein, blass, verstreut. Einzeln sieht man sie kaum; ohne
+    # sie ist zwischen den Dingen nichts, und der Grund ist ein Tischtuch.
+    for i in 7:
+        var p := ecke + Vector2(rng.randf(), rng.randf()) * KACHEL
+        var c := STEIN.darkened(0.15 + rng.randf() * 0.2)
+        _tu.klecks(p, 1.6 + rng.randf() * 2.2, Color(c.r, c.g, c.b, 0.55), i)
+
     for i in DINGE:
         var p := ecke + Vector2(rng.randf(), rng.randf()) * KACHEL
-        if rng.randf() < 0.55:
+        var los := rng.randf()
+        if los < 0.50:
             _gras(p, rng)
+        elif los < 0.80:
+            _steine(p, rng)
+        elif los < 0.93:
+            _busch(p, rng)
         else:
-            _stein(p, rng)
+            _stumpf(p, rng)
+
+
+## **Ausgetretene Pfade ueber viele Kacheln.** Ein Pfad haengt an einer
+## Gitterlinie und nicht an einer Kachel: seine Lage ist eine Funktion von
+## `x` (bzw. `y`) allein, also setzt er sich ueber jede Kachelgrenze fort.
+## Ob es ihn gibt, sagt die Saat der Linie - nicht jede hat einen.
+const PFAD_ABSTAND := 3
+const PFAD_STUECKE := 7
+
+## **Stoss an Stoss, ohne Ueberlappung.** Der erste Anlauf liess jedes
+## Stueck dreissig Punkte in die Nachbarkachel ragen; der Pfad ist
+## halbdurchsichtig, und an jeder Kachelgrenze stand ein dunkler Querstreifen.
+func _pfade(gx: int, gy: int, ecke: Vector2) -> void:
+    # Waagerecht: Linie `ly`, laeuft durch Kacheln mit gy == ly * ABSTAND.
+    if posmod(gy, PFAD_ABSTAND) == 0 and _pfad_da(gy, 1):
+        var y0 := ecke.y + KACHEL * 0.5
+        var bahn := PackedVector2Array()
+        for i in PFAD_STUECKE + 1:
+            var x := ecke.x + KACHEL * float(i) / float(PFAD_STUECKE)
+            bahn.append(Vector2(x, y0 + _welle(x, gy)))
+        _pfad(bahn)
+    if posmod(gx, PFAD_ABSTAND) == 0 and _pfad_da(gx, 2):
+        var x0 := ecke.x + KACHEL * 0.5
+        var bahn := PackedVector2Array()
+        for i in PFAD_STUECKE + 1:
+            var y := ecke.y + KACHEL * float(i) / float(PFAD_STUECKE)
+            bahn.append(Vector2(x0 + _welle(y, gx), y))
+        _pfad(bahn)
+
+
+func _pfad_da(linie: int, achse: int) -> bool:
+    return (hash(Vector2i(linie, achse * 7919)) & 0xff) < 150
+
+
+func _welle(t: float, linie: int) -> float:
+    var p := float(linie) * 1.7
+    return sin(t * 0.0041 + p) * 70.0 + sin(t * 0.0113 + p * 2.3) * 22.0
+
+
+func _pfad(bahn: PackedVector2Array) -> void:
+    var halb := PackedFloat32Array()
+    for p in bahn:
+        halb.append(26.0 + 8.0 * sin(p.x * 0.013 + p.y * 0.017))
+    _tu.band(bahn, halb, Color(ERDE.r, ERDE.g, ERDE.b, 0.34), PackedFloat32Array())
+    # Zwei Spuren darin, dunkler: dort wird gegangen.
+    for s in [-1.0, 1.0]:
+        var spur := PackedVector2Array()
+        var schmal := PackedFloat32Array()
+        for i in bahn.size():
+            var vor := bahn[mini(i + 1, bahn.size() - 1)] - bahn[maxi(i - 1, 0)]
+            spur.append(bahn[i] + vor.normalized().orthogonal() * 9.0 * s)
+            schmal.append(3.5)
+        var d := ERDE.darkened(0.12)
+        _tu.band(spur, schmal, Color(d.r, d.g, d.b, 0.30), PackedFloat32Array())
 
 
 ## **Ein Bueschel, nicht drei Haare.** Halme in zwei Toenen - die hinteren
@@ -110,10 +179,47 @@ func _gras(p: Vector2, rng: RandomNumberGenerator) -> void:
             int(p.x))
 
 
-func _stein(p: Vector2, rng: RandomNumberGenerator) -> void:
-    var r := 7.0 + rng.randf() * 13.0
-    _tu.klecks(p, r, Color(TINTE.r, TINTE.g, TINTE.b, 0.16), int(p.x))
-    # **Ein Stein im Holzschnitt ist eine Kontur mit Schraffur**, keine
-    # Flaeche: eine gefuellte Scheibe liest sich als Loch im Blatt.
-    _tu.schraffur(p + Vector2(-r * 0.6, r * 0.2), p + Vector2(r * 0.6, -r * 0.2),
-        r * 1.1, 3, Color(TINTE.r, TINTE.g, TINTE.b, 0.22), 1.5)
+## Grundtoene fuer die Dinge am Boden. Keine Sortenfarbe, kein Gold, kein
+## Zinnober - und alles mit **halber Kante**: eine volle waere eine Figur.
+const STEIN := Color(0.62, 0.60, 0.55)
+const LAUB := Color(0.40, 0.46, 0.31)
+const RINDE := Color(0.46, 0.37, 0.27)
+const KANTE := Color(0.129, 0.114, 0.149, 0.42)
+
+
+## **Steine liegen in Gruppen.** Einer allein war ein Fleck mit Schraffur -
+## aus dem Holzschnitt uebrig, und im farbigen Bild ein Loch im Boden. Jetzt
+## zwei bis vier, der groesste hinten, mit Licht und halber Kante.
+func _steine(p: Vector2, rng: RandomNumberGenerator) -> void:
+    var zahl := 2 + rng.randi_range(0, 2)
+    for i in zahl:
+        var r := (12.0 - float(i) * 3.0) * (0.7 + rng.randf() * 0.6)
+        var o := p + Vector2((rng.randf() - 0.5) * 34.0, float(i) * 5.0)
+        var c := STEIN.darkened(rng.randf() * 0.12)
+        _tu.klecks(o + Vector2(2.0, r * 0.35), r * 1.05,
+            Color(TINTE.r, TINTE.g, TINTE.b, 0.12), i)
+        _tu.klecks(o, r, c, int(o.x) + i, KANTE)
+        _tu.klecks(o + Vector2(-r * 0.3, -r * 0.35), r * 0.35,
+            Color(1.0, 1.0, 1.0, 0.22), i)
+
+
+## Ein niedriger Busch: Bauschen aus Laub, die hinteren dunkler.
+func _busch(p: Vector2, rng: RandomNumberGenerator) -> void:
+    _tu.klecks(p + Vector2(0.0, 8.0), 24.0, Color(TINTE.r, TINTE.g, TINTE.b, 0.10), 1)
+    for i in 5:
+        var w := PI + float(i) / 4.0 * PI
+        var o := p + Vector2(cos(w) * 16.0, sin(w) * 9.0 + 2.0)
+        var c := LAUB.darkened(0.18) if i % 2 == 0 else LAUB
+        _tu.klecks(o, 10.0 + rng.randf() * 4.0, c, i, KANTE)
+    _tu.klecks(p + Vector2(0.0, -6.0), 13.0, LAUB.lightened(0.12), 7, KANTE)
+
+
+## Ein Baumstumpf: Rinde, oben die helle Schnittflaeche mit einem Ring.
+func _stumpf(p: Vector2, rng: RandomNumberGenerator) -> void:
+    var r := 13.0 + rng.randf() * 5.0
+    _tu.klecks(p + Vector2(3.0, 10.0), r * 1.2, Color(TINTE.r, TINTE.g, TINTE.b, 0.12), 1)
+    _tu.strang(PackedVector2Array([p + Vector2(0.0, 10.0), p]),
+        PackedFloat32Array([r * 2.2, r * 2.0]), RINDE, 2, KANTE)
+    var schnitt := RINDE.lightened(0.45)
+    _tu.klecks(p, r, schnitt, 2, KANTE)
+    _tu.kranz(p, r * 0.45, r * 0.55, RINDE.lightened(0.15), 3)
