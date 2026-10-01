@@ -89,6 +89,50 @@ Sechs Regeln, die für **jede** neue Zeichnung hier gelten:
   Feinden **35 → 15 ms** je Bild. Das ist der Spielraum für alles, was danach
   an Zeichnung kam.
 
+**Was im Oktober 2026 dazukam** („die Grafik des ganzen Spiels“), und die
+Regeln, die dabei entstanden:
+
+* **Ein Schlag hat ein Bild.** `Vorfall.SCHLAG` trägt die Richtung, die das
+  Gefecht gerechnet hat, und `zug_lauf._zeichne_hiebe` zeichnet daraus Sichel
+  (Schwert), Stoß (Speer) und Bodenwelle (Hammer); Bolzen und Äxte haben
+  Form, der Flegel Kettenglieder. **Eine Rechnung, nicht zwei** — das Bild
+  nimmt `weite_von`/`bahn_von` des Gefechts.
+* **Jeder Held sieht aus, wie er kämpft** (`Streiter.held(..., klasse)`):
+  Rundschild, Kapuze mit Köcher und Armbrust, Lederkappe mit langem Speer,
+  breiter Hammerträger mit Topfhelm. Die Hand führt **nur die Startwaffe**,
+  jede Klasse mit eigener Ruhe und eigenem Schlag. Gold stand an der
+  Parierstange — Gold heißt Sold, jetzt Stahl.
+* **Tod, Treffer und Lohn sind zu sehen**: Gefallene liegen 0,7 s
+  (höchstens 40), Treffer splittern, der Held blitzt in Zinnober und der
+  Bildrand mit, Münzen glänzen, Aufsammeln und Aufstieg geben einen Ring.
+* **Effekte ziehen nie aus dem Zufall der Simulation** (`_zier` statt
+  `_rng`). Der erste Anlauf nahm denselben Generator: jedes Staubwölkchen
+  verschob den Lauf, dieselbe Saat zeigte eine andere Szene, und eine
+  Zeitmessung „vorher/nachher“ verglich zwei Gefechte — sie sah nach
+  doppelten Kosten aus.
+* **Die Nächsten voll, der Rest als Vorlage** (`VOLL_NAH` 40,
+  `Tusche.vorlage()`/`setze()`). Die Sparfassung bewegt sich nicht, wurde
+  aber in jedem Bild Eckpunkt für Eckpunkt in GDScript gebaut — bei 260
+  Figuren gut dreißig Millisekunden. Jetzt einmal je Sorte und Blick, zu
+  flachen Dreiecken ausgerollt und mit **einer** eingebauten Multiplikation
+  verschoben. Flach, weil ein Index je Vorlage um ihren Platz verschoben
+  werden müsste, und das wäre wieder eine Schleife je Eckpunkt. Wer gerade
+  aufblitzt, wird frisch gezeichnet.
+* **Menüs haben Bilder** (`Zeichen`, 27 Stück auf `Tusche`): Waffen, Züge,
+  Bauten, Ausrüstung, Herz, Münze, Schädel. Der Titel zeigt den Helden
+  zwischen den Sorten, jede Heldenkarte ihren Helden (gesperrte als
+  Schatten), der Bericht ein Bild. Schrift: **Bricolage fett** für Titel,
+  Namen und Knöpfe, **Rajdhani** für Zahlen, Fließtext Standardschrift.
+* **Ein Blatt ist ein Riegel, kein Wisch.** Der Aufstieg blendete mit
+  `wisch()` aus, und der läuft spitz aus: unter den Karten stand ein Keil.
+  Wo eine Fläche den Schirm deckt, `_riegel`; wo etwas zu den Seiten
+  auslaufen soll (Boden unter einer Szene), `wisch`.
+* **Der Boden hat Pfade**, die an Gitterlinien hängen und sich über
+  Kacheln fortsetzen, **Stoß an Stoß** (überlappende halbdurchsichtige
+  Stücke gaben an jeder Kachelgrenze einen Querstreifen), dazu Steingruppen
+  mit halber Kante, Büsche, Stümpfe, Kiesel. Halbe Kante, weil eine volle
+  eine Figur wäre.
+
 ## Godot beschaffen
 
 Godot ist hier nicht vorinstalliert und `godotengine.org` ist durch die
@@ -168,6 +212,8 @@ xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 720x1600 \
 | `--lage <n>` | zeigt Titel (0), Burg (3), Beutel (4) statt des Laufs |
 | `--neu` | mit `--held`: als erster Lauf, also mit Einstiegshinweis |
 | `--saat <n>` | feste Saat — vorher und nachher zeigen dieselbe Szene |
+| `--wahl` | nach dem Vorlauf steht ein Aufstieg offen (Kartenschirm) |
+| `--ende` | nach dem Vorlauf endet der Lauf (Bericht) |
 
 **Ein Schuss spielt mit leerem Spielstand und schreibt keinen**
 (`Burg.schreibt`). Vorher las er die Funde aller Schüsse davor und
