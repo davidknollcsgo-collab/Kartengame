@@ -226,8 +226,12 @@ func _draw() -> void:
         draw_set_transform(Vector2(sin(_zeit * 57.0), cos(_zeit * 43.0))
             * _ruettel * 7.0, 0.0, Vector2.ONE)
 
+    _sicht = get_viewport_rect().size * 0.5
+
     # Sold zuerst: er liegt am Boden, also unter allem.
     for m in _stand.muenzen:
+        if not _im_bild(m.ort, 20.0):
+            continue
         var blinkt := 0.75 + 0.25 * sin(_zeit * 7.0 + m.ort.x * 0.05)
         _tu.klecks(m.ort, 7.0, Color(GOLD.r, GOLD.g, GOLD.b, blinkt), int(m.ort.x))
 
@@ -235,9 +239,8 @@ func _draw() -> void:
     # vor dem Helden, der hinter ihm ist - und in einem Bild ohne Perspektive
     # ist die Zeichenreihenfolge die einzige Tiefe, die es gibt.
     var sichtbar: Array = []
-    var rand := 720.0
     for f in _stand.feinde:
-        if absf(f.ort.x - _kamera_ort.x) < rand and absf(f.ort.y - _kamera_ort.y) < rand:
+        if _im_bild(f.ort, FEIND_HOEHE * 1.4):
             sichtbar.append(f)
     sichtbar.sort_custom(func(a, b): return a.ort.y < b.ort.y)
     var knapp := sichtbar.size() > Streiter.DICHT_AB
@@ -281,6 +284,8 @@ func _draw() -> void:
     _zeichne_marke()
 
     for g in _stand.geschosse:
+        if not _im_bild(g.ort, 50.0):
+            continue
         var farbe := ZINNOBER if g.feindlich else TINTE
         # Ein Bolzen zieht einen Schweif: wohin er fliegt, muss man sehen,
         # bevor er da ist - sonst kann man ihm nicht ausweichen.
@@ -296,6 +301,22 @@ func _draw() -> void:
 
     _zeichne_randpfeil()
     _tu.spuele(get_canvas_item())
+
+
+## **Gezeichnet wird, was im Bild steht - nicht ein Quadrat darum.** Hier
+## stand ein Rand von 720 Punkten in beide Richtungen: 1440 breit fuer ein
+## Bild, das 720 breit ist. Jede Figur links und rechts ausserhalb wurde
+## gebaut, sortiert und weggeworfen, und `DICHT_AB` zaehlte sie mit.
+##
+## `rand` ist, wie weit ein Ding ueber seinen Ort hinausragt. Figuren stehen
+## auf ihren Fuessen und ragen **nach oben**: unten reicht ein kleiner Rand,
+## oben braucht es ihre Hoehe.
+var _sicht := Vector2(360.0, 800.0)
+
+func _im_bild(ort: Vector2, rand: float) -> bool:
+    var d := ort - _kamera_ort
+    return absf(d.x) < _sicht.x + rand * 0.6 \
+        and d.y > -_sicht.y - 30.0 and d.y < _sicht.y + rand
 
 
 func _zeichne_feind(f: Gefecht.Feind, knapp: bool) -> void:

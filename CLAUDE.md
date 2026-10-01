@@ -81,9 +81,13 @@ Sechs Regeln, die für **jede** neue Zeichnung hier gelten:
   Hände), aber keinen Gürtel — er kostete ein Siebtel der Eckpunkte und war
   auf zwanzig Bildpunkten nicht zu sehen.
 
-  **Offen:** `_draw` braucht schon vor dem Umbau über 30 ms je Bild bei 300
-  Feinden (in diesem Container, Debug-Build). Für 60 Bilder je Sekunde auf
-  einem Telefon ist das zu viel; das ist ein eigener Posten.
+  **Gezeichnet wird, was im Bild steht** (`zug_lauf._im_bild`). `sichtbar`
+  schnitt bei ±720 Punkten in beide Richtungen zu — ein Quadrat von 1440 für
+  ein Bild von 720 Breite —, und jede Figur links und rechts daneben wurde
+  gebaut, sortiert und weggeworfen. An das Sichtfeld gebunden (Figuren ragen
+  nach oben, also unten Rand nach ihrer Höhe): `_draw` in Minute 6 bei 300
+  Feinden **35 → 15 ms** je Bild. Das ist der Spielraum für alles, was danach
+  an Zeichnung kam.
 
 ## Godot beschaffen
 
