@@ -285,3 +285,115 @@ static func schaedel(tu: Tusche, ort: Vector2, g: float) -> void:
     for i in 3:
         var x := -0.18 + float(i) * 0.18
         tu.zug(_p(ort, g, x, 0.36), _p(ort, g, x, 0.60), g * 0.04, K, 0.5, 0.0, 0.0, 2)
+
+
+# --- Rahmen der Menues -----------------------------------------------------
+
+## **Das Wappen**: ein Wimpel mit Schwalbenschwanz in der Farbe des Helden,
+## an einer Stange, mit einem hellen Sparren. Es steht im Kopf jedes Schirms
+## und links am Lebensbalken - die Fahne, unter der man kaempft.
+static func wappen(tu: Tusche, ort: Vector2, g: float, farbe: Color,
+        glanz: Color) -> void:
+    _block(tu, _p(ort, g, -0.62, -0.95), _p(ort, g, -0.62, 0.95), g * 0.12, HOLZ)
+    tu.klecks(_p(ort, g, -0.62, -0.98), g * 0.11, EISEN, 1, K)
+    # Das Tuch: ein breites Band, das unten in zwei Spitzen auslaeuft.
+    tu.strang(PackedVector2Array([_p(ort, g, -0.05, -0.80), _p(ort, g, -0.05, 0.10),
+        _p(ort, g, -0.05, 0.62)]),
+        PackedFloat32Array([g * 1.0, g * 1.0, g * 0.95]), farbe, 6, K)
+    for s in [-1.0, 1.0]:
+        tu.zug(_p(ort, g, -0.05 + s * 0.26, 0.55), _p(ort, g, -0.05 + s * 0.30, 0.92),
+            g * 0.42, farbe, 0.0, 0.0, 0.0, 3, K)
+    tu.zug(_p(ort, g, -0.40, -0.05), _p(ort, g, -0.05, 0.30), g * 0.16, glanz,
+        0.5, 0.0, 0.0, 3)
+    tu.zug(_p(ort, g, 0.30, -0.05), _p(ort, g, -0.05, 0.30), g * 0.16, glanz,
+        0.5, 0.0, 0.0, 3)
+    tu.klecks(_p(ort, g, -0.05, -0.38), g * 0.14, glanz, 2)
+
+
+static func laut(tu: Tusche, ort: Vector2, g: float, an: bool) -> void:
+    _block(tu, _p(ort, g, -0.70, 0.0), _p(ort, g, -0.30, 0.0), g * 0.50, K)
+    tu.strang(PackedVector2Array([_p(ort, g, -0.35, 0.0), _p(ort, g, 0.10, 0.0)]),
+        PackedFloat32Array([g * 0.50, g * 1.20]), K, 2)
+    if an:
+        for i in 2:
+            var r := 0.38 + float(i) * 0.30
+            tu.zug(ort + Vector2(0.25 * g + r * g * 0.4, -r * g),
+                ort + Vector2(0.25 * g + r * g * 0.4, r * g), g * 0.10, K,
+                0.5, 0.0, r * g * 0.45, 4)
+    else:
+        tu.zug(_p(ort, g, 0.30, -0.35), _p(ort, g, 0.80, 0.35), g * 0.12, K, 0.5, 0.0, 0.0, 2)
+        tu.zug(_p(ort, g, 0.30, 0.35), _p(ort, g, 0.80, -0.35), g * 0.12, K, 0.5, 0.0, 0.0, 2)
+
+
+static func ruettel(tu: Tusche, ort: Vector2, g: float, an: bool) -> void:
+    _block(tu, _p(ort, g, 0.0, -0.75), _p(ort, g, 0.0, 0.75), g * 0.75, K)
+    _block(tu, _p(ort, g, 0.0, -0.55), _p(ort, g, 0.0, 0.48), g * 0.50, STAHL)
+    if an:
+        for s in [-1.0, 1.0]:
+            tu.zug(_p(ort, g, s * 0.65, -0.40), _p(ort, g, s * 0.65, 0.40), g * 0.10,
+                K, 0.5, 0.0, s * g * 0.15, 3)
+
+
+static func zurueck(tu: Tusche, ort: Vector2, g: float) -> void:
+    _block(tu, _p(ort, g, -0.40, 0.0), _p(ort, g, 0.75, 0.0), g * 0.24, K)
+    tu.zug(_p(ort, g, -0.75, 0.0), _p(ort, g, -0.15, -0.55), g * 0.24, K, 0.5, 0.0, 0.0, 2)
+    tu.zug(_p(ort, g, -0.75, 0.0), _p(ort, g, -0.15, 0.55), g * 0.24, K, 0.5, 0.0, 0.0, 2)
+
+
+static func nochmal(tu: Tusche, ort: Vector2, g: float) -> void:
+    var bahn := PackedVector2Array()
+    var halb := PackedFloat32Array()
+    for i in 13:
+        var w := lerpf(-PI * 0.35, PI * 1.45, float(i) / 12.0)
+        bahn.append(ort + Vector2(cos(w), sin(w)) * g * 0.60)
+        halb.append(g * 0.12)
+    tu.band(bahn, halb, K, PackedFloat32Array())
+    var spitze := ort + Vector2(cos(-PI * 0.35), sin(-PI * 0.35)) * g * 0.60
+    tu.zug(spitze + Vector2(-g * 0.45, -g * 0.05), spitze, g * 0.22, K, 0.5, 0.0, 0.0, 2)
+    tu.zug(spitze + Vector2(g * 0.05, g * 0.45), spitze, g * 0.22, K, 0.5, 0.0, 0.0, 2)
+
+
+static func schliessen(tu: Tusche, ort: Vector2, g: float, farbe: Color) -> void:
+    tu.zug(_p(ort, g, -0.6, -0.6), _p(ort, g, 0.6, 0.6), g * 0.22, farbe, 0.5, 0.0, 0.0, 2)
+    tu.zug(_p(ort, g, -0.6, 0.6), _p(ort, g, 0.6, -0.6), g * 0.22, farbe, 0.5, 0.0, 0.0, 2)
+
+
+## **Die Burg im Banner des Aufstiegs**: Mauer mit Zinnen, zwei Tuerme,
+## ein Bergfried, Fahnen in der Farbe des Helden, auf einem gruenen Huegel.
+## `ort` ist der Fuss der Mauer in der Mitte, `g` die halbe Breite.
+static func burg_bild(tu: Tusche, ort: Vector2, g: float, fahne: Color) -> void:
+    var wiese := Palette.WIESE
+    tu.strang(PackedVector2Array([ort + Vector2(-g * 1.1, g * 0.10),
+        ort + Vector2(0.0, -g * 0.04), ort + Vector2(g * 1.1, g * 0.10)]),
+        PackedFloat32Array([g * 0.20, g * 0.30, g * 0.20]), wiese, 8, K)
+    var stein := STEIN
+    # Mauer mit Zinnen.
+    _block(tu, ort + Vector2(-g * 0.70, -g * 0.18), ort + Vector2(g * 0.70, -g * 0.18),
+        g * 0.34, stein)
+    for i in 7:
+        var x := -0.60 + float(i) * 0.20
+        _block(tu, ort + Vector2(x * g, -g * 0.36), ort + Vector2(x * g, -g * 0.44),
+            g * 0.10, stein)
+    # Tor.
+    tu.strang(PackedVector2Array([ort + Vector2(0.0, -g * 0.01), ort + Vector2(0.0, -g * 0.22)]),
+        PackedFloat32Array([g * 0.20, g * 0.16]), K, 2)
+    # Zwei Tuerme und der Bergfried.
+    for e in [[-0.70, 0.62, 0.22], [0.70, 0.62, 0.22], [0.0, 0.95, 0.30]]:
+        var x: float = e[0]
+        var hoch: float = e[1]
+        var breit: float = e[2]
+        var fuss := ort + Vector2(x * g, -g * 0.02)
+        var kopf := ort + Vector2(x * g, -g * hoch)
+        _block(tu, fuss, kopf, g * breit, stein.lightened(0.05 if x == 0.0 else 0.0))
+        for k in 3:
+            var zx := (float(k) - 1.0) * breit * 0.36
+            _block(tu, kopf + Vector2(zx * g, 0.0), kopf + Vector2(zx * g, -g * 0.08),
+                g * breit * 0.22, stein)
+        tu.zug(kopf + Vector2(0.0, -g * 0.10), kopf + Vector2(0.0, -g * 0.32),
+            g * 0.03, K, 0.5, 0.0, 0.0, 2)
+        tu.strang(PackedVector2Array([kopf + Vector2(0.0, -g * 0.31),
+            kopf + Vector2(g * 0.20, -g * 0.27)]),
+            PackedFloat32Array([g * 0.12, g * 0.07]), fahne, 2, K)
+        # Fensterschlitz.
+        _block(tu, kopf + Vector2(0.0, g * 0.16), kopf + Vector2(0.0, g * 0.26),
+            g * 0.05, K)

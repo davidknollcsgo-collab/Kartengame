@@ -17,7 +17,7 @@ extends RefCounted
 
 ## Wie weit er schaut. Weiter gedacht hiesse, er wiche Dingen aus, die er im
 ## Bild gar nicht saehe - und dann misst man einen Hellseher.
-const SICHT := 420.0
+const SICHT := Gefecht.BILD_HALB_X * 1.167
 
 ## Wie stark ihn Sold anzieht, gemessen an der Flucht. Klein: wer im Gefecht
 ## Muenzen sammelt statt auszuweichen, stirbt - und genau das soll der

@@ -566,7 +566,7 @@ func _horde_proben() -> Dictionary:
             var im_bild: Array[Gefecht.Feind] = []
             for f in s.feinde:
                 var d := f.ort - s.ort
-                if absf(d.x) < 360.0 and absf(d.y) < 640.0:
+                if absf(d.x) < Gefecht.BILD_HALB_X and absf(d.y) < Gefecht.BILD_HALB_Y:
                     im_bild.append(f)
             anteile.append(float(im_bild.size()) / maxf(1.0, float(s.feinde.size())))
             # Unter zwanzig im Bild ist ein Anteil ein Wurf.
@@ -1120,7 +1120,7 @@ func _test_der_warlord_stellt_sich() -> bool:
         zeit += 1.0 / 60.0
         Gefecht.schritt(s, 1.0 / 60.0, Vector2.RIGHT, rng)
         var d := warlord.ort - s.ort
-        var drin := absf(d.x) < 360.0 and absf(d.y) < 640.0
+        var drin := absf(d.x) < Gefecht.BILD_HALB_X and absf(d.y) < Gefecht.BILD_HALB_Y
         gesehen = gesehen or drin
         if gesehen:
             bilder += 1

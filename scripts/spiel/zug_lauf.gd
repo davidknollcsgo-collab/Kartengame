@@ -86,8 +86,17 @@ var _schlag_alter := 9.0
 var _fund := -1
 var _fund_stufe := 0
 
-@onready var _kamera: Camera2D = $Kamera
-@onready var _feld: Node2D = $Feld
+@onready var _kamera: Camera2D = $Bild/Boden/Ansicht/Kamera
+@onready var _kamera_fig: Camera2D = $Bild/Figuren/Ansicht/Kamera
+@onready var _feld: Node2D = $Bild/Boden/Ansicht/Feld
+@onready var _teile: Array[Node2D] = [$Bild/Figuren/Ansicht/Hinten,
+    $Bild/Figuren/Ansicht/Loch, $Bild/Figuren/Ansicht/Vorn]
+
+## **Pixel-Art: das Feld in einem Drittel der Aufloesung.** Boden und Figuren
+## liegen in zwei Unterbildern (`gefecht.tscn`), die scharf hochgezogen
+## werden; die Figuren bekommen dabei ihren Umriss aus `umriss.gdshader`. Die
+## Menues bleiben scharf. Muss zu `stretch_shrink` in der Szene passen.
+const PIXEL := 3
 @onready var _hud: Control = $Oberflaeche/Hud
 
 
@@ -96,7 +105,12 @@ func _ready() -> void:
     RenderingServer.set_default_clear_color(PERGAMENT)
     Klang.laut = Burg.stand.laut
     Tastsinn.an = Burg.stand.beben
-    _kamera.make_current()
+    for t in _teile:
+        t.lauf = self
+    _pixel_pinsel(_tu)
+    var zoom := Vector2.ONE * Gefecht.ZOOM / float(PIXEL)
+    _kamera.zoom = zoom
+    _kamera_fig.zoom = zoom
     set_process(true)
     _lies_schalter()
 
@@ -158,11 +172,18 @@ func _process(delta: float) -> void:
         Gefecht.schritt(_stand, minf(delta, 1.0 / 30.0), eingabe, _rng)
         _werte_aus()
         _kamera_ort = _kamera_ort.lerp(_stand.ort, clampf(delta * 7.0, 0.0, 1.0))
-        _kamera.position = _kamera_ort
         _feld.setze_mitte(_kamera_ort)
         if Gefecht.vorbei(_stand):
             _beende()
-    queue_redraw()
+    # Das Beben schiebt beide Kameras, nicht die Zeichnung: Boden und Figuren
+    # liegen in zwei Puffern und muessen gemeinsam wackeln.
+    var beben := Vector2.ZERO
+    if _ruettel > 0.0:
+        beben = Vector2(sin(_zeit * 57.0), cos(_zeit * 43.0)) * _ruettel * 7.0
+    _kamera.position = _kamera_ort + beben
+    _kamera_fig.position = _kamera_ort + beben
+    for t in _teile:
+        t.queue_redraw()
 
 
 ## Der Stick: relativ zum Aufsetzpunkt, nicht an einer festen Ecke. Auf einem
@@ -304,14 +325,37 @@ func _unhandled_input(e: InputEvent) -> void:
 
 ## --- Das Bild ---
 
-func _draw() -> void:
+## Ein Bildpunkt des Pixelpuffers, in Punkten des Feldes.
+const PIXEL_FELD := float(PIXEL) / Gefecht.ZOOM
+
+## Der Pinsel fuer den Pixelpuffer: Kante ein Bildpunkt, nichts duenner als
+## ein Bildpunkt.
+static func _pixel_pinsel(tu: Tusche) -> void:
+    tu.kante_fest = PIXEL_FELD * 0.95
+    tu.mindest = PIXEL_FELD * 0.55
+
+
+## Die Feinde vor dem Helden, vom hinteren Teil fuer den vorderen gemerkt.
+var _vor_held: Array = []
+
+func zeichne_teil(teil: int, ci: RID) -> void:
     if lage != Lage.LAUF or _stand == null:
         return
-    if _ruettel > 0.0:
-        draw_set_transform(Vector2(sin(_zeit * 57.0), cos(_zeit * 43.0))
-            * _ruettel * 7.0, 0.0, Vector2.ONE)
+    match teil:
+        0:
+            _zeichne_hinten()
+        1:
+            # Das Loch: dieselbe Form wie die alte Freistellung, aber in
+            # einem Material, das Deckung null schreibt.
+            Streiter.frei_gestellt(_tu, _stand.ort, HELD_HOEHE, Color.WHITE)
+        2:
+            _zeichne_vorn()
+    _tu.spuele(ci)
 
-    _sicht = get_viewport_rect().size * 0.5
+
+func _zeichne_hinten() -> void:
+    # Was man sieht, in Punkten des Feldes: der Schirm durch den Zoom.
+    _sicht = get_viewport_rect().size * 0.5 / Gefecht.ZOOM
 
     # Was am Boden liegt, zuerst: Staub, Gefallene, Sold.
     for st in _staub:
@@ -376,20 +420,25 @@ func _draw() -> void:
     # ohne Perspektive ist die Zeichenreihenfolge die einzige Tiefe, die es
     # gibt - ein Begleiter, der immer oben liegt, steht vor Feinden, hinter
     # denen er steht.
-    var vor_held: Array = []
+    _vor_held.clear()
+    _knapp = knapp
     for f in sichtbar:
         if f.ort.y > _stand.ort.y:
-            vor_held.append(f)
+            _vor_held.append(f)
             continue
         _zeichne_feind(f, knapp)
     for g in _stand.gefaehrten:
         if g.ort.y <= _stand.ort.y:
             _zeichne_gefaehrte(g)
 
+
+var _knapp := false
+
+func _zeichne_vorn() -> void:
     _zeichne_held()
 
-    for f in vor_held:
-        _zeichne_feind(f, knapp)
+    for f in _vor_held:
+        _zeichne_feind(f, _knapp)
     for g in _stand.gefaehrten:
         if g.ort.y > _stand.ort.y:
             _zeichne_gefaehrte(g)
@@ -422,7 +471,6 @@ func _draw() -> void:
             PackedFloat32Array())
 
     _zeichne_randpfeil()
-    _tu.spuele(get_canvas_item())
 
 
 ## Stahl fuer alles, was der Held schwingt und wirft. Hell und kalt, aber nicht
@@ -568,6 +616,7 @@ func _vorlage(art: int, blick: float, h: float) -> Array:
     var v: Variant = _vorlagen.get(schluessel)
     if v == null:
         var tu := Tusche.new()
+        _pixel_pinsel(tu)
         Streiter.feind(tu, Vector2.ZERO, h, blick, art, 0.0, 0.0, true)
         v = tu.vorlage()
         _vorlagen[schluessel] = v
@@ -679,7 +728,7 @@ func _zeichne_randpfeil() -> void:
             break
     if warlord == null:
         return
-    var halb := get_viewport_rect().size * 0.5 - Vector2(PFEIL_RAND, PFEIL_RAND)
+    var halb := _sicht - Vector2(PFEIL_RAND, PFEIL_RAND)
     var d := warlord.ort - _kamera_ort
     if absf(d.x) <= halb.x + PFEIL_RAND and absf(d.y) <= halb.y + PFEIL_RAND:
         return
@@ -757,7 +806,8 @@ func _zeichne_held() -> void:
     var n := Burg.stand.skin(s.held)
     var kleid := Skins.koerper(s.held, n)
     var glanz := Skins.glanz(s.held, n)
-    Streiter.frei_gestellt(_tu, s.ort, HELD_HOEHE, Palette.BODEN)
+    # Die Freistellung ist jetzt ein Loch im Figurenpuffer (`zeichne_teil`,
+    # Teil 1) und keine Flaeche mehr.
     _zeichne_druck()
     # Beim Treffer blitzt er in Zinnober - Schaden am Spieler, die eine Stelle,
     # an der die Farbe des Helden kurz nicht seine eigene ist.
@@ -995,6 +1045,4 @@ func _treibe_vor(sekunden: float) -> void:
         if _stand != null and _stand.wartet_auf_wahl:
             Gefecht.nimm(_stand, Daumen.waehle(_stand))
         _process(takt)
-        for kind in get_children():
-            if kind.has_method("_process"):
-                kind._process(takt)
+        _hud._process(takt)

@@ -107,13 +107,99 @@ func _tafel(r: Rect2, deckung: float) -> void:
     _tu.band(mitte, halb, Color(HELL.r, HELL.g, HELL.b, deckung), deck)
 
 
-func _knopf(id: String, r: Rect2, text: String, aktiv := true) -> void:
+func _knopf(id: String, r: Rect2, text: String, aktiv := true,
+        bild := Callable()) -> void:
+    _leiste(id, r, text, aktiv, bild)
+
+
+# --- Der Rahmen ------------------------------------------------------------
+
+## **Ein Schirm ist ein gerahmtes Blatt** - so stand es in der Vorlage des
+## Nutzers (Oktober 2026): helles Pergament, ein dunkelbrauner doppelter
+## Rand, Eckbeschlaege, ein Kopf mit Wappen und Linien zwischen den Zeilen.
+## Vorher lagen einzelne blasse Karten frei ueber dem Feld.
+const RAHMEN := Color(0.333, 0.224, 0.133)
+const BLATT := Color(0.957, 0.918, 0.808)
+const BLATT_TIEF := Color(0.902, 0.851, 0.718)
+
+
+## Ein Rechteck, ueberall gleich hoch (siehe `_riegel`).
+func _flaeche(r: Rect2, farbe: Color) -> void:
+    _riegel(Vector2(r.position.x, r.position.y + r.size.y * 0.5),
+        Vector2(r.end.x, r.position.y + r.size.y * 0.5), r.size.y, farbe)
+
+
+func _rand_linien(r: Rect2, dicke: float, farbe: Color) -> void:
+    var a := r.position
+    var e := r.end
+    _riegel(Vector2(a.x - dicke * 0.5, a.y), Vector2(e.x + dicke * 0.5, a.y), dicke, farbe)
+    _riegel(Vector2(a.x - dicke * 0.5, e.y), Vector2(e.x + dicke * 0.5, e.y), dicke, farbe)
+    _riegel(Vector2(a.x, a.y), Vector2(a.x, e.y), dicke, farbe)
+    _riegel(Vector2(e.x, a.y), Vector2(e.x, e.y), dicke, farbe)
+
+
+func _rahmen(r: Rect2) -> void:
+    _flaeche(Rect2(r.position + Vector2(6.0, 9.0), r.size),
+        Color(TINTE.r, TINTE.g, TINTE.b, 0.28))
+    _flaeche(r, BLATT)
+    _rand_linien(r, 7.0, RAHMEN)
+    _rand_linien(r.grow(-11.0), 2.0, Color(RAHMEN.r, RAHMEN.g, RAHMEN.b, 0.45))
+    # Eckbeschlaege: ein Quadrat mit Niet.
+    for ecke in [r.position, Vector2(r.end.x, r.position.y),
+            Vector2(r.position.x, r.end.y), r.end]:
+        _flaeche(Rect2(ecke - Vector2.ONE * 11.0, Vector2.ONE * 22.0), RAHMEN)
+        _tu.klecks(ecke, 4.0, BLATT_TIEF, 1)
+
+
+## Eine Linie zwischen zwei Zeilen.
+func _trenner(r: Rect2, y: float) -> void:
+    _riegel(Vector2(r.position.x + 18.0, y), Vector2(r.end.x - 18.0, y), 2.0,
+        Color(RAHMEN.r, RAHMEN.g, RAHMEN.b, 0.35))
+
+
+## Der Kopf eines Rahmens: Bild links, Titel, optional Untertitel, und das
+## Schliesskreuz rechts, das zurueck zum Titel fuehrt.
+func _kopfzeile(r: Rect2, titel: String, bild: Callable, unter := "",
+        schliessen := false) -> void:
+    bild.call(Vector2(r.position.x + 50.0, r.position.y + 58.0))
+    var x := r.position.x + 92.0
+    var platz := r.end.x - x - (70.0 if schliessen else 24.0)
+    _zeile_eng(titel, Vector2(x, r.position.y + (60.0 if unter != "" else 72.0)), 40,
+        TINTE, platz, _kopf)
+    if unter != "":
+        _zeile_eng(unter, Vector2(x, r.position.y + 90.0), 20,
+            Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.95), platz)
+    if schliessen:
+        var p := Vector2(r.end.x - 40.0, r.position.y + 44.0)
+        Zeichen.schliessen(_tu, p, 14.0, RAHMEN)
+        _felder.append({"id": "titel", "r": Rect2(p - Vector2.ONE * 30.0,
+            Vector2.ONE * 60.0), "aktiv": true})
+    _trenner(r, r.position.y + 116.0)
+
+
+## **Ein Knopf ist eine Leiste**: dunklere Flaeche, brauner Rand, ein Bild
+## links und die Schrift daneben.
+func _leiste(id: String, r: Rect2, text: String, aktiv := true,
+        bild := Callable()) -> void:
     _felder.append({"id": id, "r": r, "aktiv": aktiv})
-    var farbe := TINTE if aktiv else SEPIA
-    _tafel(r, 0.85 if aktiv else 0.55)
-    _kasten(r, Color(farbe.r, farbe.g, farbe.b, 0.9 if aktiv else 0.4))
-    _mitte(text, r, 30, Color(farbe.r, farbe.g, farbe.b, 1.0 if aktiv else 0.5),
-        _kopf)
+    _flaeche(Rect2(r.position + Vector2(3.0, 5.0), r.size),
+        Color(TINTE.r, TINTE.g, TINTE.b, 0.22))
+    _flaeche(r, BLATT_TIEF if aktiv else Color(BLATT.r, BLATT.g, BLATT.b, 0.85))
+    _rand_linien(r, 4.0, Color(RAHMEN.r, RAHMEN.g, RAHMEN.b, 1.0 if aktiv else 0.45))
+    var farbe := TINTE if aktiv else Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.6)
+    if bild.is_valid():
+        bild.call(Vector2(r.position.x + 34.0, r.position.y + r.size.y * 0.5))
+        _mitte_eng(text, Rect2(r.position + Vector2(40.0, 0.0),
+            r.size - Vector2(40.0, 0.0)), 26, farbe, _kopf)
+    else:
+        _mitte_eng(text, r, 26, farbe, _kopf)
+
+
+## Das Wappen in der Farbe des gewaehlten Helden und Gewands.
+func _wappen(ort: Vector2, g: float) -> void:
+    var h := Burg.stand.held
+    var n := Burg.stand.skin(h)
+    Zeichen.wappen(_tu, ort, g, Skins.koerper(h, n), Skins.glanz(h, n))
 
 
 func _mitte(text: String, r: Rect2, groesse: int, farbe: Color,
@@ -190,7 +276,11 @@ func _luft(hoehe: float) -> float:
 ## ist aber eine Menge und kein Pinselstrich - man liest ihn an seiner
 ## Laenge, und eine Laenge mit spitzen Enden laesst sich nicht ablesen.
 func _riegel(von: Vector2, bis: Vector2, dicke: float, farbe: Color) -> void:
-    if bis.x - von.x < 1.0:
+    # Die Laenge zaehlt, nicht der Weg nach rechts: hier stand
+    # `bis.x - von.x < 1`, und seit die Rahmen senkrechte Kanten haben, fiel
+    # jede davon weg - und jede Linie, die nach links laeuft. Ein leerer
+    # Balken (Laenge null) bleibt weiter ungezeichnet.
+    if von.distance_squared_to(bis) < 1.0:
         return
     var mitte := PackedVector2Array([von, (von + bis) * 0.5, bis])
     var halb := PackedFloat32Array([dicke * 0.5, dicke * 0.5, dicke * 0.5])
@@ -246,82 +336,76 @@ func _draw() -> void:
 
 func _titel() -> void:
     var b := size.x
-    var oben := _rand() + _luft(SZENE + 230.0
-        + float(Helden.NAMEN.size()) * 130.0 + 136.0)
     var s := Burg.stand
+    var zeilen := Helden.NAMEN.size()
+    var hoch := 120.0 + float(zeilen) * TITEL_ZEILE + 96.0
+    var oben := _rand() + _luft(SZENE + hoch + 50.0)
     _szene(Vector2(b * 0.5, oben + SZENE - 14.0), b)
-    oben += SZENE
-    var t := "TEN THOUSAND"
-    var w := _breite(t, 60, _kopf)
-    _zeile(t, Vector2((b - w) * 0.5, oben + 96.0), 60, TINTE, _kopf)
-    _tu.zug(Vector2((b - w) * 0.5 - 8.0, oben + 120.0),
-        Vector2((b + w) * 0.5 + 8.0, oben + 124.0), 6.0,
-        Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.85), 0.35, 0.5, 3.0, 7)
-    var u := "One blade. Ten thousand of them."
-    var uw := _breite(u, 27)
-    _zeile(u, Vector2((b - uw) * 0.5, oben + 164.0), 27,
-        Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.95))
+    var r := Rect2(24.0, oben + SZENE, b - 48.0, hoch)
+    _rahmen(r)
+    _kopfzeile(r, "TEN THOUSAND", func(p): _wappen(p, 34.0),
+        "One blade. Ten thousand of them.")
 
-    var y := oben + 210.0
-    for h in Helden.NAMEN.size():
+    var y := r.position.y + 118.0
+    for h in zeilen:
         var frei := Helden.ist_frei(h, s.beste_zeit, s.meiste_erschlagen,
             s.warlord_gefallen)
-        var r := Rect2(38.0, y, b - 76.0, 118.0)
-        _tafel(r, 0.82 if frei else 0.5)
-        _kasten(r, Color(TINTE.r, TINTE.g, TINTE.b, 0.75 if frei else 0.3), 3.0)
-        # **Jede Karte zeigt ihren Helden** - in seiner Klasse und dem
+        var zeile := Rect2(r.position.x, y, r.size.x - 14.0, TITEL_ZEILE)
+        # **Jede Zeile zeigt ihren Helden** - in seiner Klasse und dem
         # gewaehlten Gewand. Ein gesperrter steht als Schatten da: man sieht,
         # was kommt, aber nicht, wie es aussieht.
         var n := s.skin(h)
         var kleid := Skins.koerper(h, n) if frei else Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.35)
         var glanz := Skins.glanz(h, n) if frei else Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.35)
-        var fuss := Vector2(r.position.x + 52.0, y + r.size.y - 12.0)
+        var fuss := Vector2(r.position.x + 56.0, y + TITEL_ZEILE - 12.0)
         if frei:
-            Streiter._schatten(_tu, fuss, 92.0)
-        Streiter.held(_tu, fuss, 92.0, 1.0, 0.0, -0.75, kleid, glanz, h)
+            Streiter._schatten(_tu, fuss, 84.0)
+        Streiter.held(_tu, fuss, 84.0, 1.0, 0.0, -0.75, kleid, glanz, h)
         var x := r.position.x + 108.0
-        _zeile(Helden.name_von(h), Vector2(x, y + 46.0), 32,
+        _zeile(Helden.name_von(h), Vector2(x, y + 38.0), 28,
             TINTE if frei else Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.6), _kopf)
         var satz := Helden.lehre_von(h) if frei else Helden.bedingung_text(h)
-        # **Die Zeile hoert vor den Gewaendern auf.** Sonst laeuft sie unter
-        # den Farbpunkten durch, und eine Beschriftung unter einem Knopf ist
-        # keine Beschriftung.
-        # **Zwei Saetze, zwei Zeilen.** Mit dem Bild links reichte der Platz
-        # nicht mehr fuer beide in einer, und unter `KLEINSTE` schrumpft
-        # nichts - der Satz lief unter die Gewaender.
-        var platz := r.end.x - x - 22.0 - (150.0 if frei else 0.0)
+        # **Zwei Saetze, zwei Zeilen**, und beide hoeren vor den Gewaendern
+        # auf: eine Beschriftung unter einem Knopf ist keine Beschriftung.
+        var platz := zeile.end.x - x - 16.0 - (150.0 if frei else 0.0)
         var farbe := Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.95 if frei else 0.6)
         var teil := satz.find(". ")
         if teil > 0:
-            _zeile_eng(satz.substr(0, teil + 1), Vector2(x, y + 76.0), 20, farbe, platz)
-            _zeile_eng(satz.substr(teil + 2), Vector2(x, y + 100.0), 20, farbe, platz)
+            _zeile_eng(satz.substr(0, teil + 1), Vector2(x, y + 64.0), 19, farbe, platz)
+            _zeile_eng(satz.substr(teil + 2), Vector2(x, y + 86.0), 19, farbe, platz)
         else:
-            _zeile_eng(satz, Vector2(x, y + 82.0), 21, farbe, platz)
+            _zeile_eng(satz, Vector2(x, y + 70.0), 19, farbe, platz)
         if frei:
-            # **Die Karte hoert vor den Punkten auf.** Der Treffer nimmt das
-            # erste Feld, das passt; laege die Karte darueber, startete jeder
-            # Tipp auf ein Gewand sofort einen Lauf.
+            # **Die Zeile hoert vor den Punkten auf.** Der Treffer nimmt das
+            # erste Feld, das passt; laege sie darueber, startete jeder Tipp
+            # auf ein Gewand sofort einen Lauf.
             _felder.append({"id": "held%d" % h,
-                "r": Rect2(r.position, Vector2(r.size.x - 156.0, r.size.y)),
+                "r": Rect2(zeile.position, Vector2(zeile.size.x - 156.0, zeile.size.y)),
                 "aktiv": true})
-            _gewaender(h, r)
-        y += 130.0
+            _gewaender(h, zeile)
+        y += TITEL_ZEILE
+        if h < zeilen - 1:
+            _trenner(r, y)
 
-    _knopf("burg", Rect2(38.0, y + 14.0, (b - 92.0) * 0.5, 72.0), "KEEP")
-    _knopf("zeug", Rect2(b * 0.5 + 8.0, y + 14.0, (b - 92.0) * 0.5, 72.0), "GEAR")
-    Zeichen.bau(_tu, Halle.Bau.MAUER, Vector2(76.0, y + 50.0), 20.0)
-    Zeichen.stueck(_tu, Ausruestung.Stueck.VISIERHELM,
-        Vector2(b * 0.5 + 46.0, y + 50.0), 20.0)
+    var halb := (r.size.x - 60.0) * 0.5
+    var yk := y + 14.0
+    _knopf("burg", Rect2(r.position.x + 22.0, yk, halb, 58.0), "KEEP", true,
+        func(p): Zeichen.bau(_tu, Halle.Bau.MAUER, p, 15.0))
+    _knopf("zeug", Rect2(r.position.x + 38.0 + halb, yk, halb, 58.0), "GEAR", true,
+        func(p): Zeichen.stueck(_tu, Ausruestung.Stueck.VISIERHELM, p, 15.0))
     if s.etwas_zu_holen():
-        _tu.klecks(Vector2(38.0 + (b - 92.0) * 0.5 - 14.0, y + 26.0), 9.0,
+        _tu.klecks(Vector2(r.position.x + 22.0 + halb - 8.0, yk + 8.0), 9.0,
             Palette.HELD, 3, Palette.UMRISS)
     if s.laeufe > 0:
         var z := "best %d:%02d   /   %d felled   /   %d coin" % [
             int(s.beste_zeit) / 60, int(s.beste_zeit) % 60,
             s.meiste_erschlagen, s.sold]
         var zw := _breite(z, 26, _zahl)
-        _zeile(z, Vector2((b - zw) * 0.5, y + 122.0), 26,
-            Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.9), _zahl)
+        _zeile(z, Vector2((b - zw) * 0.5, r.end.y + 40.0), 26,
+            Color(TINTE.r, TINTE.g, TINTE.b, 0.85), _zahl)
+
+
+const TITEL_ZEILE := 112.0
 
 
 ## Wie hoch die Szene ueber dem Titel steht.
@@ -412,7 +496,7 @@ func _im_lauf() -> void:
     # Das Herz vor dem Balken: so ist er Leben und nicht irgendeine Menge.
     _balken(Rect2(60.0, oben + 14.0, b - 86.0, 22.0),
         st.leben / maxf(1.0, st.leben_voll), ZINNOBER)
-    Zeichen.herz(_tu, Vector2(36.0, oben + 25.0), 18.0)
+    _wappen(Vector2(34.0, oben + 30.0), 22.0)
     # Erfahrung darunter, schmaler: sie endet nichts, sie verspricht nur.
     # **Nicht in Gold** - Gold heisst Sold, und so stand sie bis Oktober 2026.
     var noetig := float(Gunst.stufenkosten(st.stufe))
@@ -497,75 +581,106 @@ func _marke() -> void:
         Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.95))
 
 
+## **Der Aufstieg ist ein Banner**: es haengt an einer Stange, traegt die
+## drei Angebote untereinander und laeuft unten in eine Spitze aus, ueber der
+## eine Burg in den Farben des Helden steht - so stand es in der Vorlage.
+## Die Wahl ist das Einzige, was jetzt gilt; das Feld dahinter wird blass.
+const WAHL_ZEILE := 124.0
+
 func _aufstieg(st: Gefecht.Stand) -> void:
     var b := size.x
     var h := size.y
-    # Der Schirm wird ausgeblendet: die Wahl ist das Einzige, was jetzt gilt.
-    # **Ein Blatt ueber den ganzen Schirm, keine Linse.** Hier stand ein
-    # `wisch()`, und der laeuft zu den Enden spitz aus: unter den Karten stand
-    # ein Keil, und das Gedraenge schaute links und rechts unten hervor.
     _riegel(Vector2(0.0, h * 0.5), Vector2(b, h * 0.5), h + 4.0,
-        Color(HELL.r, HELL.g, HELL.b, 0.84))
-    var t := "CHOOSE"
-    var w := _breite(t, 46, _kopf)
-    _zeile(t, Vector2((b - w) * 0.5, h * 0.20), 46, TINTE, _kopf)
+        Color(HELL.r, HELL.g, HELL.b, 0.55))
+    var zahl := st.angebote.size()
+    var koerper := 96.0 + float(zahl) * WAHL_ZEILE + 210.0
+    var spitze := 80.0
+    var oben := _rand() + 150.0 + maxf(0.0, (h - _rand() * 2.0 - 150.0
+        - koerper - spitze) * 0.35)
+    var r := Rect2(40.0, oben, b - 80.0, koerper)
+    var mitte := r.position.x + r.size.x * 0.5
+    # Schatten, Tuch und Spitze.
+    _flaeche(Rect2(r.position + Vector2(6.0, 9.0), r.size),
+        Color(TINTE.r, TINTE.g, TINTE.b, 0.28))
+    _flaeche(r, BLATT)
+    _tu.strang(PackedVector2Array([Vector2(mitte, r.end.y - 1.0),
+        Vector2(mitte, r.end.y + spitze)]),
+        PackedFloat32Array([r.size.x, 0.0]), BLATT, 2)
+    # Der Rand folgt dem Umriss, die Spitze hinunter.
+    var unten := Vector2(mitte, r.end.y + spitze)
+    _riegel(r.position, Vector2(r.end.x, r.position.y), 7.0, RAHMEN)
+    _riegel(r.position, Vector2(r.position.x, r.end.y), 7.0, RAHMEN)
+    _riegel(Vector2(r.end.x, r.position.y), r.end, 7.0, RAHMEN)
+    _riegel(Vector2(r.position.x, r.end.y), unten, 7.0, RAHMEN)
+    _riegel(r.end, unten, 7.0, RAHMEN)
+    _tu.klecks(unten, 7.0, RAHMEN, 2)
+    # Die Stange, an der es haengt.
+    _riegel(Vector2(r.position.x - 22.0, r.position.y - 4.0),
+        Vector2(r.end.x + 22.0, r.position.y - 4.0), 12.0, Zeichen.HOLZ)
+    for x in [r.position.x - 24.0, r.end.x + 24.0]:
+        _tu.klecks(Vector2(x, r.position.y - 4.0), 10.0, Zeichen.HOLZ, 1, RAHMEN)
 
-    var y := h * 0.26
-    for i in st.angebote.size():
+    var t := "CHOOSE"
+    _zeile(t, Vector2(mitte - _breite(t, 42, _kopf) * 0.5, r.position.y + 68.0), 42,
+        TINTE, _kopf)
+    var y := r.position.y + 96.0
+    _trenner(r, y)
+    for i in zahl:
         var a = st.angebote[i]
-        var r := Rect2(40.0, y, b - 80.0, 140.0)
-        _tafel(r, 0.72)
-        _kasten(r, Color(TINTE.r, TINTE.g, TINTE.b, 0.85), 4.0)
+        var zeile := Rect2(r.position.x, y, r.size.x, WAHL_ZEILE)
         # Das Bild der Waffe oder des Zugs: erkannt ist schneller als gelesen.
-        var bild := Vector2(r.position.x + 62.0, y + r.size.y * 0.5)
-        _tu.klecks(bild, 46.0, Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.14), i)
+        var bild := Vector2(r.position.x + 58.0, y + WAHL_ZEILE * 0.5)
+        _tu.klecks(bild, 36.0, BLATT_TIEF, i, Color(RAHMEN.r, RAHMEN.g, RAHMEN.b, 0.6))
         if a.ist_waffe:
-            Zeichen.waffe(_tu, a.was, bild, 38.0)
+            Zeichen.waffe(_tu, a.was, bild, 30.0)
         else:
-            Zeichen.zug(_tu, a.was, bild, 38.0)
-        var x := r.position.x + 124.0
-        _zeile(a.name(), Vector2(x, y + 50.0), 32, TINTE, _kopf)
+            Zeichen.zug(_tu, a.was, bild, 30.0)
+        var x := r.position.x + 112.0
+        _zeile(a.name(), Vector2(x, y + 44.0), 28, TINTE, _kopf)
         # **Stufen als Punkte.** Eine Zahl sagt, wo man steht; Punkte sagen
-        # auch, wie weit es noch geht. Der neue ist hohl umrandet und in der
-        # Farbe des Helden - er ist das, was man gerade nimmt.
+        # auch, wie weit es noch geht. Der neue ist in der Farbe des Helden.
         var hoechst := Waffen.HOECHSTSTUFE if a.ist_waffe else Gunst.ZUG_HOECHSTSTUFE
         for k in hoechst:
-            var p := Vector2(r.end.x - 30.0 - float(hoechst - 1 - k) * 22.0, y + 38.0)
+            var p := Vector2(r.end.x - 30.0 - float(hoechst - 1 - k) * 20.0, y + 34.0)
             if k + 1 < a.stufe:
-                _tu.klecks(p, 7.0, TINTE, k)
+                _tu.klecks(p, 6.5, TINTE, k)
             elif k + 1 == a.stufe:
-                _tu.klecks(p, 8.0, Palette.HELD, k, Palette.UMRISS)
+                _tu.klecks(p, 7.5, Palette.HELD, k, Palette.UMRISS)
             else:
-                _tu.klecks(p, 6.0, Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.30), k)
+                _tu.klecks(p, 5.5, Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.30), k)
         if a.neu:
-            _zeile("NEW", Vector2(r.end.x - 30.0 - float(hoechst - 1) * 22.0 - 8.0,
-                y + 72.0), 20, Palette.HELD.darkened(0.35), _kopf)
-        _zeile_eng(a.lehre(), Vector2(x, y + 104.0), 22,
+            _zeile("NEW", Vector2(r.end.x - 30.0 - float(hoechst - 1) * 20.0 - 8.0,
+                y + 66.0), 18, Palette.HELD.darkened(0.35), _kopf)
+        _zeile_eng(a.lehre(), Vector2(x, y + 92.0), 20,
             Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.98), r.end.x - x - 20.0)
-        _felder.append({"id": "wahl%d" % i, "r": r, "aktiv": true})
-        y += 156.0
+        _felder.append({"id": "wahl%d" % i, "r": zeile, "aktiv": true})
+        y += WAHL_ZEILE
+        _trenner(r, y)
+    var held := Burg.stand.held
+    Zeichen.burg_bild(_tu, Vector2(mitte, y + 176.0), 120.0,
+        Skins.koerper(held, Burg.stand.skin(held)))
 
 
 ## **Der Bericht hat ein Bild.** Gewonnen: der Held steht ueber dem
 ## gefallenen Warlord. Gefallen: die Horde steht, und vor ihr liegt die
-## Waffe. Vorher war es eine Tafel mit vier Zahlen, an der Oberkante
-## festgeklebt.
+## Waffe. Darunter das Blatt mit den Zahlen, darunter zwei Wege.
 const BERICHT_BILD := 230.0
-const BERICHT_TAFEL := 390.0
+const BERICHT_TAFEL := 400.0
 
 func _ende() -> void:
     var st: Gefecht.Stand = _lauf.stand()
     var b := size.x
     var gewonnen: bool = st != null and st.warlord_gefallen
-    var oben := _rand() + _luft(BERICHT_BILD + BERICHT_TAFEL + 210.0)
+    var oben := _rand() + _luft(BERICHT_BILD + BERICHT_TAFEL + 200.0)
     _bericht_bild(Vector2(b * 0.5, oben + BERICHT_BILD - 20.0), gewonnen,
         st.held if st != null else 0)
-    var y0 := oben + BERICHT_BILD
+    var r := Rect2(b * 0.10, oben + BERICHT_BILD, b * 0.80, BERICHT_TAFEL)
+    _rahmen(r)
     var kopf := "THE FIELD IS YOURS" if gewonnen else "YOU FALL"
-    var kw := _breite(kopf, 44, _kopf)
-    _tafel(Rect2(b * 0.08, y0, b * 0.84, BERICHT_TAFEL), 0.75)
-    _zeile(kopf, Vector2((b - kw) * 0.5, y0 + 68.0), 44,
+    var kw := _breite(kopf, 40, _kopf)
+    _mitte_eng(kopf, Rect2(r.position.x, r.position.y + 30.0, r.size.x, 60.0), 40,
         TINTE if gewonnen else ZINNOBER, _kopf)
+    _trenner(r, r.position.y + 100.0)
     if st != null:
         var zeilen := [
             ["lasted", "%d:%02d" % [int(st.zeit) / 60, int(st.zeit) % 60]],
@@ -573,29 +688,35 @@ func _ende() -> void:
             ["coin", "%d" % st.sold],
             ["level", "%d" % st.stufe],
         ]
-        var y := y0 + 132.0
+        var y := r.position.y + 150.0
+        var achse := r.position.x + r.size.x * 0.5
         for z in zeilen:
             # Name links, Zahl rechts an einer Mittelachse: so liest man die
             # Zahlen untereinander und nicht vier Saetze.
-            var nw := _breite(z[0], 28)
-            _zeile(z[0], Vector2(b * 0.5 - 14.0 - nw, y), 28,
+            var nw := _breite(z[0], 26)
+            _zeile(z[0], Vector2(achse - 14.0 - nw, y), 26,
                 Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.95))
-            _zeile(z[1], Vector2(b * 0.5 + 14.0, y + 2.0), 36,
+            _zeile(z[1], Vector2(achse + 14.0, y + 2.0), 34,
                 GOLD if z[0] == "coin" else Color(TINTE.r, TINTE.g, TINTE.b, 0.92),
                 _zahl)
-            y += 48.0
+            y += 44.0
         var fu: int = _lauf.fund()
         if fu >= 0:
-            var ft := "found  %s  %d" % [Ausruestung.name_von(fu),
-                _lauf.fund_stufe()]
-            var fw := _breite(ft, 28)
-            var fx := (b - fw) * 0.5 + 24.0
-            Zeichen.stueck(_tu, fu, Vector2(fx - 34.0, y + 2.0), 22.0)
-            _zeile(ft, Vector2(fx, y + 12.0), 28, TINTE)
+            _trenner(r, y - 18.0)
+            var ft := "found  %s  %d" % [Ausruestung.name_von(fu), _lauf.fund_stufe()]
+            var fw := _breite(ft, 26)
+            var fx := r.position.x + (r.size.x - fw) * 0.5 + 20.0
+            Zeichen.stueck(_tu, fu, Vector2(fx - 30.0, y + 14.0), 20.0)
+            _zeile(ft, Vector2(fx, y + 24.0), 26, TINTE)
     # **Kein Angebot nach einer Niederlage.** Zwei Wege, nie mehr.
-    var yk := y0 + BERICHT_TAFEL + 30.0
-    _knopf("nochmal", Rect2(b * 0.14, yk, b * 0.72, 84.0), "AGAIN")
-    _knopf("titel", Rect2(b * 0.14, yk + 102.0, b * 0.72, 68.0), "BACK")
+    var yk := r.end.y + 30.0
+    _knopf("nochmal", Rect2(b * 0.14, yk, b * 0.72, 76.0), "AGAIN", true,
+        func(p): Zeichen.nochmal(_tu, p, 20.0))
+    _knopf("titel", Rect2(b * 0.14, yk + 94.0, b * 0.72, 64.0), "BACK", true,
+        func(p): Zeichen.zurueck(_tu, p, 18.0))
+    var _k := kw
+
+
 
 
 func _bericht_bild(boden: Vector2, gewonnen: bool, held: int) -> void:
@@ -620,96 +741,114 @@ func _bericht_bild(boden: Vector2, gewonnen: bool, held: int) -> void:
         Zeichen.waffe(_tu, Helden.startwaffe(held), boden + Vector2(0.0, -8.0), 44.0)
 
 
+const BURG_ZEILE := 138.0
+
 func _burg() -> void:
     var b := size.x
-    var oben := _rand() + _luft(100.0 + float(Halle.NAMEN.size()) * 164.0 + 162.0)
     var s := Burg.stand
-    _zeile("THE KEEP", Vector2(38.0, oben + 62.0), 44, TINTE, _kopf)
+    var hoch := 118.0 + float(Halle.NAMEN.size()) * BURG_ZEILE + 168.0
+    var oben := _rand() + _luft(hoch)
+    var r := Rect2(24.0, oben, b - 48.0, hoch)
+    _rahmen(r)
+    _kopfzeile(r, "THE KEEP", func(p): Zeichen.bau(_tu, Halle.Bau.MAUER, p, 26.0),
+        "", true)
     var e := "%d" % s.sold
-    var ew := _breite(e, 36, _zahl)
-    _zeile(e, Vector2(b - 38.0 - ew, oben + 62.0), 36, GOLD, _zahl)
-    Zeichen.muenze(_tu, Vector2(b - 38.0 - ew - 24.0, oben + 50.0), 16.0)
+    var ew := _breite(e, 34, _zahl)
+    _zeile(e, Vector2(r.end.x - 84.0 - ew, r.position.y + 70.0), 34, GOLD, _zahl)
+    Zeichen.muenze(_tu, Vector2(r.end.x - 84.0 - ew - 22.0, r.position.y + 58.0), 15.0)
 
-    var y := oben + 100.0
+    var y := r.position.y + 118.0
     for bau in Halle.NAMEN.size():
-        var r := Rect2(34.0, y, b - 68.0, 152.0)
-        _tafel(r, 0.82)
         var stufe := s.stufe(bau)
         var voll := stufe >= Halle.HOECHSTSTUFE
-        var bild := Vector2(r.position.x + 58.0, y + r.size.y * 0.5)
-        _tu.klecks(bild, 44.0, Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.14), bau)
-        Zeichen.bau(_tu, bau, bild, 36.0)
+        var bild := Vector2(r.position.x + 60.0, y + BURG_ZEILE * 0.5)
+        _tu.klecks(bild, 36.0, BLATT_TIEF, bau, Color(RAHMEN.r, RAHMEN.g, RAHMEN.b, 0.6))
+        Zeichen.bau(_tu, bau, bild, 28.0)
         var x := r.position.x + 116.0
-        _zeile(Halle.name_von(bau), Vector2(x, y + 44.0), 32, TINTE, _kopf)
-        var nw := _breite(Halle.name_von(bau), 32, _kopf)
-        _zeile("%d" % stufe, Vector2(x + nw + 12.0, y + 44.0), 32,
+        _zeile(Halle.name_von(bau), Vector2(x, y + 42.0), 30, TINTE, _kopf)
+        var nw := _breite(Halle.name_von(bau), 30, _kopf)
+        _zeile("%d" % stufe, Vector2(x + nw + 12.0, y + 42.0), 30,
             Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.95), _zahl)
-        _zeile_eng(Halle.beschreibung_von(bau), Vector2(x, y + 78.0), 21,
-            Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.95), r.end.x - x - 20.0)
-        _balken(Rect2(x, y + 100.0, r.end.x - x - 200.0, 8.0),
-            float(stufe) / float(Halle.HOECHSTSTUFE), TINTE)
-        _knopf("bau%d" % bau, Rect2(r.position.x + r.size.x - 178.0, y + 92.0,
-            158.0, 46.0), "MAX" if voll else "%d" % s.kosten(bau),
-            s.kann_bauen(bau))
-        y += 164.0
+        _zeile_eng(Halle.beschreibung_von(bau), Vector2(x, y + 74.0), 20,
+            Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.95), r.end.x - x - 24.0)
+        _balken(Rect2(x, y + 98.0, r.end.x - x - 200.0, 8.0),
+            float(stufe) / float(Halle.HOECHSTSTUFE), RAHMEN)
+        _knopf("bau%d" % bau, Rect2(r.end.x - 172.0, y + 82.0, 148.0, 44.0),
+            "MAX" if voll else "%d" % s.kosten(bau), s.kann_bauen(bau))
+        y += BURG_ZEILE
+        _trenner(r, y)
     # **Ton und Beben lassen sich abschalten.** Ein Telefon, das bei jedem
     # Treffer brummt und sich nicht zum Schweigen bringen laesst, spielt man
     # nicht in der Bahn - und die Datenschutzerklaerung verspricht den
     # Schalter. Er steht in der Burg, weil sie der einzige Schirm ist, der
     # ohnehin Einstellungen am Spieler vornimmt.
-    var halb := (b - 92.0) * 0.5
-    _knopf("ton", Rect2(38.0, y + 10.0, halb, 56.0),
-        "SOUND ON" if s.laut > 0.001 else "SOUND OFF")
-    _knopf("beben", Rect2(b * 0.5 + 8.0, y + 10.0, halb, 56.0),
-        "RUMBLE ON" if s.beben else "RUMBLE OFF")
-    _knopf("titel", Rect2(b * 0.24, y + 86.0, b * 0.52, 66.0), "BACK")
+    var halb := (r.size.x - 60.0) * 0.5
+    var laut := s.laut > 0.001
+    _knopf("ton", Rect2(r.position.x + 22.0, y + 18.0, halb, 56.0),
+        "SOUND ON" if laut else "SOUND OFF", true,
+        func(p): Zeichen.laut(_tu, p, 17.0, laut))
+    _knopf("beben", Rect2(r.position.x + 38.0 + halb, y + 18.0, halb, 56.0),
+        "RUMBLE ON" if s.beben else "RUMBLE OFF", true,
+        func(p): Zeichen.ruettel(_tu, p, 17.0, s.beben))
+    _knopf("titel", Rect2(r.position.x + r.size.x * 0.25, y + 90.0, r.size.x * 0.5, 56.0),
+        "BACK", true, func(p): Zeichen.zurueck(_tu, p, 17.0))
 
+
+const ZEUG_ZEILE := 118.0
 
 func _zeug() -> void:
     var b := size.x
-    var oben := _rand() + _luft(100.0
-        + float(Ausruestung.PLATZ_NAMEN.size()) * 112.0 + 96.0)
     var s := Burg.stand
-    _zeile("WHAT YOU CARRY", Vector2(38.0, oben + 62.0), 40, TINTE, _kopf)
+    var plaetze := Ausruestung.PLATZ_NAMEN.size()
+    var hoch := 118.0 + float(plaetze) * ZEUG_ZEILE + 100.0
+    var oben := _rand() + _luft(hoch)
+    var r := Rect2(24.0, oben, b - 48.0, hoch)
+    _rahmen(r)
+    _kopfzeile(r, "WHAT YOU CARRY",
+        func(p): Zeichen.stueck(_tu, Ausruestung.Stueck.VISIERHELM, p, 26.0), "", true)
 
-    var y := oben + 100.0
-    for platz in Ausruestung.PLATZ_NAMEN.size():
-        # Auf halber Kartenhoehe, nicht an ihrer Oberkante: sonst steht der
-        # Platzname zwischen zwei Reihen und gehoert scheinbar zur falschen.
-        _zeile(Ausruestung.platz_name(platz), Vector2(38.0, y + 58.0), 24,
+    var y := r.position.y + 118.0
+    var zelle := (r.size.x - 150.0) * 0.5
+    for platz in plaetze:
+        # Auf halber Zeilenhoehe: sonst steht der Platzname zwischen zwei
+        # Reihen und gehoert scheinbar zur falschen.
+        _zeile(Ausruestung.platz_name(platz), Vector2(r.position.x + 26.0, y + 64.0), 22,
             Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.95), _kopf)
-        var x := 150.0
+        var x := r.position.x + 108.0
         var getragen := int(s.angelegt.get(platz, -1))
         for stueck in Ausruestung.Stueck.size():
             if Ausruestung.platz_von(stueck) != platz:
                 continue
             var stufe := int(s.besitz.get(stueck, 0))
-            var r := Rect2(x, y, (b - 190.0) * 0.5, 100.0)
             var hat := stufe > 0
-            _tafel(r, 0.82 if hat else 0.66)
-            _kasten(r, Color(TINTE.r, TINTE.g, TINTE.b,
-                0.9 if stueck == getragen else (0.45 if hat else 0.2)),
-                5.0 if stueck == getragen else 3.0)
+            var z := Rect2(x, y + 12.0, zelle, ZEUG_ZEILE - 24.0)
+            _flaeche(z, BLATT_TIEF if hat else Color(BLATT_TIEF.r, BLATT_TIEF.g, BLATT_TIEF.b, 0.45))
+            _rand_linien(z, 4.0 if stueck == getragen else 2.0,
+                Color(RAHMEN.r, RAHMEN.g, RAHMEN.b,
+                    1.0 if stueck == getragen else (0.55 if hat else 0.25)))
             # Das Stueck als Bild. Ein nicht gefundenes steht verschleiert
             # da: man weiss, dass es etwas gibt, aber nicht, was es kann.
-            var bild := Vector2(r.position.x + 40.0, y + r.size.y * 0.5)
-            Zeichen.stueck(_tu, stueck, bild, 28.0)
+            var bild := Vector2(z.position.x + 38.0, z.position.y + z.size.y * 0.5)
+            Zeichen.stueck(_tu, stueck, bild, 26.0)
             if not hat:
-                _tu.klecks(bild, 36.0, Color(HELL.r, HELL.g, HELL.b, 0.72), stueck)
-            var tx := r.position.x + 80.0
-            _zeile_eng(Ausruestung.name_von(stueck), Vector2(tx, y + 40.0), 21,
+                _tu.klecks(bild, 34.0, Color(BLATT.r, BLATT.g, BLATT.b, 0.72), stueck)
+            var tx := z.position.x + 74.0
+            _zeile_eng(Ausruestung.name_von(stueck), Vector2(tx, z.position.y + 36.0), 20,
                 TINTE if hat else Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.45),
-                r.end.x - tx - 12.0, _kopf)
+                z.end.x - tx - 10.0, _kopf)
             _zeile_eng(Ausruestung.lehre_von(stueck, stufe) if hat else "not found",
-                Vector2(tx, y + 70.0), 19,
+                Vector2(tx, z.position.y + 64.0), 18,
                 Color(TINTE.r, TINTE.g, TINTE.b, 0.8) if hat
                     else Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.4),
-                r.end.x - tx - 12.0)
+                z.end.x - tx - 10.0)
             if hat:
-                _felder.append({"id": "lege%d" % stueck, "r": r, "aktiv": true})
-            x += (b - 190.0) * 0.5 + 10.0
-        y += 112.0
-    _knopf("titel", Rect2(b * 0.24, y + 20.0, b * 0.52, 66.0), "BACK")
+                _felder.append({"id": "lege%d" % stueck, "r": z, "aktiv": true})
+            x += zelle + 12.0
+        y += ZEUG_ZEILE
+        if platz < plaetze - 1:
+            _trenner(r, y)
+    _knopf("titel", Rect2(r.position.x + r.size.x * 0.25, y + 18.0, r.size.x * 0.5, 56.0),
+        "BACK", true, func(p): Zeichen.zurueck(_tu, p, 17.0))
 
 
 # --- Der Finger ------------------------------------------------------------

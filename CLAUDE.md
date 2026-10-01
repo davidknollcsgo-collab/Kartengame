@@ -140,6 +140,51 @@ Regeln, die dabei entstanden:
   mit halber Kante, Büsche, Stümpfe, Kiesel. Halbe Kante, weil eine volle
   eine Figur wäre.
 
+**Und danach: Pixel-Art nach einer Vorlage des Nutzers** (Oktober 2026).
+Der Nutzer schickte ein Mockup — Landkarte aus Sand, Wiese, Bäumen, kleine
+Pixel-Soldaten, Menüs als gerahmtes Pergament — und wählte: Pixel-Look,
+Sortenfarben bleiben (satter), Kamera etwas weiter weg.
+
+* **Das Feld wird in einem Drittel der Auflösung gezeichnet**
+  (`gefecht.tscn`: zwei `SubViewportContainer` mit `stretch_shrink` =
+  `zug_lauf.PIXEL` = 3, scharf hochgezogen). Boden und Figuren liegen in
+  **zwei** Puffern; die Menüs bleiben scharf im `CanvasLayer`. Der Wurzelknoten
+  zeichnet nichts mehr: `welt.gd` (drei Teile, Hinten / Loch / Vorn) fragt
+  `zug_lauf.zeichne_teil()`.
+* **Der Umriss kommt aus dem Bild, nicht aus dem Pinsel**
+  (`shaders/umriss.gdshader`): jedes leere Pixel neben einem gedeckten wird
+  dunkel — ein Pixel Umriss um jede Figur und jede Gruppe. Der Puffer ist
+  vormultipliziert, der Shader teilt durch die Deckung.
+* **Die Kante im Pinsel hat im Pixelbild feste Breite** (`Tusche.kante_fest`,
+  `mindest`): als Bruchteil des Strichs war sie unter einem Pixel und
+  verschwand, gleichfarbige Figuren flossen zu einem Klumpen, und
+  Speerschäfte zerfielen in Punkte. Ausnahme ist der **Wolf** — zwanzig
+  Pixel lang, Läufe zwei breit: mit einem Pixel Kante je Seite bestand er
+  nur aus Umriss.
+* **Die Freistellung ist ein Loch** (Teil 1, `shaders/loch.gdshader`,
+  `blend_disabled`): sie schreibt Deckung null in den Figurenpuffer, und der
+  wirkliche Boden scheint durch. Eine Fläche in `BODEN` wäre auf einer Wiese
+  ein Sandfleck.
+* **Eine Wahrheit für das Sichtfeld**: `Gefecht.BILD_HALB_X/_Y` (450 × 800
+  bei 720 × 1280, `ZOOM` 0,8). Eintritt, Nachholen, Leine, `Daumen.SICHT`
+  und die Wächter, die zählen, was im Bild steht, hängen daran.
+* **Ein Pixel-Soldat hat Farbzonen**: Gesicht in `HAUT`, Rock in der
+  Sortenfarbe, Hose dunkler, Stahl am Helm (`Streiter.KOPF` 1,6 für große
+  Köpfe, `MASSE` 1,18). Einfarbig war jede Figur eine Silhouette. Die Sorte
+  trägt ihre Farbe weiter auf der größten Fläche, dem Rock.
+* **Der Boden ist eine Karte** (`feld.gd`): warmer Sand, Wiesen als
+  zusammenhängende Flächen (Mittel über 3 × 3 Kacheln — ein Wert je Kachel
+  gab ein Schachbrett), in Schichten über alle Kacheln gezeichnet (je Kachel
+  lief der Rand der nächsten Wiese über die vorige), Wege, selten Bach und
+  Teich, Bäume, Büsche, Ruinen, Zäune. **Wasser ist kein Blau** — Blau
+  trägt der Held.
+* **Menüs sind ein gerahmtes Blatt** (`zug_hud._rahmen`, `_kopfzeile`,
+  `_leiste`): Pergament, doppelter brauner Rand, Eckbeschläge, Wappen im
+  Kopf (`Zeichen.wappen`, Heldenfarbe), Trennlinien, Knöpfe mit Bild. Der
+  Aufstieg ist ein **Banner** mit Spitze und Burg (`Zeichen.burg_bild`).
+  Dabei fiel auf: `_riegel` prüfte `bis.x - von.x < 1` und warf jede
+  senkrechte und jede nach links laufende Linie weg — jetzt die Länge.
+
 ## Godot beschaffen
 
 Godot ist hier nicht vorinstalliert und `godotengine.org` ist durch die
@@ -301,7 +346,8 @@ keinem Schuss zu sehen, obwohl er im Spiel steht.
    die, die gewinnt — in `Skins` steht deshalb kein Feld, in das ein Vorteil
    hineinpasste. Und **keine Skin ist eine Tarnkappe**: jede der zwölf hält
    denselben Farbabstand zu jedem Feind wie die Grundfarbe des Helden
-   (gemessen, engste 0,45 gegen eine Schranke von 0,18).
+   (gemessen, engste 0,29 gegen eine Schranke von 0,18, seit die Sorten
+   satter sind).
 
 8. **Jedes Ausrüstungsstück wirkt auf genau einen Wert**, aus demselben Grund.
    Und `Ausruestung.summe()` gibt ohne alles genau eins zurück, damit
@@ -353,9 +399,11 @@ keinem Schuss zu sehen, obwohl er im Spiel steht.
     Zeichenreihenfolge die einzige Tiefe, die es gibt; ohne sie steht ein
     Feind vor dem Helden, der hinter ihm ist.
 
-17. **Der Held wird freigestellt.** Eine Fläche in der Farbe des Bodens
-    (`Palette.BODEN`) unter ihm, etwas größer als er — im leeren Feld
-    unsichtbar, im Gedränge steht er in einer Lücke. Es ist die einzige
+17. **Der Held wird freigestellt.** Ein Loch im Figurenpuffer in seiner
+    Form, etwas größer als er (`zeichne_teil`, Teil 1) — im leeren Feld
+    unsichtbar, im Gedränge steht er in einer Lücke, durch die der wirkliche
+    Boden scheint. Bis Oktober 2026 war es eine Fläche in `Palette.BODEN`;
+    auf einem Boden mit Wiesen wäre das ein Sandfleck. Es ist die einzige
     Stelle im Spiel, an der Boden über Figuren liegt. Ein heller Saum *unter*
     der Figur (der erste Anlauf) macht sie blass statt auffindbar.
 
@@ -380,10 +428,12 @@ keinem Schuss zu sehen, obwohl er im Spiel steht.
 
 23. **Die Horde bleibt beim Helden.** Drei Teile, und keiner reicht allein
     (`Gefecht.NACHHOL_RADIUS`, `_trenne_feinde`, `Andrang.HOECHSTENS_LEBEND`):
-    Wer weiter als 950 Punkte zurückfällt, wird auf den Eintrittsring geholt,
+    Wer weiter als `NACHHOL_RADIUS` (1184, aus `BILD_HALB_Y`) zurückfällt, wird auf den Eintrittsring geholt,
     **rundum** und nicht nach vorn (nach vorn trug der Speerträger 2 von 8,
     weil hinter ihm niemand mehr stand). Feinde **weichen einander aus**, im
-    Raster, 30-mal je Sekunde, nach ihrer **gezeichneten Breite**
+    Raster, 30-mal je Sekunde, mit bis zu 16 Prüfungen je Feind
+    (`TRENN_NACHBARN`; mit 10 kam ein Wolfsrudel nicht auseinander, sobald
+    die weitere Kamera es beim Heranlaufen zeigte: 7 % statt 0 %), nach ihrer **gezeichneten Breite**
     (`Feinde.ABSTAND`) und nicht nach dem Trefferradius. Der quer liegende
     Wolf wird dafür gestaucht gezeichnet (`Streiter.WOLF_MASS`): was die
     Simulation für breit hält, muss das Bild auch so zeichnen. Und **höchstens 300 leben**, gemessen an
@@ -415,7 +465,7 @@ keinem Schuss zu sehen, obwohl er im Spiel steht.
     zusätzlich zurück. Gemessen stand er dadurch in einem gestellten Lauf
     16 % der Zeit im Sichtfeld, und in 9 von 96 vollen Läufen stand der Held
     bei 900 s noch. Jetzt: er sammelt mit vollem Tempo, holt jenseits von
-    `Gefecht.WARLORD_LEINE` (330, **unter der halben Bildbreite**, nicht der
+    `Gefecht.WARLORD_LEINE` (412, **unter der halben Bildbreite** 450, nicht der
     Höhe) mit `WARLORD_AUFHOLEN` × dem Tempo **des Helden** auf, wird nie
     versetzt und von keinem Treffer zurückgestoßen. Sein Leben ist fest
     (`Feinde.LEBEN`, 8000) und **ohne** `Andrang.zaehigkeit`: es ist eine

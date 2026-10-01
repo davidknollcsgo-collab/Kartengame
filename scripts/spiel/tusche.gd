@@ -77,6 +77,20 @@ var _punkte := PackedVector2Array()
 var _farben := PackedColorArray()
 var _index := PackedInt32Array()
 
+## **Fuer den Pixelpuffer: eine Kante fester Breite und eine Mindestbreite.**
+##
+## Im Pixelbild (`zug_lauf.PIXEL`) ist ein Glied drei, vier Bildpunkte breit,
+## und eine Kante als Bruchteil davon (0,72 bis 0,96 der halben Breite) ist
+## kein ganzer Pixel - sie verschwand, und Figuren derselben Farbe flossen zu
+## einem Klumpen zusammen. Mit `kante_fest` > 0 ist das Kantenband so breit
+## wie angegeben, unabhaengig von der Strichbreite, und die weiche
+## Aussenreihe faellt weg: eine Pixelkante ist hart.
+##
+## `mindest` ist die kleinste halbe Breite: ein Speerschaft unter einem Pixel
+## zerfiel beim Herunterrechnen in Punkte.
+var kante_fest := 0.0
+var mindest := 0.0
+
 ## **Vorlagen: einmal gebaut, danach nur verschoben.**
 ##
 ## Die Sparfassung eines Feindes bewegt sich nicht - kein Schritt, kein
@@ -209,7 +223,12 @@ func band(mitte: PackedVector2Array, halb: PackedFloat32Array,
         if lauf.length_squared() < 0.000001:
             lauf = Vector2.RIGHT
         var quer := lauf.normalized().orthogonal()
-        var h: float = halb[mini(i, halb.size() - 1)]
+        var h: float = maxf(halb[mini(i, halb.size() - 1)], mindest)
+        # Wie weit innen das Kantenband beginnt, als Anteil der halben Breite.
+        var innen := 0.72
+        if kante_fest > 0.0 and mit_kante:
+            h = maxf(h, kante_fest * 1.6)
+            innen = (h - kante_fest) / h
         # **Eine leere Deckungsliste heisst voll deckend, nicht unsichtbar.**
         # Vorher stand hier `deckung[mini(i, deckung.size() - 1)]`, und bei
         # leerer Liste ist das `deckung[-1]`: der Zugriff geht daneben, `d`
@@ -242,6 +261,14 @@ func band(mitte: PackedVector2Array, halb: PackedFloat32Array,
         var mitte_i: Vector2 = mitte[i]
         for r in breit:
             var reihe: float = REIHEN[r]
+            if kante_fest > 0.0:
+                # Harte Kante: die Aussenreihe liegt auf der Kante, das
+                # Kantenband ist `kante_fest` breit.
+                var b := absf(reihe)
+                if b >= 0.96:
+                    reihe = signf(reihe)
+                elif b >= 0.70:
+                    reihe = signf(reihe) * (innen if b > 0.71 else innen * 0.97)
             _punkte.append(mitte_i + quer * (h * reihe))
             var c := farbe
             if mit_kante:
@@ -251,7 +278,7 @@ func band(mitte: PackedVector2Array, halb: PackedFloat32Array,
                     c = plus
                 elif reihe < 0.0:
                     c = minus
-            c.a *= d * REIHEN_DECKUNG[r]
+            c.a *= d * (1.0 if kante_fest > 0.0 and mit_kante else REIHEN_DECKUNG[r])
             _farben.append(c)
 
     for i in n - 1:
@@ -350,7 +377,8 @@ func klecks(ort: Vector2, radius: float, farbe: Color, saat := 0,
     if kante.a > 0.0:
         # Erst der Umriss, dann der Koerper darueber - ein Umriss ueber der
         # Figur waere ein Fleck, einer unter ihr waere keiner.
-        _kranz(ort, radius, radius + maxf(1.6, radius * 0.17), kante, saat, ecken)
+        var rand := kante_fest if kante_fest > 0.0 else maxf(1.6, radius * 0.17)
+        _kranz(ort, radius, radius + rand, kante, saat, ecken)
     _schliesse_roh()
     var basis := _punkte.size()
     _punkte.append(ort)

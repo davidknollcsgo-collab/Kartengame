@@ -105,9 +105,23 @@ const SOLD_ZUG := 620.0
 ## dreitausend davon im Feld, und jeder kostet eine Abstandsrechnung.
 const SOLD_DAUER := 22.0
 
+## **Was man sieht, in Punkten des Feldes** - die halbe Breite und die halbe
+## Hoehe des Bildes bei 720 x 1280, eine Wahrheit fuer Bild und Gefecht.
+## Eintritt, Nachholen, Leine und der Daumen haengen daran, ebenso die
+## Waechter, die zaehlen, was im Bild steht.
+##
+## Bis Oktober 2026 stand hier stillschweigend 360 x 640, und jede Zahl
+## darunter war von Hand daraus gerechnet. Seit die Kamera weiter weg steht
+## (`ZOOM` 0,8, die Vorlage zeigte mehr Feld und kleinere Figuren), waere
+## jede dieser Zahlen einzeln falsch geworden.
+const BILD_HALB_X := 450.0
+const BILD_HALB_Y := 800.0
+## Wieviel Feld ein Bildpunkt des Schirms zeigt: 1 / 0,8.
+const ZOOM := 0.8
+
 ## Wo Feinde eintreten: knapp außerhalb dessen, was man sieht. Näher wäre
 ## ein Erscheinen aus dem Nichts, weiter kostet nur Laufzeit.
-const EINTRITT_RADIUS := 760.0
+const EINTRITT_RADIUS := BILD_HALB_Y * 1.19
 ## **Wer zurückfällt, wird zurückgeholt** - auf den Eintrittsring, knapp
 ## außerhalb der Sicht. Hier stand `HEIMHOL_RADIUS = 1500`, und der Held lief
 ## der Horde davon: Tempo 200 gegen 58 bis 92. Gemessen lebten nach zehn Minuten 2269 Feinde, im
@@ -116,7 +130,7 @@ const EINTRITT_RADIUS := 760.0
 ##
 ## Knapp außerhalb der halben Bilddiagonale (734): wer weiter weg ist, ist
 ## für das Bild verloren und für das Gefecht auch.
-const NACHHOL_RADIUS := 950.0
+const NACHHOL_RADIUS := BILD_HALB_Y * 1.48
 ## Halber Öffnungswinkel des Kegels um den Laufweg, in den nachgeholt wird.
 ##
 ## **PI, also rundum - nicht nach vorn.** Der erste Anlauf holte in einen
@@ -143,7 +157,7 @@ const NACHHOL_KEGEL := PI
 ## und eine feste Zahl waere irgendwann die langsamere. Die Leine liegt knapp
 ## unter der halben Bild**breite** (360) und nicht der halben Hoehe: das Bild
 ## steht hochkant, und wer nach der Seite flieht, haette ihn sonst am Rand.
-const WARLORD_LEINE := 330.0
+const WARLORD_LEINE := BILD_HALB_X * 0.917
 const WARLORD_AUFHOLEN := 1.25
 
 ## **Feinde weichen einander aus.** Ohne das lief jeder gerade auf den
@@ -157,7 +171,12 @@ const WARLORD_AUFHOLEN := 1.25
 ## nur nicht decken.
 const TRENN_ZELLE := 64.0
 const TRENN_FEDER := 12.0
-const TRENN_NACHBARN := 10
+## **Sechzehn, nicht zehn.** Mit zehn Pruefungen je Feind kam ein Wolfsrudel
+## nicht auseinander: seit die Kamera weiter weg steht (Oktober 2026), sieht
+## man die Rudel schon beim Heranlaufen, und im 95. Perzentil lagen 7 % der
+## Feinde im Bild zur Haelfte auf einem anderen - fast nur Woelfe. Mit
+## sechzehn 0,0 %, fuer 5,5 % mehr Rechenzeit im ganzen Lauf.
+const TRENN_NACHBARN := 16
 const TRENN_ENGE := 0.85
 ## Wie oft getrennt wird. Eine Menge ordnet sich nicht sechzigmal je Sekunde
 ## neu, und der Durchgang ist der teuerste des ganzen Schritts.

@@ -27,20 +27,36 @@ extends RefCounted
 
 ## --- Der Grund ---
 
-## Entsaettigt und mittelhell. Farbige Figuren brauchen einen Grund, der
-## selbst keine Farbe sein will; ein sattes Gruen macht jede gruene Figur
-## unsichtbar und jede rote laut.
-const BODEN := Color(0.804, 0.776, 0.694)
-## Was auf dem Boden liegt - Graeser, Steine, Faser.
-const GRUND_ZIER := Color(0.686, 0.663, 0.584)
-## **Der Boden hat Flecken.** Ein einfarbiger Grund liest sich als Papier und
-## nicht als Feld. Erde ist dunkler und waermer, Gras gruenstichig - beide so
-## blass, dass keine Figur darin verschwindet.
-const ERDE := Color(0.690, 0.627, 0.522)
-const GRASGRUND := Color(0.706, 0.722, 0.584)
-const HALM := Color(0.427, 0.478, 0.333)
+## **Warmer Sand, nicht graues Papier.** Bis Oktober 2026 stand hier ein
+## entsaettigtes Beige mit der Begruendung, ein satter Grund mache jede Figur
+## derselben Farbe unsichtbar. Das stimmte, solange die Kante ein Bruchteil
+## des Strichs war; seit jede Figur im Pixelbild einen ganzen Bildpunkt
+## Umriss traegt (`umriss.gdshader`), trennt der Umriss und nicht der
+## Abstand der Farben. Die Vorlage des Nutzers zeigte eine Landkarte: Sand,
+## Wiesen, Baeume, Wasser.
+const BODEN := Color(0.847, 0.757, 0.553)
+## Was auf dem Boden liegt - Kiesel, Faser.
+const GRUND_ZIER := Color(0.722, 0.631, 0.447)
+## Wege und Erde: dunkler und roetlicher als der Sand.
+const ERDE := Color(0.737, 0.616, 0.427)
+## Wiese: gedaempftes Salbeigruen, heller als jede gruene Sorte und weit weg
+## vom Giftgruen der Armbruster.
+const WIESE := Color(0.553, 0.620, 0.392)
+const WIESE_TIEF := Color(0.459, 0.533, 0.318)
+## Aelter, aber noch gebraucht: der Grasgrund eines Flecks.
+const GRASGRUND := Color(0.620, 0.667, 0.443)
+const HALM := Color(0.380, 0.467, 0.255)
 ## Seltene kleine Blueten. Nicht Gold (Sold), nicht Zinnober (Gefahr).
-const BLUETE := Color(0.902, 0.878, 0.784)
+const BLUETE := Color(0.957, 0.937, 0.871)
+## Baumkronen und Buesche: dunkler als die Wiese, damit ein Baum auf ihr steht.
+const LAUB := Color(0.341, 0.494, 0.271)
+const LAUB_TIEF := Color(0.220, 0.353, 0.192)
+const STEIN := Color(0.671, 0.651, 0.608)
+const HOLZ := Color(0.502, 0.365, 0.231)
+## **Wasser ist kein Blau.** Blau traegt der Held und sonst niemand; ein
+## Teich in seiner Farbe waere eine zweite Antwort auf *wo bin ich*.
+const WASSER := Color(0.373, 0.580, 0.592)
+const WASSER_HELL := Color(0.635, 0.788, 0.769)
 
 ## --- Die Kante ---
 
@@ -91,11 +107,11 @@ const HELD_GLANZ := Color(0.694, 0.867, 1.0)
 ## und die beiden Schweren sind die einzigen, die Rot tragen duerfen - denn
 ## Rot heisst hier Gefahr, und sie sind es.
 const SORTE: PackedColorArray = [
-    Color(0.545, 0.427, 0.310),   # Strolch  - Leder, stumpf
-    Color(0.427, 0.451, 0.482),   # Wolf     - Fellgrau, kalt
-    Color(0.325, 0.518, 0.345),   # Spiesser - Waldgruen
-    Color(0.608, 0.690, 0.235),   # Armbruster - Giftgruen, hell
-    Color(0.541, 0.361, 0.647),   # Treiber  - Violett
+    Color(0.612, 0.431, 0.278),   # Strolch  - Leder, stumpf
+    Color(0.525, 0.553, 0.604),   # Wolf     - Fellgrau, kalt
+    Color(0.259, 0.537, 0.310),   # Spiesser - Waldgruen
+    Color(0.682, 0.761, 0.188),   # Armbruster - Giftgruen, hell
+    Color(0.584, 0.329, 0.737),   # Treiber  - Violett
     Color(0.722, 0.271, 0.231),   # Ritter   - Gebranntes Rot
     Color(0.490, 0.110, 0.180),   # Warlord  - Dunkles Blutrot
 ]

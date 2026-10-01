@@ -1,17 +1,76 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/spiel/zug_lauf.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/spiel/feld.gd" id="2"]
 [ext_resource type="Script" path="res://scripts/spiel/zug_hud.gd" id="3"]
+[ext_resource type="Script" path="res://scripts/spiel/welt.gd" id="4"]
+[ext_resource type="Shader" path="res://shaders/umriss.gdshader" id="5"]
+[ext_resource type="Shader" path="res://shaders/loch.gdshader" id="6"]
+
+[sub_resource type="ShaderMaterial" id="umriss"]
+shader = ExtResource("5")
+
+[sub_resource type="ShaderMaterial" id="loch"]
+shader = ExtResource("6")
 
 [node name="Gefecht" type="Node2D"]
 script = ExtResource("1")
 
-[node name="Kamera" type="Camera2D" parent="."]
+[node name="Bild" type="CanvasLayer" parent="."]
+layer = -1
 
-[node name="Feld" type="Node2D" parent="."]
-z_index = -10
+[node name="Boden" type="SubViewportContainer" parent="Bild"]
+texture_filter = 1
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+stretch = true
+stretch_shrink = 3
+
+[node name="Ansicht" type="SubViewport" parent="Bild/Boden"]
+handle_input_locally = false
+canvas_item_default_texture_filter = 0
+size = Vector2i(240, 427)
+render_target_update_mode = 4
+
+[node name="Kamera" type="Camera2D" parent="Bild/Boden/Ansicht"]
+
+[node name="Feld" type="Node2D" parent="Bild/Boden/Ansicht"]
 script = ExtResource("2")
+
+[node name="Figuren" type="SubViewportContainer" parent="Bild"]
+texture_filter = 1
+material = SubResource("umriss")
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+stretch = true
+stretch_shrink = 3
+
+[node name="Ansicht" type="SubViewport" parent="Bild/Figuren"]
+transparent_bg = true
+handle_input_locally = false
+canvas_item_default_texture_filter = 0
+size = Vector2i(240, 427)
+render_target_update_mode = 4
+
+[node name="Kamera" type="Camera2D" parent="Bild/Figuren/Ansicht"]
+
+[node name="Hinten" type="Node2D" parent="Bild/Figuren/Ansicht"]
+script = ExtResource("4")
+
+[node name="Loch" type="Node2D" parent="Bild/Figuren/Ansicht"]
+material = SubResource("loch")
+script = ExtResource("4")
+teil = 1
+
+[node name="Vorn" type="Node2D" parent="Bild/Figuren/Ansicht"]
+script = ExtResource("4")
+teil = 2
 
 [node name="Oberflaeche" type="CanvasLayer" parent="."]
 
