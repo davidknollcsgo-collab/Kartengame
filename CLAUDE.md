@@ -184,6 +184,12 @@ Sortenfarben bleiben (satter), Kamera etwas weiter weg.
   Aufstieg ist ein **Banner** mit Spitze und Burg (`Zeichen.burg_bild`).
   Dabei fiel auf: `_riegel` prüfte `bis.x - von.x < 1` und warf jede
   senkrechte und jede nach links laufende Linie weg — jetzt die Länge.
+* **Gemessen** (Saat 7, Debug-Build, Median je Bild, nacheinander):
+  Minute 1 **17 ms**, Minute 6 **19–20 ms**, Minute 9 **25–29 ms**. Die
+  weitere Kamera zeigt mehr Horde (Minute 1: 88 statt 64 Feinde im Lauf);
+  `VOLL_NAH` steht deshalb auf 24 statt 40 — die feinen Glieder der
+  Vollfassung fallen im Pixelbild ohnehin unter einen Bildpunkt, und mit 40
+  kostete Minute 6 noch 24–25 ms.
 
 ## Godot beschaffen
 

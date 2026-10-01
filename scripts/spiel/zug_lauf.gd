@@ -603,7 +603,7 @@ func _im_bild(ort: Vector2, rand: float) -> bool:
         and d.y > -_sicht.y - 30.0 and d.y < _sicht.y + rand
 
 
-const VOLL_NAH := 40
+const VOLL_NAH := 24
 var _voll_bis := INF
 
 ## Die Sparfassung je Sorte und Blickrichtung, einmal gezeichnet
