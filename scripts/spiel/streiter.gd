@@ -129,7 +129,10 @@ static func _arm(tu: Tusche, schulter: Vector2, hand: Vector2, dicke: float,
 ## die Freistellung darunter.
 static func held(tu: Tusche, ort: Vector2, h: float, blick: float,
         phase: float, waffe_winkel: float, farbe := Palette.HELD,
-        glanz := Palette.HELD_GLANZ) -> void:
+        glanz := Palette.HELD_GLANZ, klasse := 0, schlag := 1.0) -> void:
+    # **Der Hammertraeger ist breiter.** Er ist der langsamste der vier und
+    # schlaegt am haertesten - das soll man ihm ansehen, bevor er schlaegt.
+    var wucht := 1.45 if klasse == KLASSE_HAMMER else 1.0
     var hueft := ort + Vector2(0.0, -h * 0.46)
     var brust := ort + Vector2(h * 0.02 * blick, -h * 0.76)
     var kopf := ort + Vector2(h * 0.04 * blick, -h * 0.92)
@@ -144,49 +147,188 @@ static func held(tu: Tusche, ort: Vector2, h: float, blick: float,
     tu.strang(PackedVector2Array([schulter + Vector2(-h * 0.03 * blick, 0.0),
         (schulter + umhang_unten) * 0.5 + Vector2(-h * 0.07 * blick, 0.0),
         umhang_unten]),
-        PackedFloat32Array([h * 0.16, h * 0.24, h * 0.30]),
+        PackedFloat32Array([h * 0.16, h * 0.24 * wucht, h * 0.30 * wucht]),
         farbe.darkened(0.38), 8, Palette.UMRISS)
 
-    _beine(tu, hueft, h, blick, phase, h * 0.155, farbe)
-    _rumpf(tu, hueft, brust, h * 0.22, farbe)
+    # Der Koecher haengt auf dem Ruecken, ueber dem Umhang und hinter dem
+    # Koerper: schraeg, mit drei Federn oben.
+    if klasse == KLASSE_BOGEN:
+        var k_oben := schulter + Vector2(-h * 0.12 * blick, -h * 0.10)
+        var k_unten := hueft + Vector2(-h * 0.13 * blick, -h * 0.02)
+        tu.zug(k_unten, k_oben, h * 0.075, LEDER, 0.5, 0.0, 0.0, 4,
+            Palette.UMRISS)
+        for i in 3:
+            var f := k_oben + Vector2((float(i) - 1.0) * h * 0.025, 0.0)
+            tu.zug(f, f + Vector2(-h * 0.02 * blick, -h * 0.06), h * 0.024,
+                HELL, 0.2, 0.0, 0.0, 3)
+
+    _beine(tu, hueft, h, blick, phase, h * 0.155 * wucht, farbe)
+    _rumpf(tu, hueft, brust, h * 0.22 * wucht, farbe)
     # Die Schnalle: ein heller Punkt auf dem Guertel, in seinem Glanz und
     # nicht in Gold - Gold heisst Sold.
     tu.klecks(hueft.lerp(brust, 0.12) + Vector2(h * 0.02 * blick, 0.0),
         h * 0.018, glanz, 3)
 
-    # Der Helm: ein Klecks mit Nasal und Sehschlitz. Das Nasal ist der
-    # Unterschied zwischen einem Topf und einem Helm, der Schlitz der
-    # zwischen einem Helm und einem Kopf.
-    tu.klecks(kopf, h * 0.064, farbe, int(ort.x), Palette.UMRISS)
-    tu.zug(kopf + Vector2(-h * 0.01 * blick, -h * 0.004),
-        kopf + Vector2(h * 0.058 * blick, -h * 0.006), h * 0.016,
-        Palette.UMRISS, 0.6, 0.0, 0.0, 3)
-    tu.zug(kopf + Vector2(h * 0.05 * blick, -h * 0.01),
-        kopf + Vector2(h * 0.055 * blick, h * 0.045), h * 0.022,
-        glanz, 0.4, 0.2, 0.0, 3)
-    # Ein Kamm oben auf dem Helm, nach hinten auslaufend.
-    tu.zug(kopf + Vector2(h * 0.03 * blick, -h * 0.06),
-        kopf + Vector2(-h * 0.07 * blick, -h * 0.03), h * 0.030,
-        glanz, 0.25, 0.4, -h * 0.02 * blick, 4, Palette.UMRISS)
+    # **Der Schild sitzt am anderen Arm, vor der Brust.** Er ist das, was den
+    # Schwertkaempfer vom Rest trennt: der einzige, der etwas zwischen sich
+    # und die Horde haelt.
+    if klasse == KLASSE_SCHWERT:
+        var schild := brust + Vector2(-h * 0.09 * blick, h * 0.14)
+        tu.klecks(schild, h * 0.115, farbe.darkened(0.20), int(ort.x),
+            Palette.UMRISS)
+        tu.klecks(schild, h * 0.080, farbe.lerp(glanz, 0.25), int(ort.y))
+        tu.klecks(schild, h * 0.028, STAHL, 3, Palette.UMRISS)
 
-    # Der Arm und die Klinge. Der Winkel kommt von aussen: so zeigt die
-    # Waffe wirklich dorthin, wo der Schlag gerechnet wurde.
-    var hand := schulter + Vector2(cos(waffe_winkel), sin(waffe_winkel)) * h * 0.30
+    _kopf(tu, kopf, h, blick, farbe, glanz, klasse, int(ort.x))
+
+    # Der Arm und die Waffe. Der Winkel kommt von aussen: so zeigt die Waffe
+    # wirklich dorthin, wo der Schlag gerechnet wurde.
+    var r := Vector2(cos(waffe_winkel), sin(waffe_winkel))
+    var reich := 0.30
+    if klasse == KLASSE_SPEER:
+        # Der Stoss: die Hand faehrt aus und kehrt zurueck.
+        reich = 0.22 + 0.16 * sin(clampf(schlag, 0.0, 1.0) * PI)
+    elif klasse == KLASSE_BOGEN:
+        # Der Rueckstoss: die Hand zuckt kurz zurueck.
+        reich = 0.26 - 0.06 * (1.0 - clampf(schlag * 2.0, 0.0, 1.0))
+    var hand := schulter + r * h * reich
     tu.strang(PackedVector2Array([schulter, _gelenk(schulter, hand, h * 0.05), hand]),
-        PackedFloat32Array([h * 0.10, h * 0.075, h * 0.050]), farbe, 6,
-        Palette.UMRISS)
+        PackedFloat32Array([h * 0.10 * wucht, h * 0.075 * wucht, h * 0.050 * wucht]),
+        farbe, 6, Palette.UMRISS)
     # Schulterstueck: ein Klecks im Glanz, wo der Arm ansetzt.
-    tu.klecks(schulter + Vector2(-h * 0.01 * blick, h * 0.01), h * 0.050,
+    tu.klecks(schulter + Vector2(-h * 0.01 * blick, h * 0.01), h * 0.050 * wucht,
         glanz.lerp(farbe, 0.45), int(ort.y), Palette.UMRISS)
-    # **Die Klinge traegt nicht die Farbe des Helden.** Stahl ist hell und
-    # kalt; faerbte man sie wie sein Gewand, waere sie ein dritter Arm.
-    var spitze := hand + Vector2(cos(waffe_winkel), sin(waffe_winkel)) * h * 0.52
-    tu.zug(hand, spitze, h * 0.040, glanz, 0.2, 0.35, h * 0.012,
+    match klasse:
+        KLASSE_BOGEN:
+            _armbrust(tu, hand, r, h)
+        KLASSE_SPEER:
+            _speer(tu, hand, r, h)
+        KLASSE_HAMMER:
+            _hammer(tu, hand, r, h)
+        _:
+            _schwert(tu, hand, r, h)
+
+
+const KLASSE_SCHWERT := 0
+const KLASSE_BOGEN := 1
+const KLASSE_SPEER := 2
+const KLASSE_HAMMER := 3
+const HOLZ := Color(0.47, 0.35, 0.22)
+const LEDER := Color(0.42, 0.30, 0.20)
+const HAUT := Color(0.86, 0.72, 0.60)
+
+
+## **Vier Koepfe, vier Helden.** Vorher trugen alle denselben Helm, und die
+## Klassen unterschieden sich nur in der Farbe - die aber ist bei allen vier
+## ein Blau. Was einer traegt, sagt, wie er kaempft.
+static func _kopf(tu: Tusche, kopf: Vector2, h: float, blick: float,
+        farbe: Color, glanz: Color, klasse: int, saat: int) -> void:
+    match klasse:
+        KLASSE_BOGEN:
+            # Die Kapuze: ein Klecks mit dunklem Gesicht vorn und einem
+            # Zipfel, der nach hinten faellt.
+            tu.zug(kopf + Vector2(-h * 0.01 * blick, -h * 0.04),
+                kopf + Vector2(-h * 0.11 * blick, h * 0.03), h * 0.045,
+                farbe.darkened(0.25), 0.2, 0.3, -h * 0.02 * blick, 4,
+                Palette.UMRISS)
+            tu.klecks(kopf, h * 0.068, farbe.darkened(0.12), saat, Palette.UMRISS)
+            tu.klecks(kopf + Vector2(h * 0.030 * blick, h * 0.008), h * 0.032,
+                Palette.UMRISS.lerp(farbe, 0.15), 3)
+        KLASSE_SPEER:
+            # Die Lederkappe: ein Kopf mit Gesicht, darueber eine Kappe mit
+            # Krempe - kein Metall, er ist der Leichteste.
+            tu.klecks(kopf, h * 0.060, HAUT, saat, Palette.UMRISS)
+            tu.zug(kopf + Vector2(-h * 0.065 * blick, -h * 0.012),
+                kopf + Vector2(h * 0.070 * blick, -h * 0.018), h * 0.050,
+                LEDER, 0.45, 0.0, -h * 0.035, 5, Palette.UMRISS)
+            tu.zug(kopf + Vector2(h * 0.01 * blick, -h * 0.004),
+                kopf + Vector2(h * 0.09 * blick, h * 0.002), h * 0.016,
+                LEDER.darkened(0.3), 0.3, 0.0, 0.0, 3)
+            tu.klecks(kopf + Vector2(h * 0.035 * blick, h * 0.012), h * 0.009,
+                Palette.UMRISS, 3)
+        KLASSE_HAMMER:
+            # Der schwere Topfhelm: groesser, oben flach, mit Sehschlitz und
+            # einem Band im Glanz.
+            tu.klecks(kopf, h * 0.074, farbe.darkened(0.10), saat, Palette.UMRISS)
+            tu.zug(kopf + Vector2(-h * 0.07, -h * 0.048),
+                kopf + Vector2(h * 0.07, -h * 0.048), h * 0.040,
+                farbe.darkened(0.10), 0.5, 0.0, 0.0, 4, Palette.UMRISS)
+            tu.zug(kopf + Vector2(-h * 0.05 * blick, -h * 0.004),
+                kopf + Vector2(h * 0.07 * blick, -h * 0.004), h * 0.018,
+                Palette.UMRISS, 0.5, 0.0, 0.0, 3)
+            tu.zug(kopf + Vector2(0.0, -h * 0.075), kopf + Vector2(0.0, h * 0.06),
+                h * 0.020, glanz, 0.5, 0.0, 0.0, 3)
+        _:
+            # Der Helm: ein Klecks mit Nasal und Sehschlitz. Das Nasal ist
+            # der Unterschied zwischen einem Topf und einem Helm, der Schlitz
+            # der zwischen einem Helm und einem Kopf.
+            tu.klecks(kopf, h * 0.064, farbe, saat, Palette.UMRISS)
+            tu.zug(kopf + Vector2(-h * 0.01 * blick, -h * 0.004),
+                kopf + Vector2(h * 0.058 * blick, -h * 0.006), h * 0.016,
+                Palette.UMRISS, 0.6, 0.0, 0.0, 3)
+            tu.zug(kopf + Vector2(h * 0.05 * blick, -h * 0.01),
+                kopf + Vector2(h * 0.055 * blick, h * 0.045), h * 0.022,
+                glanz, 0.4, 0.2, 0.0, 3)
+            # Ein Kamm oben auf dem Helm, nach hinten auslaufend.
+            tu.zug(kopf + Vector2(h * 0.03 * blick, -h * 0.06),
+                kopf + Vector2(-h * 0.07 * blick, -h * 0.03), h * 0.030,
+                glanz, 0.25, 0.4, -h * 0.02 * blick, 4, Palette.UMRISS)
+
+
+## **Keine Waffe traegt die Farbe des Helden.** Stahl ist hell und kalt,
+## Holz braun; faerbte man sie wie sein Gewand, waere sie ein dritter Arm.
+static func _schwert(tu: Tusche, hand: Vector2, r: Vector2, h: float) -> void:
+    tu.zug(hand, hand + r * h * 0.52, h * 0.055, STAHL, 0.2, 0.35, h * 0.012,
         6, Palette.UMRISS)
-    # Parierstange: quer, kurz. Ohne sie ist es ein Stock.
-    var quer := Vector2(cos(waffe_winkel), sin(waffe_winkel)).orthogonal()
-    tu.zug(hand - quer * h * 0.055, hand + quer * h * 0.055, h * 0.022,
-        Palette.SOLD, 0.5, 0.0, 0.0, 3)
+    # Parierstange: quer, kurz. Ohne sie ist es ein Stock. **Nicht in Gold**
+    # - Gold heisst Sold, und so stand sie bis Oktober 2026 im Bild.
+    var quer := r.orthogonal()
+    tu.zug(hand - quer * h * 0.055, hand + quer * h * 0.055, h * 0.024,
+        STAHL.darkened(0.35), 0.5, 0.0, 0.0, 3, Palette.UMRISS)
+
+
+## Die Armbrust: Schaft in Holz, quer davor der Bogen in Stahl, gespannt.
+static func _armbrust(tu: Tusche, hand: Vector2, r: Vector2, h: float) -> void:
+    var vorn := hand + r * h * 0.30
+    tu.zug(hand - r * h * 0.12, vorn, h * 0.058, HOLZ, 0.5, 0.0, 0.0, 4,
+        Palette.UMRISS)
+    var quer := r.orthogonal()
+    var bogen_mitte := vorn - r * h * 0.02
+    var a := bogen_mitte + quer * h * 0.17 - r * h * 0.07
+    var b := bogen_mitte - quer * h * 0.17 - r * h * 0.07
+    tu.strang(PackedVector2Array([a, bogen_mitte + r * h * 0.03, b]),
+        PackedFloat32Array([h * 0.022, h * 0.050, h * 0.022]), STAHL.darkened(0.45), 6,
+        Palette.UMRISS)
+    # Die Sehne, fein und hell: sie laeuft zur Mitte des Schafts zurueck.
+    var nuss := hand + r * h * 0.06
+    tu.zug(a, nuss, h * 0.014, Palette.UMRISS, 0.5, 0.0, 0.0, 2)
+    tu.zug(b, nuss, h * 0.014, Palette.UMRISS, 0.5, 0.0, 0.0, 2)
+
+
+## Der Speer: lang und schraeg, das Ende hinter der Hand, das Blatt weit vorn.
+## Er ist laenger als bei jedem anderen - seine Eigenart ist die Weite.
+static func _speer(tu: Tusche, hand: Vector2, r: Vector2, h: float) -> void:
+    var spitze := hand + r * h * 0.78
+    tu.zug(hand - r * h * 0.30, spitze, h * 0.042, HOLZ, 0.5, 0.0, 0.0, 6,
+        Palette.UMRISS)
+    tu.zug(spitze - r * h * 0.02, spitze + r * h * 0.19, h * 0.075, STAHL,
+        0.3, 0.0, 0.0, 5, Palette.UMRISS)
+
+
+## Der Kriegshammer: kurzer Stiel, schwerer Kopf quer am Ende.
+static func _hammer(tu: Tusche, hand: Vector2, r: Vector2, h: float) -> void:
+    var kopf := hand + r * h * 0.42
+    tu.zug(hand - r * h * 0.06, kopf, h * 0.048, HOLZ, 0.5, 0.0, 0.0, 5,
+        Palette.UMRISS)
+    var quer := r.orthogonal()
+    # Ein Block und kein Zug: `zug()` schwillt zur Mitte an, und der erste
+    # Hammerkopf war deshalb ein blasses Blatt mit spitzen Enden.
+    tu.strang(PackedVector2Array([kopf - quer * h * 0.10, kopf + quer * h * 0.10]),
+        PackedFloat32Array([h * 0.13, h * 0.13]), STAHL.darkened(0.15), 2,
+        Palette.UMRISS)
+    # Der Dorn hinten: ohne ihn liest sich der Kopf als Brett.
+    tu.zug(kopf - quer * h * 0.10, kopf - quer * h * 0.19, h * 0.050,
+        STAHL.darkened(0.30), 0.0, 0.0, 0.0, 3, Palette.UMRISS)
 
 
 ## **Der Held wird freigestellt.**
@@ -251,7 +393,15 @@ static func gefaehrte(tu: Tusche, ort: Vector2, h: float, blick: float,
     var kopf := ort + Vector2(h * 0.03 * blick, -h * 0.89)
     _beine(tu, hueft, h, blick, phase, h * 0.135, farbe)
     _rumpf(tu, hueft, brust, h * 0.20, farbe)
-    tu.klecks(kopf, h * 0.058, farbe, int(ort.x), Palette.UMRISS)
+    # Ein Helm mit Nasal: ohne ihn war der Gefaehrte ein nackter Kopf, und
+    # neben dem behelmten Helden sah er aus wie ein Zuschauer.
+    tu.klecks(kopf, h * 0.060, farbe.darkened(0.12), int(ort.x), Palette.UMRISS)
+    tu.zug(kopf + Vector2(-h * 0.06 * blick, -h * 0.010),
+        kopf + Vector2(h * 0.06 * blick, -h * 0.010), h * 0.022,
+        glanz, 0.5, 0.0, 0.0, 3, Palette.UMRISS)
+    tu.zug(kopf + Vector2(h * 0.045 * blick, -h * 0.01),
+        kopf + Vector2(h * 0.05 * blick, h * 0.045), h * 0.020,
+        Palette.UMRISS, 0.4, 0.2, 0.0, 3)
     # Der Speer in der Hand, und er zuckt beim Schlag nach vorn. Ein Schlag,
     # den man nicht sieht, ist eine Zahl im Protokoll und kein Schlag.
     var aus := h * (0.16 + 0.34 * clampf(schlag / 0.18, 0.0, 1.0))

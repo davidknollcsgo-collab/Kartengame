@@ -197,8 +197,12 @@ func _werte_aus() -> void:
                     Klang.spiele(Klang.Ton.HIEB, 0.9 + randf() * 0.3, 0.5)
                 var w: int = v[1]
                 var richtung: Vector2 = v[2] if v.size() > 2 else _stand.blick
-                _schlag_richtung = richtung
-                _schlag_alter = 0.0
+                # **Die Hand fuehrt nur die eigene Waffe.** Der Held traegt
+                # die seiner Klasse; schluege sie bei jedem Bolzen und jedem
+                # Flegelkreis mit, zappelte sie ohne Pause.
+                if w == Helden.startwaffe(_stand.held):
+                    _schlag_richtung = richtung
+                    _schlag_alter = 0.0
                 if not Waffen.fliegt(w):
                     _hiebe.append({"waffe": w, "richtung": richtung,
                         "alter": 0.0, "dauer": HIEB_DAUER[w],
@@ -714,11 +718,38 @@ func _zeichne_held() -> void:
     # dauernd im Takt einer Sinuskurve, unabhaengig von jedem Schlag. Jetzt
     # zieht sie beim Schlag einmal durch - von hinten nach vorn ueber die
     # Schlagrichtung - und haengt dazwischen ruhig in Blickrichtung.
-    var ruhe := s.blick.angle() + 0.35 * blick + sin(_zeit * 2.2) * 0.06
-    if _schlag_alter < 0.22:
-        var t := _schlag_alter / 0.22
+    # **Jede Klasse haelt ihre Waffe anders**, und jede schlaegt anders: das
+    # Schwert zieht durch, der Speer stoesst, die Armbrust zielt und zuckt
+    # zurueck, der Hammer kommt von oben. In Ruhe liegt der Hammer auf der
+    # Schulter und der Speer steht schraeg nach oben.
+    var klasse := s.held
+    var wiege := sin(_zeit * 2.2) * 0.06
+    var ruhe := s.blick.angle() + 0.35 * blick + wiege
+    var dauer := 0.22
+    match klasse:
+        Streiter.KLASSE_BOGEN:
+            ruhe = Vector2(blick, 0.15).angle() + wiege * 0.5
+            dauer = 0.45
+        Streiter.KLASSE_SPEER:
+            ruhe = Vector2(blick, -0.55).angle() + wiege * 0.5
+        Streiter.KLASSE_HAMMER:
+            ruhe = Vector2(-0.35 * blick, -1.0).angle() + wiege * 0.5
+            dauer = 0.32
+    var schlag := 1.0
+    if _schlag_alter < dauer:
+        var t := _schlag_alter / dauer
+        schlag = t
         var ziel := _schlag_richtung.angle()
-        _waffe_winkel = ziel + lerpf(-1.1, 0.9, 1.0 - pow(1.0 - t, 3.0)) * blick
+        var e := 1.0 - pow(1.0 - t, 3.0)
+        match klasse:
+            Streiter.KLASSE_BOGEN, Streiter.KLASSE_SPEER:
+                _waffe_winkel = lerp_angle(_waffe_winkel, ziel, 0.6)
+            Streiter.KLASSE_HAMMER:
+                # Von hinten oben ueber den Kopf auf das Ziel.
+                var oben := Vector2(-0.35 * blick, -1.0).angle()
+                _waffe_winkel = lerp_angle(oben, ziel, e)
+            _:
+                _waffe_winkel = ziel + lerpf(-1.1, 0.9, e) * blick
     else:
         _waffe_winkel = lerp_angle(_waffe_winkel, ruhe, 0.25)
     # Das Gewand kommt aus dem Spielstand und nicht aus dem Gefecht: eine
@@ -733,7 +764,7 @@ func _zeichne_held() -> void:
     if _wunde > 0.0:
         kleid = kleid.lerp(ZINNOBER, _wunde * 0.7)
     Streiter.held(_tu, s.ort, HELD_HOEHE, blick, phase, _waffe_winkel,
-        kleid, glanz)
+        kleid, glanz, klasse, schlag)
 
     # Der Flegel steht dauernd im Feld, also gehoert er ins Bild und nicht in
     # eine Wirkung: was Schaden macht, muss man sehen.
