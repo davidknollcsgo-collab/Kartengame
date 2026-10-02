@@ -40,6 +40,12 @@ var _lauf: Node2D
 ## gezeichnet. Ausgeloest wird erst beim Loslassen ueber demselben Knopf.
 var _gedrueckt := ""
 var _pergament: ImageTexture
+var _spur := 1.0
+var _spur_halt := 0.0
+var _sold_alt := 0
+var _sold_puls := 0.0
+var _stufe_alt := 1
+var _stufe_puls := 0.0
 
 ## **Zwei Schriften, und jede hat ihre Aufgabe.** Bricolage, kraeftig, fuer
 ## das, was einen Schirm benennt - Titel, Namen, Knoepfe; Rajdhani fuer
@@ -68,8 +74,37 @@ func _ready() -> void:
     set_process(true)
 
 
-func _process(_d: float) -> void:
+func _process(d: float) -> void:
+    _folge(d)
     queue_redraw()
+
+
+## Was die Anzeige ueber die Zeit nachzieht: der helle Rest im Lebensbalken,
+## das Aufleuchten von Sold und Stufe.
+func _folge(d: float) -> void:
+    _sold_puls = maxf(0.0, _sold_puls - d * 3.0)
+    _stufe_puls = maxf(0.0, _stufe_puls - d * 1.5)
+    if _lauf == null or _lauf.lage != 1:
+        _spur = 1.0
+        return
+    var st: Gefecht.Stand = _lauf.stand()
+    if st == null:
+        return
+    var anteil := st.leben / maxf(1.0, st.leben_voll)
+    if anteil >= _spur:
+        _spur = anteil
+        _spur_halt = 0.0
+    else:
+        # Erst kurz stehen, dann ablaufen - sonst sieht man nicht, was fehlt.
+        _spur_halt += d
+        if _spur_halt > 0.35:
+            _spur = move_toward(_spur, anteil, d * 0.8)
+    if st.sold > _sold_alt:
+        _sold_puls = 1.0
+    _sold_alt = st.sold
+    if st.stufe > _stufe_alt:
+        _stufe_puls = 1.0
+    _stufe_alt = st.stufe
 
 
 func _rand() -> float:
@@ -372,16 +407,24 @@ func _linie(a: Vector2, b: Vector2, farbe: Color, dicke: int, mass := M) -> void
             p.y += sy
 
 
-## Ein Balken im Pixelraster: dunkler Rand, Grund, Fuellung, Glanzlinie.
-func _balken(r: Rect2, anteil: float, farbe: Color) -> void:
+## Ein Balken im Pixelraster: dunkler Rand, Grund, Fuellung, oben Licht und
+## unten Schatten. `grund = false` legt nur die Fuellung ueber einen Balken,
+## der schon steht (der helle Rest nach einem Treffer liegt darunter).
+func _balken(r: Rect2, anteil: float, farbe: Color, grund := true) -> void:
     r = Rect2((r.position / M).round() * M, (r.size / M).round() * M)
-    _flaeche(r, RAHMEN_TIEF)
     var innen := r.grow(-M)
-    _flaeche(innen, Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.55))
+    if grund:
+        _flaeche(r, RAHMEN_TIEF)
+        _flaeche(innen, Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.55))
+        _flaeche(Rect2(innen.position, Vector2(innen.size.x, M)),
+            Color(TINTE.r, TINTE.g, TINTE.b, 0.25))
     var b := roundf(innen.size.x * clampf(anteil, 0.0, 1.0) / M) * M
     if b > 0.0:
         _flaeche(Rect2(innen.position, Vector2(b, innen.size.y)), farbe)
         _flaeche(Rect2(innen.position, Vector2(b, M)), farbe.lightened(0.3))
+        if innen.size.y > M * 3.0:
+            _flaeche(Rect2(innen.position + Vector2(0.0, innen.size.y - M), Vector2(b, M)),
+                farbe.darkened(0.25))
 
 
 ## Das Wappen in der Farbe des gewaehlten Helden und Gewands.
@@ -639,31 +682,53 @@ func _im_lauf() -> void:
             _flaeche(Rect2(d, 0.0, 12.0, h), c)
             _flaeche(Rect2(b - d - 12.0, 0.0, 12.0, h), c)
 
+    # **Zwei Plaketten statt Zahlen im Gedraenge.** Links, was den Lauf
+    # beendet (Leben) und was ihn wachsen laesst (Erfahrung); rechts, was er
+    # bisher gebracht hat. Darunter die Waffen und Zuege, die man fuehrt.
+    var links := Rect2(12.0, oben - 8.0, roundf(b * 0.64 / M) * M, 96.0)
+    var rechts := Rect2(b - 12.0 - roundf(b * 0.30 / M) * M, oben - 8.0,
+        roundf(b * 0.30 / M) * M, 96.0)
+    _plakette(links)
+    _plakette(rechts)
+
     # **Das Leben ist die lauteste Anzeige**, denn es ist der einzige Grund,
-    # warum ein Lauf endet. Links davor das Wappen: die Fahne, unter der man
-    # kaempft.
-    _balken(Rect2(66.0, oben + 12.0, b - 92.0, 24.0),
-        st.leben / maxf(1.0, st.leben_voll), ZINNOBER)
-    _wappen(Vector2(36.0, oben + 30.0))
+    # warum ein Lauf endet. Was ein Treffer nahm, steht noch einen Moment hell
+    # im Balken: man sieht, wie viel es war.
+    _symbol("HERZ", Vector2(links.position.x + 32.0, links.position.y + 31.0), true, 2.0)
+    var leben := Rect2(links.position.x + 56.0, links.position.y + 15.0,
+        links.size.x - 72.0, 30.0)
+    _balken(leben, _spur, Palette.BLITZ)
+    _balken(leben, st.leben / maxf(1.0, st.leben_voll), ZINNOBER, false)
+    var voll := int(ceilf(st.leben_voll))
+    _mitte("%d / %d" % [mini(int(ceilf(st.leben)), voll), voll], leben, 22, TINTE, _zahl)
     # Erfahrung darunter, schmaler: sie endet nichts, sie verspricht nur.
     var noetig := float(Gunst.stufenkosten(st.stufe))
-    _balken(Rect2(66.0, oben + 42.0, b - 92.0, 12.0),
-        float(st.erfahrung) / maxf(1.0, noetig), Palette.ERFAHRUNG)
+    var lv := "LV %d" % st.stufe
+    var lv_farbe := TINTE.lerp(Palette.HELD.darkened(0.2), _stufe_puls)
+    _zeile(lv, Vector2(links.position.x + 16.0, links.position.y + 79.0), 22, lv_farbe,
+        _kopf)
+    var erf := Rect2(links.position.x + 86.0, links.position.y + 61.0,
+        links.size.x - 102.0, 18.0)
+    _balken(erf, float(st.erfahrung) / maxf(1.0, noetig),
+        Palette.ERFAHRUNG.lightened(0.4 * _stufe_puls))
 
     var m := int(st.zeit) / 60
     var sek := int(st.zeit) % 60
-    _zeile("%d:%02d" % [m, sek], Vector2(26.0, oben + 100.0), 42, TINTE, _zahl)
-    var lv := "LV %d" % st.stufe
-    _zeile(lv, Vector2(b - 26.0 - _breite(lv, 32, _kopf), oben + 98.0), 32,
-        TINTE, _kopf)
-    _symbol("SCHAEDEL", Vector2(40.0, oben + 126.0), true, 2.0)
-    _zeile("%d" % st.erschlagen, Vector2(62.0, oben + 136.0), 28,
+    _mitte("%d:%02d" % [m, sek], Rect2(rechts.position, Vector2(rechts.size.x, 52.0)),
+        40, TINTE, _zahl)
+    var unten_y := rechts.position.y + 70.0
+    _symbol("SCHAEDEL", Vector2(rechts.position.x + 26.0, unten_y), true, 2.0)
+    _zeile("%d" % st.erschlagen, Vector2(rechts.position.x + 44.0, unten_y + 10.0), 24,
         Color(TINTE.r, TINTE.g, TINTE.b, 0.9), _zahl)
     var sold := "%d" % st.sold
-    var sw := _breite(sold, 28, _zahl)
-    _symbol("MUENZE", Vector2(b - 26.0 - sw - 18.0, oben + 126.0), true, 2.0)
-    _zeile(sold, Vector2(b - 26.0 - sw, oben + 136.0), 28,
-        Color(GOLD.r, GOLD.g, GOLD.b, 0.95), _zahl)
+    var sw := _breite(sold, 24, _zahl)
+    var sold_x := rechts.end.x - 16.0 - sw
+    _symbol("MUENZE", Vector2(sold_x - 16.0, unten_y), true, 2.0)
+    _zeile(sold, Vector2(sold_x, unten_y + 10.0), 24,
+        Color(GOLD.r, GOLD.g, GOLD.b, 0.95).lightened(0.35 * _sold_puls), _zahl)
+
+    var unter := _gefuehrt(st, links.end.y + 10.0)
+    _warlord_leiste(st, unter + 10.0)
 
     if st.wartet_auf_wahl:
         _aufstieg(st)
@@ -693,6 +758,96 @@ func _im_lauf() -> void:
         var kopf := von + d.limit_length(72.0)
         _flaeche(Rect2(((kopf - Vector2.ONE * 15.0) / M).round() * M, Vector2.ONE * 30.0),
             Color(TINTE.r, TINTE.g, TINTE.b, 0.40))
+
+
+## **Eine Plakette**: ein kleines Blatt mit zweistreifigem Rand und Schatten.
+## Kleiner als ein Rahmen, ohne Beschlaege - sie steht im Lauf, nicht vor ihm.
+func _plakette(r: Rect2) -> void:
+    r = Rect2((r.position / M).round() * M, (r.size / M).round() * M)
+    _flaeche(Rect2(r.position + Vector2(M, M * 2.0), r.size),
+        Color(TINTE.r, TINTE.g, TINTE.b, 0.35))
+    _blatt(r)
+    _streifen(r, [RAHMEN_TIEF, RAHMEN, RAHMEN_HELL])
+    _flaeche(Rect2(r.position + Vector2(M * 3.0, M * 3.0), Vector2(r.size.x - M * 6.0, M)),
+        Color(1.0, 1.0, 1.0, 0.35))
+
+
+## Ein Kaestchen mit Bild: dunkler Rand, vertiefter Grund, oben ein Licht.
+func _kaestchen(r: Rect2) -> void:
+    r = Rect2((r.position / M).round() * M, (r.size / M).round() * M)
+    _flaeche(Rect2(r.position + Vector2(M, M), r.size), Color(TINTE.r, TINTE.g, TINTE.b, 0.35))
+    _flaeche(r, RAHMEN_TIEF)
+    _flaeche(r.grow(-M), BLATT_TIEF)
+    _flaeche(Rect2(r.position + Vector2(M, M), Vector2(r.size.x - M * 2.0, M)),
+        Color(1.0, 1.0, 1.0, 0.5))
+
+
+## **Was man fuehrt**: je Waffe und Zug ein Kaestchen mit Bild und Stufen.
+## Nur Anzeige, nichts darin ist tippbar - im Lauf gehoert der Finger dem
+## Helden (Zusicherung 19). Gibt die Unterkante zurueck.
+const GEFUEHRT := 48.0
+
+func _gefuehrt(st: Gefecht.Stand, y: float) -> float:
+    var x := 12.0
+    var eintraege: Array = []
+    for w in st.waffen:
+        eintraege.append([true, w, st.waffen[w]])
+    for z in st.zuege:
+        eintraege.append([false, z, st.zuege[z]])
+    if eintraege.is_empty():
+        return y
+    var vorige_waffe := true
+    for e in eintraege:
+        var waffe: bool = e[0]
+        if vorige_waffe and not waffe:
+            x += 12.0
+        vorige_waffe = waffe
+        var r := Rect2(x, y, GEFUEHRT, GEFUEHRT)
+        _kaestchen(r)
+        var mitte := r.position + Vector2(GEFUEHRT * 0.5, 19.0)
+        if waffe:
+            _symbol(_symbol_waffe(e[1]), mitte, true, 2.0)
+        elif e[1] == Gunst.Zug.GEFAEHRTE:
+            _figur("mgef_%s" % _held_schluessel(), Figuren.gefaehrte(0), _held_kleid(),
+                Figuren.GEFAEHRTE_ANKER, mitte + Vector2(0.0, 15.0), 2.0)
+        else:
+            _symbol(_symbol_zug(e[1]), mitte, true, 2.0)
+        # Stufen als Punkte unten im Kaestchen.
+        var hoechst := Waffen.HOECHSTSTUFE if waffe else Gunst.ZUG_HOECHSTSTUFE
+        var stufe: int = e[2]
+        var breit := float(hoechst) * M * 2.0 + float(hoechst - 1) * M
+        var px := r.position.x + (GEFUEHRT - breit) * 0.5
+        for k in hoechst:
+            var punkt := Rect2(((Vector2(px + float(k) * M * 3.0, r.end.y - M * 4.0)) / M)
+                .round() * M, Vector2.ONE * M * 2.0)
+            _flaeche(punkt, Palette.HELD if k < stufe else Color(RAHMEN.r, RAHMEN.g,
+                RAHMEN.b, 0.45))
+        x += GEFUEHRT + 6.0
+    return y + GEFUEHRT
+
+
+## **Der Warlord hat seine eigene Leiste**, in seiner Farbe und nicht in
+## Zinnober: sein Leben ist nicht das des Spielers. Sie steht, solange er
+## lebt - auch wenn er ausserhalb des Bildes ist; dann zeigt der Randpfeil,
+## wo.
+func _warlord_leiste(st: Gefecht.Stand, y: float) -> void:
+    if not st.warlord_da or st.warlord_gefallen:
+        return
+    var w: Gefecht.Feind = null
+    for f in st.feinde:
+        if f.lebt and Feinde.ist_warlord(f.art):
+            w = f
+            break
+    if w == null:
+        return
+    var b := size.x
+    var r := Rect2(roundf(b * 0.12 / M) * M, y, roundf(b * 0.76 / M) * M, 66.0)
+    _plakette(r)
+    _symbol("SCHAEDEL", Vector2(r.position.x + 30.0, r.position.y + 33.0), true, 2.0)
+    _zeile("WARLORD", Vector2(r.position.x + 54.0, r.position.y + 28.0), 20,
+        Palette.sorte(Feinde.Art.WARLORD).darkened(0.2), _kopf)
+    _balken(Rect2(r.position.x + 54.0, r.position.y + 36.0, r.size.x - 70.0, 18.0),
+        w.leben / maxf(1.0, w.leben_voll), Palette.sorte(Feinde.Art.WARLORD))
 
 
 ## **Der Name ueber dem Gefecht** - nur fuer das Feature-Bild des Ladens.
