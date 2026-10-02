@@ -36,6 +36,12 @@ const DINGE := 3
 const MUSTER := 64
 
 var _mitte := Vector2.ZERO
+## **Je Kachel einmal gerechnet.** Der Inhalt einer Kachel haengt nur an
+## ihren Gitterkoordinaten; neu gezeichnet wird, sobald man eine halbe Kachel
+## weiter ist, und dabei stehen fast alle Kacheln schon. Ohne Merken kostete
+## ein Neuzeichnen 43 ms - ein Ruck etwa jede Sekunde, die man laeuft.
+var _kacheln := {}
+const KACHELN_HOECHSTENS := 160
 var _sand: ImageTexture
 var _gras: ImageTexture
 var _erde: ImageTexture
@@ -46,13 +52,14 @@ var _sprites := {}
 
 
 ## **Ein Dreiecksnetz mit einem Muster.** Gesammelt wird ueber alle Kacheln,
-## gespuelt in einem Aufruf.
+## gespuelt in einem Aufruf. Die Dreiecke stehen einzeln, ohne Index: so
+## haengt man das Netz einer gemerkten Kachel mit `append_array` an, ohne
+## jeden Index um seinen Platz zu verschieben.
 class Netz:
     var tex: Texture2D
     var punkte := PackedVector2Array()
     var uvs := PackedVector2Array()
     var farben := PackedColorArray()
-    var idx := PackedInt32Array()
 
     func _init(t: Texture2D) -> void:
         tex = t
@@ -60,35 +67,31 @@ class Netz:
     func _uv(p: Vector2) -> Vector2:
         return p / (Pixel.P * Vector2(tex.get_size()))
 
+    func _ecke(p: Vector2, farbe: Color) -> void:
+        punkte.append(p)
+        uvs.append(_uv(p))
+        farben.append(farbe)
+
     func flaeche(pts: PackedVector2Array, farbe: Color) -> void:
-        var tri := Geometry2D.triangulate_polygon(pts)
-        if tri.is_empty():
-            return
-        var basis := punkte.size()
-        for p in pts:
-            punkte.append(p)
-            uvs.append(_uv(p))
-            farben.append(farbe)
-        for i in tri:
-            idx.append(basis + i)
+        for i in Geometry2D.triangulate_polygon(pts):
+            _ecke(pts[i], farbe)
 
     ## Ein Band aus zwei Kanten gleicher Laenge.
     func band(links: PackedVector2Array, rechts: PackedVector2Array, farbe: Color) -> void:
-        var basis := punkte.size()
-        for i in links.size():
-            for p in [links[i], rechts[i]]:
-                punkte.append(p)
-                uvs.append(_uv(p))
-                farben.append(farbe)
         for i in links.size() - 1:
-            var a := basis + i * 2
-            idx.append_array([a, a + 1, a + 2, a + 1, a + 3, a + 2])
+            for p in [links[i], rechts[i], links[i + 1], rechts[i], rechts[i + 1], links[i + 1]]:
+                _ecke(p, farbe)
+
+    func dazu(n: Netz) -> void:
+        punkte.append_array(n.punkte)
+        uvs.append_array(n.uvs)
+        farben.append_array(n.farben)
 
     func spuele(ci: RID) -> void:
-        if idx.is_empty():
+        if punkte.is_empty():
             return
-        RenderingServer.canvas_item_add_triangle_array(ci, idx, punkte, farben, uvs,
-            PackedInt32Array(), PackedFloat32Array(), tex.get_rid())
+        RenderingServer.canvas_item_add_triangle_array(ci, PackedInt32Array(), punkte,
+            farben, uvs, PackedInt32Array(), PackedFloat32Array(), tex.get_rid())
 
 
 func _ready() -> void:
@@ -177,43 +180,71 @@ func _muster(art: int) -> ImageTexture:
 
 # --- Zeichnen --------------------------------------------------------------
 
-func _draw() -> void:
-    # Halbe Bildhoehe im Feld (bis 1000 bei 20:9 und Zoom 0,8) plus der Weg,
-    # den man geht, bevor neu gezeichnet wird.
-    var sicht := 1400.0
-    var von := ((_mitte - Vector2.ONE * sicht) / KACHEL).floor()
-    var bis := ((_mitte + Vector2.ONE * sicht) / KACHEL).ceil()
-    var netze := {
+const SCHICHTEN := ["sand", "wiese_rand", "wiese", "weg_rand", "weg", "wasser_rand", "wasser"]
+
+func _netze() -> Dictionary:
+    return {
         "sand": Netz.new(_sand),
         "wiese_rand": Netz.new(_weiss), "wiese": Netz.new(_gras),
         "weg_rand": Netz.new(_weiss), "weg": Netz.new(_erde),
         "wasser_rand": Netz.new(_weiss), "wasser": Netz.new(_wasser),
     }
+
+
+func _draw() -> void:
+    # **Was die Kamera erreichen kann, bevor neu gezeichnet wird**: das halbe
+    # Sichtfeld (`Gefecht.BILD_HALB_X/_Y`, bei 20:9 bis 1000 hoch) plus der
+    # Weg bis zum naechsten Neuzeichnen und eine Figur Rand. Ein Quadrat von
+    # 1400 um die Mitte war doppelt so viele Kacheln.
+    var weit := Vector2(Gefecht.BILD_HALB_X, 1000.0) + Vector2.ONE * (KACHEL * 0.4 + 140.0)
+    var von := ((_mitte - weit) / KACHEL).floor()
+    var bis := ((_mitte + weit) / KACHEL).floor()
+    var netze := _netze()
     var a := von * KACHEL
     var b := (bis + Vector2.ONE) * KACHEL
     (netze["sand"] as Netz).flaeche(PackedVector2Array([a, Vector2(b.x, a.y), b,
         Vector2(a.x, b.y)]), Color.WHITE)
+    if _kacheln.size() > KACHELN_HOECHSTENS:
+        _kacheln.clear()
     var dinge: Array = []
     for gx in range(int(von.x), int(bis.x) + 1):
         for gy in range(int(von.y), int(bis.y) + 1):
-            _kachel(gx, gy, netze, dinge)
+            var k := Vector2i(gx, gy)
+            if not _kacheln.has(k):
+                _kacheln[k] = _rechne_kachel(gx, gy)
+            var kachel: Array = _kacheln[k]
+            var eigene: Dictionary = kachel[0]
+            for name in eigene:
+                (netze[name] as Netz).dazu(eigene[name])
+            dinge.append_array(kachel[1])
     var ci := get_canvas_item()
     # **In Schichten**: erst alle Wiesenraender, dann alle Wiesen, dann Wege
     # und Wasser. Je Kachel alles auf einmal liess den Rand der naechsten
     # Wiese ueber die vorige laufen.
-    for name in ["sand", "wiese_rand", "wiese", "weg_rand", "weg", "wasser_rand", "wasser"]:
+    for name in SCHICHTEN:
         (netze[name] as Netz).spuele(ci)
     Pixel.bereit()
     dinge.sort_custom(func(x: Array, y: Array) -> bool: return x[0].y < y[0].y)
     # Erst alle Schatten, dann alle Dinge: kein Schatten liegt auf einem Ding.
     for d in dinge:
-        var schatten: float = d[3]
-        if schatten > 0.0:
-            Pixel.scheibe(ci, (d[0] as Vector2) + Vector2(schatten * 0.3, -P * 0.5),
-                schatten, Palette.SCHATTEN, 0.36)
+        var schatten: Array = d[3]
+        if not schatten.is_empty():
+            Pixel.setze(ci, schatten[0], schatten[1], (d[0] as Vector2) + schatten[2])
     for d in dinge:
         var s: Array = d[1]
         Pixel.setze(ci, s[0], s[1], d[0], d[2])
+
+
+## Eine Kachel: ihre Netze (nur die, die etwas tragen) und ihre Dinge.
+func _rechne_kachel(gx: int, gy: int) -> Array:
+    var netze := _netze()
+    var dinge: Array = []
+    _kachel(gx, gy, netze, dinge)
+    var eigene := {}
+    for name in netze:
+        if not (netze[name] as Netz).punkte.is_empty():
+            eigene[name] = netze[name]
+    return [eigene, dinge]
 
 
 func _saat(gx: int, gy: int, schicht: int) -> RandomNumberGenerator:
@@ -444,10 +475,33 @@ func _sprite(name: String) -> Array:
     return s
 
 
-## Ein Ding vormerken: Ort, Sprite, Farbe, Schattenradius (0 = keiner).
+## Ein Ding vormerken: Ort, Sprite, Farbe, Schatten (Radius, 0 = keiner).
+## **Der Schatten ist ein Sprite**, eine flache Ellipse nach rechts unten,
+## vom Licht weg: Zeile fuer Zeile gezeichnet waren es bei dreihundert Dingen
+## zweitausend Aufrufe je Neuzeichnen.
 func _ding(dinge: Array, p: Vector2, name: String, schatten: float,
         modul := Color.WHITE) -> void:
-    dinge.append([p, _sprite(name), modul, schatten])
+    var s: Array = []
+    if schatten > 0.0:
+        var breite := maxi(4, int(roundf(schatten * 2.0 / P)))
+        var name_s := "land_schatten%d" % breite
+        var r := Pixel.bild(name_s, _schatten_zeilen(breite), Pixel.grund(), breite / 2)
+        s = [r, Pixel.anker(name_s), Vector2(schatten * 0.3, P * float(breite / 6))]
+    dinge.append([p, _sprite(name), modul, s])
+
+
+## Eine flache Ellipse aus `~`, `breite` Bildpunkte, gut ein Drittel so hoch.
+static func _schatten_zeilen(breite: int) -> PackedStringArray:
+    var hoch := maxi(2, int(roundf(float(breite) * 0.36)))
+    var aus := PackedStringArray()
+    for y in hoch:
+        var t := (float(y) + 0.5) / float(hoch) * 2.0 - 1.0
+        var halb := float(breite) * 0.5 * sqrt(maxf(0.0, 1.0 - t * t))
+        var n := ""
+        for x in breite:
+            n += "~" if absf(float(x) + 0.5 - float(breite) * 0.5) < halb else "."
+        aus.append(n)
+    return aus
 
 
 func _dinge(gx: int, gy: int, ecke: Vector2, anteil: float, dinge: Array) -> void:
