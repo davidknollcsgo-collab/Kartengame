@@ -112,6 +112,45 @@ func _test_figuren_passen_zur_simulation() -> bool:
         for b in range(-1, 4):
             bilder.append(["Held %d" % k, Figuren.held(k, b), -1])
     bilder.append(["Gefaehrte", Figuren.gefaehrte(0), -1])
+    # Was nur im Bild entsteht: der wehende Umhang, der Einknickende.
+    for k in 4:
+        for w in 3:
+            bilder.append(["Held %d weht %d" % [k, w], Figuren.weht(Figuren.held(k, 0), w), -1])
+    for art in Feinde.Art.size():
+        bilder.append([Feinde.name_von(art) + " sinkt", Figuren.sinkt(Figuren.feind(art, -1), 4),
+            -1])
+    # **Die Landschaft geht denselben Weg** (`Landschaft`, eigene Rollen):
+    # gleich lange Zeilen, keine Rolle, die als Magenta im Bild stuende.
+    var land: Array = []
+    for n in Landschaft.BAEUME:
+        land.append(["Baum %d" % n, Landschaft.baum(n)])
+    for n in Landschaft.KIEFERN:
+        land.append(["Kiefer %d" % n, Landschaft.kiefer(n)])
+    for n in Landschaft.BUESCHE:
+        land.append(["Busch %d" % n, Landschaft.busch(n)])
+    for n in Landschaft.STEINE:
+        land.append(["Stein %d" % n, Landschaft.stein(n)])
+    land.append(["Mauer", Landschaft.mauer()])
+    land.append(["Turm", Landschaft.turm()])
+    land.append(["Stumpf", Landschaft.STUMPF])
+    land.append(["Zaun", Landschaft.ZAUN])
+    land.append(["Schilf", Landschaft.SCHILF])
+    for g in Landschaft.GRAS:
+        land.append(["Gras", PackedStringArray(g)])
+    for g in Landschaft.KIESEL:
+        land.append(["Kiesel", PackedStringArray(g)])
+    var land_rollen := Landschaft.kleid(Color.GRAY)
+    for e in land:
+        var zeilen: PackedStringArray = e[1]
+        for z in zeilen:
+            if not _melde(z.length() == zeilen[0].length(),
+                    "%s: Zeile \"%s\" ist %d lang statt %d"
+                    % [e[0], z, z.length(), zeilen[0].length()]):
+                return false
+            for ch in z:
+                if ch != "." and not land_rollen.has(ch):
+                    if not _melde(false, "%s: unbekannte Rolle \"%s\"" % [e[0], ch]):
+                        return false
     for e in bilder:
         var zeilen: PackedStringArray = e[1]
         var breit := zeilen[0].length()

@@ -13,11 +13,13 @@ Das Spiel ist **vollständig in diesem Repository entstanden**. Es gibt kein
 Vorbild, von dem etwas übernommen wurde — weder Code noch Grafik, Ton,
 Figuren, Namen, Texte, Titel oder Store-Material.
 
-Das gilt ausdrücklich auch für die Bildsprache. Tuschemalerei ist eine
-jahrhundertealte Technik und als solche gemeinfrei; was hier auf dem Blatt
-steht, ist trotzdem keine Kopie irgendeines Blattes, sondern das Ergebnis von
-`Tusche.band()` — ein Dreiecksnetz mit wandernder Breite und Deckung. Es gibt
-kein Original in einem Grafikprogramm, weil es keines gibt.
+Das gilt ausdrücklich auch für die Bildsprache. Pixel-Art ist eine
+verbreitete Technik und als solche gemeinfrei; was hier im Bild steht, ist
+trotzdem keine Kopie irgendeines Bildes, sondern steht Pixel für Pixel als
+Text im Quelltext (`Figuren`, `Symbole`, `Landschaft`) oder wird gerechnet
+(Kronen, Steine, die Muster des Bodens). Es gibt kein Original in einem
+Grafikprogramm, weil es keines gibt. Bis Oktober 2026 war es eine
+Pinselzeichnung aus Dreiecksnetzen (`Tusche`, gelöscht).
 
 **Kein Reverse Engineering, kein Asset-Rip, kein Nachzeichnen nach Vorlage.**
 Auch das Abmalen erzeugt eine Bearbeitung und ist ohne Zustimmung unzulässig.
@@ -44,7 +46,7 @@ Eigenschaften der Engine und der Umgebung, und die stehen in `CLAUDE.md`.
 Derzeit **keine Bilddateien im Projekt** (außer dem App-Symbol, siehe unten).
 Die gesamte Darstellung entsteht zur Laufzeit. Figuren und Menübilder sind
 Pixel-Sprites, die **als Text im Quelltext** stehen und beim Start in einen
-Atlas gerechnet werden; der Boden ist `Tusche`. Zwei kleine Shader im
+Atlas gerechnet werden; der Boden sind gerechnete Muster auf Vielecken. Zwei kleine Shader im
 Projekt (`shaders/umriss.gdshader`, `shaders/loch.gdshader`) sind ebenfalls
 selbst geschrieben:
 
@@ -55,8 +57,8 @@ selbst geschrieben:
 | Sprites als Text: Helden, Gefährte, sieben Feindsorten, Laufbilder | `scripts/spiel/figuren.gd` |
 | Menübilder als Text: Waffen, Züge, Bauten, Ausrüstung, Wappen, Burg | `scripts/spiel/symbole.gd` |
 | Atlas, Rollenfarben, Rasterlinien, Ringe, Scheiben | `scripts/spiel/pixel.gd` |
-| Der Pinsel für den Boden: Band, Zug, Strang, Klecks, Wisch | `scripts/spiel/tusche.gd` |
-| Das Pergament: Faser, Flecken, Gräser, Sold | `scripts/spiel/feld.gd` |
+| Landschaft als Text und gerechnet: Bäume, Kiefern, Büsche, Steine, Mauer, Turm | `scripts/spiel/landschaft.gd` |
+| Der Boden: Muster für Sand, Gras, Erde, Wasser; Wiesen, Wege, Bach, Teich | `scripts/spiel/feld.gd` |
 | Waffenspuren, Funken, Druckring, Zeichenreihenfolge nach y | `scripts/spiel/zug_lauf.gd` |
 | Bedienbild, Tafeln, Knöpfe, Balken, Aufstiegskarten | `scripts/spiel/zug_hud.gd` |
 
@@ -67,7 +69,7 @@ geschriebener Quelltext und stehen deshalb nicht in der Tabelle unten.
 Die einzigen Bilddateien im Projekt sind die App-Symbole. Auch sie sind
 gezeichnet und nicht gemalt: `tools/symbol.gd` stellt den Helden mit erhobener
 Klinge in einen Ring aus Feinden, mit **denselben Aufrufen** wie das Spiel —
-`Figuren`, `Pixel`, `Tusche`. Bis September 2026 standen
+`Figuren`, `Pixel`. Bis September 2026 standen
 hier noch NEKTONs Lichtkegel, erzeugt von einem Werkzeug, das nicht mehr lief.
 
 | Datei | Herkunft | Autor | Lizenz | Quelle | Datum |

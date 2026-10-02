@@ -27,7 +27,8 @@ Wahrheit.**
 
 Alles Sichtbare und Hörbare entsteht in diesem Repository: Figuren und Menübilder als
 Pixel-Sprites in Textform (`Figuren`, `Symbole`, gebaut von `Pixel`), der
-Boden prozedural (`Tusche`), Ton synthetisiert (`Klang`). `ASSETS.md` ist der Nachweis — es
+Boden aus gerechneten Mustern und Landschafts-Sprites (`feld.gd`,
+`Landschaft`), Ton synthetisiert (`Klang`). `ASSETS.md` ist der Nachweis — es
 gibt **keine einzige Bilddatei** außer den App-Symbolen.
 
 ### Der Artstyle: farbig, umrandet, mit Schatten
@@ -46,7 +47,9 @@ und die wirft die Silhouette weg. Die Regel verlangte genau das, was das Bild
 in seinem dichtesten Moment nicht mehr liefern konnte. Uebrig blieben achtzig
 gleiche schwarze Umrisse, und einer davon war der Spieler selbst.
 
-Sechs Regeln, die für **jede** neue Zeichnung hier gelten:
+Sechs Regeln aus der Zeit der Pinselzeichnung (`Tusche`, seit Oktober 2026
+gelöscht — Figuren, Menüs und Boden sind Pixel, siehe unten). Die ersten
+drei betrafen den Pinsel; **die letzten drei gelten für jedes Sprite**:
 
 * **Kein Strich hat zwei gleiche Enden.** Ein Band gleicher Breite ist ein
   Klebestreifen; ein Pinsel setzt auf, trägt und hebt ab.
@@ -198,7 +201,8 @@ Sortenfarben bleiben (satter), Kamera etwas weiter weg.
 **Und dann echte Pixel-Sprites** (Oktober 2026, „das geht grafisch noch
 viel besser“; gewählt: Figuren, Menüs, Effekte). Die Vektorfiguren
 (`streiter.gd`) und Vektorsymbole (`zeichen.gd`) sind gelöscht; `Tusche`
-zeichnet nur noch den Boden. Was dabei gilt:
+zeichnete danach nur noch den Boden (bis Runde drei, siehe unten). Was
+dabei gilt:
 
 * **Ein Sprite ist Text, und ein Zeichen ist eine Rolle, keine Farbe**
   (`Figuren`, `Symbole`: gleich lange Zeilen, `.` leer). `Pixel.grund()`
@@ -239,6 +243,58 @@ zeichnet nur noch den Boden. Was dabei gilt:
 * **Gemessen** (`zeichne_teil`, Saat 7, Debug-Build, nacheinander):
   Minute 1 **1,2 ms**, Minute 6 **3,2 ms**, Minute 9 **3,2 ms** statt
   17 / 20 / 27 ms — ein Bild je Figur statt Hunderter Eckpunkte in GDScript.
+
+**Runde drei** (Oktober 2026, „Na das geht noch besser“; gewählt: Boden,
+HUD im Lauf, Figuren lebendiger, Effekte). `Tusche` ist gelöscht — der
+Boden war der letzte Vektor im Bild, weich neben scharfen Figuren.
+
+* **Der Boden ist Muster auf Vielecken** (`feld.gd`): Sand, Gras, Erde und
+  Wasser je ein gekacheltes Bild von 64 Bildpunkten (`_muster`, feste Saat,
+  nahtlos, weil alles darin modulo der Kante gesetzt wird), die Flächen
+  Vielecke **ohne Glättung** — im Drittelpuffer haben sie harte
+  Pixelkanten. UV ist der Ort im Feld, nicht die Fläche: das Muster läuft
+  über jede Kachelgrenze. Die Ränder (Wiese, Weg, Wasser) sind dasselbe
+  Vieleck, einen Bildpunkt größer, in Schichten vor allen Flächen.
+* **Je Kachel einmal gerechnet** (`_kacheln`): Dreiecke **ohne Index**, damit
+  eine gemerkte Kachel mit `append_array` an das Netz ihres Musters kommt
+  und kein Index verschoben werden muss; ein Aufruf je Muster. Gezeichnet
+  wird, was die Kamera bis zum nächsten Neuzeichnen erreicht, nicht ein
+  Quadrat. **Gemessen**: Neuzeichnen 43 ms → gemerkt 2–5 ms (das erste
+  Mal, beim Start, 50 ms). Vorher war es ein Ruck etwa jede Sekunde im Lauf.
+* **Die Dinge sind Sprites** (`Landschaft`): Kronen und Steine **gerechnet**
+  — Kreise, jeder im Licht von links oben, der vorderste deckt —, Mauer,
+  Turm, Zaun, Stumpf, Gras, Schilf, Kiesel **gemalt**. Die Kante (`o`) setzt
+  jedes Ding selbst, halb so dunkel wie die einer Figur; der Schatten ist
+  ein Sprite und nicht Zeile für Zeile (zweitausend Aufrufe je Neuzeichnen).
+  Bäume stehen **größer als ein Soldat** (24–30 Bildpunkte): gleich groß
+  sahen sie aus wie Spielzeug.
+* **Das HUD steht auf Plaketten** (`zug_hud._plakette`): links Herz, Leben
+  mit Zahl und einem **hellen Rest**, der nach einem Treffer stehen bleibt
+  und dann abläuft (man sieht, wie viel es war), Stufe und Erfahrung;
+  rechts Zeit, Erschlagene, Sold. Darunter **je Waffe und Zug ein Kästchen**
+  mit Stufenpunkten — nur Anzeige, nichts tippbar (Zusicherung 19). Der
+  Warlord hat eine eigene Leiste **in seiner Farbe**, nicht in Zinnober.
+* **Bewegung nur im Bild** (`_zeichne_feind`, `_zeichne_held`): der Gang
+  federt um eine Zeile, Getroffene zucken zurück, wer am Helden steht, holt
+  im eigenen Takt aus, der Armbruster hat Rückstoß und Mundfeuer, der
+  Stürmer zieht Staub, der Held atmet und sein Umhang weht
+  (`Figuren.weht`). **Nichts davon fasst den Ort im Gefecht an.**
+* **Fallen in Bildern**: Blitz und Rückwurf, Einknicken (`Figuren.sinkt`),
+  Liegen, Ausblinken. Ohne das Zwischenbild kippte eine Figur wie ein Brett.
+* **Schadenszahlen aus dem Leben, nicht aus Treffern** (`_sammle_schaden`):
+  was ein Feind seit dem letzten Bild verlor, je Feind 0,22 s gesammelt —
+  sonst gäbe der Flegel, der je Bild ein wenig nimmt, einen Zahlenregen.
+  Ziffern einzeln aus dem Atlas, **nicht je Zahl ein Bild**: der Atlas
+  liefe über einen Lauf voll. Weiß an Feinden, Zinnober am Helden.
+* **Treffer-Stopp hält nur die Ansicht an** (`_stopp`: Wunde 45 ms, Fall
+  des Warlords 200 ms mit Beben). Das Gefecht rechnet danach dieselben
+  Schritte — und im Vorlauf eines Schusses gar nicht (`_vorlauf`): sonst
+  zeigte das Bild bei `--zeit 300` ein früheres Gefecht als der Messstand.
+* Sold springt beim Fallen und fliegt beim Aufsammeln zum Helden; der
+  Aufstieg schießt eine Lichtsäule hoch.
+* **Gemessen** (`zeichne_teil`, Saat 7, nacheinander): Minute 1 **1,5 ms**,
+  Minute 6 **4,1–4,7 ms**, Minute 9 **4,5–4,8 ms** (vorher 1,2 / 3,2 /
+  3,2) — der Preis für Zahlen, Ausholen und Fallbilder.
 
 ## Godot beschaffen
 
@@ -854,9 +910,9 @@ schießen**.
 
 - `dl.google.com` ist blockiert → kein Android SDK → **APK-Builds nur in CI**
 - Der Container ist flüchtig; Godot muss je Session neu installiert werden
-- MSAA-2D gibt es im Kompatibilitäts-Renderer nicht. Weiche Kanten kommen aus
-  dem Zeichnen selbst: jeder `Tusche`-Strich hat zwei durchsichtige
-  Außenreihen — die Form eines Haarpinsels, nicht ein Glättungstrick
+- MSAA-2D gibt es im Kompatibilitäts-Renderer nicht, und das Pixelbild
+  braucht es nicht: alles liegt auf dem Raster eines Drittelpuffers, und
+  Vielecke ohne Glättung haben darin von selbst harte Pixelkanten
 
 ## Konventionen
 
