@@ -107,7 +107,6 @@ func _ready() -> void:
     Tastsinn.an = Burg.stand.beben
     for t in _teile:
         t.lauf = self
-    _pixel_pinsel(_tu)
     var zoom := Vector2.ONE * Gefecht.ZOOM / float(PIXEL)
     _kamera.zoom = zoom
     _kamera_fig.zoom = zoom
@@ -180,8 +179,13 @@ func _process(delta: float) -> void:
     var beben := Vector2.ZERO
     if _ruettel > 0.0:
         beben = Vector2(sin(_zeit * 57.0), cos(_zeit * 43.0)) * _ruettel * 7.0
-    _kamera.position = _kamera_ort + beben
-    _kamera_fig.position = _kamera_ort + beben
+    # **Auf das Pixelraster gelegt.** Eine Kamera zwischen zwei Bildpunkten
+    # laesst jede Figur beim Gehen um einen Pixel flackern, und Boden und
+    # Figuren liegen in zwei Puffern - beide muessen auf demselben Raster
+    # stehen.
+    var auf_raster := Pixel.raster(_kamera_ort + beben) * Pixel.P
+    _kamera.position = auf_raster
+    _kamera_fig.position = auf_raster
     for t in _teile:
         t.queue_redraw()
 
@@ -327,13 +331,12 @@ func _unhandled_input(e: InputEvent) -> void:
 
 ## Ein Bildpunkt des Pixelpuffers, in Punkten des Feldes.
 const PIXEL_FELD := float(PIXEL) / Gefecht.ZOOM
+const P := Pixel.P
 
-## Der Pinsel fuer den Pixelpuffer: Kante ein Bildpunkt, nichts duenner als
-## ein Bildpunkt.
-static func _pixel_pinsel(tu: Tusche) -> void:
-    tu.kante_fest = PIXEL_FELD * 0.95
-    tu.mindest = PIXEL_FELD * 0.55
-
+const KLASSE_SCHWERT := 0
+const KLASSE_BOGEN := 1
+const KLASSE_SPEER := 2
+const KLASSE_HAMMER := 3
 
 ## Die Feinde vor dem Helden, vom hinteren Teil fuer den vorderen gemerkt.
 var _vor_held: Array = []
@@ -341,42 +344,99 @@ var _vor_held: Array = []
 func zeichne_teil(teil: int, ci: RID) -> void:
     if lage != Lage.LAUF or _stand == null:
         return
+    Pixel.bereit()
     match teil:
         0:
-            _zeichne_hinten()
+            _zeichne_hinten(ci)
         1:
             # Das Loch: dieselbe Form wie die alte Freistellung, aber in
             # einem Material, das Deckung null schreibt.
             Streiter.frei_gestellt(_tu, _stand.ort, HELD_HOEHE, Color.WHITE)
+            _tu.spuele(ci)
         2:
-            _zeichne_vorn()
-    _tu.spuele(ci)
+            _zeichne_vorn(ci)
 
 
-func _zeichne_hinten() -> void:
+# --- Bilder aus dem Atlas ---------------------------------------------------
+
+## Die Bilder der Feinde, einmal je Sorte, Laufbild, Richtung und Blitz
+## gebaut und hier gemerkt: `[Rect2i, Anker]`. Ein Schluessel als Zahl, kein
+## Text - es sind dreihundert Abfragen je Bild.
+var _feind_bilder := {}
+
+func _feind_bild(art: int, bild: int, spiegel: bool, blitz: bool) -> Array:
+    var k := ((art * 8 + bild + 1) * 2 + int(spiegel)) * 2 + int(blitz)
+    var v: Variant = _feind_bilder.get(k)
+    if v == null:
+        var name := "feind%d_%d" % [art, bild]
+        var r := Pixel.bild(name, Figuren.feind(art, bild),
+            Pixel.kleid(Palette.sorte(art)), Figuren.anker(art), spiegel, blitz)
+        v = [r, Pixel.anker(name, spiegel, blitz)]
+        _feind_bilder[k] = v
+        Pixel.bereit()
+    return v
+
+
+## Ein beliebiges Bild aus Zeilen, gemerkt unter `name`.
+var _bilder := {}
+
+func _bild(name: String, zeilen: PackedStringArray, kleid: Dictionary, anker: int,
+        spiegel := false) -> Array:
+    var k := name + ("<" if spiegel else ">")
+    var v: Variant = _bilder.get(k)
+    if v == null:
+        var r := Pixel.bild(name, zeilen, kleid, anker, spiegel)
+        v = [r, Pixel.anker(name, spiegel)]
+        _bilder[k] = v
+        Pixel.bereit()
+    return v
+
+
+func _setze(ci: RID, b: Array, fuss: Vector2, modul := Color.WHITE) -> void:
+    Pixel.setze(ci, b[0], b[1], fuss, modul)
+
+
+func _schatten(ci: RID, fuss: Vector2, breite: int) -> void:
+    var b := _bild("schatten%d" % breite, Figuren.schatten(breite), Pixel.grund(),
+        breite / 2)
+    _setze(ci, b, fuss + Vector2(0.0, float(maxi(2, breite / 4)) * 0.5 * P))
+
+
+# --- Hinten: Boden, Gefallene, Sold, Figuren hinter dem Helden --------------
+
+func _zeichne_hinten(ci: RID) -> void:
     # Was man sieht, in Punkten des Feldes: der Schirm durch den Zoom.
     _sicht = get_viewport_rect().size * 0.5 / Gefecht.ZOOM
 
-    # Was am Boden liegt, zuerst: Staub, Gefallene, Sold.
+    # **Staub als Pixelwoelkchen**: blass, steigt und waechst.
     for st in _staub:
         var u: float = st.alter / st.dauer
-        var erde := Palette.ERDE.darkened(0.15)
-        _tu.klecks(st.ort + Vector2(0.0, -u * 8.0), st.gross * (0.6 + u),
-            Color(erde.r, erde.g, erde.b, 0.45 * (1.0 - u)), int(st.ort.x))
+        var erde := Palette.ERDE.darkened(0.10)
+        Pixel.scheibe(ci, st.ort + Vector2(0.0, -u * 10.0), st.gross * (0.5 + u),
+            Color(erde.r, erde.g, erde.b, 0.40 * (1.0 - u)), 0.6)
+    # **Gefallene liegen**: das stehende Bild, gedreht. Sie verblassen nicht
+    # stufenlos (der Umriss-Shader zoege unter halber Deckung nur noch die
+    # Kante), sondern dunkeln nach und verschwinden.
     for g in _gefallene:
         var u: float = g.alter / GEFALLEN_DAUER
-        Streiter.gefallen(_tu, g.ort, g.h, g.blick, g.art,
-            1.0 if u < 0.5 else 1.0 - (u - 0.5) * 2.0)
-    # **Eine Muenze glaenzt.** Vorher ein blinkender gelber Fleck; jetzt mit
-    # dunklerem Rand und einem Lichtpunkt, der ueber sie wandert.
-    var gold_rand := GOLD.darkened(0.35)
+        var art: int = g.art
+        var b: Array
+        if art == Feinde.Art.WOLF:
+            b = _bild("liegt%d" % art, _kopfueber(Figuren.feind(art, -1)),
+                Pixel.kleid(Palette.sorte(art)), Figuren.WOLF_ANKER, g.blick < 0.0)
+        else:
+            b = _bild("liegt%d" % art, Figuren.liegend(Figuren.feind(art, -1)),
+                Pixel.kleid(Palette.sorte(art)), 10, g.blick < 0.0)
+        var dunkel := lerpf(1.0, 0.55, u)
+        _setze(ci, b, g.ort, Color(dunkel, dunkel, dunkel, 1.0))
+    # **Sold glaenzt**: eine Pixelmuenze, die im Takt aufblinkt.
     for m in _stand.muenzen:
         if not _im_bild(m.ort, 20.0):
             continue
-        var schein := 0.5 + 0.5 * sin(_zeit * 5.0 + m.ort.x * 0.05)
-        _tu.klecks(m.ort, 7.5, GOLD, int(m.ort.x), gold_rand)
-        _tu.klecks(m.ort + Vector2(-2.2, -2.4), 2.4,
-            Color(1.0, 0.98, 0.85, 0.5 + 0.5 * schein), int(m.ort.y))
+        var blinkt := sin(_zeit * 6.0 + m.ort.x * 0.05) > 0.7
+        var b := _bild("muenze%d" % int(blinkt), MUENZE_BLINKT if blinkt else MUENZE,
+            Pixel.grund(), 2)
+        _setze(ci, b, m.ort + Vector2(0.0, 6.0))
 
     # **Nach y sortiert, nicht nach Listenplatz.** Ohne das steht ein Feind
     # vor dem Helden, der hinter ihm ist - und in einem Bild ohne Perspektive
@@ -386,102 +446,102 @@ func _zeichne_hinten() -> void:
         if _im_bild(f.ort, FEIND_HOEHE * 1.4):
             sichtbar.append(f)
     sichtbar.sort_custom(func(a, b): return a.ort.y < b.ort.y)
-    var knapp := sichtbar.size() > Streiter.DICHT_AB
-    # **Die Naechsten voll, der Rest sparsam.** Vorher galt alles oder
-    # nichts: bis `DICHT_AB` Figuren jede in voller Fassung, darueber jede
-    # sparsam. An dieser Klippe kostete ein Bild mit siebzig Vollfiguren
-    # doppelt so viel wie eines mit einundsiebzig sparsamen, und im Gedraenge
-    # hatte auch der Feind direkt vor dem Helden keine Haende. Jetzt bekommen
-    # die `VOLL_NAH` naechsten die volle Fassung - dort schaut man hin -, und
-    # die Kosten sind nach oben begrenzt.
-    _voll_bis = INF
-    if sichtbar.size() > VOLL_NAH:
-        var abstaende := PackedFloat32Array()
-        for f in sichtbar:
-            abstaende.append(f.ort.distance_squared_to(_stand.ort))
-        abstaende.sort()
-        _voll_bis = abstaende[VOLL_NAH - 1]
 
     # **Die Ansage liegt am Boden, unter allen Figuren.** Ein Band in
-    # Zinnober entlang der Bahn, das sich bis zum Sturm füllt: so weit trägt
-    # er, und so viel Zeit bleibt. Zinnober heißt Schaden am Spieler - und
-    # genau den kündigt es an.
+    # Zinnober entlang der Bahn, das sich bis zum Sturm fuellt: so weit traegt
+    # er, und so viel Zeit bleibt. Zinnober heisst Schaden am Spieler - und
+    # genau den kuendigt es an.
     for f in sichtbar:
         if f.angesagt and not f.stuermt:
             var weite: float = Feinde.sturm_weite(f.art)
             var voll: float = clampf(1.0 - f.uhr / Feinde.STURM_ANSAGE, 0.0, 1.0)
-            var breite: float = f.radius * 0.9
-            _tu.zug(f.ort, f.ort + f.bahn * weite, breite,
-                Color(ZINNOBER.r, ZINNOBER.g, ZINNOBER.b, 0.24), 0.2, 0.2, 0.0, 4)
-            _tu.zug(f.ort, f.ort + f.bahn * weite * voll, breite * 0.7,
-                Color(ZINNOBER.r, ZINNOBER.g, ZINNOBER.b, 0.50), 0.2, 0.4, 0.0, 4)
+            Pixel.linie(ci, f.ort, f.ort + f.bahn * weite,
+                Color(ZINNOBER.r, ZINNOBER.g, ZINNOBER.b, 0.30), 4)
+            Pixel.linie(ci, f.ort, f.ort + f.bahn * weite * voll,
+                Color(ZINNOBER.r, ZINNOBER.g, ZINNOBER.b, 0.45), 2)
 
-    # **Die Gefaehrten laufen in derselben Sortierung mit.** In einem Bild
-    # ohne Perspektive ist die Zeichenreihenfolge die einzige Tiefe, die es
-    # gibt - ein Begleiter, der immer oben liegt, steht vor Feinden, hinter
-    # denen er steht.
+    # **Die Gefaehrten laufen in derselben Sortierung mit.** Ein Begleiter,
+    # der immer oben liegt, steht vor Feinden, hinter denen er steht.
     _vor_held.clear()
-    _knapp = knapp
     for f in sichtbar:
         if f.ort.y > _stand.ort.y:
             _vor_held.append(f)
             continue
-        _zeichne_feind(f, knapp)
+        _zeichne_feind(ci, f)
     for g in _stand.gefaehrten:
         if g.ort.y <= _stand.ort.y:
-            _zeichne_gefaehrte(g)
+            _zeichne_gefaehrte(ci, g)
 
 
-var _knapp := false
+## Fuer den Wolf: auf dem Ruecken statt gedreht - ein gedrehter Wolf steht
+## auf dem Schwanz.
+static func _kopfueber(zeilen: PackedStringArray) -> PackedStringArray:
+    var aus := PackedStringArray()
+    for i in range(zeilen.size() - 1, -1, -1):
+        aus.append(zeilen[i])
+    return aus
 
-func _zeichne_vorn() -> void:
-    _zeichne_held()
+
+const MUENZE: PackedStringArray = [
+    ".$$$.",
+    "$$x$$",
+    "$$$$%",
+    "$$$$%",
+    ".%%%.",
+]
+const MUENZE_BLINKT: PackedStringArray = [
+    ".$x$.",
+    "$xxx$",
+    "$$x$%",
+    "$$$$%",
+    ".%%%.",
+]
+
+
+# --- Vorn: der Held, alles vor ihm, die Schlaege und Marken ----------------
+
+func _zeichne_vorn(ci: RID) -> void:
+    _zeichne_held(ci)
 
     for f in _vor_held:
-        _zeichne_feind(f, _knapp)
+        _zeichne_feind(ci, f)
     for g in _stand.gefaehrten:
         if g.ort.y > _stand.ort.y:
-            _zeichne_gefaehrte(g)
+            _zeichne_gefaehrte(ci, g)
 
-    _zeichne_hiebe()
-    _zeichne_marke()
+    _zeichne_hiebe(ci)
+    _zeichne_marke(ci)
 
     for g in _stand.geschosse:
         if not _im_bild(g.ort, 50.0):
             continue
-        _zeichne_geschoss(g)
+        _zeichne_geschoss(ci, g)
 
+    # **Funken als Pixel**: sie fliegen, fallen und verloeschen.
     for f in _funken:
         var t: float = f.alter / 0.55
         var c: Color = f.farbe
-        _tu.zug(f.ort, f.ort + f.richtung * t, f.gross * (1.0 - t * 0.6),
-            Color(c.r, c.g, c.b, (1.0 - t) * 0.85), 0.0, 0.7, 0.0, 3)
+        var ort: Vector2 = f.ort + f.richtung * t * 0.55 + Vector2(0.0, 260.0 * t * t * 0.3)
+        Pixel.punkt(ci, ort, Color(c.r, c.g, c.b, 1.0), 2 if t < 0.4 else 1)
 
     for r in _ringe:
         var u: float = r.alter / r.dauer
         var rad: float = lerpf(r.von, r.bis, 1.0 - pow(1.0 - u, 2.0))
         var c: Color = r.farbe
-        var bahn := PackedVector2Array()
-        var breit := PackedFloat32Array()
-        for k in 19:
-            var w := TAU * float(k) / 18.0
-            bahn.append(r.ort + Vector2(cos(w) * rad, sin(w) * rad * 0.5))
-            breit.append(lerpf(5.0, 1.5, u))
-        _tu.band(bahn, breit, Color(c.r, c.g, c.b, 0.9 * (1.0 - u)),
-            PackedFloat32Array())
+        # Zwei Bildpunkte breit: einer allein lag zwischen zwei Pixeln Umriss
+        # und las sich als dunkler Reif statt als Licht.
+        Pixel.ring(ci, r.ort, rad, Color(c.r, c.g, c.b, 1.0))
+        Pixel.ring(ci, r.ort, rad - P, Color(c.r, c.g, c.b, 1.0))
+        if u < 0.4:
+            Pixel.ring(ci, r.ort, rad - 2.0 * P, Palette.WEISS)
 
-    _zeichne_randpfeil()
+    _zeichne_randpfeil(ci)
 
-
-## Stahl fuer alles, was der Held schwingt und wirft. Hell und kalt, aber nicht
-## sein Blau - das traegt niemand sonst.
-const STAHL := Color(0.86, 0.87, 0.85)
-const HOLZ := Color(0.47, 0.35, 0.22)
 
 ## **Die Schlagbilder.** Jedes in der Richtung, Weite und Breite, mit der das
 ## Gefecht gerechnet hat - zwei Rechnungen waeren zwei Wahrheiten, und dann
 ## saehe man den Schwerthieb dort, wo er nicht traf.
-func _zeichne_hiebe() -> void:
+func _zeichne_hiebe(ci: RID) -> void:
     var o := _stand.ort
     for h in _hiebe:
         var t: float = h.alter / h.dauer
@@ -489,109 +549,66 @@ func _zeichne_hiebe() -> void:
         var weite: float = h.weite
         match int(h.waffe):
             Waffen.Art.SCHWERT:
-                # Eine Sichel, die von hinten nach vorn ueber den Kegel faehrt:
-                # vorn breit und hell, hinten duenn und ausgelaufen. Flach
-                # gelegt (y x 0,7), weil das Feld von oben gesehen ist.
+                # Eine Sichel aus Pixeln, die von hinten nach vorn ueber den
+                # Kegel faehrt: aussen Stahl, innen weiss, flach gelegt.
                 var halb: float = h.halb
                 var lauf := 1.0 - pow(1.0 - t, 2.0)
                 var a0 := r.angle() - halb
-                var spanne := halb * 2.0 * lauf
-                var mitte := PackedVector2Array()
-                var breit := PackedFloat32Array()
-                var deck := PackedFloat32Array()
-                var n := 9
-                for k in n:
-                    var u := float(k) / float(n - 1)
-                    var w := a0 + spanne * u
-                    var rad := weite * (0.60 + 0.30 * u)
-                    mitte.append(o + Vector2(cos(w) * rad, sin(w) * rad * 0.7)
-                        + Vector2(0.0, -HELD_HOEHE * 0.40))
-                    breit.append(HELD_HOEHE * (0.03 + 0.16 * u))
-                    deck.append((0.15 + 0.85 * u) * (1.0 - t * t))
-                # **Kraeftig genug, um es zu sehen.** Der erste Anlauf lief bis
-                # zur Haelfte durchsichtig aus und war im Schuss ein Splitter.
-                _tu.band(mitte, breit, Color(STAHL.r, STAHL.g, STAHL.b, 0.9), deck)
-                var innen := PackedFloat32Array()
-                for k in n:
-                    innen.append(breit[k] * 0.35)
-                _tu.band(mitte, innen, Color(1.0, 1.0, 1.0, 0.95), deck)
+                var a1 := a0 + halb * 2.0 * lauf
+                var mitte := o + Vector2(0.0, -HELD_HOEHE * 0.35)
+                var von := lerpf(a0, a1, 0.15 + 0.6 * t)
+                Pixel.ring(ci, mitte, weite * 0.86, Palette.STAHL, 0.7, von, a1)
+                Pixel.ring(ci, mitte, weite * 0.80, Palette.WEISS, 0.7, von, a1)
+                Pixel.ring(ci, mitte, weite * 0.74, Palette.STAHL_HELL, 0.7,
+                    lerpf(von, a1, 0.4), a1)
             Waffen.Art.SPEER:
-                # Ein Stoss: der Strich schiesst hinaus und laeuft hinten aus.
-                var spitze := o + Vector2(0.0, -HELD_HOEHE * 0.35) \
+                # Ein Stoss: weiss vorn, Stahl dahinter.
+                var fuss := o + Vector2(0.0, -HELD_HOEHE * 0.30) + r * HELD_HOEHE * 0.2
+                var spitze := o + Vector2(0.0, -HELD_HOEHE * 0.30) \
                     + r * weite * (0.35 + 0.65 * minf(1.0, t * 2.2))
-                var fuss := o + Vector2(0.0, -HELD_HOEHE * 0.35) + r * HELD_HOEHE * 0.2
-                _tu.zug(fuss, spitze, HELD_HOEHE * 0.10,
-                    Color(STAHL.r, STAHL.g, STAHL.b, 0.9 * (1.0 - t * t)), 0.9, 0.0, 0.0, 6)
-                _tu.zug(spitze - r * 26.0, spitze + r * 12.0, HELD_HOEHE * 0.09,
-                    Color(1.0, 1.0, 1.0, 0.95 * (1.0 - t * t)), 0.75, 0.0, 0.0, 4)
+                if t < 0.8:
+                    Pixel.linie(ci, fuss, spitze, Palette.STAHL, 1)
+                    Pixel.linie(ci, spitze - r * 26.0, spitze, Palette.WEISS, 2)
             Waffen.Art.HAMMER:
-                # Eine Bodenwelle: ein flacher Ring, der aufgeht und verblasst,
-                # in Erde und nicht in Zinnober - er trifft Feinde, nicht dich.
+                # Eine Bodenwelle in Erde, nicht in Zinnober - sie trifft
+                # Feinde, nicht dich. Dazu Brocken, die aufspritzen.
                 var rad := weite * (0.25 + 0.75 * (1.0 - pow(1.0 - t, 2.0)))
-                var mitte := PackedVector2Array()
-                var breit := PackedFloat32Array()
-                var n := 20
-                for k in n + 1:
-                    var w := TAU * float(k) / float(n)
-                    mitte.append(o + Vector2(cos(w) * rad, sin(w) * rad * 0.42))
-                    breit.append(HELD_HOEHE * 0.11 * (1.0 - t * 0.6))
-                var erde := Palette.ERDE.darkened(0.40)
-                _tu.band(mitte, breit, Color(erde.r, erde.g, erde.b, 0.85 * (1.0 - t)),
-                    PackedFloat32Array())
-                # Dazu Splitter im Ring - Erde, die aufspritzt.
+                var erde := Palette.ERDE.darkened(0.35)
+                Pixel.ring(ci, o, rad, erde, 0.42)
+                if t < 0.6:
+                    Pixel.ring(ci, o, rad - P, erde.darkened(0.2), 0.42)
                 if t < 0.5:
-                    for k in 6:
-                        var w := TAU * float(k) / 6.0 + 0.4
+                    for k in 8:
+                        var w := TAU * float(k) / 8.0 + 0.4
                         var p := o + Vector2(cos(w) * rad, sin(w) * rad * 0.42)
-                        _tu.klecks(p + Vector2(0.0, -14.0 * (1.0 - t * 2.0)), 4.0,
-                            Color(erde.r, erde.g, erde.b, 0.8 * (1.0 - t * 2.0)), k)
+                        Pixel.punkt(ci, p + Vector2(0.0, -18.0 * (1.0 - t * 2.0)), erde, 2)
 
 
-## **Ein Geschoss hat eine Form.** Bolzen und Axt waren derselbe Strich mit
-## Schweif. Jetzt: der Bolzen mit Schaft, Spitze und Befiederung, die Axt als
-## Blatt am Stiel, das sich dreht. Der feindliche Bolzen bleibt in Zinnober
-## und zieht seinen langen Schweif - ihm muss man ausweichen.
-func _zeichne_geschoss(g: Gefecht.Geschoss) -> void:
+## **Ein Geschoss hat eine Form.** Bolzen mit Schaft, Spitze und
+## Befiederung, die Axt als drehendes Blatt. Der feindliche Bolzen bleibt in
+## Zinnober und zieht seinen Schweif - ihm muss man ausweichen.
+func _zeichne_geschoss(ci: RID, g: Gefecht.Geschoss) -> void:
     var r := g.richtung
     if g.feindlich:
-        _tu.zug(g.ort - r * 40.0, g.ort + r * 4.0, 4.0,
-            Color(ZINNOBER.r, ZINNOBER.g, ZINNOBER.b, 0.5), 0.9, 0.0, 0.0, 4)
-        _bolzen(g.ort, r, ZINNOBER.darkened(0.3), ZINNOBER)
+        Pixel.linie(ci, g.ort - r * 44.0, g.ort - r * 8.0,
+            Color(ZINNOBER.r, ZINNOBER.g, ZINNOBER.b, 0.45), 1)
+        Pixel.linie(ci, g.ort - r * 12.0, g.ort + r * 4.0, Palette.HOLZ, 1)
+        Pixel.punkt(ci, g.ort + r * 6.0, ZINNOBER, 2)
         return
     if g.waffe == Waffen.Art.AXT:
         var w := g.alter * 16.0 + g.start.x * 0.01
         var d := Vector2(cos(w), sin(w))
         var q := d.orthogonal()
-        _tu.zug(g.ort - d * 13.0, g.ort + d * 11.0, 4.5, HOLZ, 0.5, 0.0, 0.0, 3,
-            Palette.UMRISS)
-        _tu.strang(PackedVector2Array([g.ort + d * 6.0 - q * 2.0,
-            g.ort + d * 11.0 + q * 9.0, g.ort + d * 15.0 + q * 2.0]),
-            PackedFloat32Array([5.0, 12.0, 4.0]), STAHL, 4, Palette.UMRISS)
-        # Ein blasser Wirbel um die drehende Axt.
-        _tu.zug(g.ort - q * 16.0, g.ort + q * 16.0, 2.0,
-            Color(STAHL.r, STAHL.g, STAHL.b, 0.25), 0.5, 0.0, 14.0, 5)
+        Pixel.linie(ci, g.ort - d * 12.0, g.ort + d * 10.0, Palette.HOLZ, 1)
+        Pixel.linie(ci, g.ort + d * 8.0 - q * 3.0, g.ort + d * 8.0 + q * 10.0,
+            Palette.STAHL_HELL, 2)
         return
-    _tu.zug(g.ort - r * 26.0, g.ort - r * 6.0, 3.0,
-        Color(STAHL.r, STAHL.g, STAHL.b, 0.35), 0.9, 0.0, 0.0, 3)
-    _bolzen(g.ort, r, HOLZ, STAHL)
+    Pixel.linie(ci, g.ort - r * 16.0, g.ort + r * 6.0, Palette.HOLZ_HELL, 1)
+    Pixel.punkt(ci, g.ort + r * 8.0, Palette.STAHL_HELL, 2)
+    Pixel.punkt(ci, g.ort - r * 16.0, Palette.WEISS, 2)
 
 
-func _bolzen(ort: Vector2, r: Vector2, schaft: Color, spitze: Color) -> void:
-    var q := r.orthogonal()
-    _tu.zug(ort - r * 14.0, ort + r * 8.0, 3.0, schaft, 0.5, 0.0, 0.0, 3,
-        Palette.UMRISS)
-    _tu.zug(ort + r * 6.0, ort + r * 15.0, 5.0, spitze, 0.1, 0.0, 0.0, 3,
-        Palette.UMRISS)
-    for s in [-1.0, 1.0]:
-        _tu.zug(ort - r * 10.0, ort - r * 16.0 + q * 5.0 * s, 2.6,
-            Color(0.93, 0.91, 0.85), 0.2, 0.0, 0.0, 3)
-
-
-## **Gezeichnet wird, was im Bild steht - nicht ein Quadrat darum.** Hier
-## stand ein Rand von 720 Punkten in beide Richtungen: 1440 breit fuer ein
-## Bild, das 720 breit ist. Jede Figur links und rechts ausserhalb wurde
-## gebaut, sortiert und weggeworfen, und `DICHT_AB` zaehlte sie mit.
-##
+## **Gezeichnet wird, was im Bild steht - nicht ein Quadrat darum.**
 ## `rand` ist, wie weit ein Ding ueber seinen Ort hinausragt. Figuren stehen
 ## auf ihren Fuessen und ragen **nach oben**: unten reicht ein kleiner Rand,
 ## oben braucht es ihre Hoehe.
@@ -603,124 +620,74 @@ func _im_bild(ort: Vector2, rand: float) -> bool:
         and d.y > -_sicht.y - 30.0 and d.y < _sicht.y + rand
 
 
-const VOLL_NAH := 24
-var _voll_bis := INF
-
-## Die Sparfassung je Sorte und Blickrichtung, einmal gezeichnet
-## (`Tusche.vorlage`). Sie hat keinen Schritt und keinen Schwung - nur wer
-## gerade getroffen aufblitzt, wird frisch gezeichnet.
-var _vorlagen := {}
-
-func _vorlage(art: int, blick: float, h: float) -> Array:
-    var schluessel := art * 2 + (1 if blick > 0.0 else 0)
-    var v: Variant = _vorlagen.get(schluessel)
-    if v == null:
-        var tu := Tusche.new()
-        _pixel_pinsel(tu)
-        Streiter.feind(tu, Vector2.ZERO, h, blick, art, 0.0, 0.0, true)
-        v = tu.vorlage()
-        _vorlagen[schluessel] = v
-    return v
-
-func _zeichne_feind(f: Gefecht.Feind, knapp: bool) -> void:
-    var h := FEIND_HOEHE * (f.radius / 17.0)
-    var phase := _zeit * 7.0 + f.ort.x * 0.05
-    var spar := f.ort.distance_squared_to(_stand.ort) > _voll_bis
-    if spar and f.zuckt <= 0.0:
-        _tu.setze(_vorlage(f.art, f.blick, h), f.ort)
-    else:
-        Streiter.feind(_tu, f.ort, h, f.blick, f.art, phase, f.zuckt, spar)
-    # **Ein Treffer splittert.** Zwei helle Kreuzstriche an der Brust, solange
-    # der Getroffene noch zuckt - kein Zustand, nur was `zuckt` schon weiss.
+func _zeichne_feind(ci: RID, f: Gefecht.Feind) -> void:
+    var tempo := 12.0 if f.art == Feinde.Art.WOLF else 8.0
+    var bild := posmod(int(_zeit * tempo + f.ort.x * 0.013), 4)
+    var b := _feind_bild(f.art, bild, f.blick < 0.0, f.zuckt > 0.0)
+    var breite := 12 if f.art != Feinde.Art.WARLORD else 24
+    if f.art == Feinde.Art.WOLF:
+        breite = 14
+    _schatten(ci, f.ort, breite)
+    _setze(ci, b, f.ort)
+    # **Ein Treffer splittert**: helle Pixel an der Brust, solange der
+    # Getroffene zuckt - kein Zustand, nur was `zuckt` schon weiss.
     if f.zuckt > 0.06:
         var u := (0.14 - f.zuckt) / 0.08
-        var p := f.ort + Vector2(0.0, -h * 0.6)
-        var l := h * (0.10 + 0.12 * u)
-        var c := Color(1.0, 0.98, 0.9, 1.0 - u)
-        _tu.zug(p + Vector2(-l, -l * 0.6), p + Vector2(l, l * 0.6), 3.0, c, 0.5, 0.0, 0.0, 3)
-        _tu.zug(p + Vector2(-l, l * 0.6), p + Vector2(l, -l * 0.6), 3.0, c, 0.5, 0.0, 0.0, 3)
-    # **Der Stuermer kuendigt an.** Ein Angriff, den man nicht kommen sieht,
-    # ist kein Angriff, sondern eine Steuer - dieselbe Regel wie im vorigen
-    # Spiel, nur mit einem anderen Zeichen.
+        var p := f.ort + Vector2(0.0, -FEIND_HOEHE * 0.55)
+        var l := (2.0 + 3.0 * u) * P
+        for d in [Vector2(-1, -1), Vector2(1, -1), Vector2(-1, 1), Vector2(1, 1)]:
+            Pixel.punkt(ci, p + d * l, Palette.WEISS)
+    # **Der Stuermer kuendigt an.**
     if f.stuermt:
-        _tu.zug(f.ort, f.ort + f.bahn * 90.0, 6.0,
-            Color(ZINNOBER.r, ZINNOBER.g, ZINNOBER.b, 0.7), 0.7, 0.4, 0.0, 4)
-    _zeichne_leben(f, h, knapp)
+        Pixel.linie(ci, f.ort, f.ort + f.bahn * 90.0, ZINNOBER, 2)
+    _zeichne_leben(ci, f)
 
 
-## **Ein Balken nur ueber den Schweren.** Der Ritter und der Warlord sind die
-## beiden, bei denen die Frage *wie lange noch* ueberhaupt auftaucht; ein
-## Strolch faellt beim ersten oder zweiten Schlag. Hundertfuenfzig Balken
-## waeren hundertfuenfzig Dinge im Bild, die kein Feind sind - und was einen
-## Hintergrund laut macht, ist die Zahl der getrennten Dinge darin.
-##
-## **Und im Gedraenge nur ueber denen, die nah sind.** Die Ritter sind zaeh
-## und bleiben uebrig, waehrend das Fussvolk faellt; in Minute acht stand ein
-## Block aus zwanzig Rittern im Bild, fast alle angeschlagen, und darueber
-## zwanzig Balken. Wie lange einer noch steht, fragt man bei dem, der gleich
-## zuschlaegt - nicht bei dem am Bildrand. Der Warlord behaelt seinen immer.
+## **Ein Balken nur ueber den Schweren**, und im Gedraenge nur ueber denen,
+## die nah sind (siehe die alte Fassung in der Geschichte dieser Datei). Der
+## Warlord behaelt seinen immer.
 const BALKEN_NAH := 280.0
 
-func _zeichne_leben(f: Gefecht.Feind, h: float, knapp := false) -> void:
+func _zeichne_leben(ci: RID, f: Gefecht.Feind) -> void:
     if f.art != Feinde.Art.RITTER and f.art != Feinde.Art.WARLORD:
         return
-    if knapp and f.art == Feinde.Art.RITTER \
-            and f.ort.distance_to(_stand.ort) > BALKEN_NAH:
+    if f.art == Feinde.Art.RITTER and f.ort.distance_to(_stand.ort) > BALKEN_NAH:
         return
     var teil := clampf(f.leben / maxf(1.0, f.leben_voll), 0.0, 1.0)
     if teil >= 0.999:
         return
-    var breit := h * 0.34
-    var oben := f.ort + Vector2(0.0, -h * 1.10)
-    _riegel(oben, breit, h * 0.035, teil, Palette.LEBEN_VOLL)
+    var breit := 12 if f.art == Feinde.Art.RITTER else 26
+    var hoch := 26.0 if f.art == Feinde.Art.RITTER else 44.0
+    _balken(ci, f.ort + Vector2(-float(breit) * 0.5 * P, -(hoch + 3.0) * P), breit, teil)
 
 
-## Ein liegender Balken: **ueberall dieselbe Hoehe**. Als `zug()` gebaut
-## schwillt er zur Mitte an, und ueber dem Kopf stuende eine Linse mit
-## spitzen Enden - man liest einen Balken an seiner Laenge, und eine Laenge
-## mit spitzen Enden laesst sich nicht ablesen.
-func _riegel(mitte: Vector2, breit: float, hoch: float, teil: float,
-        farbe: Color) -> void:
-    var links := mitte - Vector2(breit, 0.0)
-    var rechts := mitte + Vector2(breit, 0.0)
-    _tu.band(PackedVector2Array([links, rechts]),
-        PackedFloat32Array([hoch, hoch]), Palette.LEBEN_LEER,
-        PackedFloat32Array([1.0, 1.0]), Palette.UMRISS)
-    if teil <= 0.0:
-        return
-    var ende := links.lerp(rechts, teil)
-    _tu.band(PackedVector2Array([links, ende]),
-        PackedFloat32Array([hoch * 0.62, hoch * 0.62]), farbe,
-        PackedFloat32Array([1.0, 1.0]))
+## Ein Lebensbalken im Pixelraster: dunkler Grund, gruene Fuellung.
+func _balken(ci: RID, oben_links: Vector2, breit: int, teil: float) -> void:
+    Pixel.block(ci, oben_links, Vector2i(breit, 2), Palette.LEBEN_LEER.darkened(0.3))
+    var voll := int(round(float(breit) * teil))
+    if voll > 0:
+        Pixel.block(ci, oben_links, Vector2i(voll, 2), Palette.LEBEN_VOLL)
 
 
-## Ring und Lebensbalken des Helden - **zuletzt und ueber allem**. Beides
-## beantwortet *wo bin ich und wie steht es*, und beides darf kein Feind und
-## kein Gefaehrte verdecken.
-func _zeichne_marke() -> void:
+## Ring und Lebensbalken des Helden - **zuletzt und ueber allem**.
+func _zeichne_marke(ci: RID) -> void:
     var s := _stand
     var n := Burg.stand.skin(s.held)
-    Streiter.standring(_tu, s.ort, HELD_HOEHE, Skins.koerper(s.held, n))
-    # **Sein Leben steht bei ihm, nicht nur oben am Schirm.** Der Balken oben
-    # sagt, wie es steht; dieser sagt es dort, wo der Blick ohnehin liegt -
-    # und im Gedraenge schaut niemand an den Bildrand.
-    _riegel(s.ort + Vector2(0.0, HELD_HOEHE * 0.17), HELD_HOEHE * 0.26,
-        HELD_HOEHE * 0.024,
-        clampf(s.leben / maxf(1.0, s.leben_voll), 0.0, 1.0),
-        Palette.LEBEN_VOLL)
+    var farbe := Skins.koerper(s.held, n)
+    var r := HELD_HOEHE * 0.30
+    for bogen in [[PI * 0.62, PI * 1.38], [-PI * 0.38, PI * 0.38]]:
+        Pixel.ring(ci, s.ort + Vector2(0.0, 2.0 * P), r, farbe, 0.45, bogen[0], bogen[1])
+        Pixel.ring(ci, s.ort + Vector2(0.0, 2.0 * P), r + P, farbe, 0.45, bogen[0], bogen[1])
+    # **Sein Leben steht bei ihm, nicht nur oben am Schirm.**
+    _balken(ci, s.ort + Vector2(-8.0 * P, 6.0 * P), 16,
+        clampf(s.leben / maxf(1.0, s.leben_voll), 0.0, 1.0))
 
 
-## **Ein Pfeil zeigt, woher der Warlord kommt.** Er tritt wie alle auf dem
-## Eintrittsring ein, ausserhalb des Bildes, und braucht Sekunden bis zur
-## Leine; man hoert sein Horn und sieht nichts. Eine Ansage, die man nicht
-## orten kann, ist nur ein Geraeusch. Der Pfeil sitzt am Bildrand, dort wo die
-## Linie von der Mitte zu ihm hinausgeht, in Zinnober wie das Sturmband - er
-## kuendigt Schaden am Spieler an. Wie Ring und Lebensbalken eine Marke und
-## keine Figur, also ueber allem. Kein Text: er beantwortet *woher*, und naeher
-## kommt der Warlord ohnehin.
+## **Ein Pfeil zeigt, woher der Warlord kommt** - in Zinnober, am Bildrand,
+## als Pixelspitze.
 const PFEIL_RAND := 56.0
 
-func _zeichne_randpfeil() -> void:
+func _zeichne_randpfeil(ci: RID) -> void:
     var warlord: Gefecht.Feind = null
     for f in _stand.feinde:
         if f.lebt and Feinde.ist_warlord(f.art):
@@ -737,36 +704,40 @@ func _zeichne_randpfeil() -> void:
     var richtung := d.normalized()
     var spitze := _kamera_ort + d * faktor
     var quer := Vector2(-richtung.y, richtung.x)
-    # Gross genug, dass er nicht wie ein Spritzer aussieht: der erste Schuss
-    # mit 34 Punkten las sich als Blut am Bildrand.
     var gross := 52.0 * (1.0 + 0.10 * sin(_zeit * 6.0))
-    var farbe := Color(ZINNOBER.r, ZINNOBER.g, ZINNOBER.b, 0.95)
     var fuss := spitze - richtung * gross
-    _tu.zug(fuss + quer * gross * 0.62, spitze, 11.0, farbe, 0.5, 0.2, 0.0, 5,
-        TINTE)
-    _tu.zug(fuss - quer * gross * 0.62, spitze, 11.0, farbe, 0.5, 0.2, 0.0, 5,
-        TINTE)
-    _tu.klecks(fuss - richtung * gross * 0.30, 8.0, farbe, 3, TINTE)
+    for k in 5:
+        var u := float(k) / 4.0
+        Pixel.linie(ci, fuss + quer * gross * 0.6 * (1.0 - u) + richtung * gross * u * 0.1,
+            spitze, ZINNOBER, 2)
+        Pixel.linie(ci, fuss - quer * gross * 0.6 * (1.0 - u) + richtung * gross * u * 0.1,
+            spitze, ZINNOBER, 2)
+    Pixel.linie(ci, fuss - richtung * gross * 0.4, spitze, ZINNOBER, 3)
 
 
-func _zeichne_gefaehrte(g: Gefecht.Gefaehrte) -> void:
+func _zeichne_gefaehrte(ci: RID, g: Gefecht.Gefaehrte) -> void:
     var n := Burg.stand.skin(_stand.held)
-    # **Deutlich kleiner als der Held.** Bei 0,78 standen drei blaue Maenner
-    # nebeneinander und man musste suchen, welcher man selbst ist.
-    Streiter.gefaehrte(_tu, g.ort, HELD_HOEHE * 0.62, g.blick,
-        _zeit * 8.0 + g.ort.x * 0.05, g.schlag,
-        Skins.koerper(_stand.held, n), Skins.glanz(_stand.held, n))
+    var kleid := Pixel.kleid(Skins.koerper(_stand.held, n), Skins.glanz(_stand.held, n))
+    var bild := posmod(int(_zeit * 6.0 + g.ort.x * 0.02), 2)
+    var spiegel := g.blick < 0.0
+    var b := _bild("gef%d_%d_%d" % [_stand.held, n, bild], Figuren.gefaehrte(bild), kleid,
+        Figuren.GEFAEHRTE_ANKER, spiegel)
+    _schatten(ci, g.ort, 8)
+    _setze(ci, b, g.ort)
+    # Der Speer in der Hand, und er zuckt beim Schlag nach vorn.
+    var blick := -1.0 if spiegel else 1.0
+    var hand := g.ort + Vector2(float(Figuren.GEFAEHRTE_HAND.x) * blick,
+        float(Figuren.GEFAEHRTE_HAND.y)) * P
+    var aus := (5.0 + 6.0 * clampf(g.schlag / 0.18, 0.0, 1.0)) * P
+    Pixel.linie(ci, hand - Vector2(3.0 * P * blick, 0.0), hand + Vector2(aus * blick, -P),
+        Palette.HOLZ_HELL, 1)
+    Pixel.punkt(ci, hand + Vector2((aus + P) * blick, -P), Palette.STAHL_HELL, 2)
 
 
-func _zeichne_held() -> void:
+func _zeichne_held(ci: RID) -> void:
     var s := _stand
     var blick := 1.0 if s.blick.x >= 0.0 else -1.0
     var laeuft := s.lauf.length_squared() > 0.02
-    var phase := _zeit * 9.0 if laeuft else 0.0
-    # **Die Waffe schlaegt, wenn geschlagen wird.** Vorher wackelte sie
-    # dauernd im Takt einer Sinuskurve, unabhaengig von jedem Schlag. Jetzt
-    # zieht sie beim Schlag einmal durch - von hinten nach vorn ueber die
-    # Schlagrichtung - und haengt dazwischen ruhig in Blickrichtung.
     # **Jede Klasse haelt ihre Waffe anders**, und jede schlaegt anders: das
     # Schwert zieht durch, der Speer stoesst, die Armbrust zielt und zuckt
     # zurueck, der Hammer kommt von oben. In Ruhe liegt der Hammer auf der
@@ -776,12 +747,12 @@ func _zeichne_held() -> void:
     var ruhe := s.blick.angle() + 0.35 * blick + wiege
     var dauer := 0.22
     match klasse:
-        Streiter.KLASSE_BOGEN:
+        KLASSE_BOGEN:
             ruhe = Vector2(blick, 0.15).angle() + wiege * 0.5
             dauer = 0.45
-        Streiter.KLASSE_SPEER:
+        KLASSE_SPEER:
             ruhe = Vector2(blick, -0.55).angle() + wiege * 0.5
-        Streiter.KLASSE_HAMMER:
+        KLASSE_HAMMER:
             ruhe = Vector2(-0.35 * blick, -1.0).angle() + wiege * 0.5
             dauer = 0.32
     var schlag := 1.0
@@ -791,10 +762,9 @@ func _zeichne_held() -> void:
         var ziel := _schlag_richtung.angle()
         var e := 1.0 - pow(1.0 - t, 3.0)
         match klasse:
-            Streiter.KLASSE_BOGEN, Streiter.KLASSE_SPEER:
+            KLASSE_BOGEN, KLASSE_SPEER:
                 _waffe_winkel = lerp_angle(_waffe_winkel, ziel, 0.6)
-            Streiter.KLASSE_HAMMER:
-                # Von hinten oben ueber den Kopf auf das Ziel.
+            KLASSE_HAMMER:
                 var oben := Vector2(-0.35 * blick, -1.0).angle()
                 _waffe_winkel = lerp_angle(oben, ziel, e)
             _:
@@ -804,95 +774,95 @@ func _zeichne_held() -> void:
     # Das Gewand kommt aus dem Spielstand und nicht aus dem Gefecht: eine
     # Skin ist Zierde und darf in `Gefecht.Stand` nichts zu suchen haben.
     var n := Burg.stand.skin(s.held)
-    var kleid := Skins.koerper(s.held, n)
-    var glanz := Skins.glanz(s.held, n)
-    # Die Freistellung ist jetzt ein Loch im Figurenpuffer (`zeichne_teil`,
-    # Teil 1) und keine Flaeche mehr.
-    _zeichne_druck()
+    var kleid := Pixel.kleid(Skins.koerper(s.held, n), Skins.glanz(s.held, n))
+    _zeichne_druck(ci)
+    var bild := posmod(int(_zeit * 9.0), 4) if laeuft else -1
+    var b := _bild("held%d_%d_%d" % [klasse, n, bild], Figuren.held(klasse, bild), kleid,
+        Figuren.BEIN_ANKER, blick < 0.0)
     # Beim Treffer blitzt er in Zinnober - Schaden am Spieler, die eine Stelle,
     # an der die Farbe des Helden kurz nicht seine eigene ist.
-    if _wunde > 0.0:
-        kleid = kleid.lerp(ZINNOBER, _wunde * 0.7)
-    Streiter.held(_tu, s.ort, HELD_HOEHE, blick, phase, _waffe_winkel,
-        kleid, glanz, klasse, schlag)
+    var modul := Color.WHITE.lerp(Color(1.0, 0.42, 0.38), _wunde)
+    _schatten(ci, s.ort, 14)
+    _setze(ci, b, s.ort, modul)
+    _held_waffe(ci, klasse, blick, schlag, kleid)
 
-    # Der Flegel steht dauernd im Feld, also gehoert er ins Bild und nicht in
-    # eine Wirkung: was Schaden macht, muss man sehen.
+    # Der Flegel steht dauernd im Feld: Kette aus Gliedern, Kopf mit Stacheln.
     var stufe := s.waffe_stufe(Waffen.Art.FLEGEL)
     if stufe > 0:
-        # `bahn_von`, dieselbe Rechnung wie im Gefecht. Zwei Rechnungen
-        # waeren zwei Wahrheiten, und dann schlaegt der Flegel woanders zu,
-        # als er im Bild steht.
+        # `bahn_von`, dieselbe Rechnung wie im Gefecht.
         var weite := Gefecht.bahn_von(s, Waffen.Art.FLEGEL)
         var zahl := Waffen.zahl(Waffen.Art.FLEGEL, stufe)
-        var eisen := Color(0.60, 0.63, 0.67)
         for i in zahl:
             var w := s.flegel_winkel + TAU * float(i) / float(zahl)
             var ort := s.ort + Vector2(cos(w), sin(w)) * weite
-            # **Eine Kette ist Glieder, kein Faden.** Vier kleine Ringe auf
-            # dem Weg zum Kopf statt eines blassen Strichs.
             for k in 4:
-                var p := s.ort.lerp(ort, (float(k) + 0.6) / 4.6)
-                _tu.klecks(p, 2.6, Color(eisen.r, eisen.g, eisen.b, 0.9), k)
-            # Die Spur: ein blasser Bogen hinter dem Kopf - er kreist, und das
-            # muss man sehen, ohne auf die Zeit zu achten.
-            var spur := PackedVector2Array()
-            var breit := PackedFloat32Array()
-            var deck := PackedFloat32Array()
-            for k in 6:
-                var u := float(k) / 5.0
-                var wk := w - 0.9 * (1.0 - u)
-                spur.append(s.ort + Vector2(cos(wk), sin(wk)) * weite)
-                breit.append(9.0 * u)
-                deck.append(0.35 * u)
-            _tu.band(spur, breit, eisen, deck)
-            # Stahl, nicht der helle Glanz des Helden: als HELD_GLANZ waren
-            # die Koepfe drei helle Scheiben und lasen sich als Blasen. Dazu
-            # Stacheln, sonst ist es eine Kugel.
-            for k in 5:
-                var ws := w * 2.0 + TAU * float(k) / 5.0
-                _tu.zug(ort, ort + Vector2(cos(ws), sin(ws)) * 17.0, 4.0, eisen,
-                    0.1, 0.0, 0.0, 3, Palette.UMRISS)
-            _tu.klecks(ort, 12.0, eisen, i, Palette.UMRISS)
+                Pixel.punkt(ci, s.ort.lerp(ort, (float(k) + 0.6) / 4.6), Palette.STAHL_TIEF)
+            # Die Spur: ein Bogen hinter dem Kopf.
+            Pixel.ring(ci, s.ort, weite, Color(Palette.STAHL.r, Palette.STAHL.g,
+                Palette.STAHL.b, 0.45), 1.0, w - 0.8, w - 0.1)
+            Pixel.scheibe(ci, ort, 2.6 * P, Palette.STAHL)
+            Pixel.punkt(ci, ort + Vector2(-P, -P), Palette.STAHL_HELL)
+            for k in 4:
+                var ws := w * 2.0 + TAU * float(k) / 4.0
+                Pixel.punkt(ci, ort + Vector2(cos(ws), sin(ws)) * 4.0 * P, Palette.STAHL_TIEF)
 
+
+## **Arm und Waffe als Pixellinien**, im Winkel, den das Gefecht gerechnet
+## hat. Ein gedrehtes Pixelbild zerfiele; eine gerasterte Linie bleibt scharf.
+func _held_waffe(ci: RID, klasse: int, blick: float, schlag: float, kleid: Dictionary) -> void:
+    var s := _stand
+    var schulter := s.ort + Vector2(float(Figuren.HELD_SCHULTER.x) * blick,
+        float(Figuren.HELD_SCHULTER.y)) * P
+    var r := Vector2(cos(_waffe_winkel), sin(_waffe_winkel))
+    var q := r.orthogonal()
+    var reich := 5.0
+    if klasse == KLASSE_SPEER:
+        reich = 4.0 + 3.0 * sin(clampf(schlag, 0.0, 1.0) * PI)
+    elif klasse == KLASSE_BOGEN:
+        reich = 5.0 - 1.5 * (1.0 - clampf(schlag * 2.0, 0.0, 1.0))
+    var hand := schulter + r * reich * P
+    Pixel.linie(ci, schulter, hand, kleid["c"], 2)
+    match klasse:
+        KLASSE_BOGEN:
+            var vorn := hand + r * 6.0 * P
+            Pixel.linie(ci, hand - r * 2.0 * P, vorn, Palette.HOLZ, 2)
+            Pixel.linie(ci, vorn - q * 4.0 * P - r * P, hand + r * P, Palette.UMRISS, 1)
+            Pixel.linie(ci, vorn + q * 4.0 * P - r * P, hand + r * P, Palette.UMRISS, 1)
+            Pixel.linie(ci, vorn - q * 4.0 * P - r * P, vorn + q * 4.0 * P - r * P,
+                Palette.STAHL, 1)
+        KLASSE_SPEER:
+            Pixel.linie(ci, hand - r * 6.0 * P, hand + r * 15.0 * P, Palette.HOLZ_HELL, 1)
+            Pixel.linie(ci, hand + r * 14.0 * P, hand + r * 18.0 * P, Palette.STAHL_HELL, 2)
+        KLASSE_HAMMER:
+            var kopf := hand + r * 9.0 * P
+            Pixel.linie(ci, hand - r * P, kopf, Palette.HOLZ, 2)
+            Pixel.linie(ci, kopf - q * 3.0 * P, kopf + q * 3.0 * P, Palette.STAHL, 3)
+            Pixel.punkt(ci, kopf - q * 3.0 * P, Palette.STAHL_HELL)
+        _:
+            Pixel.linie(ci, hand, hand + r * 10.0 * P, Palette.STAHL_HELL, 2)
+            Pixel.linie(ci, hand + r * 2.0 * P, hand + r * 10.0 * P, Palette.WEISS, 1)
+            Pixel.linie(ci, hand - q * 2.0 * P, hand + q * 2.0 * P, Palette.STAHL_TIEF, 1)
+    Pixel.punkt(ci, hand, Palette.HAUT, 2)
 
 
 ## Der Druckring am Boden: je ein Zinnoberbogen dort, wo ein Fach besetzt
-## ist. Eine Strafe, die man nicht kommen sieht, ist keine Regel, sondern
-## ein Unfall - und die Zahl kommt aus `Stand.umzingelt`, derselben, aus
-## der der Schaden faellt. Zwei Rechnungen waeren zwei Wahrheiten.
-func _zeichne_druck() -> void:
+## ist - aus `Stand.umzingelt`, derselben Zahl, aus der der Schaden faellt.
+func _zeichne_druck(ci: RID) -> void:
     var s := _stand
     if s.druck_faecher == 0:
         return
     var u := s.umzingelt
-    # Flach gelegt: das Feld ist von oben gesehen, die Figuren stehen
-    # aufrecht. Ein runder Ring laege senkrecht in der Luft.
-    var rx := HELD_HOEHE * 0.46
-    var ry := HELD_HOEHE * 0.17
-    var hoch := HELD_HOEHE * 0.04
-    # **Kraeftig genug, um es zu sehen.** Der erste Anlauf zeichnete
-    # Haarstriche von knapp vier Punkten Breite bei dreissig Prozent Deckung:
-    # im Schuss war neben dem Helden nichts zu erkennen, obwohl der Ring
-    # gerechnet wurde. Ein Zeichen, das man suchen muss, zeigt nichts an.
-    var farbe := Color(ZINNOBER.r, ZINNOBER.g, ZINNOBER.b, 0.50 + 0.45 * u)
-    var dick := HELD_HOEHE * (0.030 + 0.045 * u)
-    var stuecke := 6
+    var farbe := Color(ZINNOBER.r, ZINNOBER.g, ZINNOBER.b, 0.55 + 0.45 * u)
+    var r := HELD_HOEHE * 0.46
     for i in Gefecht.SEKTOREN:
         if (s.druck_faecher & (1 << i)) == 0:
             continue
-        var mitte := PackedVector2Array()
-        var halb := PackedFloat32Array()
-        var deck := PackedFloat32Array()
-        for k in stuecke:
-            var t := float(k) / float(stuecke - 1)
-            # Mit Luecke zum Nachbarn. Acht Striche ohne Luecke sind ein
-            # Reifen, und ein Reifen sagt nicht, aus welcher Richtung.
-            var w := (float(i) + 0.14 + 0.72 * t) * TAU / float(Gefecht.SEKTOREN) - PI
-            mitte.append(s.ort + Vector2(cos(w) * rx, sin(w) * ry - hoch))
-            halb.append(dick * (0.18 + 0.82 * sin(t * PI)))
-            deck.append(1.0)
-        _tu.band(mitte, halb, farbe, deck)
+        # Mit Luecke zum Nachbarn: ein Reifen sagt nicht, aus welcher Richtung.
+        var von := (float(i) + 0.14) * TAU / float(Gefecht.SEKTOREN) - PI
+        var bis := (float(i) + 0.86) * TAU / float(Gefecht.SEKTOREN) - PI
+        Pixel.ring(ci, s.ort, r, farbe, 0.37, von, bis)
+        if u > 0.5:
+            Pixel.ring(ci, s.ort, r + P, farbe, 0.37, von, bis)
 
 
 ## --- Was das Bedienbild fragt ---

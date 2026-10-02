@@ -58,6 +58,23 @@ const HOLZ := Color(0.502, 0.365, 0.231)
 const WASSER := Color(0.373, 0.580, 0.592)
 const WASSER_HELL := Color(0.635, 0.788, 0.769)
 
+## --- Die Pixel-Figuren ---
+##
+## Feste Rollen der Sprites (`Pixel`, `Figuren`): was nicht die Farbe der
+## Sorte traegt. Gesicht, Stahl, Holz, Leder, Stiefel - die Farbzonen, an
+## denen man im Pixelbild einen Soldaten von einer Silhouette unterscheidet.
+const HAUT := Color(0.890, 0.729, 0.592)
+const HAUT_TIEF := Color(0.710, 0.529, 0.420)
+const STAHL_HELL := Color(0.902, 0.914, 0.925)
+const STAHL := Color(0.659, 0.682, 0.722)
+const STAHL_TIEF := Color(0.408, 0.431, 0.486)
+const HOLZ_HELL := Color(0.667, 0.490, 0.290)
+const LEDER := Color(0.502, 0.341, 0.212)
+const LEDER_TIEF := Color(0.333, 0.220, 0.141)
+const STIEFEL := Color(0.290, 0.212, 0.161)
+const STIEFEL_TIEF := Color(0.188, 0.137, 0.110)
+const WEISS := Color(0.976, 0.965, 0.918)
+
 ## --- Die Kante ---
 
 ## Der Umriss, den jede Figur bekommt. Nicht reines Schwarz: ein Umriss in
