@@ -91,6 +91,31 @@ var _fund := -1
 var _fund_stufe := 0
 ## Rueckstoss der Armbruster nach dem Schuss, je Feind (Kennung -> Rest).
 var _rueck := {}
+## **Schadenszahlen, nur im Bild.** Das Leben jedes Feindes vom letzten Bild
+## (Kennung -> Leben); was fehlt, wird je Feind kurz gesammelt
+## (`ZAHL_SAMMELN`) und dann als eine Zahl gezeigt. Je Treffer eine Zahl
+## gaebe beim Flegel, der je Bild ein wenig nimmt, einen Zahlenregen.
+var _leben_alt := {}
+var _treffer := {}
+var _zahlen: Array = []
+var _held_leben_alt := -1.0
+const ZAHL_SAMMELN := 0.22
+const ZAHL_DAUER := 0.75
+const ZAHLEN_HOECHSTENS := 36
+## **Treffer-Stopp**: so lange haelt die Ansicht an, wenn es zaehlt. Nur die
+## Ansicht - das Gefecht rechnet danach dieselben Schritte, nur spaeter. Im
+## Vorlauf eines Schusses nie (`_vorlauf`): dort zaehlen die Schritte.
+var _stopp := 0.0
+var _vorlauf := false
+const STOPP_WUNDE := 0.045
+const STOPP_WARLORD := 0.20
+## Wann jede Muenze zuerst gesehen wurde (Kennung -> Zeit): sie springt.
+var _muenz_zeit := {}
+## Aufgesammelter Sold fliegt zum Helden.
+var _flieger: Array = []
+## Die Lichtsaeule beim Aufstieg: 1 gerade, 0 vorbei.
+var _saeule := 0.0
+var _saeule_farbe := Color.WHITE
 
 @onready var _kamera: Camera2D = $Bild/Boden/Ansicht/Kamera
 @onready var _kamera_fig: Camera2D = $Bild/Figuren/Ansicht/Kamera
@@ -126,6 +151,14 @@ func beginne(held: int) -> void:
     Burg.stand.held = held
     _stand = Gefecht.baue(Burg.stand.stufen, held, Burg.stand.getragen())
     _funken.clear()
+    _zahlen.clear()
+    _treffer.clear()
+    _leben_alt.clear()
+    _flieger.clear()
+    _muenz_zeit.clear()
+    _held_leben_alt = -1.0
+    _saeule = 0.0
+    _stopp = 0.0
     _hiebe.clear()
     _gefallene.clear()
     _staub.clear()
@@ -160,6 +193,13 @@ func _process(delta: float) -> void:
         r.alter += delta
     _ringe = _ringe.filter(func(r): return r.alter < r.dauer)
     _wunde = maxf(0.0, _wunde - delta * 2.5)
+    _saeule = maxf(0.0, _saeule - delta * 1.4)
+    for z in _zahlen:
+        z.alter += delta
+    _zahlen = _zahlen.filter(func(z): return z.alter < ZAHL_DAUER)
+    for fl in _flieger:
+        fl.alter += delta
+    _flieger = _flieger.filter(func(fl): return fl.alter < 0.2)
     for k in _rueck.keys():
         _rueck[k] -= delta
         if _rueck[k] <= 0.0:
@@ -178,8 +218,13 @@ func _process(delta: float) -> void:
         var eingabe := _eingabe()
         if eingabe.length_squared() > 0.0025 and not _stand.wartet_auf_wahl:
             _gezogen += delta
-        Gefecht.schritt(_stand, minf(delta, 1.0 / 30.0), eingabe, _rng)
-        _werte_aus()
+        if _stopp > 0.0 and not _vorlauf:
+            _stopp -= delta
+        else:
+            _stopp = 0.0
+            Gefecht.schritt(_stand, minf(delta, 1.0 / 30.0), eingabe, _rng)
+            _werte_aus()
+            _sammle_schaden(delta)
         _kamera_ort = _kamera_ort.lerp(_stand.ort, clampf(delta * 7.0, 0.0, 1.0))
         _feld.setze_mitte(_kamera_ort)
         if Gefecht.vorbei(_stand):
@@ -248,6 +293,18 @@ func _werte_aus() -> void:
                     _tod_sperre = TOD_SPERRE
                     Klang.spiele(Klang.Ton.TREFFER, 0.85 + randf() * 0.4, 0.7)
                 var f: Gefecht.Feind = v[1]
+                # Der letzte Schlag zaehlt mit, auch wenn er der einzige war.
+                var id := f.get_instance_id()
+                _zaehle(f, float(_leben_alt.get(id, f.leben_voll)) - maxf(0.0, f.leben), true)
+                _leben_alt.erase(id)
+                if Feinde.ist_warlord(f.art):
+                    # **Der Warlord faellt nicht wie einer von hundert.**
+                    _ruettel = 1.8
+                    _stopp = STOPP_WARLORD
+                    _spritz(f.ort + Vector2(0.0, -FEIND_HOEHE), Palette.sorte(f.art), 24)
+                    _spritz(f.ort + Vector2(0.0, -FEIND_HOEHE), Palette.WEISS, 16)
+                    _ringe.append({"ort": f.ort, "alter": 0.0, "dauer": 0.9,
+                        "von": 20.0, "bis": 260.0, "farbe": Palette.WEISS})
                 # **Der Funke traegt die Farbe dessen, der faellt.** Zinnober
                 # bleibt dem Schaden am Spieler vorbehalten - darf alles rot
                 # spritzen, heisst Rot nichts mehr.
@@ -263,6 +320,10 @@ func _werte_aus() -> void:
                 Klang.spiele(Klang.Ton.WUNDE)
                 Tastsinn.gib(Tastsinn.Art.WUNDE)
                 _ruettel = 1.0
+                _stopp = STOPP_WUNDE
+                if _held_leben_alt > _stand.leben:
+                    _zahl(int(ceilf(_held_leben_alt - _stand.leben)),
+                        _stand.ort + Vector2(0.0, -HELD_HOEHE * 0.95), true)
                 _wunde = 1.0
                 _spritz(_stand.ort + Vector2(0.0, -HELD_HOEHE * 0.5), ZINNOBER, 6)
             Gefecht.Vorfall.SCHUSS:
@@ -271,6 +332,8 @@ func _werte_aus() -> void:
                     _rueck[(v[1] as Gefecht.Feind).get_instance_id()] = 0.18
             Gefecht.Vorfall.MUENZE:
                 Klang.spiele(Klang.Ton.MUENZE, 0.95 + randf() * 0.3, 0.35)
+                if v.size() > 1 and v[1] != null and _flieger.size() < 16:
+                    _flieger.append({"von": (v[1] as Gefecht.Muenze).ort, "alter": 0.0})
                 if _ringe.size() < 12:
                     _ringe.append({"ort": _stand.ort + Vector2(0.0, -HELD_HOEHE * 0.25),
                         "alter": 0.0, "dauer": 0.3, "von": 6.0, "bis": 26.0,
@@ -281,10 +344,61 @@ func _werte_aus() -> void:
                 var glanz := Skins.glanz(_stand.held, Burg.stand.skin(_stand.held))
                 _ringe.append({"ort": _stand.ort, "alter": 0.0, "dauer": 0.7,
                     "von": 20.0, "bis": HELD_HOEHE * 1.6, "farbe": glanz})
+                _saeule = 1.0
+                _saeule_farbe = glanz
+                _spritz(_stand.ort + Vector2(0.0, -HELD_HOEHE * 0.4), glanz, 10)
             Gefecht.Vorfall.WARLORD:
                 Klang.spiele(Klang.Ton.HORN)
                 Tastsinn.gib(Tastsinn.Art.ENDE)
                 _ruettel = 1.4
+
+
+## **Was ein Feind seit dem letzten Bild verlor**, je Feind gesammelt. Nur
+## wer im Bild steht, bekommt eine Zahl und Splitter.
+func _sammle_schaden(delta: float) -> void:
+    var neu := {}
+    for f in _stand.feinde:
+        if not f.lebt:
+            continue
+        var id := f.get_instance_id()
+        var alt: float = _leben_alt.get(id, f.leben)
+        neu[id] = f.leben
+        var verlust := alt - f.leben
+        if verlust > 0.5:
+            _zaehle(f, verlust, false)
+    _leben_alt = neu
+    for id in _treffer.keys():
+        var t: Dictionary = _treffer[id]
+        t.uhr += delta
+        if t.uhr >= ZAHL_SAMMELN:
+            _zahl(int(roundf(t.summe)), t.ort, false)
+            _treffer.erase(id)
+    _held_leben_alt = _stand.leben
+
+
+func _zaehle(f: Gefecht.Feind, verlust: float, fertig: bool) -> void:
+    if verlust <= 0.5 or not _im_bild(f.ort, 60.0):
+        return
+    var id := f.get_instance_id()
+    var kopf := f.ort + Vector2(0.0, -FEIND_HOEHE * (1.6 if Feinde.ist_warlord(f.art) else 0.85))
+    var t: Variant = _treffer.get(id)
+    if t == null:
+        t = {"summe": 0.0, "ort": kopf, "uhr": 0.0}
+        _treffer[id] = t
+        if _funken.size() < 90:
+            _spritz(f.ort + Vector2(0.0, -FEIND_HOEHE * 0.5), Palette.sorte(f.art), 2)
+    t.summe += verlust
+    t.ort = kopf
+    if fertig:
+        _zahl(int(roundf(t.summe)), t.ort, false)
+        _treffer.erase(id)
+
+
+func _zahl(wert: int, ort: Vector2, held: bool) -> void:
+    if wert <= 0 or (_zahlen.size() >= ZAHLEN_HOECHSTENS and not held):
+        return
+    _zahlen.append({"wert": wert, "ort": ort + Vector2((_zier.randf() - 0.5) * 18.0, 0.0),
+        "alter": 0.0, "held": held})
 
 
 func _spritz(ort: Vector2, farbe: Color, zahl: int) -> void:
@@ -469,13 +583,21 @@ func _zeichne_hinten(ci: RID) -> void:
         var dunkel := lerpf(1.0, 0.6, u)
         _setze(ci, b, ort, Color(dunkel, dunkel, dunkel, 1.0))
     # **Sold glaenzt**: eine Pixelmuenze, die im Takt aufblinkt.
+    # Neu gefallener Sold springt einmal hoch, bevor er liegt.
+    var gesehen := {}
     for m in _stand.muenzen:
+        var id := m.get_instance_id()
+        var seit: float = _muenz_zeit.get(id, _zeit)
+        gesehen[id] = seit
         if not _im_bild(m.ort, 20.0):
             continue
+        var alter := _zeit - seit
+        var sprung := sin(clampf(alter / 0.35, 0.0, 1.0) * PI) * 9.0 * P
         var blinkt := sin(_zeit * 6.0 + m.ort.x * 0.05) > 0.7
         var b := _bild("muenze%d" % int(blinkt), MUENZE_BLINKT if blinkt else MUENZE,
             Pixel.grund(), 2)
-        _setze(ci, b, m.ort + Vector2(0.0, 6.0))
+        _setze(ci, b, m.ort + Vector2(0.0, 6.0 - sprung))
+    _muenz_zeit = gesehen
 
     # **Nach y sortiert, nicht nach Listenplatz.** Ohne das steht ein Feind
     # vor dem Helden, der hinter ihm ist - und in einem Bild ohne Perspektive
@@ -563,6 +685,10 @@ func _zeichne_vorn(ci: RID) -> void:
         var ort: Vector2 = f.ort + f.richtung * t * 0.55 + Vector2(0.0, 260.0 * t * t * 0.3)
         Pixel.punkt(ci, ort, Color(c.r, c.g, c.b, 1.0), 2 if t < 0.4 else 1)
 
+    _zeichne_saeule(ci)
+    _zeichne_flieger(ci)
+    _zeichne_zahlen(ci)
+
     for r in _ringe:
         var u: float = r.alter / r.dauer
         var rad: float = lerpf(r.von, r.bis, 1.0 - pow(1.0 - u, 2.0))
@@ -575,6 +701,63 @@ func _zeichne_vorn(ci: RID) -> void:
             Pixel.ring(ci, r.ort, rad - 2.0 * P, Palette.WEISS)
 
     _zeichne_randpfeil(ci)
+
+
+## **Ziffern aus Pixeln**, drei mal fuenf. Weiss fuer Schaden an Feinden,
+## Zinnober fuer Schaden am Spieler - dieselbe Regel wie ueberall. Den
+## Umriss gibt der Shader.
+const ZIFFERN: Array = [
+    ["xxx", "x.x", "x.x", "x.x", "xxx"], [".x.", "xx.", ".x.", ".x.", "xxx"],
+    ["xxx", "..x", "xxx", "x..", "xxx"], ["xxx", "..x", ".xx", "..x", "xxx"],
+    ["x.x", "x.x", "xxx", "..x", "..x"], ["xxx", "x..", "xxx", "..x", "xxx"],
+    ["xxx", "x..", "xxx", "x.x", "xxx"], ["xxx", "..x", ".x.", ".x.", ".x."],
+    ["xxx", "x.x", "xxx", "x.x", "xxx"], ["xxx", "x.x", "xxx", "..x", "xxx"],
+]
+
+func _ziffer(z: int, held: bool) -> Array:
+    var zeilen := PackedStringArray()
+    for zeile in ZIFFERN[z]:
+        zeilen.append((zeile as String).replace("x", "z") if held else zeile)
+    return _bild("ziffer%d_%d" % [z, int(held)], zeilen, Pixel.grund(), 0)
+
+
+func _zeichne_zahlen(ci: RID) -> void:
+    for z in _zahlen:
+        var u: float = z.alter / ZAHL_DAUER
+        # Am Ende blinkt sie aus, statt zu verblassen (siehe Gefallene).
+        if u > 0.72 and fmod(z.alter, 0.08) < 0.04:
+            continue
+        var text := str(z.wert)
+        var steig := (1.0 - pow(1.0 - minf(1.0, u * 1.6), 2.0)) * 12.0 * P
+        var x: float = z.ort.x - float(text.length() * 4 - 1) * 0.5 * P
+        for i in text.length():
+            _setze(ci, _ziffer(int(text[i]), z.held),
+                Vector2(x + float(i * 4) * P, z.ort.y - steig))
+
+
+## **Sold fliegt zum Helden**, einen Augenblick lang, und verschwindet in ihm.
+func _zeichne_flieger(ci: RID) -> void:
+    var ziel := _stand.ort + Vector2(0.0, -HELD_HOEHE * 0.3)
+    for fl in _flieger:
+        var t: float = fl.alter / 0.2
+        var e := t * t
+        var ort: Vector2 = (fl.von as Vector2).lerp(ziel, e) + Vector2(0.0, -sin(t * PI) * 20.0)
+        _setze(ci, _bild("muenze1", MUENZE_BLINKT, Pixel.grund(), 2), ort)
+
+
+## **Die Lichtsaeule des Aufstiegs**: schiesst hoch und wird duenner.
+func _zeichne_saeule(ci: RID) -> void:
+    if _saeule <= 0.0:
+        return
+    var hoch := int(78.0 * minf(1.0, (1.0 - _saeule) * 5.0 + 0.15))
+    var breit := 1 if _saeule < 0.35 else (2 if _saeule < 0.7 else 3)
+    var fuss := _stand.ort + Vector2(0.0, -2.0 * P)
+    for dx in range(-breit, breit + 1):
+        var c := Palette.WEISS if absi(dx) < breit else _saeule_farbe
+        Pixel.block(ci, fuss + Vector2(float(dx) * P, -float(hoch) * P), Vector2i(1, hoch), c)
+    for k in 6:
+        var y := fposmod(_zeit * 140.0 + float(k) * 41.0, float(hoch))
+        Pixel.punkt(ci, fuss + Vector2(float(k - 3) * 2.0 * P, -y * P), Palette.WEISS)
 
 
 ## **Die Schlagbilder.** Jedes in der Richtung, Weite und Breite, mit der das
@@ -1092,6 +1275,7 @@ func _lies_schalter() -> void:
 ## Bild, das im Spiel nie vorkommt.
 func _treibe_vor(sekunden: float) -> void:
     var takt := 1.0 / 60.0
+    _vorlauf = true
     for i in int(sekunden / takt):
         # **Auch die Wahl gehoert dem Daumen.** Hier stand `nimm(_stand, 0)`:
         # der Schuss nahm stets das erste Angebot, der Messstand das, was
@@ -1101,3 +1285,4 @@ func _treibe_vor(sekunden: float) -> void:
             Gefecht.nimm(_stand, Daumen.waehle(_stand))
         _process(takt)
         _hud._process(takt)
+    _vorlauf = false
