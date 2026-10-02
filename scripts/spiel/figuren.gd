@@ -426,6 +426,38 @@ static func liegend(zeilen: PackedStringArray) -> PackedStringArray:
     return _ohne_leere(gekippt)
 
 
+## **Ein Fallender sinkt ein**: `n` Zeilen ueber den Fuessen fallen weg, die
+## Knie knicken. Zwischen Stehen und Liegen - ohne dieses Bild kippte eine
+## Figur von einem Bild aufs naechste um wie ein Brett.
+static func sinkt(zeilen: PackedStringArray, n: int) -> PackedStringArray:
+    var aus := PackedStringArray()
+    var weg_von := zeilen.size() - 2 - n
+    for i in zeilen.size():
+        if i >= weg_von and i < zeilen.size() - 2:
+            continue
+        aus.append(zeilen[i])
+    return aus
+
+
+## **Der Umhang weht.** Eine Spalte Platz links, und im Lauf greift der
+## Umhang in jedem zweiten Bild hinein - er flattert hinter dem Helden her.
+## Der Anker rueckt dabei um eins (`WEHT_ANKER`).
+const WEHT_ANKER := 1
+
+static func weht(zeilen: PackedStringArray, phase: int) -> PackedStringArray:
+    var aus := PackedStringArray()
+    for i in zeilen.size():
+        var z: String = zeilen[i]
+        var rand := "."
+        var erstes := z[0] if z.length() > 0 else "."
+        if (erstes == "u" or erstes == "U") and phase > 0:
+            # Unten weht er weiter aus als oben.
+            if i % 2 == phase % 2 or i > zeilen.size() / 2:
+                rand = "U" if erstes == "U" else "u"
+        aus.append(rand + z)
+    return aus
+
+
 static func _ohne_leere(zeilen: PackedStringArray) -> PackedStringArray:
     var aus := PackedStringArray()
     for z in zeilen:

@@ -62,7 +62,12 @@ var _funken: Array = []
 ## `GEFALLEN_HOECHSTENS` zugleich - in den dichten Minuten fallen Feinde im
 ## Dutzend je Sekunde, und ein Leichenfeld waere ein Hintergrund aus Figuren.
 var _gefallene: Array = []
-const GEFALLEN_DAUER := 0.7
+const GEFALLEN_DAUER := 1.1
+## **Wie einer faellt**, in Sekunden: erst blitzt er und wird zurueckgeworfen,
+## dann knickt er ein, dann liegt er; am Ende blinkt er aus.
+const FALL_BLITZ := 0.09
+const FALL_KNIE := 0.22
+const FALL_BLINKT := 0.30
 const GEFALLEN_HOECHSTENS := 40
 ## Staub: unter Gefallenen, hinter dem laufenden Helden, beim Aufsammeln.
 var _staub: Array = []
@@ -84,6 +89,8 @@ var _schlag_richtung := Vector2.RIGHT
 var _schlag_alter := 9.0
 var _fund := -1
 var _fund_stufe := 0
+## Rueckstoss der Armbruster nach dem Schuss, je Feind (Kennung -> Rest).
+var _rueck := {}
 
 @onready var _kamera: Camera2D = $Bild/Boden/Ansicht/Kamera
 @onready var _kamera_fig: Camera2D = $Bild/Figuren/Ansicht/Kamera
@@ -153,6 +160,10 @@ func _process(delta: float) -> void:
         r.alter += delta
     _ringe = _ringe.filter(func(r): return r.alter < r.dauer)
     _wunde = maxf(0.0, _wunde - delta * 2.5)
+    for k in _rueck.keys():
+        _rueck[k] -= delta
+        if _rueck[k] <= 0.0:
+            _rueck.erase(k)
     # Laufstaub: wenige blasse Woelkchen an den Fersen, nur wer rennt.
     if lage == Lage.LAUF and _stand != null and not _stand.wartet_auf_wahl \
             and _stand.lauf.length_squared() > 0.35:
@@ -244,6 +255,7 @@ func _werte_aus() -> void:
                 if _gefallene.size() < GEFALLEN_HOECHSTENS and _im_bild(f.ort, 60.0):
                     _gefallene.append({"ort": f.ort, "art": f.art,
                         "blick": f.blick, "alter": 0.0,
+                        "weg": (f.ort - _stand.ort).normalized(),
                         "h": FEIND_HOEHE * (f.radius / 17.0)})
                     _staub.append({"ort": f.ort, "alter": 0.0, "dauer": 0.5,
                         "gross": 13.0})
@@ -255,6 +267,8 @@ func _werte_aus() -> void:
                 _spritz(_stand.ort + Vector2(0.0, -HELD_HOEHE * 0.5), ZINNOBER, 6)
             Gefecht.Vorfall.SCHUSS:
                 Klang.spiele(Klang.Ton.BOLZEN, 1.0, 0.45)
+                if v.size() > 1 and v[1] != null:
+                    _rueck[(v[1] as Gefecht.Feind).get_instance_id()] = 0.18
             Gefecht.Vorfall.MUENZE:
                 Klang.spiele(Klang.Ton.MUENZE, 0.95 + randf() * 0.3, 0.35)
                 if _ringe.size() < 12:
@@ -422,21 +436,38 @@ func _zeichne_hinten(ci: RID) -> void:
         var erde := Palette.ERDE.darkened(0.10)
         Pixel.scheibe(ci, st.ort + Vector2(0.0, -u * 10.0), st.gross * (0.5 + u),
             Color(erde.r, erde.g, erde.b, 0.40 * (1.0 - u)), 0.6)
-    # **Gefallene liegen**: das stehende Bild, gedreht. Sie verblassen nicht
-    # stufenlos (der Umriss-Shader zoege unter halber Deckung nur noch die
-    # Kante), sondern dunkeln nach und verschwinden.
+    # **Gefallene fallen in Bildern**: Blitz und Rueckwurf, Einknicken,
+    # Liegen, Ausblinken. Sie verblassen nicht stufenlos (der Umriss-Shader
+    # zoege unter halber Deckung nur noch die Kante), sondern dunkeln nach,
+    # blinken und verschwinden.
     for g in _gefallene:
-        var u: float = g.alter / GEFALLEN_DAUER
+        var alter: float = g.alter
         var art: int = g.art
+        var spiegel: bool = g.blick < 0.0
+        var weg: Vector2 = g.weg
         var b: Array
-        if art == Feinde.Art.WOLF:
-            b = _bild("liegt%d" % art, _kopfueber(Figuren.feind(art, -1)),
-                Pixel.kleid(Palette.sorte(art)), Figuren.WOLF_ANKER, g.blick < 0.0)
+        var ort: Vector2 = g.ort
+        if alter < FALL_BLITZ:
+            b = _feind_bild(art, -1, spiegel, true)
+            ort += weg * P * 2.0
+        elif alter < FALL_KNIE and art != Feinde.Art.WOLF:
+            b = _bild("sinkt%d" % art, Figuren.sinkt(Figuren.feind(art, -1),
+                4 if art != Feinde.Art.WARLORD else 8),
+                Pixel.kleid(Palette.sorte(art)), Figuren.anker(art), spiegel)
+            ort += weg * P * 3.0
         else:
-            b = _bild("liegt%d" % art, Figuren.liegend(Figuren.feind(art, -1)),
-                Pixel.kleid(Palette.sorte(art)), 10, g.blick < 0.0)
-        var dunkel := lerpf(1.0, 0.55, u)
-        _setze(ci, b, g.ort, Color(dunkel, dunkel, dunkel, 1.0))
+            if GEFALLEN_DAUER - alter < FALL_BLINKT and fmod(alter, 0.1) < 0.05:
+                continue
+            if art == Feinde.Art.WOLF:
+                b = _bild("liegt%d" % art, _kopfueber(Figuren.feind(art, -1)),
+                    Pixel.kleid(Palette.sorte(art)), Figuren.WOLF_ANKER, spiegel)
+            else:
+                b = _bild("liegt%d" % art, Figuren.liegend(Figuren.feind(art, -1)),
+                    Pixel.kleid(Palette.sorte(art)), 10, spiegel)
+            ort += weg * P * 3.0
+        var u: float = alter / GEFALLEN_DAUER
+        var dunkel := lerpf(1.0, 0.6, u)
+        _setze(ci, b, ort, Color(dunkel, dunkel, dunkel, 1.0))
     # **Sold glaenzt**: eine Pixelmuenze, die im Takt aufblinkt.
     for m in _stand.muenzen:
         if not _im_bild(m.ort, 20.0):
@@ -636,7 +667,43 @@ func _zeichne_feind(ci: RID, f: Gefecht.Feind) -> void:
     if f.art == Feinde.Art.WOLF:
         breite = 14
     _schatten(ci, f.ort, breite)
-    _setze(ci, b, f.ort)
+    # **Bewegung im Bild, ohne die Rechnung anzufassen.** Alles hier verschiebt
+    # nur, wo das Sprite steht - der Ort im Gefecht bleibt, wo er ist.
+    var fuss := f.ort
+    # Im Schritt eine Zeile hoeher: der Gang federt.
+    if bild % 2 == 1:
+        fuss.y -= P
+    # Wer getroffen wird, zuckt einen Bildpunkt zurueck.
+    if f.zuckt > 0.07 and f.stoss != Vector2.ZERO:
+        fuss += f.stoss.normalized() * P
+    # **Wer am Helden steht, holt aus**: in seinem eigenen Takt ein Ruck auf
+    # ihn zu und ein heller Punkt, wo die Klinge ist. Der Schaden kommt aus
+    # `Gefecht`, nicht von hier - das Bild zeigt nur, wer gerade zuschlaegt.
+    var zu := _stand.ort - f.ort
+    var nah := f.radius + Gefecht.STREITER_RADIUS + 16.0
+    if f.art != Feinde.Art.ARMBRUSTER and zu.length_squared() < nah * nah:
+        var takt := fposmod(_zeit * 2.3 + float(f.get_instance_id() % 97) * 0.137, 1.0)
+        if takt < 0.2:
+            var r := zu.normalized()
+            fuss += r * P * 2.0
+            if takt < 0.1:
+                Pixel.punkt(ci, f.ort + r * (f.radius + 6.0) + Vector2(0.0, -FEIND_HOEHE * 0.35),
+                    Palette.WEISS, 2)
+    # Der Armbruster nach dem Schuss: Rueckstoss und ein Mundfeuer aus Pixeln.
+    var rueck: float = _rueck.get(f.get_instance_id(), 0.0)
+    if rueck > 0.0:
+        var r := zu.normalized()
+        fuss -= r * P
+        if rueck > 0.12:
+            Pixel.punkt(ci, f.ort + r * 9.0 * P + Vector2(0.0, -12.0 * P), Palette.WEISS, 2)
+    # Der Stuermer zieht Staubstreifen hinter sich her.
+    if f.stuermt:
+        var erde := Palette.ERDE.darkened(0.15)
+        for k in 3:
+            var h := Vector2(0.0, -float(2 + k * 5) * P)
+            Pixel.linie(ci, f.ort - f.bahn * (20.0 + k * 6.0) + h,
+                f.ort - f.bahn * (46.0 + k * 10.0) + h, Color(erde.r, erde.g, erde.b, 0.7), 1)
+    _setze(ci, b, fuss)
     # **Ein Treffer splittert**: helle Pixel an der Brust, solange der
     # Getroffene zuckt - kein Zustand, nur was `zuckt` schon weiss.
     if f.zuckt > 0.06:
@@ -785,14 +852,23 @@ func _zeichne_held(ci: RID) -> void:
     var kleid := Pixel.kleid(Skins.koerper(s.held, n), Skins.glanz(s.held, n))
     _zeichne_druck(ci)
     var bild := posmod(int(_zeit * 9.0), 4) if laeuft else -1
-    var b := _bild("held%d_%d_%d" % [klasse, n, bild], Figuren.held(klasse, bild), kleid,
-        Figuren.BEIN_ANKER, blick < 0.0)
+    # Im Lauf weht der Umhang mit, im Stand ruht er; im Stand atmet der Held:
+    # alle gut zwei Sekunden hebt er sich um eine Zeile.
+    var weht := (posmod(bild, 2) + 1) if laeuft else 0
+    var heb := Vector2.ZERO
+    if laeuft and bild % 2 == 1:
+        heb.y = -P
+    elif not laeuft and fmod(_zeit, 2.2) < 0.9:
+        heb.y = -P
+    var b := _bild("held%d_%d_%d_%d" % [klasse, n, bild, weht],
+        Figuren.weht(Figuren.held(klasse, bild), weht), kleid,
+        Figuren.BEIN_ANKER + Figuren.WEHT_ANKER, blick < 0.0)
     # Beim Treffer blitzt er in Zinnober - Schaden am Spieler, die eine Stelle,
     # an der die Farbe des Helden kurz nicht seine eigene ist.
     var modul := Color.WHITE.lerp(Color(1.0, 0.42, 0.38), _wunde)
     _schatten(ci, s.ort, 14)
-    _setze(ci, b, s.ort, modul)
-    _held_waffe(ci, klasse, blick, schlag, kleid)
+    _setze(ci, b, s.ort + heb, modul)
+    _held_waffe(ci, klasse, blick, schlag, kleid, heb)
 
     # Der Flegel steht dauernd im Feld: Kette aus Gliedern, Kopf mit Stacheln.
     var stufe := s.waffe_stufe(Waffen.Art.FLEGEL)
@@ -817,9 +893,10 @@ func _zeichne_held(ci: RID) -> void:
 
 ## **Arm und Waffe als Pixellinien**, im Winkel, den das Gefecht gerechnet
 ## hat. Ein gedrehtes Pixelbild zerfiele; eine gerasterte Linie bleibt scharf.
-func _held_waffe(ci: RID, klasse: int, blick: float, schlag: float, kleid: Dictionary) -> void:
+func _held_waffe(ci: RID, klasse: int, blick: float, schlag: float, kleid: Dictionary,
+        heb := Vector2.ZERO) -> void:
     var s := _stand
-    var schulter := s.ort + Vector2(float(Figuren.HELD_SCHULTER.x) * blick,
+    var schulter := s.ort + heb + Vector2(float(Figuren.HELD_SCHULTER.x) * blick,
         float(Figuren.HELD_SCHULTER.y)) * P
     var r := Vector2(cos(_waffe_winkel), sin(_waffe_winkel))
     var q := r.orthogonal()
