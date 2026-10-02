@@ -42,16 +42,20 @@ Eigenschaften der Engine und der Umgebung, und die stehen in `CLAUDE.md`.
 ## Grafik
 
 Derzeit **keine Bilddateien im Projekt** (außer dem App-Symbol, siehe unten).
-Die gesamte Darstellung entsteht zur Laufzeit aus `_draw()`-Aufrufen. Es gibt
-keinen Shader mehr — Tusche braucht keinen:
+Die gesamte Darstellung entsteht zur Laufzeit. Figuren und Menübilder sind
+Pixel-Sprites, die **als Text im Quelltext** stehen und beim Start in einen
+Atlas gerechnet werden; der Boden ist `Tusche`. Zwei kleine Shader im
+Projekt (`shaders/umriss.gdshader`, `shaders/loch.gdshader`) sind ebenfalls
+selbst geschrieben:
 
 | Was | Wo |
 |---|---|
 | Alle Farben des Spiels, an einer Stelle | `scripts/daten/palette.gd` |
 | Die zwölf Gewänder, je Held drei | `scripts/daten/skins.gd` |
-| Der Gefährte: er trägt die Farben des Helden | `scripts/spiel/streiter.gd` |
-| Der Pinsel selbst: Band, Zug, Strang, Klecks, Kranz, Schraffur, Wisch | `scripts/spiel/tusche.gd` |
-| Held und Feinde: Masse, Glieder, Kante, Schatten, Sparfassung | `scripts/spiel/streiter.gd` |
+| Sprites als Text: Helden, Gefährte, sieben Feindsorten, Laufbilder | `scripts/spiel/figuren.gd` |
+| Menübilder als Text: Waffen, Züge, Bauten, Ausrüstung, Wappen, Burg | `scripts/spiel/symbole.gd` |
+| Atlas, Rollenfarben, Rasterlinien, Ringe, Scheiben | `scripts/spiel/pixel.gd` |
+| Der Pinsel für den Boden: Band, Zug, Strang, Klecks, Wisch | `scripts/spiel/tusche.gd` |
 | Das Pergament: Faser, Flecken, Gräser, Sold | `scripts/spiel/feld.gd` |
 | Waffenspuren, Funken, Druckring, Zeichenreihenfolge nach y | `scripts/spiel/zug_lauf.gd` |
 | Bedienbild, Tafeln, Knöpfe, Balken, Aufstiegskarten | `scripts/spiel/zug_hud.gd` |
@@ -63,16 +67,16 @@ geschriebener Quelltext und stehen deshalb nicht in der Tabelle unten.
 Die einzigen Bilddateien im Projekt sind die App-Symbole. Auch sie sind
 gezeichnet und nicht gemalt: `tools/symbol.gd` stellt den Helden mit erhobener
 Klinge in einen Ring aus Feinden, mit **denselben Aufrufen** wie das Spiel —
-`Streiter.held()`, `Streiter.feind()`, `Tusche`. Bis September 2026 standen
+`Figuren`, `Pixel`, `Tusche`. Bis September 2026 standen
 hier noch NEKTONs Lichtkegel, erzeugt von einem Werkzeug, das nicht mehr lief.
 
 | Datei | Herkunft | Autor | Lizenz | Quelle | Datum |
 |---|---|---|---|---|---|
-| `symbol.png` | selbst erzeugt | dieses Projekt | eigen | `tools/symbol.gd` | 2026-09-25 |
-| `symbol_192.png` | selbst erzeugt | dieses Projekt | eigen | `tools/symbol.gd` | 2026-09-25 |
-| `symbol_hintergrund.png` | selbst erzeugt | dieses Projekt | eigen | `tools/symbol.gd` | 2026-09-25 |
-| `symbol_vordergrund.png` | selbst erzeugt | dieses Projekt | eigen | `tools/symbol.gd` | 2026-09-25 |
-| `symbol_einfarbig.png` | selbst erzeugt | dieses Projekt | eigen | `tools/symbol.gd` | 2026-09-25 |
+| `symbol.png` | selbst erzeugt | dieses Projekt | eigen | `tools/symbol.gd` | 2026-10-02 |
+| `symbol_192.png` | selbst erzeugt | dieses Projekt | eigen | `tools/symbol.gd` | 2026-10-02 |
+| `symbol_hintergrund.png` | selbst erzeugt | dieses Projekt | eigen | `tools/symbol.gd` | 2026-10-02 |
+| `symbol_vordergrund.png` | selbst erzeugt | dieses Projekt | eigen | `tools/symbol.gd` | 2026-10-02 |
+| `symbol_einfarbig.png` | selbst erzeugt | dieses Projekt | eigen | `tools/symbol.gd` | 2026-10-02 |
 
 Die vier zusaetzlichen Dateien sind der Android-Symbolsatz. Seit
 Android 8 schiebt das System zwei Ebenen gegeneinander und schneidet

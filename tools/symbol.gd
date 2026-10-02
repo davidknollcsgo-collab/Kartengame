@@ -11,9 +11,10 @@ extends SceneTree
 ##
 ## **Motiv: einer gegen viele.** Der Held in seinem Blau, mit erhobener
 ## Klinge, und um ihn herum die Horde in ihren Farben.
-## Gezeichnet mit `Streiter` und `Tusche` - denselben Aufrufen wie im Spiel,
-## mit Kante und Schatten. Wer das Symbol kennt, erkennt den Bildschirm
-## wieder, und wer den Bildschirm kennt, das Symbol.
+## Gezeichnet mit den Pixel-Sprites des Spiels (`Figuren`, `Pixel`), mit
+## eingebranntem Umriss, gross und scharf vergroessert. Wer das Symbol
+## kennt, erkennt den Bildschirm wieder, und wer den Bildschirm kennt, das
+## Symbol.
 ##
 ## Kein Schriftzug: ein Symbol muss auf 48 Pixel Kantenlaenge noch erkennbar
 ## sein, und Buchstaben sind es dort nie. Eine blaue Figur in einem Ring aus
@@ -117,18 +118,17 @@ func _male(groesse: int, mass: float, ebenen: Array) -> Image:
     blatt.transparent_bg = true
     blatt.render_target_update_mode = SubViewport.UPDATE_ALWAYS
     var knoten := Node2D.new()
+    knoten.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
     blatt.add_child(knoten)
     root.add_child(blatt)
     var mitte := Vector2(groesse, groesse) * 0.5
     knoten.draw.connect(func() -> void:
-        var tu := Tusche.new()
         if Ebene.GRUND in ebenen:
-            _boden(knoten, tu, groesse, mass, mitte)
+            _boden(knoten, groesse, mass, mitte)
         if Ebene.HELD in ebenen:
-            _held(tu, mass, mitte, true)
+            _held(knoten, mass, mitte, true)
         if Ebene.EINFARBIG in ebenen:
-            _held(tu, mass, mitte, false)
-        tu.spuele(knoten.get_canvas_item()))
+            _held(knoten, mass, mitte, false))
     knoten.queue_redraw()
     await RenderingServer.frame_post_draw
     await RenderingServer.frame_post_draw
@@ -153,19 +153,68 @@ func _held_hoehe(mass: float) -> float:
     return mass * 0.70
 
 
-func _boden(knoten: Node2D, tu: Tusche, groesse: int, mass: float,
-        mitte: Vector2) -> void:
+## Wie gross ein Bildpunkt eines Sprites im Symbol ist: ganzzahlig, damit
+## die Pixel scharf bleiben. Der Held ist 24 Bildpunkte hoch.
+func _punkt(mass: float) -> float:
+    return maxf(1.0, floorf(_held_hoehe(mass) * 0.9 / 24.0))
+
+
+func _sprite(knoten: Node2D, name: String, zeilen: PackedStringArray, kleid: Dictionary,
+        anker: int, fuss: Vector2, p: float, spiegel := false) -> void:
+    var r := Pixel.bild(name, zeilen, kleid, anker, spiegel, false, true)
+    var a := Pixel.anker(name, spiegel, false, true)
+    var oben_links := Vector2(fuss.x - (float(a) + 0.5) * p, fuss.y - float(r.size.y) * p)
+    knoten.draw_texture_rect_region(Pixel.textur(),
+        Rect2(oben_links.round(), Vector2(r.size) * p), Rect2(r))
+
+
+## Eine Linie aus Bildpunkten der Groesse `p` (Bresenham), mit Umriss.
+func _linie(knoten: Node2D, a: Vector2, b: Vector2, farbe: Color, dicke: int,
+        p: float) -> void:
+    var punkte: Array[Vector2i] = []
+    var p0 := Vector2i((a / p).round())
+    var p1 := Vector2i((b / p).round())
+    var dx := absi(p1.x - p0.x)
+    var dy := -absi(p1.y - p0.y)
+    var sx := 1 if p0.x < p1.x else -1
+    var sy := 1 if p0.y < p1.y else -1
+    var fehler := dx + dy
+    var q := p0
+    for i in 256:
+        punkte.append(q)
+        if q == p1:
+            break
+        var e2 := 2 * fehler
+        if e2 >= dy:
+            fehler += dy
+            q.x += sx
+        if e2 <= dx:
+            fehler += dx
+            q.y += sy
+    var halb := float(dicke / 2)
+    for k in 2:
+        for pt in punkte:
+            var r := Rect2((Vector2(pt) - Vector2.ONE * halb) * p, Vector2.ONE * p * float(dicke))
+            if k == 0:
+                knoten.draw_rect(r.grow(p), Palette.UMRISS)
+            else:
+                knoten.draw_rect(r, farbe)
+
+
+func _boden(knoten: Node2D, groesse: int, mass: float, mitte: Vector2) -> void:
     knoten.draw_rect(Rect2(0.0, 0.0, groesse, groesse), Palette.BODEN)
-    # Ein paar Halme, wie auf dem Feld - fest gesetzt, nicht gewuerfelt:
+    var p := _punkt(mass)
+    # Ein paar Kiesel, wie auf dem Feld - fest gesetzt, nicht gewuerfelt:
     # ein Symbol, das bei jedem Lauf anders aussieht, ist keins.
     for i in 9:
         var w := float(i) * 2.39996
         var r := mass * (0.18 + 0.07 * float(i % 4))
-        var p := mitte + Vector2(cos(w), sin(w)) * r
-        tu.klecks(p, mass * 0.012, Palette.GRUND_ZIER, i)
-    # Der Held steht nach der y-Sortierung zwischen den Feinden - im Symbol
-    # aber immer vorn, weil er auf der eigenen Ebene liegt. Das ist dieselbe
-    # Regel wie bei der Marke: wer sich sucht, muss sich finden.
+        var q := ((mitte + Vector2(cos(w), sin(w)) * r) / p).round() * p
+        knoten.draw_rect(Rect2(q, Vector2.ONE * p), Palette.GRUND_ZIER)
+    # Der Held steht im Symbol immer vorn, weil er auf der eigenen Ebene
+    # liegt - dieselbe Regel wie bei der Marke: wer sich sucht, muss sich
+    # finden. **Er ist gross, und die Horde ist klein.**
+    var klein := maxf(1.0, floorf(p * 0.38))
     var koerper := _held_ort(mass, mitte) + Vector2(0.0, -_held_hoehe(mass) * 0.45)
     var liste := []
     for f in HORDE:
@@ -176,28 +225,28 @@ func _boden(knoten: Node2D, tu: Tusche, groesse: int, mass: float,
     liste.sort_custom(func(a, b): return a[0].y < b[0].y)
     for f in liste:
         var ort: Vector2 = f[0]
-        var blick := 1.0 if ort.x < koerper.x else -1.0
         var art: int = f[1]
-        var h := mass * 0.21 * (Feinde.RADIUS[art] / 17.0)
-        Streiter.feind(tu, ort, h, blick, art, ort.x * 0.05, 0.0, false)
+        _sprite(knoten, "sym_f%d" % art, Figuren.feind(art, 0),
+            Pixel.kleid(Palette.sorte(art)), Figuren.anker(art), ort, klein, ort.x > koerper.x)
 
 
-## Der Held. `farbig` zeichnet ihn wie im Spiel, mit Freistellung und Ring;
-## ohne ist es die Form fuer die einfarbige Fassung - dort traegt nur die
-## Deckung, und eine Freistellung waere ein Klecks um ihn herum.
-func _held(tu: Tusche, mass: float, mitte: Vector2, farbig: bool) -> void:
+## Der Held mit erhobener Klinge. `farbig` zeichnet ihn wie im Spiel; ohne
+## ist es die Form fuer die einfarbige Fassung - dort traegt nur die Deckung.
+func _held(knoten: Node2D, mass: float, mitte: Vector2, farbig: bool) -> void:
     var ort := _held_ort(mass, mitte)
-    var h := _held_hoehe(mass)
+    var p := _punkt(mass)
+    var kleid := Pixel.kleid(Palette.HELD, Palette.HELD_GLANZ)
+    _sprite(knoten, "sym_held", Figuren.held(0, -1), kleid, Figuren.BEIN_ANKER, ort, p)
     # Die Klinge schraeg nach vorn oben. Steiler stuende ihre Spitze
     # ausserhalb der Schutzzone und fiele beim Beschneiden weg.
-    var winkel := -0.55
-    # **Ohne Standring.** Im Spiel ist er die Marke, an der man sich unter
-    # achtzig Figuren findet; im Symbol gibt es nur einen, und dort lagen
-    # die zwei blauen Boegen unter ihm wie ein Paar Skier.
-    if farbig:
-        Streiter.frei_gestellt(tu, ort, h * 1.12, Palette.BODEN)
-        Streiter._schatten(tu, ort, h)
-    Streiter.held(tu, ort, h, 1.0, 0.9, winkel, Palette.HELD, Palette.HELD_GLANZ)
+    var r := Vector2(cos(-0.75), sin(-0.75))
+    var schulter := ort + Vector2(Figuren.HELD_SCHULTER) * p
+    var hand := schulter + r * 5.0 * p
+    _linie(knoten, schulter, hand, kleid["c"], 2, p)
+    _linie(knoten, hand, hand + r * 11.0 * p, Palette.STAHL_HELL, 2, p)
+    _linie(knoten, hand - r.orthogonal() * 2.0 * p, hand + r.orthogonal() * 2.0 * p,
+        Palette.STAHL_TIEF, 1, p)
+    var _f := farbig
 
 
 ## Der Renderer mischt auf ein durchsichtiges Blatt vormultipliziert: an

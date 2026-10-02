@@ -91,7 +91,8 @@ var _index := PackedInt32Array()
 var kante_fest := 0.0
 var mindest := 0.0
 
-## **Vorlagen: einmal gebaut, danach nur verschoben.**
+## **Vorlagen: einmal gebaut, danach nur verschoben.** (Seit die Figuren
+## Pixel-Sprites sind, nutzt sie niemand mehr; der flache Puffer blieb.)
 ##
 ## Die Sparfassung eines Feindes bewegt sich nicht - kein Schritt, kein
 ## Schwung -, und trotzdem wurde jede einzelne in jedem Bild Eckpunkt fuer
@@ -151,34 +152,6 @@ func _schliesse_roh() -> void:
     _fertig.append([_roh_punkte, _roh_farben, PackedInt32Array()])
     _roh_punkte = PackedVector2Array()
     _roh_farben = PackedColorArray()
-
-
-## Was bisher gesammelt wurde, als Vorlage: `[punkte, farben]`, ausgerollt zu
-## einzelnen Dreiecken. Der Pinsel ist danach leer.
-func vorlage() -> Array:
-    _schliesse_netz()
-    var p := PackedVector2Array()
-    var c := PackedColorArray()
-    for b in _fertig:
-        var bp: PackedVector2Array = b[0]
-        var bc: PackedColorArray = b[1]
-        var bi: PackedInt32Array = b[2]
-        if bi.is_empty():
-            p.append_array(bp)
-            c.append_array(bc)
-            continue
-        for i in bi:
-            p.append(bp[i])
-            c.append(bc[i])
-    loesche()
-    return [p, c]
-
-
-## Eine Vorlage an `ort` setzen. Keine Schleife in GDScript.
-func setze(v: Array, ort: Vector2) -> void:
-    _schliesse_netz()
-    _roh_punkte.append_array(Transform2D(0.0, ort) * (v[0] as PackedVector2Array))
-    _roh_farben.append_array(v[1] as PackedColorArray)
 
 
 ## Alles Gesammelte absetzen: ein Aufruf je Puffer, im Normalfall einer.

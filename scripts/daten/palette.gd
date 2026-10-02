@@ -6,7 +6,7 @@ extends RefCounted
 ## Bis September 2026 war hier nichts zu entscheiden: alles war schwarze
 ## Tusche, Zinnober hiess Gefahr und Gold hiess Sold. Das las sich gut und
 ## war im Gedraenge unbrauchbar - bei achtzig Figuren schaltet
-## `Streiter.DICHT_AB` jede davon auf die Sparfassung, und die wirft genau
+## die alte Vektorzeichnung jede davon auf die Sparfassung, und die wirft genau
 ## das weg, woran eine Sorte zu erkennen war: ihre Silhouette. Uebrig blieben
 ## achtzig gleiche schwarze Umrisse, und einer davon war man selbst.
 ##

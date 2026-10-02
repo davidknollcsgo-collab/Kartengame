@@ -41,7 +41,6 @@ var _rng := RandomNumberGenerator.new()
 ## anderes Gefecht. Gemessen sah der Umbau dadurch doppelt so teuer aus, weil
 ## im Schuss eine andere Zahl Figuren im Bild stand.
 var _zier := RandomNumberGenerator.new()
-var _tu := Tusche.new()
 var _zeit := 0.0
 var _kamera_ort := Vector2.ZERO
 var _ruettel := 0.0
@@ -351,10 +350,19 @@ func zeichne_teil(teil: int, ci: RID) -> void:
         1:
             # Das Loch: dieselbe Form wie die alte Freistellung, aber in
             # einem Material, das Deckung null schreibt.
-            Streiter.frei_gestellt(_tu, _stand.ort, HELD_HOEHE, Color.WHITE)
-            _tu.spuele(ci)
+            _loch(ci)
         2:
             _zeichne_vorn(ci)
+
+
+## **Die Freistellung als Loch** (Zusicherung 17): die Umrisse des Helden,
+## zwei Bildpunkte weiter, in einem Material, das Deckung null schreibt
+## (`loch.gdshader`). Der Held steht damit in einer Luecke, durch die der
+## wirkliche Boden scheint.
+func _loch(ci: RID) -> void:
+    var o := _stand.ort
+    Pixel.scheibe(ci, o + Vector2(0.0, -10.0 * P), 6.0 * P, Color.WHITE, 2.1)
+    Pixel.scheibe(ci, o + Vector2(0.0, -21.0 * P), 5.0 * P, Color.WHITE, 1.0)
 
 
 # --- Bilder aus dem Atlas ---------------------------------------------------

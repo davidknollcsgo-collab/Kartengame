@@ -45,6 +45,7 @@ const TESTS: PackedStringArray = [
     "_test_der_tod_ist_endgueltig",
     "_test_ansturm_ist_auszuweichen",
     "_test_der_warlord_stellt_sich",
+    "_test_figuren_passen_zur_simulation",
 ]
 
 var _fehler: Array[String] = []
@@ -87,6 +88,62 @@ func _pruefe_vollstaendigkeit() -> bool:
     for name in fehlend:
         _fehler.append("%s steht nicht in TESTS und wurde nie aufgerufen" % name)
     return false
+
+
+## **Die Pixel-Figuren sind Text, und Text kann sich vertippen.** Eine Zeile
+## zu kurz, und die Figur ist schief; ein unbekanntes Zeichen, und im Bild
+## steht ein magentafarbener Punkt. Und **was die Simulation fuer breit
+## haelt, muss das Bild auch so zeichnen** (Zusicherung 23): der Wolf war in
+## der ersten Fassung sechzehn Bildpunkte lang, und mit `Feinde.ABSTAND` 22
+## stand jedes Rudel zu einem Drittel ineinander.
+##
+## Gemessen wird die Koerperbreite - ohne Waffen, Stangen und Fahnen, die
+## ueber den Koerper hinausragen duerfen -, und zwar die halbe gegen
+## `ABSTAND`, mit einem Bildpunkt Spielraum.
+const WAFFEN_ROLLEN := "mMnwWxo"
+
+func _test_figuren_passen_zur_simulation() -> bool:
+    var bekannt := Pixel.kleid(Color.GRAY)
+    var bilder: Array = []
+    for art in Feinde.Art.size():
+        for b in range(-1, 4):
+            bilder.append([Feinde.name_von(art), Figuren.feind(art, b), art])
+    for k in 4:
+        for b in range(-1, 4):
+            bilder.append(["Held %d" % k, Figuren.held(k, b), -1])
+    bilder.append(["Gefaehrte", Figuren.gefaehrte(0), -1])
+    for e in bilder:
+        var zeilen: PackedStringArray = e[1]
+        var breit := zeilen[0].length()
+        for z in zeilen:
+            if not _melde(z.length() == breit,
+                    "%s: Zeile \"%s\" ist %d lang statt %d" % [e[0], z, z.length(), breit]):
+                return false
+            for ch in z:
+                if ch != "." and not bekannt.has(ch):
+                    if not _melde(false, "%s: unbekannte Rolle \"%s\"" % [e[0], ch]):
+                        return false
+        var art: int = e[2]
+        if art < 0:
+            continue
+        var koerper := 0
+        for z in zeilen:
+            var links := -1
+            var rechts := -1
+            for x in z.length():
+                if z[x] != "." and not WAFFEN_ROLLEN.contains(z[x]):
+                    if links < 0:
+                        links = x
+                    rechts = x
+            if links >= 0:
+                koerper = maxi(koerper, rechts - links + 1)
+        var halb := float(koerper) * 0.5
+        var soll := Feinde.abstand(art) / Pixel.P
+        if not _melde(halb <= soll + 1.0,
+                "%s ist halb %.1f Bildpunkte breit, ABSTAND erlaubt %.1f"
+                % [e[0], halb, soll + 1.0]):
+            return false
+    return true
 
 
 func _melde(bedingung: bool, was: String) -> bool:
@@ -217,7 +274,7 @@ func _test_jede_sorte_hat_eine_eigene_farbe() -> bool:
     #
     # Hier stand einmal die umgekehrte Regel - *eine Sorte muss an ihrer
     # Silhouette erkennbar sein, nicht an ihrer Farbe*. Sie scheiterte an
-    # `Streiter.DICHT_AB`: ab siebzig Figuren zeichnet das Spiel die
+    # `Streiter.DICHT_AB` (die Vektorfiguren bis Oktober 2026): ab siebzig Figuren zeichnete das Spiel die
     # Sparfassung, und die wirft die Silhouette weg. Uebrig blieben achtzig
     # gleiche schwarze Umrisse, und einer davon war der Spieler selbst.
     #

@@ -40,7 +40,8 @@ const RADIUS: PackedFloat32Array = [17.0, 15.0, 20.0, 17.0, 20.0, 24.0, 52.0]
 ## **Wie weit einer den anderen fernhaelt** - nicht dasselbe wie `RADIUS`.
 ## `RADIUS` sagt, wer getroffen wird und wer anliegt; dieser hier, wie breit
 ## eine Figur im Bild steht. Fuer Aufrechte ist beides gleich, der Wolf aber
-## liegt quer (`Streiter.WOLF_MASS`). Mit dem Trefferradius lagen 551 von 812
+## liegt quer (sein Sprite ist 13 Bildpunkte lang, siehe `Figuren.WOLF` und
+## `_test_figuren_passen_zur_simulation`). Mit dem Trefferradius lagen 551 von 812
 ## Woelfen im Bild zu mehr als der Haelfte auf einem anderen.
 ##
 ## **22 und nicht die vollen 40 der alten Zeichnung.** Mit 28 wich das Rudel

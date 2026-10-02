@@ -25,8 +25,9 @@ gelöscht. Wer in älteren Commits über `rundlauf.gd`, `schwarm.gd`, `duell.gd`
 oder `fechter.gd` stolpert: die gibt es nicht mehr. **Eine Schleife, eine
 Wahrheit.**
 
-Alles Sichtbare und Hörbare entsteht in diesem Repository: Grafik prozedural
-(`Tusche`), Ton synthetisiert (`Klang`). `ASSETS.md` ist der Nachweis — es
+Alles Sichtbare und Hörbare entsteht in diesem Repository: Figuren und Menübilder als
+Pixel-Sprites in Textform (`Figuren`, `Symbole`, gebaut von `Pixel`), der
+Boden prozedural (`Tusche`), Ton synthetisiert (`Klang`). `ASSETS.md` ist der Nachweis — es
 gibt **keine einzige Bilddatei** außer den App-Symbolen.
 
 ### Der Artstyle: farbig, umrandet, mit Schatten
@@ -110,7 +111,8 @@ Regeln, die dabei entstanden:
   verschob den Lauf, dieselbe Saat zeigte eine andere Szene, und eine
   Zeitmessung „vorher/nachher“ verglich zwei Gefechte — sie sah nach
   doppelten Kosten aus.
-* **Die Nächsten voll, der Rest als Vorlage** (`VOLL_NAH` 40,
+* *(Bis zu den Pixel-Sprites, siehe unten; `VOLL_NAH` und die Vorlagen gibt
+  es nicht mehr.)* **Die Nächsten voll, der Rest als Vorlage** (`VOLL_NAH` 40,
   `Tusche.vorlage()`/`setze()`). Die Sparfassung bewegt sich nicht, wurde
   aber in jedem Bild Eckpunkt für Eckpunkt in GDScript gebaut — bei 260
   Figuren gut dreißig Millisekunden. Jetzt einmal je Sorte und Blick, zu
@@ -125,7 +127,8 @@ Regeln, die dabei entstanden:
   so weit streut es). `VOLL_NAH` 24 kostete 21 ms, 60 schon 30 ms.
   **Messungen nacheinander**, nie parallel: zwei gleichzeitige Läufe
   verfälschen sich gegenseitig.
-* **Menüs haben Bilder** (`Zeichen`, 27 Stück auf `Tusche`): Waffen, Züge,
+* **Menüs haben Bilder** (heute `Symbole`, Pixel-Sprites; bis dahin
+  `Zeichen` auf `Tusche`): Waffen, Züge,
   Bauten, Ausrüstung, Herz, Münze, Schädel. Der Titel zeigt den Helden
   zwischen den Sorten, jede Heldenkarte ihren Helden (gesperrte als
   Schatten), der Bericht ein Bild. Schrift: **Bricolage fett** für Titel,
@@ -170,8 +173,8 @@ Sortenfarben bleiben (satter), Kamera etwas weiter weg.
   die zählen, was im Bild steht, hängen daran — **der Daumen nicht** (siehe
   unten: das Messgerät sah weiter und hielt den Warlord auf Abstand).
 * **Ein Pixel-Soldat hat Farbzonen**: Gesicht in `HAUT`, Rock in der
-  Sortenfarbe, Hose dunkler, Stahl am Helm (`Streiter.KOPF` 1,6 für große
-  Köpfe, `MASSE` 1,18). Einfarbig war jede Figur eine Silhouette. Die Sorte
+  Sortenfarbe, Hose dunkler, Stahl am Helm (damals `Streiter.KOPF` 1,6 für
+  große Köpfe; die Sprites haben die Zonen als Rollen). Einfarbig war jede Figur eine Silhouette. Die Sorte
   trägt ihre Farbe weiter auf der größten Fläche, dem Rock.
 * **Der Boden ist eine Karte** (`feld.gd`): warmer Sand, Wiesen als
   zusammenhängende Flächen (Mittel über 3 × 3 Kacheln — ein Wert je Kachel
@@ -181,8 +184,8 @@ Sortenfarben bleiben (satter), Kamera etwas weiter weg.
   trägt der Held.
 * **Menüs sind ein gerahmtes Blatt** (`zug_hud._rahmen`, `_kopfzeile`,
   `_leiste`): Pergament, doppelter brauner Rand, Eckbeschläge, Wappen im
-  Kopf (`Zeichen.wappen`, Heldenfarbe), Trennlinien, Knöpfe mit Bild. Der
-  Aufstieg ist ein **Banner** mit Spitze und Burg (`Zeichen.burg_bild`).
+  Kopf (`Symbole.WAPPEN`, Heldenfarbe), Trennlinien, Knöpfe mit Bild. Der
+  Aufstieg ist ein **Banner** mit Spitze und Burg (`Symbole.BURG`).
   Dabei fiel auf: `_riegel` prüfte `bis.x - von.x < 1` und warf jede
   senkrechte und jede nach links laufende Linie weg — jetzt die Länge.
 * **Gemessen** (Saat 7, Debug-Build, Median je Bild, nacheinander):
@@ -191,6 +194,51 @@ Sortenfarben bleiben (satter), Kamera etwas weiter weg.
   `VOLL_NAH` steht deshalb auf 24 statt 40 — die feinen Glieder der
   Vollfassung fallen im Pixelbild ohnehin unter einen Bildpunkt, und mit 40
   kostete Minute 6 noch 24–25 ms.
+
+**Und dann echte Pixel-Sprites** (Oktober 2026, „das geht grafisch noch
+viel besser“; gewählt: Figuren, Menüs, Effekte). Die Vektorfiguren
+(`streiter.gd`) und Vektorsymbole (`zeichen.gd`) sind gelöscht; `Tusche`
+zeichnet nur noch den Boden. Was dabei gilt:
+
+* **Ein Sprite ist Text, und ein Zeichen ist eine Rolle, keine Farbe**
+  (`Figuren`, `Symbole`: gleich lange Zeilen, `.` leer). `Pixel.grund()`
+  und `Pixel.kleid(haupt, glanz)` lösen die Rollen aus `Palette` auf —
+  `a/b/c/d` Rock in der Sortenfarbe, `h/H` Hose, `s/S` Haut, `m/M/n` Stahl,
+  `w/W` Holz, `l/L` Leder, `u/U` Umhang, `q` Glanz, `e/o` Kante. Damit
+  bleibt jede Farbe an einer Stelle, und ein Gewand ist ein anderes `kleid`,
+  kein anderes Bild.
+* **Ein Atlas, ein Aufruf je Bild** (`Pixel.bild()`, 1024², nearest):
+  gespiegelt und als weiße Blitzfassung bei Bedarf gebaut und gemerkt,
+  gesetzt mit `canvas_item_add_texture_rect_region` — gleiche Textur, also
+  bündelt der Renderer. Linien, Ringe, Scheiben und Punkte (`Pixel.linie`,
+  `ring`, `scheibe`, `punkt`, `block`) nehmen das weiße Feld desselben
+  Atlas.
+* **Waffen und Effekte sind Rasterlinien, nie gedrehte Sprites.** Ein
+  gedrehtes Pixelbild zerfällt; eine Bresenham-Linie bleibt eine Linie.
+  Der Held trägt keinen Vorderarm im Sprite, die Hand führt die Waffe als
+  Linie von `HELD_SCHULTER`.
+* **Liegen ist eine Vierteldrehung des Rasters** (`Figuren.liegend`), der
+  Wolf liegt auf dem Rücken. Kein Extrabild je Sorte.
+* **Kein äußerer Umriss im Sprite** — den macht im Feld der Shader. In den
+  Menüs gibt es keinen Shader, dort wird er eingebacken (`umriss = true`).
+  Reine Glyphen (Laut, Kreuz, Zurück) ohne, sonst werden sie Klumpen.
+* **Die gezeichnete Breite ist die der Simulation** (Zusicherung 23):
+  `_test_figuren_passen_zur_simulation` prüft je Sorte und Bild, dass die
+  halbe Körperbreite (ohne Waffenrollen) höchstens ein Pixel über
+  `Feinde.ABSTAND / Pixel.P` liegt, dazu gleiche Zeilenlängen und nur
+  bekannte Rollen. Der Wolf war beim ersten Zuschnitt zu breit; Spalten
+  wegzuschneiden nahm ihm die Läufe — er ist von Hand neu gezeichnet.
+* **Die Kameras stehen auf dem Pixelraster** (`Pixel.raster`). Sonst
+  rutschen Boden- und Figurenpuffer gegeneinander, und jede Figur zittert
+  um ein Pixel über dem Gras.
+* **Das HUD zeichnet sofort und der Reihe nach**; nur die Schrift wartet
+  bis zum Schluss (`_worte`). Pergament ist eine erzeugte, gekachelte
+  Textur (`_baue_pergament`, feste Saat); Ringflecken darin gaben ein
+  Muster, Punktflecken nicht. Knöpfe lösen beim **Loslassen** über
+  demselben Knopf aus und zeigen solange den gedrückten Zustand.
+* **Gemessen** (`zeichne_teil`, Saat 7, Debug-Build, nacheinander):
+  Minute 1 **1,2 ms**, Minute 6 **3,2 ms**, Minute 9 **3,2 ms** statt
+  17 / 20 / 27 ms — ein Bild je Figur statt Hunderter Eckpunkte in GDScript.
 
 ## Godot beschaffen
 
@@ -442,7 +490,7 @@ keinem Schuss zu sehen, obwohl er im Spiel steht.
     (`TRENN_NACHBARN`; mit 10 kam ein Wolfsrudel nicht auseinander, sobald
     die weitere Kamera es beim Heranlaufen zeigte: 7 % statt 0 %), nach ihrer **gezeichneten Breite**
     (`Feinde.ABSTAND`) und nicht nach dem Trefferradius. Der quer liegende
-    Wolf wird dafür gestaucht gezeichnet (`Streiter.WOLF_MASS`): was die
+    Wolf ist dafür nur 13 Pixel lang (`Figuren.WOLF`): was die
     Simulation für breit hält, muss das Bild auch so zeichnen. Und **höchstens 300 leben**, gemessen an
     der Rechenzeit (200 Lebende 1,3 ms je Schritt, 400 schon 2,7 ms). Vorher
     lief der Held der Horde davon: nach zehn Minuten lebten 2269, im Bild
