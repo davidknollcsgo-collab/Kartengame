@@ -1,10 +1,17 @@
 extends Control
 
-## **Das Bedienbild - auch es ist gestochen.**
+## **Das Bedienbild - in derselben Pixelsprache wie das Feld.**
 ##
-## Keine rechten Winkel: ein Knopf ist vier Pinselstriche, die sich an den
-## Ecken nicht ganz treffen. Fuenf gerahmte Rechtecke untereinander waeren
-## ein Antragsformular, das jemand ueber den Holzschnitt gelegt hat.
+## Bis Oktober 2026 war es aus Vektorstrichen (`Tusche`) gebaut, und neben
+## dem Pixelfeld sahen die Menues aus wie aus einem anderen Spiel. Jetzt:
+## Pergament als erzeugte Textur, Rahmen aus Pixelstreifen mit
+## Eckbeschlaegen, Knoepfe mit Fase, die sich beim Antippen eindruecken,
+## Symbole und Figuren als Pixel-Sprites (`Symbole`, `Figuren`), dreifach
+## vergroessert (`M`).
+##
+## **Alles wird sofort gezeichnet, in Reihenfolge.** Der Pinsel sammelte und
+## kam erst am Ende aufs Blatt; mit Sprites dazwischen lag dann jedes Bild
+## unter seiner eigenen Tafel. Nur die Schrift wartet (siehe `_worte`).
 ##
 ## **Die Aufstiegskarten bekommen den ganzen Schirm.** Sie sind die einzige
 ## Entscheidung im Lauf; alles andere ist Aufstellung und Reflex.
@@ -15,25 +22,28 @@ const GOLD := Color(0.72, 0.55, 0.18)
 const SEPIA := Color(0.42, 0.34, 0.24)
 const HELL := Color(0.98, 0.96, 0.90)
 
-var _tu := Tusche.new()
-## **Die Schrift wird gesammelt wie die Tusche.**
-##
-## `Tusche` ist ein Sammler: alles landet in einem Netz und wird am Ende in
-## **einem** Aufruf gespuelt. `draw_string` geht dagegen sofort aufs Blatt.
-## Damit lag jede Beschriftung **unter** ihrer eigenen Tafel - und eine
-## Tafel ist ein Pergamentwisch mit zweiundsechzig Prozent Deckung. Im Bild
-## stand auf jedem Knopf und jeder Karte graue Schrift, wo schwarze stehen
-## sollte; die Kosten in der Burg sahen aus, als koenne man sie sich nicht
-## leisten. Die Worte warten deshalb hier und kommen nach dem Spuelen.
+## Ein Bildpunkt des Bedienbilds in Schirmpunkten.
+const M := 3.0
+
+const RAHMEN_TIEF := Color(0.200, 0.122, 0.071)
+const RAHMEN := Color(0.400, 0.259, 0.141)
+const RAHMEN_HELL := Color(0.639, 0.471, 0.282)
+const BLATT := Color(0.957, 0.918, 0.808)
+const BLATT_TIEF := Color(0.886, 0.824, 0.678)
+
+## **Die Schrift wartet.** `draw_string` und alles andere gehen sofort aufs
+## Blatt; die Worte kommen zuletzt, damit keine Flaeche sie verdeckt.
 var _worte: Array = []
 var _felder: Array = []
 var _lauf: Node2D
+## Der Knopf unter dem Finger, solange er liegt - er wird gedrueckt
+## gezeichnet. Ausgeloest wird erst beim Loslassen ueber demselben Knopf.
+var _gedrueckt := ""
+var _pergament: ImageTexture
 
 ## **Zwei Schriften, und jede hat ihre Aufgabe.** Bricolage, kraeftig, fuer
 ## das, was einen Schirm benennt - Titel, Namen, Knoepfe; Rajdhani fuer
-## Zahlen, deren Ziffern gleich breit stehen. Beide lagen seit August 2026
-## im Repository und in `ASSETS.md`, und gezeichnet wurde mit der
-## Standardschrift der Engine.
+## Zahlen, deren Ziffern gleich breit stehen.
 const BRICOLAGE := preload("res://schriften/bricolage/BricolageGrotesque.ttf")
 const RAJDHANI := preload("res://schriften/rajdhani/Rajdhani-Medium.ttf")
 var _kopf: Font
@@ -50,6 +60,10 @@ func _ready() -> void:
         TextServerManager.get_primary_interface().name_to_tag("wght"): 700}
     _kopf = fett
     _zahl = RAJDHANI
+    # Scharfe Pixel und gekacheltes Pergament.
+    texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+    texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
+    _pergament = _baue_pergament()
     mouse_filter = Control.MOUSE_FILTER_PASS
     set_process(true)
 
@@ -69,42 +83,176 @@ func _rand() -> float:
     return clampf(float(sicher.position.y), 26.0, float(fenster.y) * 0.12)
 
 
-# --- Pinselwerk ------------------------------------------------------------
+# --- Pergament und Rahmen ---------------------------------------------------
 
-func _kasten(r: Rect2, farbe: Color, breite := 4.0) -> void:
-    var a := r.position
-    var b := r.position + r.size
-    var u := r.size.x * 0.035
-    _tu.zug(Vector2(a.x - u, a.y), Vector2(b.x + u * 0.4, a.y - 2.0), breite, farbe, 0.4, 0.3, 2.0, 5)
-    _tu.zug(Vector2(b.x, a.y - u * 0.3), Vector2(b.x + 2.0, b.y + u * 0.5), breite, farbe, 0.4, 0.3, 2.0, 5)
-    _tu.zug(Vector2(b.x + u * 0.4, b.y), Vector2(a.x - u * 0.6, b.y + 2.0), breite, farbe, 0.4, 0.3, 2.0, 5)
-    _tu.zug(Vector2(a.x, b.y + u * 0.3), Vector2(a.x - 2.0, a.y - u * 0.4), breite, farbe, 0.4, 0.3, 2.0, 5)
+## **Pergament als Bild aus dem Code**: Rauschen in zwei Groessen, kurze
+## Fasern, ein paar Flecken. Gesaet, also bei jedem Start gleich, und ohne
+## Bilddatei. 64 Bildpunkte, dreifach vergroessert und gekachelt.
+static func _baue_pergament() -> ImageTexture:
+    var n := 64
+    var bild := Image.create(n, n, false, Image.FORMAT_RGBA8)
+    var rng := RandomNumberGenerator.new()
+    rng.seed = 1157
+    var grob := PackedFloat32Array()
+    for i in 64:
+        grob.append(rng.randf())
+    for y in n:
+        for x in n:
+            # Grobes Rauschen ueber ein 8er-Gitter, das sich kachelt.
+            var gx := x / 8
+            var gy := y / 8
+            var g := grob[(gy % 8) * 8 + (gx % 8)]
+            var fein := rng.randf()
+            var t := (g - 0.5) * 0.05 + (fein - 0.5) * 0.035
+            bild.set_pixel(x, y, BLATT.lightened(t) if t > 0.0 else BLATT.darkened(-t))
+    # Fasern: kurze waagerechte Striche, etwas dunkler.
+    for i in 26:
+        var x := rng.randi_range(0, n - 1)
+        var y := rng.randi_range(0, n - 1)
+        var l := rng.randi_range(2, 6)
+        for k in l:
+            var px := (x + k) % n
+            bild.set_pixel(px, y, bild.get_pixel(px, y).darkened(0.07))
+    # Flecken: kleine dunklere Tupfen, unregelmaessig. Ringe waren es
+    # zuerst, und beim Kacheln standen sie als Muster aus Kreisen im Blatt.
+    for i in 10:
+        var cx := rng.randi_range(0, n - 1)
+        var cy := rng.randi_range(0, n - 1)
+        for k in rng.randi_range(2, 5):
+            var px := posmod(cx + rng.randi_range(-1, 1), n)
+            var py := posmod(cy + rng.randi_range(-1, 1), n)
+            bild.set_pixel(px, py, bild.get_pixel(px, py).darkened(0.05))
+    return ImageTexture.create_from_image(bild)
 
 
-## **Eine Tafel ist ein Blatt, keine Linse.**
-##
-## Der erste Anlauf war ein `wisch()` - und der schwillt zur Mitte an und
-## laeuft zu den Enden aus. Auf einem Knopf von sechzig Bildpunkten faellt
-## das nicht auf; auf einer Berichtstafel von vierhundert stand eine
-## **Linse** im Bild, mit hellem Bauch und spitzen Enden. Was eine Flaeche
-## sein soll, braucht ueber ihre ganze Laenge dieselbe Breite - und die
-## Unregelmaessigkeit gehoert an die Kante, nicht in die Mitte.
-## **Dicht genug, dass der Boden nicht durchscheint.** Die Menues standen
-## auf halber Deckung, solange der Boden aus blassen Flecken bestand; seit er
-## Steine mit Kante und Pfade hat, lagen die quer ueber den Karten.
-func _tafel(r: Rect2, deckung: float) -> void:
-    var mitte := PackedVector2Array()
-    var halb := PackedFloat32Array()
-    var deck := PackedFloat32Array()
-    var stuecke := 9
-    for i in stuecke:
-        var t := float(i) / float(stuecke - 1)
-        mitte.append(Vector2(r.position.x + r.size.x * t,
-            r.position.y + r.size.y * 0.5))
-        # Ein handgerissenes Blatt: die Kante wackelt um ein Prozent.
-        halb.append(r.size.y * 0.5 * (1.0 + 0.02 * sin(t * 9.0 + r.position.y)))
-        deck.append(1.0)
-    _tu.band(mitte, halb, Color(HELL.r, HELL.g, HELL.b, deckung), deck)
+func _flaeche(r: Rect2, farbe: Color) -> void:
+    draw_rect(r, farbe)
+
+
+## Ein Rechteck aus Pergament, im Pixelraster gekachelt.
+func _blatt(r: Rect2) -> void:
+    draw_set_transform(Vector2.ZERO, 0.0, Vector2(M, M))
+    draw_texture_rect(_pergament, Rect2(r.position / M, r.size / M), true)
+    draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+## Ein Rand von `dicke` Bildpunkten aus Streifen, aussen nach innen.
+func _streifen(r: Rect2, farben: Array) -> void:
+    for i in farben.size():
+        var innen := r.grow(-M * float(i))
+        draw_rect(innen.grow(-M * 0.5), farben[i], false, M)
+
+
+## **Der Rahmen eines Schirms**: Schatten, Pergament, ein Rand aus vier
+## Pixelstreifen (dunkel, Holz, Licht, dunkel) und Beschlaege an den Ecken.
+func _rahmen(r: Rect2) -> void:
+    r = Rect2((r.position / M).round() * M, (r.size / M).round() * M)
+    _flaeche(Rect2(r.position + Vector2(M * 2.0, M * 3.0), r.size),
+        Color(TINTE.r, TINTE.g, TINTE.b, 0.35))
+    _blatt(r)
+    _streifen(r, [RAHMEN_TIEF, RAHMEN, RAHMEN_HELL, RAHMEN_TIEF])
+    # Eine feine Linie innen, zwei Bildpunkte vom Rand.
+    draw_rect(r.grow(-M * 6.5), Color(RAHMEN.r, RAHMEN.g, RAHMEN.b, 0.35), false, M)
+    for ecke in 4:
+        _ecke(r, ecke)
+
+
+const ECKE: PackedStringArray = [
+    "nnnnnnn.",
+    "nMMMMMn.",
+    "nMmmMMnn",
+    "nMmxMMn.",
+    "nMMMMn..",
+    "nMMMn...",
+    "nnnn....",
+    "..n.....",
+]
+
+## Ein Beschlag aus Stahl, zur jeweiligen Ecke gespiegelt.
+func _ecke(r: Rect2, welche: int) -> void:
+    var zeilen := ECKE
+    var rechts := welche == 1 or welche == 3
+    var unten := welche >= 2
+    if unten:
+        var umgekehrt := PackedStringArray()
+        for i in range(zeilen.size() - 1, -1, -1):
+            umgekehrt.append(zeilen[i])
+        zeilen = umgekehrt
+    var name := "ecke%d" % welche
+    var b := Pixel.bild(name, zeilen, Pixel.grund(), 0, rechts, false, true)
+    Pixel.bereit()
+    var x := r.position.x - M if not rechts else r.end.x - float(b.size.x - 1) * M
+    var y := r.position.y - M if not unten else r.end.y - float(b.size.y - 1) * M
+    RenderingServer.canvas_item_add_texture_rect_region(get_canvas_item(),
+        Rect2(Vector2(x, y), Vector2(b.size) * M), Pixel.textur().get_rid(), Rect2(b))
+
+
+## Eine Linie zwischen zwei Zeilen: dunkel mit hellem Strich darunter, wie
+## eingeritzt.
+func _trenner(r: Rect2, y: float) -> void:
+    y = roundf(y / M) * M
+    var a := r.position.x + M * 8.0
+    var e := r.end.x - M * 8.0
+    draw_rect(Rect2(a, y, e - a, M), Color(RAHMEN.r, RAHMEN.g, RAHMEN.b, 0.55))
+    draw_rect(Rect2(a, y + M, e - a, M), Color(1.0, 1.0, 1.0, 0.35))
+
+
+## Der Kopf eines Rahmens: Bild links, Titel, optional Untertitel, und das
+## Schliesskreuz rechts, das zurueck zum Titel fuehrt.
+func _kopfzeile(r: Rect2, titel: String, bild: Callable, unter := "",
+        schliessen := false) -> void:
+    bild.call(Vector2(r.position.x + 56.0, r.position.y + 60.0))
+    var x := r.position.x + 98.0
+    var platz := r.end.x - x - (74.0 if schliessen else 30.0)
+    _zeile_eng(titel, Vector2(x, r.position.y + (62.0 if unter != "" else 74.0)), 40,
+        TINTE, platz, _kopf)
+    if unter != "":
+        _zeile_eng(unter, Vector2(x, r.position.y + 92.0), 20,
+            Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.95), platz)
+    if schliessen:
+        var p := Vector2(r.end.x - 46.0, r.position.y + 48.0)
+        _symbol("KREUZ", p, false, M, RAHMEN_TIEF)
+        _felder.append({"id": "titel", "r": Rect2(p - Vector2.ONE * 30.0,
+            Vector2.ONE * 60.0), "aktiv": true})
+    _trenner(r, r.position.y + 118.0)
+
+
+## **Ein Knopf ist eine Leiste mit Fase**: oben und links Licht, unten und
+## rechts Schatten - gedrueckt umgekehrt, und der Inhalt sinkt einen
+## Bildpunkt ein. Man sieht, dass er nachgibt, bevor etwas passiert.
+func _leiste(id: String, r: Rect2, text: String, aktiv := true,
+        bild := Callable()) -> void:
+    _felder.append({"id": id, "r": r, "aktiv": aktiv})
+    r = Rect2((r.position / M).round() * M, (r.size / M).round() * M)
+    var unten := _gedrueckt == id and aktiv
+    if not unten:
+        _flaeche(Rect2(r.position + Vector2(0.0, M * 2.0), r.size),
+            Color(TINTE.r, TINTE.g, TINTE.b, 0.35))
+    var tief := Vector2(0.0, M) if unten else Vector2.ZERO
+    var k := Rect2(r.position + tief, r.size)
+    var grund := BLATT_TIEF if aktiv else BLATT
+    if unten:
+        grund = grund.darkened(0.08)
+    _flaeche(k, grund)
+    var licht := Color(1.0, 1.0, 1.0, 0.55)
+    var schatten := Color(RAHMEN.r, RAHMEN.g, RAHMEN.b, 0.55)
+    var oben_farbe := schatten if unten else licht
+    var unten_farbe := licht if unten else schatten
+    _flaeche(Rect2(k.position + Vector2(M, M), Vector2(k.size.x - M * 2.0, M)), oben_farbe)
+    _flaeche(Rect2(k.position + Vector2(M, M), Vector2(M, k.size.y - M * 2.0)), oben_farbe)
+    _flaeche(Rect2(k.position + Vector2(M, k.size.y - M * 2.0),
+        Vector2(k.size.x - M * 2.0, M)), unten_farbe)
+    _flaeche(Rect2(k.position + Vector2(k.size.x - M * 2.0, M),
+        Vector2(M, k.size.y - M * 2.0)), unten_farbe)
+    draw_rect(k.grow(-M * 0.5), RAHMEN_TIEF if aktiv else
+        Color(RAHMEN.r, RAHMEN.g, RAHMEN.b, 0.5), false, M)
+    var farbe := TINTE if aktiv else Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.6)
+    if bild.is_valid():
+        bild.call(Vector2(k.position.x + 36.0, k.position.y + k.size.y * 0.5))
+        _mitte_eng(text, Rect2(k.position + Vector2(44.0, 0.0),
+            k.size - Vector2(44.0, 0.0)), 26, farbe, _kopf)
+    else:
+        _mitte_eng(text, k, 26, farbe, _kopf)
 
 
 func _knopf(id: String, r: Rect2, text: String, aktiv := true,
@@ -112,95 +260,136 @@ func _knopf(id: String, r: Rect2, text: String, aktiv := true,
     _leiste(id, r, text, aktiv, bild)
 
 
-# --- Der Rahmen ------------------------------------------------------------
+# --- Sprites -----------------------------------------------------------------
 
-## **Ein Schirm ist ein gerahmtes Blatt** - so stand es in der Vorlage des
-## Nutzers (Oktober 2026): helles Pergament, ein dunkelbrauner doppelter
-## Rand, Eckbeschlaege, ein Kopf mit Wappen und Linien zwischen den Zeilen.
-## Vorher lagen einzelne blasse Karten frei ueber dem Feld.
-const RAHMEN := Color(0.333, 0.224, 0.133)
-const BLATT := Color(0.957, 0.918, 0.808)
-const BLATT_TIEF := Color(0.902, 0.851, 0.718)
+## Die Rollen in der Farbe des gewaehlten Helden und Gewands.
+func _held_kleid() -> Dictionary:
+    var h := Burg.stand.held
+    var n := Burg.stand.skin(h)
+    return Pixel.kleid(Skins.koerper(h, n), Skins.glanz(h, n))
 
 
-## Ein Rechteck, ueberall gleich hoch (siehe `_riegel`).
-func _flaeche(r: Rect2, farbe: Color) -> void:
-    _riegel(Vector2(r.position.x, r.position.y + r.size.y * 0.5),
-        Vector2(r.end.x, r.position.y + r.size.y * 0.5), r.size.y, farbe)
+func _held_schluessel() -> String:
+    return "%d_%d" % [Burg.stand.held, Burg.stand.skin(Burg.stand.held)]
 
 
-func _rand_linien(r: Rect2, dicke: float, farbe: Color) -> void:
-    var a := r.position
-    var e := r.end
-    _riegel(Vector2(a.x - dicke * 0.5, a.y), Vector2(e.x + dicke * 0.5, a.y), dicke, farbe)
-    _riegel(Vector2(a.x - dicke * 0.5, e.y), Vector2(e.x + dicke * 0.5, e.y), dicke, farbe)
-    _riegel(Vector2(a.x, a.y), Vector2(a.x, e.y), dicke, farbe)
-    _riegel(Vector2(e.x, a.y), Vector2(e.x, e.y), dicke, farbe)
+## **Ein Symbol** aus `Symbole`, mittig auf `mitte`. `umriss` brennt einen
+## Bildpunkt Kante ein (fuer Gegenstaende); Zeichen wie Pfeil und Kreuz sind
+## selbst schon Kante. `farbe` faerbt ein Zeichen ein (modulate).
+func _symbol(name: String, mitte: Vector2, umriss := true, mass := M,
+        farbe := Color.WHITE, kleid := {}, schluessel := "") -> void:
+    var zeilen: PackedStringArray = (Symbole as Script).get_script_constant_map()[name]
+    if kleid.is_empty():
+        kleid = _held_kleid()
+        schluessel = _held_schluessel()
+    var b := Pixel.bild("sym_%s_%s" % [name, schluessel], zeilen, kleid, 0, false, false,
+        umriss)
+    Pixel.bereit()
+    var oben_links := (mitte - Vector2(b.size) * mass * 0.5).round()
+    RenderingServer.canvas_item_add_texture_rect_region(get_canvas_item(),
+        Rect2(oben_links, Vector2(b.size) * mass), Pixel.textur().get_rid(), Rect2(b), farbe)
 
 
-func _rahmen(r: Rect2) -> void:
-    _flaeche(Rect2(r.position + Vector2(6.0, 9.0), r.size),
-        Color(TINTE.r, TINTE.g, TINTE.b, 0.28))
-    _flaeche(r, BLATT)
-    _rand_linien(r, 7.0, RAHMEN)
-    _rand_linien(r.grow(-11.0), 2.0, Color(RAHMEN.r, RAHMEN.g, RAHMEN.b, 0.45))
-    # Eckbeschlaege: ein Quadrat mit Niet.
-    for ecke in [r.position, Vector2(r.end.x, r.position.y),
-            Vector2(r.position.x, r.end.y), r.end]:
-        _flaeche(Rect2(ecke - Vector2.ONE * 11.0, Vector2.ONE * 22.0), RAHMEN)
-        _tu.klecks(ecke, 4.0, BLATT_TIEF, 1)
+func _symbol_waffe(w: int) -> String:
+    return ["SCHWERT", "SPEER", "FLEGEL", "ARMBRUST", "HAMMER", "AXT"][clampi(w, 0, 5)]
 
 
-## Eine Linie zwischen zwei Zeilen.
-func _trenner(r: Rect2, y: float) -> void:
-    _riegel(Vector2(r.position.x + 18.0, y), Vector2(r.end.x - 18.0, y), 2.0,
-        Color(RAHMEN.r, RAHMEN.g, RAHMEN.b, 0.35))
+func _symbol_zug(z: int) -> String:
+    return ["RUESTUNG", "STIEFEL", "WETZSTEIN", "LATERNE", "ZEHRUNG", ""][clampi(z, 0, 5)]
 
 
-## Der Kopf eines Rahmens: Bild links, Titel, optional Untertitel, und das
-## Schliesskreuz rechts, das zurueck zum Titel fuehrt.
-func _kopfzeile(r: Rect2, titel: String, bild: Callable, unter := "",
-        schliessen := false) -> void:
-    bild.call(Vector2(r.position.x + 50.0, r.position.y + 58.0))
-    var x := r.position.x + 92.0
-    var platz := r.end.x - x - (70.0 if schliessen else 24.0)
-    _zeile_eng(titel, Vector2(x, r.position.y + (60.0 if unter != "" else 72.0)), 40,
-        TINTE, platz, _kopf)
-    if unter != "":
-        _zeile_eng(unter, Vector2(x, r.position.y + 90.0), 20,
-            Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.95), platz)
-    if schliessen:
-        var p := Vector2(r.end.x - 40.0, r.position.y + 44.0)
-        Zeichen.schliessen(_tu, p, 14.0, RAHMEN)
-        _felder.append({"id": "titel", "r": Rect2(p - Vector2.ONE * 30.0,
-            Vector2.ONE * 60.0), "aktiv": true})
-    _trenner(r, r.position.y + 116.0)
+func _symbol_bau(b: int) -> String:
+    return ["MAUER", "SCHMIEDE", "STALL", "MUENZEN"][clampi(b, 0, 3)]
 
 
-## **Ein Knopf ist eine Leiste**: dunklere Flaeche, brauner Rand, ein Bild
-## links und die Schrift daneben.
-func _leiste(id: String, r: Rect2, text: String, aktiv := true,
-        bild := Callable()) -> void:
-    _felder.append({"id": id, "r": r, "aktiv": aktiv})
-    _flaeche(Rect2(r.position + Vector2(3.0, 5.0), r.size),
-        Color(TINTE.r, TINTE.g, TINTE.b, 0.22))
-    _flaeche(r, BLATT_TIEF if aktiv else Color(BLATT.r, BLATT.g, BLATT.b, 0.85))
-    _rand_linien(r, 4.0, Color(RAHMEN.r, RAHMEN.g, RAHMEN.b, 1.0 if aktiv else 0.45))
-    var farbe := TINTE if aktiv else Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.6)
-    if bild.is_valid():
-        bild.call(Vector2(r.position.x + 34.0, r.position.y + r.size.y * 0.5))
-        _mitte_eng(text, Rect2(r.position + Vector2(40.0, 0.0),
-            r.size - Vector2(40.0, 0.0)), 26, farbe, _kopf)
-    else:
-        _mitte_eng(text, r, 26, farbe, _kopf)
+func _symbol_stueck(s: int) -> String:
+    return ["KESSELHAUBE", "VISIERHELM", "RUESTUNG", "PLATTENROCK", "SIEGELRING",
+        "BLUTSTEIN", "REISEMANTEL", "BANNERTUCH"][clampi(s, 0, 7)]
+
+
+## **Eine Figur im Menue**: dasselbe Sprite wie im Feld, mit eingebranntem
+## Umriss, `mass`-fach. `fuss` ist die Fussmitte auf dem Schirm.
+func _figur(name: String, zeilen: PackedStringArray, kleid: Dictionary, anker: int,
+        fuss: Vector2, mass := M, spiegel := false, modul := Color.WHITE) -> void:
+    var b := Pixel.bild(name, zeilen, kleid, anker, spiegel, false, true)
+    Pixel.bereit()
+    var a := Pixel.anker(name, spiegel, false, true)
+    Pixel.setze_schirm(get_canvas_item(), b, a, fuss.round(), mass, modul)
+
+
+## Ein Held im Menue, mit Arm und Waffe als Pixellinie wie im Feld.
+func _held_bild(klasse: int, fuss: Vector2, mass: float, winkel: float,
+        kleid: Dictionary, schluessel: String, schatten := true) -> void:
+    if schatten:
+        _figur("schatten14", Figuren.schatten(14), Pixel.grund(), 7,
+            fuss + Vector2(0.0, mass * 2.0), mass)
+    _figur("mheld%d_%s" % [klasse, schluessel], Figuren.held(klasse, -1), kleid,
+        Figuren.BEIN_ANKER, fuss, mass)
+    var schulter := fuss + Vector2(Figuren.HELD_SCHULTER) * mass
+    var r := Vector2(cos(winkel), sin(winkel))
+    var q := r.orthogonal()
+    var hand := schulter + r * 5.0 * mass
+    _linie(schulter, hand, kleid["c"], 2, mass)
+    match klasse:
+        1:
+            var vorn := hand + r * 6.0 * mass
+            _linie(hand - r * 2.0 * mass, vorn, Palette.HOLZ, 2, mass)
+            _linie(vorn - q * 4.0 * mass, vorn + q * 4.0 * mass, Palette.STAHL, 1, mass)
+        2:
+            _linie(hand - r * 6.0 * mass, hand + r * 15.0 * mass, Palette.HOLZ_HELL, 1, mass)
+            _linie(hand + r * 14.0 * mass, hand + r * 18.0 * mass, Palette.STAHL_HELL, 2, mass)
+        3:
+            var kopf := hand + r * 9.0 * mass
+            _linie(hand, kopf, Palette.HOLZ, 2, mass)
+            _linie(kopf - q * 3.0 * mass, kopf + q * 3.0 * mass, Palette.STAHL, 3, mass)
+        _:
+            _linie(hand, hand + r * 10.0 * mass, Palette.STAHL_HELL, 2, mass)
+            _linie(hand - q * 2.0 * mass, hand + q * 2.0 * mass, Palette.STAHL_TIEF, 1, mass)
+    _flaeche(Rect2((hand / mass).floor() * mass, Vector2.ONE * mass * 2.0), Palette.HAUT)
+
+
+## Eine Linie aus Bildpunkten der Groesse `mass` (Bresenham).
+func _linie(a: Vector2, b: Vector2, farbe: Color, dicke: int, mass := M) -> void:
+    var p0 := Vector2i((a / mass).round())
+    var p1 := Vector2i((b / mass).round())
+    var dx := absi(p1.x - p0.x)
+    var dy := -absi(p1.y - p0.y)
+    var sx := 1 if p0.x < p1.x else -1
+    var sy := 1 if p0.y < p1.y else -1
+    var fehler := dx + dy
+    var p := p0
+    var versatz := Vector2.ONE * float(dicke / 2)
+    for i in 256:
+        draw_rect(Rect2((Vector2(p) - versatz) * mass, Vector2.ONE * mass * float(dicke)), farbe)
+        if p == p1:
+            break
+        var e2 := 2 * fehler
+        if e2 >= dy:
+            fehler += dy
+            p.x += sx
+        if e2 <= dx:
+            fehler += dx
+            p.y += sy
+
+
+## Ein Balken im Pixelraster: dunkler Rand, Grund, Fuellung, Glanzlinie.
+func _balken(r: Rect2, anteil: float, farbe: Color) -> void:
+    r = Rect2((r.position / M).round() * M, (r.size / M).round() * M)
+    _flaeche(r, RAHMEN_TIEF)
+    var innen := r.grow(-M)
+    _flaeche(innen, Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.55))
+    var b := roundf(innen.size.x * clampf(anteil, 0.0, 1.0) / M) * M
+    if b > 0.0:
+        _flaeche(Rect2(innen.position, Vector2(b, innen.size.y)), farbe)
+        _flaeche(Rect2(innen.position, Vector2(b, M)), farbe.lightened(0.3))
 
 
 ## Das Wappen in der Farbe des gewaehlten Helden und Gewands.
-func _wappen(ort: Vector2, g: float) -> void:
-    var h := Burg.stand.held
-    var n := Burg.stand.skin(h)
-    Zeichen.wappen(_tu, ort, g, Skins.koerper(h, n), Skins.glanz(h, n))
+func _wappen(ort: Vector2, mass := M) -> void:
+    _symbol("WAPPEN", ort, true, mass)
 
+
+# --- Schrift --------------------------------------------------------------
 
 func _mitte(text: String, r: Rect2, groesse: int, farbe: Color,
         schrift: Font = null) -> void:
@@ -269,34 +458,6 @@ func _luft(hoehe: float) -> float:
     return maxf(0.0, (size.y - _rand() * 2.0 - hoehe) * 0.5)
 
 
-## **Ein Balken hat ueberall dieselbe Hoehe.**
-##
-## Der erste Anlauf nahm `zug()`, und der schwillt zur Mitte an: im Bild
-## stand eine **Linse** ueber dem Schirm, spitz an beiden Enden. Ein Balken
-## ist aber eine Menge und kein Pinselstrich - man liest ihn an seiner
-## Laenge, und eine Laenge mit spitzen Enden laesst sich nicht ablesen.
-func _riegel(von: Vector2, bis: Vector2, dicke: float, farbe: Color) -> void:
-    # Die Laenge zaehlt, nicht der Weg nach rechts: hier stand
-    # `bis.x - von.x < 1`, und seit die Rahmen senkrechte Kanten haben, fiel
-    # jede davon weg - und jede Linie, die nach links laeuft. Ein leerer
-    # Balken (Laenge null) bleibt weiter ungezeichnet.
-    if von.distance_squared_to(bis) < 1.0:
-        return
-    var mitte := PackedVector2Array([von, (von + bis) * 0.5, bis])
-    var halb := PackedFloat32Array([dicke * 0.5, dicke * 0.5, dicke * 0.5])
-    var deck := PackedFloat32Array([1.0, 1.0, 1.0])
-    _tu.band(mitte, halb, farbe, deck)
-
-
-func _balken(r: Rect2, anteil: float, farbe: Color) -> void:
-    var y := r.position.y + r.size.y * 0.5
-    _riegel(Vector2(r.position.x, y), Vector2(r.position.x + r.size.x, y),
-        r.size.y, Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.20))
-    var b := r.size.x * clampf(anteil, 0.0, 1.0)
-    _riegel(Vector2(r.position.x, y), Vector2(r.position.x + b, y),
-        r.size.y * 0.84, farbe)
-
-
 # --- Das Bild --------------------------------------------------------------
 
 func _draw() -> void:
@@ -318,11 +479,8 @@ func _draw() -> void:
             _burg()
         4:
             _zeug()
-    _tu.spuele(get_canvas_item())
     # **Im Lauf bekommt die Schrift eine Kante.** Sie steht dort nicht auf
-    # einer Tafel, sondern direkt ueber dem Gedraenge, und "837 slain" war
-    # auf dem Ladenbild zur Haelfte ein Pikenier. Dieselbe Regel wie fuer
-    # die Figuren: eine Kante trennt, was sonst ineinanderlaeuft.
+    # einer Tafel, sondern direkt ueber dem Gedraenge.
     var kante: bool = _lauf.lage == 1
     for w in _worte:
         if kante:
@@ -334,19 +492,21 @@ func _draw() -> void:
             -1, w["groesse"], w["farbe"])
 
 
+const TITEL_ZEILE := 114.0
+
 func _titel() -> void:
     var b := size.x
     var s := Burg.stand
     var zeilen := Helden.NAMEN.size()
-    var hoch := 120.0 + float(zeilen) * TITEL_ZEILE + 96.0
+    var hoch := 124.0 + float(zeilen) * TITEL_ZEILE + 100.0
     var oben := _rand() + _luft(SZENE + hoch + 50.0)
-    _szene(Vector2(b * 0.5, oben + SZENE - 14.0), b)
+    _szene(Vector2(b * 0.5, oben + SZENE - 18.0), b)
     var r := Rect2(24.0, oben + SZENE, b - 48.0, hoch)
     _rahmen(r)
-    _kopfzeile(r, "TEN THOUSAND", func(p): _wappen(p, 34.0),
+    _kopfzeile(r, "TEN THOUSAND", func(p): _wappen(p),
         "One blade. Ten thousand of them.")
 
-    var y := r.position.y + 118.0
+    var y := r.position.y + 122.0
     for h in zeilen:
         var frei := Helden.ist_frei(h, s.beste_zeit, s.meiste_erschlagen,
             s.warlord_gefallen)
@@ -355,13 +515,15 @@ func _titel() -> void:
         # gewaehlten Gewand. Ein gesperrter steht als Schatten da: man sieht,
         # was kommt, aber nicht, wie es aussieht.
         var n := s.skin(h)
-        var kleid := Skins.koerper(h, n) if frei else Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.35)
-        var glanz := Skins.glanz(h, n) if frei else Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.35)
-        var fuss := Vector2(r.position.x + 56.0, y + TITEL_ZEILE - 12.0)
+        var kleid := Pixel.kleid(Skins.koerper(h, n), Skins.glanz(h, n))
+        var schluessel := "%d_%d" % [h, n]
+        var fuss := Vector2(r.position.x + 58.0, y + TITEL_ZEILE - 14.0)
         if frei:
-            Streiter._schatten(_tu, fuss, 84.0)
-        Streiter.held(_tu, fuss, 84.0, 1.0, 0.0, -0.75, kleid, glanz, h)
-        var x := r.position.x + 108.0
+            _held_bild(h, fuss, M, -0.7, kleid, schluessel)
+        else:
+            _figur("mheld%d_%s" % [h, schluessel], Figuren.held(h, -1), kleid,
+                Figuren.BEIN_ANKER, fuss, M, false, Color(0.15, 0.12, 0.10, 0.55))
+        var x := r.position.x + 112.0
         _zeile(Helden.name_von(h), Vector2(x, y + 38.0), 28,
             TINTE if frei else Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.6), _kopf)
         var satz := Helden.lehre_von(h) if frei else Helden.bedingung_text(h)
@@ -387,34 +549,30 @@ func _titel() -> void:
         if h < zeilen - 1:
             _trenner(r, y)
 
-    var halb := (r.size.x - 60.0) * 0.5
-    var yk := y + 14.0
-    _knopf("burg", Rect2(r.position.x + 22.0, yk, halb, 58.0), "KEEP", true,
-        func(p): Zeichen.bau(_tu, Halle.Bau.MAUER, p, 15.0))
-    _knopf("zeug", Rect2(r.position.x + 38.0 + halb, yk, halb, 58.0), "GEAR", true,
-        func(p): Zeichen.stueck(_tu, Ausruestung.Stueck.VISIERHELM, p, 15.0))
+    var halb := (r.size.x - 66.0) * 0.5
+    var yk := y + 12.0
+    _knopf("burg", Rect2(r.position.x + 24.0, yk, halb, 60.0), "KEEP", true,
+        func(p): _symbol("MAUER", p, true, 2.0))
+    _knopf("zeug", Rect2(r.position.x + 42.0 + halb, yk, halb, 60.0), "GEAR", true,
+        func(p): _symbol("VISIERHELM", p, true, 2.0))
     if s.etwas_zu_holen():
-        _tu.klecks(Vector2(r.position.x + 22.0 + halb - 8.0, yk + 8.0), 9.0,
-            Palette.HELD, 3, Palette.UMRISS)
+        _flaeche(Rect2(r.position.x + 24.0 + halb - 18.0, yk - 6.0, 18.0, 18.0), RAHMEN_TIEF)
+        _flaeche(Rect2(r.position.x + 24.0 + halb - 15.0, yk - 3.0, 12.0, 12.0), Palette.HELD)
     if s.laeufe > 0:
         var z := "best %d:%02d   /   %d felled   /   %d coin" % [
             int(s.beste_zeit) / 60, int(s.beste_zeit) % 60,
             s.meiste_erschlagen, s.sold]
         var zw := _breite(z, 26, _zahl)
-        _zeile(z, Vector2((b - zw) * 0.5, r.end.y + 40.0), 26,
+        _zeile(z, Vector2((b - zw) * 0.5, r.end.y + 44.0), 26,
             Color(TINTE.r, TINTE.g, TINTE.b, 0.85), _zahl)
-
-
-const TITEL_ZEILE := 112.0
 
 
 ## Wie hoch die Szene ueber dem Titel steht.
 const SZENE := 190.0
 
 ## **Einer gegen die Horde - als Bild, bevor man es liest.** Der Held in der
-## Mitte, die Sorten von beiden Seiten auf ihn zu, gezeichnet mit denselben
-## Figuren wie im Lauf. Die Reihenfolge ist fest: der Titel ist kein
-## Gefecht, und ein Bild, das bei jedem Start anders steht, flackert.
+## Mitte, die Sorten von beiden Seiten auf ihn zu, mit denselben Sprites wie
+## im Feld. Die Reihenfolge ist fest: der Titel ist kein Gefecht.
 const SZENE_REIHE := [
     [-300.0, Feinde.Art.SPIESSER], [-240.0, Feinde.Art.STROLCH],
     [-185.0, Feinde.Art.WOLF], [-120.0, Feinde.Art.RITTER],
@@ -423,32 +581,21 @@ const SZENE_REIHE := [
 ]
 
 func _szene(boden: Vector2, b: float) -> void:
-    # Der Boden: ein flacher Erdfleck, auf dem sie stehen.
-    var erde := Palette.ERDE
-    # Ein Wisch, der zu den Seiten auslaeuft - als Riegel ueber die ganze
-    # Breite stand die Szene auf einem Brett.
-    _tu.wisch(boden + Vector2(-b * 0.52, 0.0), boden + Vector2(b * 0.52, 0.0), 34.0,
-        Color(erde.r, erde.g, erde.b, 0.55))
-    var hoehe := 96.0
+    var mass := M
     for e in SZENE_REIHE:
         var x: float = e[0] * minf(1.0, b / 720.0)
         var art: int = e[1]
-        var f := boden + Vector2(x, -4.0 + absf(x) * 0.02)
-        var hh := hoehe * (Feinde.radius(art) / 17.0)
-        Streiter.feind(_tu, f, hh, -signf(x), art, absf(x) * 0.05, 0.0, false)
-    var held := Burg.stand.held
-    var n := Burg.stand.skin(held)
-    Streiter.frei_gestellt(_tu, boden + Vector2(0.0, 6.0), hoehe * 1.5, Palette.BODEN)
-    Streiter._schatten(_tu, boden + Vector2(0.0, 6.0), hoehe * 1.5)
-    Streiter.held(_tu, boden + Vector2(0.0, 6.0), hoehe * 1.5, 1.0, 0.0, -1.0,
-        Skins.koerper(held, n), Skins.glanz(held, n), held)
+        var f := boden + Vector2(x, absf(x) * 0.02)
+        _figur("schatten12", Figuren.schatten(12), Pixel.grund(), 6,
+            f + Vector2(0.0, mass * 2.0), mass)
+        _figur("mf%d" % art, Figuren.feind(art, 0), Pixel.kleid(Palette.sorte(art)),
+            Figuren.anker(art), f, mass, x > 0.0)
+    _held_bild(Burg.stand.held, boden + Vector2(0.0, 8.0), 4.0, -1.0, _held_kleid(),
+        _held_schluessel())
 
 
-## Die drei Gewaender am rechten Rand einer Heldenkarte.
-##
-## **Als Farbpunkte und nicht als Namensliste.** Eine Skin ist eine Farbe;
-## wer sie waehlen will, will sie sehen und nicht lesen. Was gesperrt ist,
-## steht blass da - ein Gewand, das man nicht sieht, ist kein Ziel.
+## Die drei Gewaender am rechten Rand einer Heldenzeile: Farbfelder im
+## Pixelraster, das getragene mit dunklem Reif.
 func _gewaender(h: int, karte: Rect2) -> void:
     var s := Burg.stand
     var gewaehlt := s.skin(h)
@@ -457,15 +604,16 @@ func _gewaender(h: int, karte: Rect2) -> void:
             karte.position.y + karte.size.y * 0.5)
         var frei := Skins.ist_frei(h, n, s.beste_zeit, s.meiste_erschlagen,
             s.warlord_gefallen)
+        var feld := Rect2(((mitte - Vector2.ONE * 15.0) / M).round() * M, Vector2.ONE * 30.0)
         if n == gewaehlt:
-            # Der Reif um das getragene: zwei Punkte uebereinander waeren
-            # zwei Gewaender, ein Reif ist eine Wahl.
-            _tu.klecks(mitte, 21.0, Color(TINTE.r, TINTE.g, TINTE.b, 0.9), h * 7)
-        var farbe := Skins.koerper(h, n)
-        if not frei:
-            farbe = Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.25)
-        _tu.klecks(mitte, 15.0, farbe, h * 13 + n, Palette.UMRISS)
+            _flaeche(feld.grow(M * 2.0), RAHMEN_TIEF)
+            _flaeche(feld.grow(M), HELL)
+        _flaeche(feld, RAHMEN_TIEF)
+        var farbe := Skins.koerper(h, n) if frei else BLATT_TIEF
+        _flaeche(feld.grow(-M), farbe)
         if frei:
+            _flaeche(Rect2(feld.position + Vector2(M, M), Vector2(feld.size.x - M * 2.0, M)),
+                farbe.lightened(0.35))
             _felder.append({"id": "skin%d_%d" % [h, n],
                 "r": Rect2(mitte - Vector2.ONE * 23.0, Vector2.ONE * 46.0),
                 "aktiv": true})
@@ -479,52 +627,49 @@ func _im_lauf() -> void:
     var oben := _rand()
 
     # **Ein Treffer faerbt den Bildrand.** Kurz und blass in Zinnober, an allen
-    # vier Kanten: Schaden am Spieler, und im Gedraenge sieht man ihn sonst
-    # nur am Balken oben, wohin keiner schaut.
+    # vier Kanten: Schaden am Spieler.
     var wunde: float = _lauf.wunde()
     if wunde > 0.0:
-        var c := Color(ZINNOBER.r, ZINNOBER.g, ZINNOBER.b, 0.38 * wunde)
-        var d := 46.0
         var h := size.y
-        for kante in [[Vector2(0, 0), Vector2(b, 0)], [Vector2(0, h), Vector2(b, h)],
-                [Vector2(0, 0), Vector2(0, h)], [Vector2(b, 0), Vector2(b, h)]]:
-            _tu.band(PackedVector2Array([kante[0], kante[1]]),
-                PackedFloat32Array([d, d]), c, PackedFloat32Array())
+        for k in 4:
+            var c := Color(ZINNOBER.r, ZINNOBER.g, ZINNOBER.b, 0.32 * wunde * (1.0 - float(k) * 0.25))
+            var d := float(k) * 12.0
+            _flaeche(Rect2(0.0, d, b, 12.0), c)
+            _flaeche(Rect2(0.0, h - d - 12.0, b, 12.0), c)
+            _flaeche(Rect2(d, 0.0, 12.0, h), c)
+            _flaeche(Rect2(b - d - 12.0, 0.0, 12.0, h), c)
 
     # **Das Leben ist die lauteste Anzeige**, denn es ist der einzige Grund,
-    # warum ein Lauf endet.
-    # Das Herz vor dem Balken: so ist er Leben und nicht irgendeine Menge.
-    _balken(Rect2(60.0, oben + 14.0, b - 86.0, 22.0),
+    # warum ein Lauf endet. Links davor das Wappen: die Fahne, unter der man
+    # kaempft.
+    _balken(Rect2(66.0, oben + 12.0, b - 92.0, 24.0),
         st.leben / maxf(1.0, st.leben_voll), ZINNOBER)
-    _wappen(Vector2(34.0, oben + 30.0), 22.0)
+    _wappen(Vector2(36.0, oben + 30.0))
     # Erfahrung darunter, schmaler: sie endet nichts, sie verspricht nur.
-    # **Nicht in Gold** - Gold heisst Sold, und so stand sie bis Oktober 2026.
     var noetig := float(Gunst.stufenkosten(st.stufe))
-    _balken(Rect2(60.0, oben + 42.0, b - 86.0, 10.0),
+    _balken(Rect2(66.0, oben + 42.0, b - 92.0, 12.0),
         float(st.erfahrung) / maxf(1.0, noetig), Palette.ERFAHRUNG)
 
     var m := int(st.zeit) / 60
     var sek := int(st.zeit) % 60
-    _zeile("%d:%02d" % [m, sek], Vector2(26.0, oben + 96.0), 42, TINTE, _zahl)
+    _zeile("%d:%02d" % [m, sek], Vector2(26.0, oben + 100.0), 42, TINTE, _zahl)
     var lv := "LV %d" % st.stufe
-    _zeile(lv, Vector2(b - 26.0 - _breite(lv, 32, _kopf), oben + 94.0), 32,
+    _zeile(lv, Vector2(b - 26.0 - _breite(lv, 32, _kopf), oben + 98.0), 32,
         TINTE, _kopf)
-    Zeichen.schaedel(_tu, Vector2(38.0, oben + 122.0), 12.0)
-    _zeile("%d" % st.erschlagen, Vector2(58.0, oben + 132.0), 28,
+    _symbol("SCHAEDEL", Vector2(40.0, oben + 126.0), true, 2.0)
+    _zeile("%d" % st.erschlagen, Vector2(62.0, oben + 136.0), 28,
         Color(TINTE.r, TINTE.g, TINTE.b, 0.9), _zahl)
     var sold := "%d" % st.sold
     var sw := _breite(sold, 28, _zahl)
-    Zeichen.muenze(_tu, Vector2(b - 26.0 - sw - 18.0, oben + 122.0), 12.0)
-    _zeile(sold, Vector2(b - 26.0 - sw, oben + 132.0), 28,
+    _symbol("MUENZE", Vector2(b - 26.0 - sw - 18.0, oben + 126.0), true, 2.0)
+    _zeile(sold, Vector2(b - 26.0 - sw, oben + 136.0), 28,
         Color(GOLD.r, GOLD.g, GOLD.b, 0.95), _zahl)
 
     if st.wartet_auf_wahl:
         _aufstieg(st)
         return
 
-    # **Der erste Lauf erklaert sich, einmal** (Zusicherung 27). Im unteren
-    # Drittel: der Held steht in der Mitte, oben liegen die Balken. Keine
-    # Tafel - sie verdeckte Figuren, und die Kante der Laufschrift genuegt.
+    # **Der erste Lauf erklaert sich, einmal** (Zusicherung 27).
     var hin: float = _lauf.hinweis()
     if hin > 0.0:
         var y := size.y * 0.70
@@ -534,91 +679,85 @@ func _im_lauf() -> void:
             Rect2(0.0, y + 42.0, b, 34.0), 24,
             Color(SEPIA.r, SEPIA.g, SEPIA.b, hin))
 
-    # Der Stick wird gezeichnet, wo der Daumen ihn aufgesetzt hat.
+    # Der Stick wird gezeichnet, wo der Daumen ihn aufgesetzt hat: ein Ring
+    # aus Bildpunkten und ein Knauf.
     if _lauf.zieht():
         var von: Vector2 = _lauf.stick_von()
         var jetzt: Vector2 = _lauf.stick_jetzt()
-        _tu.zug(von + Vector2(-34.0, 0.0), von + Vector2(34.0, 0.0), 3.0,
-            Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.30), 0.5, 0.0, 6.0, 5)
-        _tu.klecks(von, 12.0, Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.26), 1)
+        var ring := Color(TINTE.r, TINTE.g, TINTE.b, 0.30)
+        for k in 24:
+            var w := TAU * float(k) / 24.0
+            _flaeche(Rect2(((von + Vector2(cos(w), sin(w)) * 72.0) / M).round() * M,
+                Vector2.ONE * M * 2.0), ring)
         var d := jetzt - von
-        if d.length() > 12.0:
-            var kopf := von + d.limit_length(72.0)
-            _tu.zug(von, kopf, 7.0, Color(TINTE.r, TINTE.g, TINTE.b, 0.36),
-                0.5, 0.2, 0.0, 4)
-            _tu.klecks(kopf, 16.0, Color(TINTE.r, TINTE.g, TINTE.b, 0.34), 2)
+        var kopf := von + d.limit_length(72.0)
+        _flaeche(Rect2(((kopf - Vector2.ONE * 15.0) / M).round() * M, Vector2.ONE * 30.0),
+            Color(TINTE.r, TINTE.g, TINTE.b, 0.40))
 
 
 ## **Der Name ueber dem Gefecht** - nur fuer das Feature-Bild des Ladens.
-##
-## Es ist eine Aufnahme aus dem laufenden Spiel und kein Bild aus einem
-## Grafikprogramm; `ASSETS.md` fuehrt keine Bilddatei ausser dem App-Symbol.
-## Die Tafel dahinter ist so blass, dass das Gedraenge durchscheint, und so
-## dicht, dass die Schrift auf ihm steht und nicht zwischen den Figuren.
-##
-## **Oben und nicht in der Mitte**: die Kamera folgt dem Helden, und der
-## steht in der Mitte. Der erste Schuss setzte den Namen genau auf ihn - ein
-## Werbebild fuer ein Spiel, in dem man sich findet, auf dem man sich nicht
-## findet.
+## Oben und nicht in der Mitte: dort steht der Held.
 func _marke() -> void:
     var b := size.x
     var h := size.y
-    var f := ThemeDB.fallback_font
     var t := "TEN THOUSAND"
     var gross := int(minf(b * 0.085, h * 0.16))
     var w := _breite(t, gross, _kopf)
     var u := "One blade. Ten thousand of them."
     var klein := int(gross * 0.42)
-    var uw := f.get_string_size(u, HORIZONTAL_ALIGNMENT_LEFT, -1, klein).x
+    var uw := _breite(u, klein)
     var mitte := h * 0.2
-    _tafel(Rect2((b - w) * 0.5 - gross * 0.6, mitte - gross * 1.15,
-        w + gross * 1.2, gross * 2.2), 0.78)
+    _rahmen(Rect2((b - w) * 0.5 - gross * 0.7, mitte - gross * 1.15,
+        w + gross * 1.4, gross * 2.2))
     _zeile(t, Vector2((b - w) * 0.5, mitte + gross * 0.12), gross, TINTE, _kopf)
-    _tu.zug(Vector2((b - w) * 0.5 - 8.0, mitte + gross * 0.34),
-        Vector2((b + w) * 0.5 + 8.0, mitte + gross * 0.38), gross * 0.1,
-        Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.85), 0.35, 0.5, 3.0, 7)
     _zeile(u, Vector2((b - uw) * 0.5, mitte + gross * 0.86), klein,
         Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.95))
 
 
 ## **Der Aufstieg ist ein Banner**: es haengt an einer Stange, traegt die
 ## drei Angebote untereinander und laeuft unten in eine Spitze aus, ueber der
-## eine Burg in den Farben des Helden steht - so stand es in der Vorlage.
-## Die Wahl ist das Einzige, was jetzt gilt; das Feld dahinter wird blass.
+## eine Burg in den Farben des Helden steht.
 const WAHL_ZEILE := 124.0
 
 func _aufstieg(st: Gefecht.Stand) -> void:
     var b := size.x
     var h := size.y
-    _riegel(Vector2(0.0, h * 0.5), Vector2(b, h * 0.5), h + 4.0,
-        Color(HELL.r, HELL.g, HELL.b, 0.55))
+    _flaeche(Rect2(0.0, 0.0, b, h), Color(HELL.r, HELL.g, HELL.b, 0.50))
     var zahl := st.angebote.size()
-    var koerper := 96.0 + float(zahl) * WAHL_ZEILE + 210.0
-    var spitze := 80.0
-    var oben := _rand() + 150.0 + maxf(0.0, (h - _rand() * 2.0 - 150.0
+    var koerper := 96.0 + float(zahl) * WAHL_ZEILE + 196.0
+    var spitze := 84.0
+    var oben := _rand() + 156.0 + maxf(0.0, (h - _rand() * 2.0 - 156.0
         - koerper - spitze) * 0.35)
-    var r := Rect2(40.0, oben, b - 80.0, koerper)
+    var r := Rect2(((Vector2(40.0, oben)) / M).round() * M,
+        (Vector2(b - 80.0, koerper) / M).round() * M)
     var mitte := r.position.x + r.size.x * 0.5
-    # Schatten, Tuch und Spitze.
-    _flaeche(Rect2(r.position + Vector2(6.0, 9.0), r.size),
-        Color(TINTE.r, TINTE.g, TINTE.b, 0.28))
-    _flaeche(r, BLATT)
-    _tu.strang(PackedVector2Array([Vector2(mitte, r.end.y - 1.0),
-        Vector2(mitte, r.end.y + spitze)]),
-        PackedFloat32Array([r.size.x, 0.0]), BLATT, 2)
-    # Der Rand folgt dem Umriss, die Spitze hinunter.
     var unten := Vector2(mitte, r.end.y + spitze)
-    _riegel(r.position, Vector2(r.end.x, r.position.y), 7.0, RAHMEN)
-    _riegel(r.position, Vector2(r.position.x, r.end.y), 7.0, RAHMEN)
-    _riegel(Vector2(r.end.x, r.position.y), r.end, 7.0, RAHMEN)
-    _riegel(Vector2(r.position.x, r.end.y), unten, 7.0, RAHMEN)
-    _riegel(r.end, unten, 7.0, RAHMEN)
-    _tu.klecks(unten, 7.0, RAHMEN, 2)
-    # Die Stange, an der es haengt.
-    _riegel(Vector2(r.position.x - 22.0, r.position.y - 4.0),
-        Vector2(r.end.x + 22.0, r.position.y - 4.0), 12.0, Zeichen.HOLZ)
-    for x in [r.position.x - 24.0, r.end.x + 24.0]:
-        _tu.klecks(Vector2(x, r.position.y - 4.0), 10.0, Zeichen.HOLZ, 1, RAHMEN)
+    # Schatten, Tuch mit Spitze, Rand den Umriss entlang.
+    var umriss := PackedVector2Array([r.position, Vector2(r.end.x, r.position.y),
+        r.end, unten, Vector2(r.position.x, r.end.y)])
+    var schatten := PackedVector2Array()
+    for p in umriss:
+        schatten.append(p + Vector2(M * 2.0, M * 3.0))
+    draw_colored_polygon(schatten, Color(TINTE.r, TINTE.g, TINTE.b, 0.35))
+    draw_colored_polygon(umriss, BLATT)
+    _blatt(r)
+    for i in umriss.size():
+        var a := umriss[i]
+        var e := umriss[(i + 1) % umriss.size()]
+        _linie(a, e, RAHMEN_TIEF, 2, M)
+    for i in umriss.size():
+        var a := umriss[i]
+        var e := umriss[(i + 1) % umriss.size()]
+        var innen := (Vector2(mitte, r.position.y + r.size.y * 0.5) - (a + e) * 0.5).normalized() * M * 3.0
+        _linie(a + innen, e + innen, Color(RAHMEN.r, RAHMEN.g, RAHMEN.b, 0.45), 1, M)
+    # Die Stange, an der es haengt, mit Knaeufen.
+    _flaeche(Rect2(r.position.x - 24.0, r.position.y - M * 3.0, r.size.x + 48.0, M * 3.0),
+        Palette.HOLZ)
+    _flaeche(Rect2(r.position.x - 24.0, r.position.y - M * 3.0, r.size.x + 48.0, M),
+        Palette.HOLZ_HELL)
+    for x in [r.position.x - 30.0, r.end.x + 18.0]:
+        _flaeche(Rect2(x, r.position.y - M * 5.0, M * 4.0, M * 6.0), RAHMEN_TIEF)
+        _flaeche(Rect2(x + M, r.position.y - M * 4.0, M * 2.0, M * 4.0), Palette.HOLZ_HELL)
 
     var t := "CHOOSE"
     _zeile(t, Vector2(mitte - _breite(t, 42, _kopf) * 0.5, r.position.y + 68.0), 42,
@@ -628,37 +767,51 @@ func _aufstieg(st: Gefecht.Stand) -> void:
     for i in zahl:
         var a = st.angebote[i]
         var zeile := Rect2(r.position.x, y, r.size.x, WAHL_ZEILE)
-        # Das Bild der Waffe oder des Zugs: erkannt ist schneller als gelesen.
         var bild := Vector2(r.position.x + 58.0, y + WAHL_ZEILE * 0.5)
-        _tu.klecks(bild, 36.0, BLATT_TIEF, i, Color(RAHMEN.r, RAHMEN.g, RAHMEN.b, 0.6))
+        _symbol_feld(bild)
         if a.ist_waffe:
-            Zeichen.waffe(_tu, a.was, bild, 30.0)
+            _symbol(_symbol_waffe(a.was), bild)
+        elif a.was == Gunst.Zug.GEFAEHRTE:
+            _figur("mgef_%s" % _held_schluessel(), Figuren.gefaehrte(0), _held_kleid(),
+                Figuren.GEFAEHRTE_ANKER, bild + Vector2(0.0, 22.0), M)
         else:
-            Zeichen.zug(_tu, a.was, bild, 30.0)
+            _symbol(_symbol_zug(a.was), bild)
         var x := r.position.x + 112.0
         _zeile(a.name(), Vector2(x, y + 44.0), 28, TINTE, _kopf)
-        # **Stufen als Punkte.** Eine Zahl sagt, wo man steht; Punkte sagen
-        # auch, wie weit es noch geht. Der neue ist in der Farbe des Helden.
+        # **Stufen als Kaestchen.** Eine Zahl sagt, wo man steht; Kaestchen
+        # sagen auch, wie weit es noch geht. Das neue in der Farbe des Helden.
         var hoechst := Waffen.HOECHSTSTUFE if a.ist_waffe else Gunst.ZUG_HOECHSTSTUFE
         for k in hoechst:
-            var p := Vector2(r.end.x - 30.0 - float(hoechst - 1 - k) * 20.0, y + 34.0)
+            var p := Vector2(r.end.x - 42.0 - float(hoechst - 1 - k) * 24.0, y + 22.0)
+            var feld := Rect2((p / M).round() * M, Vector2.ONE * M * 6.0)
+            _flaeche(feld, RAHMEN_TIEF)
             if k + 1 < a.stufe:
-                _tu.klecks(p, 6.5, TINTE, k)
+                _flaeche(feld.grow(-M), RAHMEN_HELL)
             elif k + 1 == a.stufe:
-                _tu.klecks(p, 7.5, Palette.HELD, k, Palette.UMRISS)
+                _flaeche(feld.grow(-M), Palette.HELD)
             else:
-                _tu.klecks(p, 5.5, Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.30), k)
+                _flaeche(feld.grow(-M), BLATT_TIEF)
         if a.neu:
-            _zeile("NEW", Vector2(r.end.x - 30.0 - float(hoechst - 1) * 20.0 - 8.0,
-                y + 66.0), 18, Palette.HELD.darkened(0.35), _kopf)
-        _zeile_eng(a.lehre(), Vector2(x, y + 92.0), 20,
+            _zeile("NEW", Vector2(r.end.x - 42.0 - float(hoechst - 1) * 24.0,
+                y + 70.0), 18, Palette.HELD.darkened(0.35), _kopf)
+        _zeile_eng(a.lehre(), Vector2(x, y + 94.0), 20,
             Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.98), r.end.x - x - 20.0)
         _felder.append({"id": "wahl%d" % i, "r": zeile, "aktiv": true})
+        if _gedrueckt == "wahl%d" % i:
+            _flaeche(zeile.grow(-M * 4.0), Color(RAHMEN.r, RAHMEN.g, RAHMEN.b, 0.12))
         y += WAHL_ZEILE
         _trenner(r, y)
-    var held := Burg.stand.held
-    Zeichen.burg_bild(_tu, Vector2(mitte, y + 176.0), 120.0,
-        Skins.koerper(held, Burg.stand.skin(held)))
+    _symbol("BURG", Vector2(mitte, y + 112.0), true, 5.0, Color.WHITE, _held_kleid(),
+        _held_schluessel())
+
+
+## Der Grund unter einem Symbol: ein dunkler gerahmtes Feld.
+func _symbol_feld(mitte: Vector2) -> void:
+    var r := Rect2(((mitte - Vector2.ONE * 33.0) / M).round() * M, Vector2.ONE * 66.0)
+    _flaeche(r, RAHMEN_TIEF)
+    _flaeche(r.grow(-M), BLATT_TIEF)
+    _flaeche(Rect2(r.position + Vector2(M, M), Vector2(r.size.x - M * 2.0, M)),
+        Color(1.0, 1.0, 1.0, 0.45))
 
 
 ## **Der Bericht hat ein Bild.** Gewonnen: der Held steht ueber dem
@@ -672,12 +825,11 @@ func _ende() -> void:
     var b := size.x
     var gewonnen: bool = st != null and st.warlord_gefallen
     var oben := _rand() + _luft(BERICHT_BILD + BERICHT_TAFEL + 200.0)
-    _bericht_bild(Vector2(b * 0.5, oben + BERICHT_BILD - 20.0), gewonnen,
+    _bericht_bild(Vector2(b * 0.5, oben + BERICHT_BILD - 24.0), gewonnen,
         st.held if st != null else 0)
     var r := Rect2(b * 0.10, oben + BERICHT_BILD, b * 0.80, BERICHT_TAFEL)
     _rahmen(r)
     var kopf := "THE FIELD IS YOURS" if gewonnen else "YOU FALL"
-    var kw := _breite(kopf, 40, _kopf)
     _mitte_eng(kopf, Rect2(r.position.x, r.position.y + 30.0, r.size.x, 60.0), 40,
         TINTE if gewonnen else ZINNOBER, _kopf)
     _trenner(r, r.position.y + 100.0)
@@ -691,8 +843,7 @@ func _ende() -> void:
         var y := r.position.y + 150.0
         var achse := r.position.x + r.size.x * 0.5
         for z in zeilen:
-            # Name links, Zahl rechts an einer Mittelachse: so liest man die
-            # Zahlen untereinander und nicht vier Saetze.
+            # Name links, Zahl rechts an einer Mittelachse.
             var nw := _breite(z[0], 26)
             _zeile(z[0], Vector2(achse - 14.0 - nw, y), 26,
                 Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.95))
@@ -705,40 +856,37 @@ func _ende() -> void:
             _trenner(r, y - 18.0)
             var ft := "found  %s  %d" % [Ausruestung.name_von(fu), _lauf.fund_stufe()]
             var fw := _breite(ft, 26)
-            var fx := r.position.x + (r.size.x - fw) * 0.5 + 20.0
-            Zeichen.stueck(_tu, fu, Vector2(fx - 30.0, y + 14.0), 20.0)
+            var fx := r.position.x + (r.size.x - fw) * 0.5 + 22.0
+            _symbol(_symbol_stueck(fu), Vector2(fx - 30.0, y + 14.0), true, 2.0)
             _zeile(ft, Vector2(fx, y + 24.0), 26, TINTE)
     # **Kein Angebot nach einer Niederlage.** Zwei Wege, nie mehr.
     var yk := r.end.y + 30.0
-    _knopf("nochmal", Rect2(b * 0.14, yk, b * 0.72, 76.0), "AGAIN", true,
-        func(p): Zeichen.nochmal(_tu, p, 20.0))
-    _knopf("titel", Rect2(b * 0.14, yk + 94.0, b * 0.72, 64.0), "BACK", true,
-        func(p): Zeichen.zurueck(_tu, p, 18.0))
-    var _k := kw
-
-
+    _knopf("nochmal", Rect2(b * 0.14, yk, b * 0.72, 78.0), "AGAIN", true,
+        func(p): _symbol("NOCHMAL", p, false, M, RAHMEN_TIEF))
+    _knopf("titel", Rect2(b * 0.14, yk + 96.0, b * 0.72, 66.0), "BACK", true,
+        func(p): _symbol("ZURUECK", p, false, M, RAHMEN_TIEF))
 
 
 func _bericht_bild(boden: Vector2, gewonnen: bool, held: int) -> void:
-    var erde := Palette.ERDE
-    _tu.wisch(boden + Vector2(-260.0, 4.0), boden + Vector2(260.0, 4.0), 34.0,
-        Color(erde.r, erde.g, erde.b, 0.55))
-    var n := Burg.stand.skin(held)
+    var kleid := _held_kleid()
+    var schluessel := _held_schluessel()
     if gewonnen:
-        Streiter.gefallen(_tu, boden + Vector2(70.0, 0.0), 240.0, -1.0,
-            Feinde.Art.WARLORD, 1.0)
-        Streiter._schatten(_tu, boden + Vector2(-70.0, 4.0), 170.0)
-        Streiter.held(_tu, boden + Vector2(-70.0, 4.0), 170.0, 1.0, 0.0, -1.35,
-            Skins.koerper(held, n), Skins.glanz(held, n), held)
+        var kw := Pixel.kleid(Palette.sorte(Feinde.Art.WARLORD))
+        _figur("mliegt_w", Figuren.liegend(Figuren.feind(Feinde.Art.WARLORD, -1)), kw,
+            16, boden + Vector2(70.0, 6.0), 4.0, true)
+        _held_bild(held, boden + Vector2(-80.0, 6.0), 5.0, -1.35, kleid, schluessel)
     else:
-        var reihe := [[-150.0, Feinde.Art.STROLCH], [-75.0, Feinde.Art.RITTER],
-            [80.0, Feinde.Art.SPIESSER], [155.0, Feinde.Art.STROLCH]]
+        var reihe := [[-150.0, Feinde.Art.STROLCH], [-80.0, Feinde.Art.RITTER],
+            [80.0, Feinde.Art.SPIESSER], [150.0, Feinde.Art.STROLCH]]
         for e in reihe:
             var art: int = e[1]
             var x: float = e[0]
-            Streiter.feind(_tu, boden + Vector2(x, -6.0), 120.0 * Feinde.radius(art) / 17.0,
-                -signf(x), art, 0.0, 0.0, false)
-        Zeichen.waffe(_tu, Helden.startwaffe(held), boden + Vector2(0.0, -8.0), 44.0)
+            var f := boden + Vector2(x, 0.0)
+            _figur("schatten12", Figuren.schatten(12), Pixel.grund(), 6,
+                f + Vector2(0.0, 8.0), 4.0)
+            _figur("mf%d" % art, Figuren.feind(art, -1), Pixel.kleid(Palette.sorte(art)),
+                Figuren.anker(art), f, 4.0, x > 0.0)
+        _symbol(_symbol_waffe(Helden.startwaffe(held)), boden + Vector2(0.0, -14.0), true, 4.0)
 
 
 const BURG_ZEILE := 138.0
@@ -746,93 +894,87 @@ const BURG_ZEILE := 138.0
 func _burg() -> void:
     var b := size.x
     var s := Burg.stand
-    var hoch := 118.0 + float(Halle.NAMEN.size()) * BURG_ZEILE + 168.0
+    var hoch := 122.0 + float(Halle.NAMEN.size()) * BURG_ZEILE + 172.0
     var oben := _rand() + _luft(hoch)
     var r := Rect2(24.0, oben, b - 48.0, hoch)
     _rahmen(r)
-    _kopfzeile(r, "THE KEEP", func(p): Zeichen.bau(_tu, Halle.Bau.MAUER, p, 26.0),
-        "", true)
+    _kopfzeile(r, "THE KEEP", func(p): _symbol("MAUER", p, true, M), "", true)
     var e := "%d" % s.sold
     var ew := _breite(e, 34, _zahl)
-    _zeile(e, Vector2(r.end.x - 84.0 - ew, r.position.y + 70.0), 34, GOLD, _zahl)
-    Zeichen.muenze(_tu, Vector2(r.end.x - 84.0 - ew - 22.0, r.position.y + 58.0), 15.0)
+    _zeile(e, Vector2(r.end.x - 90.0 - ew, r.position.y + 72.0), 34, GOLD, _zahl)
+    _symbol("MUENZE", Vector2(r.end.x - 90.0 - ew - 22.0, r.position.y + 60.0), true, 2.0)
 
-    var y := r.position.y + 118.0
+    var y := r.position.y + 122.0
     for bau in Halle.NAMEN.size():
         var stufe := s.stufe(bau)
         var voll := stufe >= Halle.HOECHSTSTUFE
-        var bild := Vector2(r.position.x + 60.0, y + BURG_ZEILE * 0.5)
-        _tu.klecks(bild, 36.0, BLATT_TIEF, bau, Color(RAHMEN.r, RAHMEN.g, RAHMEN.b, 0.6))
-        Zeichen.bau(_tu, bau, bild, 28.0)
-        var x := r.position.x + 116.0
+        var bild := Vector2(r.position.x + 62.0, y + BURG_ZEILE * 0.5)
+        _symbol_feld(bild)
+        _symbol(_symbol_bau(bau), bild)
+        var x := r.position.x + 118.0
         _zeile(Halle.name_von(bau), Vector2(x, y + 42.0), 30, TINTE, _kopf)
         var nw := _breite(Halle.name_von(bau), 30, _kopf)
         _zeile("%d" % stufe, Vector2(x + nw + 12.0, y + 42.0), 30,
             Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.95), _zahl)
         _zeile_eng(Halle.beschreibung_von(bau), Vector2(x, y + 74.0), 20,
             Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.95), r.end.x - x - 24.0)
-        _balken(Rect2(x, y + 98.0, r.end.x - x - 200.0, 8.0),
-            float(stufe) / float(Halle.HOECHSTSTUFE), RAHMEN)
-        _knopf("bau%d" % bau, Rect2(r.end.x - 172.0, y + 82.0, 148.0, 44.0),
+        _balken(Rect2(x, y + 94.0, r.end.x - x - 204.0, 12.0),
+            float(stufe) / float(Halle.HOECHSTSTUFE), RAHMEN_HELL)
+        _knopf("bau%d" % bau, Rect2(r.end.x - 176.0, y + 80.0, 150.0, 48.0),
             "MAX" if voll else "%d" % s.kosten(bau), s.kann_bauen(bau))
         y += BURG_ZEILE
         _trenner(r, y)
-    # **Ton und Beben lassen sich abschalten.** Ein Telefon, das bei jedem
-    # Treffer brummt und sich nicht zum Schweigen bringen laesst, spielt man
-    # nicht in der Bahn - und die Datenschutzerklaerung verspricht den
-    # Schalter. Er steht in der Burg, weil sie der einzige Schirm ist, der
-    # ohnehin Einstellungen am Spieler vornimmt.
-    var halb := (r.size.x - 60.0) * 0.5
+    # **Ton und Beben lassen sich abschalten.** Die Datenschutzerklaerung
+    # verspricht den Schalter, und er steht in der Burg, weil sie der einzige
+    # Schirm ist, der ohnehin Einstellungen am Spieler vornimmt.
+    var halb := (r.size.x - 66.0) * 0.5
     var laut := s.laut > 0.001
-    _knopf("ton", Rect2(r.position.x + 22.0, y + 18.0, halb, 56.0),
+    _knopf("ton", Rect2(r.position.x + 24.0, y + 18.0, halb, 58.0),
         "SOUND ON" if laut else "SOUND OFF", true,
-        func(p): Zeichen.laut(_tu, p, 17.0, laut))
-    _knopf("beben", Rect2(r.position.x + 38.0 + halb, y + 18.0, halb, 56.0),
+        func(p): _symbol("LAUT" if laut else "STUMM", p, false, M, RAHMEN_TIEF))
+    _knopf("beben", Rect2(r.position.x + 42.0 + halb, y + 18.0, halb, 58.0),
         "RUMBLE ON" if s.beben else "RUMBLE OFF", true,
-        func(p): Zeichen.ruettel(_tu, p, 17.0, s.beben))
-    _knopf("titel", Rect2(r.position.x + r.size.x * 0.25, y + 90.0, r.size.x * 0.5, 56.0),
-        "BACK", true, func(p): Zeichen.zurueck(_tu, p, 17.0))
+        func(p): _symbol("RUETTEL", p, false, M,
+            RAHMEN_TIEF if s.beben else Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.5)))
+    _knopf("titel", Rect2(r.position.x + r.size.x * 0.25, y + 92.0, r.size.x * 0.5, 58.0),
+        "BACK", true, func(p): _symbol("ZURUECK", p, false, M, RAHMEN_TIEF))
 
 
-const ZEUG_ZEILE := 118.0
+const ZEUG_ZEILE := 120.0
 
 func _zeug() -> void:
     var b := size.x
     var s := Burg.stand
     var plaetze := Ausruestung.PLATZ_NAMEN.size()
-    var hoch := 118.0 + float(plaetze) * ZEUG_ZEILE + 100.0
+    var hoch := 122.0 + float(plaetze) * ZEUG_ZEILE + 104.0
     var oben := _rand() + _luft(hoch)
     var r := Rect2(24.0, oben, b - 48.0, hoch)
     _rahmen(r)
-    _kopfzeile(r, "WHAT YOU CARRY",
-        func(p): Zeichen.stueck(_tu, Ausruestung.Stueck.VISIERHELM, p, 26.0), "", true)
+    _kopfzeile(r, "WHAT YOU CARRY", func(p): _symbol("VISIERHELM", p, true, M), "", true)
 
-    var y := r.position.y + 118.0
-    var zelle := (r.size.x - 150.0) * 0.5
+    var y := r.position.y + 122.0
+    var zelle := (r.size.x - 156.0) * 0.5
     for platz in plaetze:
-        # Auf halber Zeilenhoehe: sonst steht der Platzname zwischen zwei
-        # Reihen und gehoert scheinbar zur falschen.
-        _zeile(Ausruestung.platz_name(platz), Vector2(r.position.x + 26.0, y + 64.0), 22,
+        _zeile(Ausruestung.platz_name(platz), Vector2(r.position.x + 28.0, y + 66.0), 22,
             Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.95), _kopf)
-        var x := r.position.x + 108.0
+        var x := r.position.x + 110.0
         var getragen := int(s.angelegt.get(platz, -1))
         for stueck in Ausruestung.Stueck.size():
             if Ausruestung.platz_von(stueck) != platz:
                 continue
             var stufe := int(s.besitz.get(stueck, 0))
             var hat := stufe > 0
-            var z := Rect2(x, y + 12.0, zelle, ZEUG_ZEILE - 24.0)
-            _flaeche(z, BLATT_TIEF if hat else Color(BLATT_TIEF.r, BLATT_TIEF.g, BLATT_TIEF.b, 0.45))
-            _rand_linien(z, 4.0 if stueck == getragen else 2.0,
-                Color(RAHMEN.r, RAHMEN.g, RAHMEN.b,
-                    1.0 if stueck == getragen else (0.55 if hat else 0.25)))
-            # Das Stueck als Bild. Ein nicht gefundenes steht verschleiert
-            # da: man weiss, dass es etwas gibt, aber nicht, was es kann.
-            var bild := Vector2(z.position.x + 38.0, z.position.y + z.size.y * 0.5)
-            Zeichen.stueck(_tu, stueck, bild, 26.0)
-            if not hat:
-                _tu.klecks(bild, 34.0, Color(BLATT.r, BLATT.g, BLATT.b, 0.72), stueck)
-            var tx := z.position.x + 74.0
+            var z := Rect2(((Vector2(x, y + 12.0)) / M).round() * M,
+                (Vector2(zelle, ZEUG_ZEILE - 24.0) / M).round() * M)
+            var traegt := stueck == getragen
+            _flaeche(z, RAHMEN_TIEF if (hat and traegt) else Color(RAHMEN.r, RAHMEN.g, RAHMEN.b, 0.55 if hat else 0.25))
+            _flaeche(z.grow(-M * (2.0 if traegt else 1.0)), BLATT_TIEF if hat else BLATT)
+            # Das Stueck als Bild. Ein nicht gefundenes steht als blasser
+            # Schatten da: man weiss, dass es etwas gibt, aber nicht, was es kann.
+            var bild := Vector2(z.position.x + 40.0, z.position.y + z.size.y * 0.5)
+            _symbol(_symbol_stueck(stueck), bild, true, M,
+                Color.WHITE if hat else Color(0.55, 0.50, 0.45, 0.35))
+            var tx := z.position.x + 78.0
             _zeile_eng(Ausruestung.name_von(stueck), Vector2(tx, z.position.y + 36.0), 20,
                 TINTE if hat else Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.45),
                 z.end.x - tx - 10.0, _kopf)
@@ -847,35 +989,53 @@ func _zeug() -> void:
         y += ZEUG_ZEILE
         if platz < plaetze - 1:
             _trenner(r, y)
-    _knopf("titel", Rect2(r.position.x + r.size.x * 0.25, y + 18.0, r.size.x * 0.5, 56.0),
-        "BACK", true, func(p): Zeichen.zurueck(_tu, p, 17.0))
+    _knopf("titel", Rect2(r.position.x + r.size.x * 0.25, y + 20.0, r.size.x * 0.5, 58.0),
+        "BACK", true, func(p): _symbol("ZURUECK", p, false, M, RAHMEN_TIEF))
 
 
 # --- Der Finger ------------------------------------------------------------
 
+func _feld_bei(ort: Vector2) -> Dictionary:
+    for feld in _felder:
+        if feld["r"].has_point(ort):
+            return feld
+    return {}
+
+
 func _gui_input(e: InputEvent) -> void:
+    var gedrueckt := false
     var los := false
     var ort := Vector2.ZERO
-    if e is InputEventScreenTouch and not e.pressed:
-        los = true
+    if e is InputEventScreenTouch:
+        gedrueckt = e.pressed
+        los = not e.pressed
         ort = e.position
-    elif e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_LEFT \
-            and not e.pressed:
-        los = true
+    elif e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_LEFT:
+        gedrueckt = e.pressed
+        los = not e.pressed
         ort = e.position
-    if not los:
+    if not gedrueckt and not los:
         return
     # **Im Lauf gehoert der Finger dem Helden** - ausser wenn gewaehlt wird.
     var st: Gefecht.Stand = _lauf.stand()
     if _lauf.lage == 1 and (st == null or not st.wartet_auf_wahl):
+        _gedrueckt = ""
         return
-    for feld in _felder:
-        if not feld["r"].has_point(ort):
-            continue
-        if feld["aktiv"]:
-            _gewaehlt(String(feld["id"]))
-        accept_event()
+    var feld := _feld_bei(ort)
+    if gedrueckt:
+        _gedrueckt = String(feld["id"]) if not feld.is_empty() and feld["aktiv"] else ""
+        if not feld.is_empty():
+            accept_event()
         return
+    # Losgelassen: ausgeloest wird nur, was auch gedrueckt wurde. Wer den
+    # Finger vom Knopf zieht, hat es sich anders ueberlegt.
+    var war := _gedrueckt
+    _gedrueckt = ""
+    if feld.is_empty():
+        return
+    if feld["aktiv"] and (war == "" or war == String(feld["id"])):
+        _gewaehlt(String(feld["id"]))
+    accept_event()
 
 
 func _gewaehlt(id: String) -> void:

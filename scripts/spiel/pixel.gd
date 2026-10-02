@@ -51,6 +51,12 @@ static func grund() -> Dictionary:
         "z": Palette.GEFAHR,
         "$": Palette.SOLD, "%": Palette.SOLD.darkened(0.35),
         "~": Palette.SCHATTEN,
+        # Fuer die Symbole der Menues.
+        "g": Palette.LAUB, "G": Palette.LAUB_TIEF,
+        "R": Color(0.553, 0.141, 0.173), "t": Color(0.808, 0.604, 0.341),
+        "T": Color(0.588, 0.404, 0.200), "i": Color(1.0, 0.945, 0.702),
+        "k": Color(0.443, 0.463, 0.373), "K": Color(0.310, 0.329, 0.255),
+        "j": Palette.STEIN, "J": Palette.STEIN.darkened(0.30),
     }
 
 
@@ -112,11 +118,18 @@ static func textur() -> Texture2D:
 ## `spiegel` dreht es nach links; `blitz` macht es zur hellen Silhouette
 ## (ein Getroffener blitzt auf). `anker` ist die Spalte der Fussmitte.
 static func bild(schluessel: String, zeilen: PackedStringArray, kleid_: Dictionary,
-        anker: int, spiegel := false, blitz := false) -> Rect2i:
+        anker: int, spiegel := false, blitz := false, umriss := false) -> Rect2i:
     var name := "%s|%d|%d" % [schluessel, int(spiegel), int(blitz)]
+    if umriss:
+        name += "|u"
     if _regionen.has(name):
         return _regionen[name]
     _sicher()
+    if umriss:
+        # **Mit eingebranntem Umriss**, fuer die Menues: dort laeuft kein
+        # Umriss-Shader ueber das Bild. Ein Bildpunkt Rand ringsum.
+        zeilen = _umrandet(zeilen)
+        anker += 1
     var h := zeilen.size()
     var w := 0
     for z in zeilen:
@@ -149,8 +162,50 @@ static func bild(schluessel: String, zeilen: PackedStringArray, kleid_: Dictiona
     return r
 
 
-static func anker(schluessel: String, spiegel := false, blitz := false) -> int:
-    return _anker.get("%s|%d|%d" % [schluessel, int(spiegel), int(blitz)], 0)
+static func anker(schluessel: String, spiegel := false, blitz := false,
+        umriss := false) -> int:
+    var name := "%s|%d|%d" % [schluessel, int(spiegel), int(blitz)]
+    if umriss:
+        name += "|u"
+    return _anker.get(name, 0)
+
+
+## Ein Bild mit einem Bildpunkt Umriss (`o`) ringsum, wo es an Leere grenzt.
+static func _umrandet(zeilen: PackedStringArray) -> PackedStringArray:
+    var h := zeilen.size()
+    var w := 0
+    for z in zeilen:
+        w = maxi(w, z.length())
+    var voll := func(x: int, y: int) -> bool:
+        if y < 0 or y >= h or x < 0:
+            return false
+        var z: String = zeilen[y]
+        return x < z.length() and z[x] != "." and z[x] != " " and z[x] != "~"
+    var aus := PackedStringArray()
+    for y in range(-1, h + 1):
+        var n := ""
+        for x in range(-1, w + 1):
+            if voll.call(x, y):
+                n += (zeilen[y] as String)[x]
+            elif voll.call(x - 1, y) or voll.call(x + 1, y) \
+                    or voll.call(x, y - 1) or voll.call(x, y + 1):
+                n += "o"
+            else:
+                n += "."
+        aus.append(n)
+    return aus
+
+
+## **Ein Bild fuer das Bedienbild**: dieselbe Region, in Bildschirmpunkten
+## gezeichnet, `mass`-fach vergroessert. `fuss` ist die Fussmitte auf dem
+## Schirm.
+static func setze_schirm(ci: RID, r: Rect2i, anker_x: int, fuss: Vector2,
+        mass: float, modul := Color.WHITE) -> void:
+    var oben_links := Vector2(fuss.x - (float(anker_x) + 0.5) * mass,
+        fuss.y - float(r.size.y) * mass)
+    RenderingServer.canvas_item_add_texture_rect_region(ci,
+        Rect2(oben_links.round(), Vector2(r.size) * mass), _textur.get_rid(),
+        Rect2(r), modul)
 
 
 # --- Zeichnen --------------------------------------------------------------
