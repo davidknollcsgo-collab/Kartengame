@@ -1,42 +1,106 @@
 extends Node2D
 
-## **Der Boden als Landkarte.**
+## **Der Boden als Landkarte, in Pixeln.**
 ##
 ## Sand als Grund, darauf zusammenhaengende Wiesen, Wege, selten ein Teich oder
 ## ein Bach, und darauf Baeume, Buesche, Steine, Ruinen, Zaeune. So stand es
-## in der Vorlage des Nutzers (Oktober 2026). Vorher war der Grund ein
-## blasses Papier mit Flecken - ein Rest des Holzschnitts.
+## in der Vorlage des Nutzers (Oktober 2026).
+##
+## **Bis zur dritten Runde der Grafik war er Vektor** (`Tusche`): weiche
+## Kleckse mit durchsichtigem Rand, im Pixelpuffer verwaschen, waehrend die
+## Figuren darueber scharfe Sprites waren. Jetzt:
+##
+##   * **Flaechen sind Vielecke mit Muster.** Sand, Gras, Erde und Wasser sind
+##     je ein kleines gekacheltes Bild (`_muster`, einmal gerechnet), die
+##     Flaechen darauf Vielecke ohne Glaettung - im Drittelpuffer haben sie
+##     von selbst harte Pixelkanten. Das Muster haengt am Ort im Feld, nicht
+##     an der Flaeche: es laeuft ueber jede Kachelgrenze weiter.
+##   * **Ein Netz je Muster** (`Netz`): alle Wiesen eines Bildes sind ein
+##     Aufruf, alle Wege einer. Ein Vieleck je Aufruf waeren Hunderte.
+##   * **Dinge sind Sprites** (`Landschaft`), im selben Atlas wie die Figuren,
+##     mit halber Kante und kleinem flachem Schatten.
 ##
 ## **Was einen Hintergrund laut macht, ist die Zahl der getrennten Dinge
 ## darin.** Die Wiesen sind Flaeche und kein Ding; Dinge stehen hoechstens
 ## `DINGE` je Kachel, und die grossen (Baum, Ruine, Teich) selten.
 ##
-## Gezeichnet im Pixelpuffer des Bodens (`gefecht.tscn`), mit demselben
-## Pinsel wie die Figuren: Kante ein Bildpunkt. Gekachelt um die Mitte; der
-## Inhalt einer Kachel haengt allein an ihren Gitterkoordinaten - dieselbe
-## Kachel sieht immer gleich aus, egal von welcher Seite man sie betritt.
+## Gekachelt um die Mitte; der Inhalt einer Kachel haengt allein an ihren
+## Gitterkoordinaten - dieselbe Kachel sieht immer gleich aus, egal von
+## welcher Seite man sie betritt.
 
-const PERGAMENT := Palette.BODEN
-const TINTE := Palette.UMRISS
-const SEPIA := Palette.GRUND_ZIER
-const ERDE := Palette.ERDE
-
+const P := Pixel.P
 const KACHEL := 420.0
 ## Wieviele Dinge auf einer Kachel stehen. Sehr wenige: siehe oben.
 const DINGE := 3
+## Kantenlaenge der Muster in Bildpunkten.
+const MUSTER := 64
 
-## Halbe Kante fuer Dinge am Boden: eine volle waere eine Figur.
-const KANTE := Color(0.129, 0.114, 0.149, 0.55)
-
-var _tu := Tusche.new()
 var _mitte := Vector2.ZERO
+var _sand: ImageTexture
+var _gras: ImageTexture
+var _erde: ImageTexture
+var _wasser: ImageTexture
+var _weiss: ImageTexture
+## Name -> [Region, Ankerspalte] der Landschafts-Sprites.
+var _sprites := {}
+
+
+## **Ein Dreiecksnetz mit einem Muster.** Gesammelt wird ueber alle Kacheln,
+## gespuelt in einem Aufruf.
+class Netz:
+    var tex: Texture2D
+    var punkte := PackedVector2Array()
+    var uvs := PackedVector2Array()
+    var farben := PackedColorArray()
+    var idx := PackedInt32Array()
+
+    func _init(t: Texture2D) -> void:
+        tex = t
+
+    func _uv(p: Vector2) -> Vector2:
+        return p / (Pixel.P * Vector2(tex.get_size()))
+
+    func flaeche(pts: PackedVector2Array, farbe: Color) -> void:
+        var tri := Geometry2D.triangulate_polygon(pts)
+        if tri.is_empty():
+            return
+        var basis := punkte.size()
+        for p in pts:
+            punkte.append(p)
+            uvs.append(_uv(p))
+            farben.append(farbe)
+        for i in tri:
+            idx.append(basis + i)
+
+    ## Ein Band aus zwei Kanten gleicher Laenge.
+    func band(links: PackedVector2Array, rechts: PackedVector2Array, farbe: Color) -> void:
+        var basis := punkte.size()
+        for i in links.size():
+            for p in [links[i], rechts[i]]:
+                punkte.append(p)
+                uvs.append(_uv(p))
+                farben.append(farbe)
+        for i in links.size() - 1:
+            var a := basis + i * 2
+            idx.append_array([a, a + 1, a + 2, a + 1, a + 3, a + 2])
+
+    func spuele(ci: RID) -> void:
+        if idx.is_empty():
+            return
+        RenderingServer.canvas_item_add_triangle_array(ci, idx, punkte, farben, uvs,
+            PackedInt32Array(), PackedFloat32Array(), tex.get_rid())
 
 
 func _ready() -> void:
-    # Derselbe Pinsel wie im Figurenpuffer: Kante ein Bildpunkt.
-    var punkt := 3.0 / 0.8
-    _tu.kante_fest = punkt * 0.95
-    _tu.mindest = punkt * 0.5
+    texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+    texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
+    _sand = _muster(0)
+    _gras = _muster(1)
+    _erde = _muster(2)
+    _wasser = _muster(3)
+    var w := Image.create(1, 1, false, Image.FORMAT_RGBA8)
+    w.fill(Color.WHITE)
+    _weiss = ImageTexture.create_from_image(w)
 
 
 func setze_mitte(ort: Vector2) -> void:
@@ -48,20 +112,108 @@ func setze_mitte(ort: Vector2) -> void:
     queue_redraw()
 
 
+# --- Die Muster ------------------------------------------------------------
+
+## **Ein gekacheltes Muster**, `MUSTER` Bildpunkte im Quadrat. Nahtlos, weil
+## jedes Ding darin modulo der Kante gesetzt wird. Feste Saat: derselbe Sand
+## in jedem Lauf.
+func _muster(art: int) -> ImageTexture:
+    var rng := RandomNumberGenerator.new()
+    rng.seed = 5501 + art * 97
+    var bild := Image.create(MUSTER, MUSTER, false, Image.FORMAT_RGBA8)
+    var grund: Color = [Palette.BODEN, Palette.WIESE, Palette.ERDE, Palette.WASSER][art]
+    bild.fill(grund)
+    var setze := func(x: int, y: int, c: Color) -> void:
+        bild.set_pixel(posmod(x, MUSTER), posmod(y, MUSTER), c)
+    # Grobe, sanfte Flecken: der Grund ist nie eine Farbe.
+    for i in 6:
+        var m := Vector2i(rng.randi_range(0, MUSTER - 1), rng.randi_range(0, MUSTER - 1))
+        var r := rng.randi_range(5, 11)
+        var c := grund.darkened(0.035) if i % 2 == 0 else grund.lightened(0.03)
+        for dy in range(-r, r + 1):
+            for dx in range(-r, r + 1):
+                if dx * dx + dy * dy * 2 <= r * r:
+                    setze.call(m.x + dx, m.y + dy, c)
+    # Koernung je Bildpunkt.
+    for y in MUSTER:
+        for x in MUSTER:
+            var n := rng.randf()
+            if n < 0.06:
+                setze.call(x, y, grund.darkened(0.07))
+            elif n < 0.09:
+                setze.call(x, y, grund.lightened(0.07))
+    match art:
+        0, 2:
+            # Kiesel: ein heller Punkt, rechts unten sein Schatten.
+            for i in (10 if art == 0 else 16):
+                var x := rng.randi_range(0, MUSTER - 1)
+                var y := rng.randi_range(0, MUSTER - 1)
+                setze.call(x, y, Palette.GRUND_ZIER.lightened(0.18))
+                setze.call(x + 1, y, Palette.GRUND_ZIER)
+                setze.call(x + 1, y + 1, grund.darkened(0.16))
+        1:
+            # **Gras sind kleine Haken**, dunkel unten, darueber ein Licht.
+            for i in 70:
+                var x := rng.randi_range(0, MUSTER - 1)
+                var y := rng.randi_range(0, MUSTER - 1)
+                var c := Palette.WIESE_TIEF if i % 4 else Palette.HALM
+                setze.call(x, y, c)
+                setze.call(x - 1, y - 1, c)
+                setze.call(x + 1, y - 1, c)
+            for i in 40:
+                setze.call(rng.randi_range(0, MUSTER - 1), rng.randi_range(0, MUSTER - 1),
+                    Palette.WIESE.lightened(0.13))
+        3:
+            # Wellen: kurze helle Striche quer.
+            for i in 16:
+                var x := rng.randi_range(0, MUSTER - 1)
+                var y := rng.randi_range(0, MUSTER - 1)
+                var l := rng.randi_range(2, 5)
+                for k in l:
+                    setze.call(x + k, y, Palette.WASSER_HELL)
+                setze.call(x + 1, y + 1, Palette.WASSER.darkened(0.12))
+    return ImageTexture.create_from_image(bild)
+
+
+# --- Zeichnen --------------------------------------------------------------
+
 func _draw() -> void:
     # Halbe Bildhoehe im Feld (bis 1000 bei 20:9 und Zoom 0,8) plus der Weg,
     # den man geht, bevor neu gezeichnet wird.
     var sicht := 1400.0
     var von := ((_mitte - Vector2.ONE * sicht) / KACHEL).floor()
     var bis := ((_mitte + Vector2.ONE * sicht) / KACHEL).ceil()
-    # **In Schichten, ueber alle Kacheln.** Erst alle Wiesenraender, dann alle
-    # Wiesen, dann Wege und Wasser, dann die Dinge. Je Kachel alles auf
-    # einmal liess den Rand der naechsten Wiese ueber die vorige laufen.
-    for schicht in 4:
-        for gx in range(int(von.x), int(bis.x) + 1):
-            for gy in range(int(von.y), int(bis.y) + 1):
-                _kachel(gx, gy, schicht)
-    _tu.spuele(get_canvas_item())
+    var netze := {
+        "sand": Netz.new(_sand),
+        "wiese_rand": Netz.new(_weiss), "wiese": Netz.new(_gras),
+        "weg_rand": Netz.new(_weiss), "weg": Netz.new(_erde),
+        "wasser_rand": Netz.new(_weiss), "wasser": Netz.new(_wasser),
+    }
+    var a := von * KACHEL
+    var b := (bis + Vector2.ONE) * KACHEL
+    (netze["sand"] as Netz).flaeche(PackedVector2Array([a, Vector2(b.x, a.y), b,
+        Vector2(a.x, b.y)]), Color.WHITE)
+    var dinge: Array = []
+    for gx in range(int(von.x), int(bis.x) + 1):
+        for gy in range(int(von.y), int(bis.y) + 1):
+            _kachel(gx, gy, netze, dinge)
+    var ci := get_canvas_item()
+    # **In Schichten**: erst alle Wiesenraender, dann alle Wiesen, dann Wege
+    # und Wasser. Je Kachel alles auf einmal liess den Rand der naechsten
+    # Wiese ueber die vorige laufen.
+    for name in ["sand", "wiese_rand", "wiese", "weg_rand", "weg", "wasser_rand", "wasser"]:
+        (netze[name] as Netz).spuele(ci)
+    Pixel.bereit()
+    dinge.sort_custom(func(x: Array, y: Array) -> bool: return x[0].y < y[0].y)
+    # Erst alle Schatten, dann alle Dinge: kein Schatten liegt auf einem Ding.
+    for d in dinge:
+        var schatten: float = d[3]
+        if schatten > 0.0:
+            Pixel.scheibe(ci, (d[0] as Vector2) + Vector2(schatten * 0.3, -P * 0.5),
+                schatten, Palette.SCHATTEN, 0.36)
+    for d in dinge:
+        var s: Array = d[1]
+        Pixel.setze(ci, s[0], s[1], d[0], d[2])
 
 
 func _saat(gx: int, gy: int, schicht: int) -> RandomNumberGenerator:
@@ -92,22 +244,31 @@ func _wiese_an(p: Vector2) -> float:
     return _wiese(int(g.x), int(g.y))
 
 
-func _kachel(gx: int, gy: int, schicht: int) -> void:
+func _kachel(gx: int, gy: int, netze: Dictionary, dinge: Array) -> void:
     var ecke := Vector2(float(gx), float(gy)) * KACHEL
     var anteil := _wiese(gx, gy)
-    match schicht:
-        0, 1:
-            _wiesen(gx, gy, ecke, anteil, schicht == 0)
-        2:
-            _pfade(gx, gy, ecke)
-            _wasser(gx, gy, ecke)
-        3:
-            _dinge(gx, gy, ecke, anteil)
+    _wiesen(gx, gy, ecke, anteil, netze)
+    _pfade(gx, gy, ecke, netze)
+    _wasser_an(gx, gy, ecke, netze, dinge)
+    _dinge(gx, gy, ecke, anteil, dinge)
 
 
-## Die Wiese einer Kachel: grosse Kleckse, erst ihr dunkler Rand
-## (`rand` = Schicht 0), dann die Flaeche darueber.
-func _wiesen(gx: int, gy: int, ecke: Vector2, anteil: float, rand: bool) -> void:
+## Ein Kreis mit welligem Rand als Vieleck.
+func _blob(p: Vector2, r: float, rng_wert: float) -> PackedVector2Array:
+    var pts := PackedVector2Array()
+    var n := 30
+    for i in n:
+        var w := TAU * float(i) / float(n)
+        var wellig := 1.0 + 0.10 * sin(w * 3.0 + rng_wert * 6.0) \
+            + 0.06 * sin(w * 5.0 + rng_wert * 11.0)
+        pts.append(p + Vector2(cos(w), sin(w) * 0.82) * r * wellig)
+    return pts
+
+
+## Die Wiese einer Kachel: grosse wellige Flaechen, darunter ein Bildpunkt
+## dunklerer Rand. Ueberlappende Flaechen verschmelzen, weil alle Raender
+## vor allen Flaechen gezeichnet werden.
+func _wiesen(gx: int, gy: int, ecke: Vector2, anteil: float, netze: Dictionary) -> void:
     var zahl := int(round(anteil * 5.0))
     if zahl == 0:
         return
@@ -115,13 +276,10 @@ func _wiesen(gx: int, gy: int, ecke: Vector2, anteil: float, rand: bool) -> void
     for i in zahl:
         var p := ecke + Vector2(rng.randf(), rng.randf()) * KACHEL
         var r := 110.0 + rng.randf() * 90.0
-        if rand:
-            _tu.klecks(p, r + 7.0, Palette.WIESE_TIEF, i)
-        else:
-            _tu.klecks(p, r, Palette.WIESE, i)
-            # Ein hellerer Schimmer auf der Lichtseite.
-            _tu.klecks(p + Vector2(-r * 0.25, -r * 0.3), r * 0.45,
-                Palette.WIESE.lightened(0.06), i + 3)
+        var welle := rng.randf()
+        (netze["wiese_rand"] as Netz).flaeche(_blob(p, r + P * 1.3, welle),
+            Palette.WIESE_TIEF.darkened(0.12))
+        (netze["wiese"] as Netz).flaeche(_blob(p, r, welle), Color.WHITE)
 
 
 ## **Ausgetretene Pfade ueber viele Kacheln.** Ein Pfad haengt an einer
@@ -131,32 +289,34 @@ func _wiesen(gx: int, gy: int, ecke: Vector2, anteil: float, rand: bool) -> void
 const PFAD_ABSTAND := 3
 const PFAD_STUECKE := 7
 
-## **Stoss an Stoss, ohne Ueberlappung.** Der erste Anlauf liess jedes
-## Stueck dreissig Punkte in die Nachbarkachel ragen; der Pfad ist
-## halbdurchsichtig, und an jeder Kachelgrenze stand ein dunkler Querstreifen.
-func _pfade(gx: int, gy: int, ecke: Vector2) -> void:
+
+func _pfade(gx: int, gy: int, ecke: Vector2, netze: Dictionary) -> void:
     if posmod(gy, PFAD_ABSTAND) == 0 and _linie_da(gy, 1, 150):
-        _pfad(_bahn_waagerecht(gy, ecke))
+        _pfad(_bahn(gy, ecke, true), netze)
     if posmod(gx, PFAD_ABSTAND) == 0 and _linie_da(gx, 2, 150):
-        _pfad(_bahn_senkrecht(gx, ecke))
+        _pfad(_bahn(gx, ecke, false), netze)
 
 
-func _bahn_waagerecht(linie: int, ecke: Vector2) -> PackedVector2Array:
-    var y0 := ecke.y + KACHEL * 0.5
-    var bahn := PackedVector2Array()
+## Die Punkte einer Bahn und ihre Querrichtung, **beide aus der Formel**.
+## Aus den Nachbarpunkten gerechnet, waere die Querrichtung am Kachelrand
+## einseitig, und zwei Kacheln truegen an derselben Stelle zwei Kanten.
+func _bahn(linie: int, ecke: Vector2, waagerecht: bool) -> Array:
+    var punkte := PackedVector2Array()
+    var quer := PackedVector2Array()
     for i in PFAD_STUECKE + 1:
-        var x := ecke.x + KACHEL * float(i) / float(PFAD_STUECKE)
-        bahn.append(Vector2(x, y0 + _welle(x, linie)))
-    return bahn
+        var t := (ecke.x if waagerecht else ecke.y) + KACHEL * float(i) / float(PFAD_STUECKE)
+        var p := _bahnpunkt(t, linie, ecke, waagerecht)
+        var vor := _bahnpunkt(t + 1.0, linie, ecke, waagerecht) \
+            - _bahnpunkt(t - 1.0, linie, ecke, waagerecht)
+        punkte.append(p)
+        quer.append(vor.normalized().orthogonal())
+    return [punkte, quer]
 
 
-func _bahn_senkrecht(linie: int, ecke: Vector2) -> PackedVector2Array:
-    var x0 := ecke.x + KACHEL * 0.5
-    var bahn := PackedVector2Array()
-    for i in PFAD_STUECKE + 1:
-        var y := ecke.y + KACHEL * float(i) / float(PFAD_STUECKE)
-        bahn.append(Vector2(x0 + _welle(y, linie), y))
-    return bahn
+func _bahnpunkt(t: float, linie: int, ecke: Vector2, waagerecht: bool) -> Vector2:
+    if waagerecht:
+        return Vector2(t, ecke.y + KACHEL * 0.5 + _welle(t, linie))
+    return Vector2(ecke.x + KACHEL * 0.5 + _welle(t, linie), t)
 
 
 func _linie_da(linie: int, achse: int, von_256: int) -> bool:
@@ -168,199 +328,166 @@ func _welle(t: float, linie: int) -> float:
     return sin(t * 0.0041 + p) * 70.0 + sin(t * 0.0113 + p * 2.3) * 22.0
 
 
-func _pfad(bahn: PackedVector2Array) -> void:
-    var halb := PackedFloat32Array()
-    for p in bahn:
-        halb.append(24.0 + 6.0 * sin(p.x * 0.013 + p.y * 0.017))
-    _tu.band(bahn, halb, ERDE, PackedFloat32Array())
+func _kanten(bahn: Array, breite: Callable) -> Array:
+    var punkte: PackedVector2Array = bahn[0]
+    var quer: PackedVector2Array = bahn[1]
+    var links := PackedVector2Array()
+    var rechts := PackedVector2Array()
+    for i in punkte.size():
+        var h: float = breite.call(punkte[i])
+        links.append(punkte[i] + quer[i] * h)
+        rechts.append(punkte[i] - quer[i] * h)
+    return [links, rechts]
+
+
+func _pfad(bahn: Array, netze: Dictionary) -> void:
+    var halb := func(p: Vector2) -> float:
+        return 24.0 + 6.0 * sin(p.x * 0.013 + p.y * 0.017)
+    var rand := _kanten(bahn, func(p: Vector2) -> float: return halb.call(p) + P * 1.2)
+    var flaeche := _kanten(bahn, halb)
+    (netze["weg_rand"] as Netz).band(rand[0], rand[1], Palette.ERDE.darkened(0.16))
+    (netze["weg"] as Netz).band(flaeche[0], flaeche[1], Color.WHITE)
     # Zwei Spuren darin, dunkler: dort wird gegangen und gefahren.
+    var punkte: PackedVector2Array = bahn[0]
+    var quer: PackedVector2Array = bahn[1]
     for s in [-1.0, 1.0]:
-        var spur := PackedVector2Array()
-        var schmal := PackedFloat32Array()
-        for i in bahn.size():
-            var vor := bahn[mini(i + 1, bahn.size() - 1)] - bahn[maxi(i - 1, 0)]
-            spur.append(bahn[i] + vor.normalized().orthogonal() * 10.0 * s)
-            schmal.append(2.6)
-        _tu.band(spur, schmal, ERDE.darkened(0.12), PackedFloat32Array())
+        var mitte := PackedVector2Array()
+        for i in punkte.size():
+            mitte.append(punkte[i] + quer[i] * 10.0 * s)
+        var spur := _kanten([mitte, quer], func(_p: Vector2) -> float: return P * 0.55)
+        (netze["weg"] as Netz).band(spur[0], spur[1], Color(0.86, 0.84, 0.82))
 
 
 ## **Wasser, selten.** Ein Bach an einer Gitterlinie quer zu den Wegen (eine
 ## von acht Linien), und gelegentlich ein Teich. Dekoration ohne Kollision:
 ## man watet hindurch, wie man durch die Wiese geht.
-func _wasser(gx: int, gy: int, ecke: Vector2) -> void:
+func _wasser_an(gx: int, gy: int, ecke: Vector2, netze: Dictionary, dinge: Array) -> void:
     if posmod(gx + 1, PFAD_ABSTAND * 2) == 0 and _linie_da(gx, 5, 40):
-        var bahn := _bahn_senkrecht(gx * 3 + 1, ecke)
-        var rand := PackedFloat32Array()
-        var halb := PackedFloat32Array()
-        var glanz := PackedFloat32Array()
-        for p in bahn:
-            var b := 20.0 + 6.0 * sin(p.y * 0.011 + float(gx))
-            rand.append(b + 5.0)
-            halb.append(b)
-            glanz.append(b * 0.25)
-        _tu.band(bahn, rand, Palette.WIESE_TIEF.darkened(0.15), PackedFloat32Array())
-        _tu.band(bahn, halb, Palette.WASSER, PackedFloat32Array())
-        _tu.band(bahn, glanz, Palette.WASSER_HELL, PackedFloat32Array())
+        var bahn := _bahn(gx * 3 + 1, ecke, false)
+        var breit := func(p: Vector2) -> float:
+            return 20.0 + 6.0 * sin(p.y * 0.011 + float(gx))
+        var rand := _kanten(bahn, func(p: Vector2) -> float: return breit.call(p) + P * 1.6)
+        var flaeche := _kanten(bahn, breit)
+        (netze["wasser_rand"] as Netz).band(rand[0], rand[1], Palette.WIESE_TIEF.darkened(0.3))
+        (netze["wasser"] as Netz).band(flaeche[0], flaeche[1], Color.WHITE)
     var rng := _saat(gx, gy, 2)
     if rng.randf() < 0.05:
         var p := ecke + Vector2(0.3 + rng.randf() * 0.4, 0.3 + rng.randf() * 0.4) * KACHEL
         var r := 50.0 + rng.randf() * 30.0
-        _tu.klecks(p, r + 6.0, Palette.WIESE_TIEF.darkened(0.15), 1)
-        _tu.klecks(p, r, Palette.WASSER, 2)
-        _tu.klecks(p + Vector2(-r * 0.3, -r * 0.25), r * 0.35, Palette.WASSER_HELL, 3)
+        var welle := rng.randf()
+        (netze["wasser_rand"] as Netz).flaeche(_blob(p, r + P * 1.6, welle),
+            Palette.WIESE_TIEF.darkened(0.3))
+        (netze["wasser"] as Netz).flaeche(_blob(p, r, welle), Color.WHITE)
         # Schilf am Ufer.
         for i in 3:
             var w := PI * (0.7 + float(i) * 0.25)
-            var u := p + Vector2(cos(w), sin(w) * 0.8) * r
-            _gras(u, rng)
+            var u := p + Vector2(cos(w), sin(w) * 0.82) * r
+            _ding(dinge, u, "schilf", 0.0)
 
 
-func _dinge(gx: int, gy: int, ecke: Vector2, anteil: float) -> void:
+## Ein Sprite der Landschaft, einmal gebaut und gemerkt.
+func _sprite(name: String) -> Array:
+    if _sprites.has(name):
+        return _sprites[name]
+    var zeilen: PackedStringArray
+    var anker := 0
+    var kante := Landschaft.kante_laub()
+    var umriss := true
+    var teile := name.split(":")
+    var nr := int(teile[1]) if teile.size() > 1 else 0
+    match teile[0]:
+        "baum":
+            zeilen = Landschaft.baum(nr)
+            anker = Landschaft.baum_anker(nr)
+        "kiefer":
+            zeilen = Landschaft.kiefer(nr)
+            anker = Landschaft.kiefer_anker(nr)
+        "busch":
+            zeilen = Landschaft.busch(nr)
+            anker = Landschaft.busch_anker(nr)
+        "stein":
+            zeilen = Landschaft.stein(nr)
+            anker = Landschaft.stein_anker(nr)
+            kante = Landschaft.kante_stein()
+        "mauer":
+            zeilen = Landschaft.mauer()
+            anker = 13
+            kante = Landschaft.kante_stein()
+        "turm":
+            zeilen = Landschaft.turm()
+            anker = 9
+            kante = Landschaft.kante_stein()
+        "stumpf":
+            zeilen = Landschaft.STUMPF
+            anker = 3
+            kante = Landschaft.kante_holz()
+        "zaun":
+            zeilen = Landschaft.ZAUN
+            anker = 9
+            kante = Landschaft.kante_holz()
+        "gras":
+            zeilen = PackedStringArray(Landschaft.GRAS[nr])
+            anker = 2
+            umriss = false
+        "schilf":
+            zeilen = Landschaft.SCHILF
+            anker = 2
+            umriss = false
+        "kiesel":
+            zeilen = PackedStringArray(Landschaft.KIESEL[nr])
+            anker = 1
+            umriss = false
+    var schluessel := "land|" + name
+    var r := Pixel.bild(schluessel, zeilen, Landschaft.kleid(kante), anker, false, false, umriss)
+    var s := [r, Pixel.anker(schluessel, false, false, umriss)]
+    _sprites[name] = s
+    return s
+
+
+## Ein Ding vormerken: Ort, Sprite, Farbe, Schattenradius (0 = keiner).
+func _ding(dinge: Array, p: Vector2, name: String, schatten: float,
+        modul := Color.WHITE) -> void:
+    dinge.append([p, _sprite(name), modul, schatten])
+
+
+func _dinge(gx: int, gy: int, ecke: Vector2, anteil: float, dinge: Array) -> void:
     var rng := _saat(gx, gy, 3)
-    # **Die Wiese hat Struktur.** Als glatte Flaeche war sie ein gruener
-    # Fleck auf einer Karte; kurze dunkle Haken lesen sich als Gras.
-    for i in int(anteil * 22.0):
+    # **Die Wiese hat Bueschel und Blueten**, der Sand Kiesel. Ohne sie ist
+    # zwischen den Dingen nichts, und der Grund ist ein Tischtuch.
+    for i in int(anteil * 12.0):
         var p := ecke + Vector2(rng.randf(), rng.randf()) * KACHEL
         if _wiese_an(p) < 0.5:
             continue
-        var c := Palette.HALM if i % 3 else Palette.WIESE.lightened(0.14)
-        _tu.zug(p, p + Vector2(-5.0, -15.0), 5.0, c, 0.0, 0.0, 0.0, 2)
-        _tu.zug(p + Vector2(7.0, 0.0), p + Vector2(12.0, -13.0), 5.0, c, 0.0, 0.0, 0.0, 2)
-    # Kiesel: klein, verstreut. Einzeln sieht man sie kaum; ohne sie ist
-    # zwischen den Dingen nichts, und der Grund ist ein Tischtuch.
-    for i in 6:
+        _ding(dinge, p, "gras:%d" % rng.randi_range(0, 3), 0.0)
+    for i in 5:
         var p := ecke + Vector2(rng.randf(), rng.randf()) * KACHEL
-        _tu.klecks(p, 2.4 + rng.randf() * 2.0, SEPIA.darkened(rng.randf() * 0.15), i)
+        _ding(dinge, p, "kiesel:%d" % rng.randi_range(0, 2), 0.0)
     for i in DINGE:
         var p := ecke + Vector2(rng.randf(), rng.randf()) * KACHEL
         var los := rng.randf()
         # Auf der Wiese stehen Baeume und Gras, im Sand Steine und Ruinen.
         if los < 0.18 + anteil * 0.30:
-            _baum(p, rng)
+            if rng.randf() < 0.28:
+                var nr := rng.randi_range(0, Landschaft.KIEFERN - 1)
+                _ding(dinge, p, "kiefer:%d" % nr, float(Landschaft.kiefer_breite(nr)) * P * 0.45)
+            else:
+                var nr := rng.randi_range(0, Landschaft.BAEUME - 1)
+                _ding(dinge, p, "baum:%d" % nr, float(Landschaft.baum_breite(nr)) * P * 0.5)
         elif los < 0.50 + anteil * 0.15:
-            _gras(p, rng)
+            for k in 2 + rng.randi_range(0, 1):
+                _ding(dinge, p + Vector2(rng.randf_range(-24.0, 24.0),
+                    rng.randf_range(-10.0, 10.0)), "gras:%d" % rng.randi_range(0, 3), 0.0)
         elif los < 0.70:
-            _busch(p, rng)
+            var nr := rng.randi_range(0, Landschaft.BUESCHE - 1)
+            _ding(dinge, p, "busch:%d" % nr, (13.0 + nr * 2.0) * P * 0.5)
         elif los < 0.85:
-            _steine(p, rng)
+            var nr := rng.randi_range(0, Landschaft.STEINE - 1)
+            _ding(dinge, p, "stein:%d" % nr, (10.0 + nr * 3.0) * P * 0.45)
         elif los < 0.90:
-            _zaun(p, rng)
+            _ding(dinge, p, "zaun", 0.0)
         elif los < 0.96:
-            _ruine(p, rng)
+            _ding(dinge, p, "mauer" if rng.randf() < 0.5 else "turm", 13.0 * P)
+            # Ein Busch daneben, damit sie nicht wie hingestellt aussieht.
+            _ding(dinge, p + Vector2(-70.0, 8.0), "busch:0", 6.0 * P)
         else:
-            _stumpf(p, rng)
-
-
-## **Ein Baum: Schatten, Stamm, Krone.** Die Krone aus mehreren Klecksen,
-## die hinteren dunkler, oben ein Licht; der Schatten faellt nach rechts
-## unten, vom Licht weg (`Palette.LICHT`).
-func _baum(p: Vector2, rng: RandomNumberGenerator) -> void:
-    var r := 44.0 + rng.randf() * 22.0
-    _tu.klecks(p + Vector2(r * 0.55, r * 0.15), r * 1.05,
-        Color(TINTE.r, TINTE.g, TINTE.b, 0.20), 1)
-    _tu.strang(PackedVector2Array([p + Vector2(0.0, 4.0), p + Vector2(0.0, -r * 0.7)]),
-        PackedFloat32Array([r * 0.36, r * 0.28]), Palette.HOLZ, 2, KANTE)
-    var mitte := p + Vector2(0.0, -r * 1.05)
-    for i in 4:
-        var w := PI * (0.15 + float(i) * 0.47)
-        var o := mitte + Vector2(cos(w) * r * 0.45, sin(w) * r * 0.30 + r * 0.10)
-        _tu.klecks(o, r * 0.62, Palette.LAUB_TIEF, i, KANTE)
-    _tu.klecks(mitte + Vector2(-r * 0.05, -r * 0.12), r * 0.70, Palette.LAUB, 7, KANTE)
-    _tu.klecks(mitte + Vector2(-r * 0.25, -r * 0.32), r * 0.30,
-        Palette.LAUB.lightened(0.18), 8)
-
-
-## **Ein Bueschel, nicht drei Haare.** Halme in zwei Toenen, gefaechert, und
-## selten eine Bluete.
-func _gras(p: Vector2, rng: RandomNumberGenerator) -> void:
-    var halme := 5 + rng.randi_range(0, 3)
-    for i in halme:
-        var t := float(i) / float(halme - 1) - 0.5
-        var l := 14.0 + rng.randf() * 18.0
-        var neige := t * 26.0 + (rng.randf() - 0.5) * 8.0
-        var c := Palette.HALM.lightened(0.20) if i % 2 == 1 else Palette.HALM
-        _tu.zug(p + Vector2(t * 12.0, 0.0), p + Vector2(t * 12.0 + neige, -l),
-            3.4, c, 0.0, 0.0, 2.0, 3)
-    if rng.randf() < 0.3:
-        _tu.klecks(p + Vector2((rng.randf() - 0.5) * 14.0, -16.0 - rng.randf() * 8.0),
-            3.6, Palette.BLUETE, int(p.x))
-
-
-## Steine liegen in Gruppen, der groesste hinten, mit Licht und halber Kante.
-func _steine(p: Vector2, rng: RandomNumberGenerator) -> void:
-    var zahl := 2 + rng.randi_range(0, 2)
-    for i in zahl:
-        var r := (13.0 - float(i) * 3.0) * (0.7 + rng.randf() * 0.6)
-        var o := p + Vector2((rng.randf() - 0.5) * 34.0, float(i) * 5.0)
-        _tu.klecks(o + Vector2(r * 0.4, r * 0.35), r * 1.0,
-            Color(TINTE.r, TINTE.g, TINTE.b, 0.16), i)
-        _tu.klecks(o, r, Palette.STEIN.darkened(rng.randf() * 0.12), int(o.x) + i, KANTE)
-        _tu.klecks(o + Vector2(-r * 0.3, -r * 0.35), r * 0.38,
-            Palette.STEIN.lightened(0.25), i)
-
-
-## Ein niedriger Busch: Bauschen aus Laub, die hinteren dunkler.
-func _busch(p: Vector2, rng: RandomNumberGenerator) -> void:
-    _tu.klecks(p + Vector2(10.0, 8.0), 24.0, Color(TINTE.r, TINTE.g, TINTE.b, 0.16), 1)
-    for i in 4:
-        var w := PI + float(i) / 3.0 * PI
-        var o := p + Vector2(cos(w) * 15.0, sin(w) * 8.0 + 2.0)
-        _tu.klecks(o, 11.0 + rng.randf() * 4.0, Palette.LAUB_TIEF, i, KANTE)
-    _tu.klecks(p + Vector2(0.0, -6.0), 13.0, Palette.LAUB, 7, KANTE)
-    if rng.randf() < 0.3:
-        _tu.klecks(p + Vector2(4.0, -10.0), 3.0, Palette.BLUETE, 8)
-
-
-## Ein Baumstumpf: Rinde, oben die helle Schnittflaeche mit einem Ring.
-func _stumpf(p: Vector2, rng: RandomNumberGenerator) -> void:
-    var r := 13.0 + rng.randf() * 5.0
-    _tu.klecks(p + Vector2(8.0, 10.0), r * 1.2, Color(TINTE.r, TINTE.g, TINTE.b, 0.16), 1)
-    _tu.strang(PackedVector2Array([p + Vector2(0.0, 10.0), p]),
-        PackedFloat32Array([r * 2.2, r * 2.0]), Palette.HOLZ, 2, KANTE)
-    _tu.klecks(p, r, Palette.HOLZ.lightened(0.45), 2, KANTE)
-    _tu.kranz(p, r * 0.45, r * 0.60, Palette.HOLZ.lightened(0.15), 3)
-
-
-## Ein Zaunstueck: Pfosten und zwei Latten, schraeg im Feld.
-func _zaun(p: Vector2, rng: RandomNumberGenerator) -> void:
-    var r := Vector2(1.0, (rng.randf() - 0.5) * 0.5).normalized()
-    var pfosten := 3 + rng.randi_range(0, 2)
-    var weit := 34.0
-    for k in 2:
-        var y := -10.0 - float(k) * 12.0
-        _tu.strang(PackedVector2Array([p + Vector2(0.0, y),
-            p + r * weit * float(pfosten - 1) + Vector2(0.0, y)]),
-            PackedFloat32Array([5.0, 5.0]), Palette.HOLZ.lightened(0.12), 2, KANTE)
-    for i in pfosten:
-        var f := p + r * weit * float(i)
-        _tu.strang(PackedVector2Array([f, f + Vector2(0.0, -30.0)]),
-            PackedFloat32Array([7.5, 6.5]), Palette.HOLZ, 2, KANTE)
-
-
-## **Eine Ruine**: ein Mauerstueck mit Zinnen, eingebrochen, oder ein
-## Turmstumpf. Selten - sie ist das groesste Ding am Boden.
-func _ruine(p: Vector2, rng: RandomNumberGenerator) -> void:
-    var stein := Palette.STEIN
-    _tu.klecks(p + Vector2(30.0, 10.0), 50.0, Color(TINTE.r, TINTE.g, TINTE.b, 0.16), 1)
-    if rng.randf() < 0.5:
-        # Mauer: eine Reihe Bloecke, nach rechts abfallend.
-        for i in 5:
-            var hoch := 46.0 - float(i) * 7.0 - rng.randf() * 6.0
-            var x := -60.0 + float(i) * 28.0
-            _tu.strang(PackedVector2Array([p + Vector2(x, 0.0), p + Vector2(x, -hoch)]),
-                PackedFloat32Array([28.0, 28.0]), stein.darkened(rng.randf() * 0.1), 2, KANTE)
-            if i % 2 == 0 and hoch > 30.0:
-                _tu.strang(PackedVector2Array([p + Vector2(x, -hoch),
-                    p + Vector2(x, -hoch - 12.0)]),
-                    PackedFloat32Array([16.0, 16.0]), stein, 2, KANTE)
-        for i in 3:
-            _tu.klecks(p + Vector2(70.0 + float(i) * 12.0, 4.0 - float(i) * 3.0),
-                6.0 - float(i), stein, i, KANTE)
-    else:
-        # Turmstumpf: rund, oben offen.
-        _tu.strang(PackedVector2Array([p, p + Vector2(0.0, -44.0)]),
-            PackedFloat32Array([70.0, 64.0]), stein, 2, KANTE)
-        _tu.klecks(p + Vector2(0.0, -44.0), 32.0, stein.lightened(0.12), 2, KANTE)
-        _tu.klecks(p + Vector2(0.0, -44.0), 20.0, stein.darkened(0.45), 3)
-    # Ein Busch daneben, damit sie nicht wie hingestellt aussieht.
-    _busch(p + Vector2(-70.0, 8.0), rng)
+            _ding(dinge, p, "stumpf", 4.0 * P)

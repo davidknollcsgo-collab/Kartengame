@@ -48,6 +48,8 @@ const GRASGRUND := Color(0.620, 0.667, 0.443)
 const HALM := Color(0.380, 0.467, 0.255)
 ## Seltene kleine Blueten. Nicht Gold (Sold), nicht Zinnober (Gefahr).
 const BLUETE := Color(0.957, 0.937, 0.871)
+## Die zweite Bluete, blassrosa: nicht Violett (Treiber), nicht Zinnober.
+const BLUETE_ZART := Color(0.886, 0.690, 0.741)
 ## Baumkronen und Buesche: dunkler als die Wiese, damit ein Baum auf ihr steht.
 const LAUB := Color(0.341, 0.494, 0.271)
 const LAUB_TIEF := Color(0.220, 0.353, 0.192)
