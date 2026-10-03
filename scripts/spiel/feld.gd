@@ -49,6 +49,7 @@ var _wasser: ImageTexture
 var _weiss: ImageTexture
 ## Name -> [Region, Ankerspalte] der Landschafts-Sprites.
 var _sprites := {}
+var _wasserpunkte: Array = []
 
 
 ## **Ein Dreiecksnetz mit einem Muster.** Gesammelt wird ueber alle Kacheln,
@@ -204,15 +205,10 @@ func _draw() -> void:
     var b := (bis + Vector2.ONE) * KACHEL
     (netze["sand"] as Netz).flaeche(PackedVector2Array([a, Vector2(b.x, a.y), b,
         Vector2(a.x, b.y)]), Color.WHITE)
-    if _kacheln.size() > KACHELN_HOECHSTENS:
-        _kacheln.clear()
     var dinge: Array = []
     for gx in range(int(von.x), int(bis.x) + 1):
         for gy in range(int(von.y), int(bis.y) + 1):
-            var k := Vector2i(gx, gy)
-            if not _kacheln.has(k):
-                _kacheln[k] = _rechne_kachel(gx, gy)
-            var kachel: Array = _kacheln[k]
+            var kachel: Array = _kachel_an(gx, gy)
             var eigene: Dictionary = kachel[0]
             for name in eigene:
                 (netze[name] as Netz).dazu(eigene[name])
@@ -232,19 +228,60 @@ func _draw() -> void:
             Pixel.setze(ci, schatten[0], schatten[1], (d[0] as Vector2) + schatten[2])
     for d in dinge:
         var s: Array = d[1]
-        Pixel.setze(ci, s[0], s[1], d[0], d[2])
+        if not s.is_empty():
+            Pixel.setze(ci, s[0], s[1], d[0], d[2])
 
 
-## Eine Kachel: ihre Netze (nur die, die etwas tragen) und ihre Dinge.
+## Eine Kachel: ihre Netze (nur die, die etwas tragen), ihre Dinge am Boden,
+## ihre hohen Dinge, ihr Lebendes und ihre Wasserpunkte (fuer das Glitzern).
 func _rechne_kachel(gx: int, gy: int) -> Array:
     var netze := _netze()
     var dinge: Array = []
+    _hoch = []
+    _lebend = []
+    _wasserpunkte = []
     _kachel(gx, gy, netze, dinge)
     var eigene := {}
     for name in netze:
         if not (netze[name] as Netz).punkte.is_empty():
             eigene[name] = netze[name]
-    return [eigene, dinge]
+    return [eigene, dinge, _hoch, _lebend, _wasserpunkte]
+
+
+func _kachel_an(gx: int, gy: int) -> Array:
+    var k := Vector2i(gx, gy)
+    if not _kacheln.has(k):
+        if _kacheln.size() > KACHELN_HOECHSTENS:
+            _kacheln.clear()
+        _kacheln[k] = _rechne_kachel(gx, gy)
+    return _kacheln[k]
+
+
+## Eintraege einer Spalte (2 hoch, 3 lebend, 4 Wasser) aller Kacheln, die das
+## Rechteck um `mitte` beruehren.
+func _sammle(spalte: int, mitte: Vector2, halb: Vector2) -> Array:
+    var von := ((mitte - halb) / KACHEL).floor()
+    var bis := ((mitte + halb) / KACHEL).floor()
+    var aus: Array = []
+    for gx in range(int(von.x), int(bis.x) + 1):
+        for gy in range(int(von.y), int(bis.y) + 1):
+            aus.append_array(_kachel_an(gx, gy)[spalte])
+    return aus
+
+
+## **Die hohen Dinge im Bild**: `[Ort, Name]` - Baeume, Kiefern, Tuerme.
+func hohe_dinge(mitte: Vector2, halb: Vector2) -> Array:
+    return _sammle(2, mitte, halb)
+
+
+## **Was sich wiegt**: `[Ort, Name]` - Grasbueschel, Schilf.
+func lebendes(mitte: Vector2, halb: Vector2) -> Array:
+    return _sammle(3, mitte, halb)
+
+
+## **Wo Wasser glitzern kann**: Orte auf Teichen und Baechen.
+func wasserpunkte(mitte: Vector2, halb: Vector2) -> Array:
+    return _sammle(4, mitte, halb)
 
 
 func _saat(gx: int, gy: int, schicht: int) -> RandomNumberGenerator:
@@ -401,6 +438,8 @@ func _wasser_an(gx: int, gy: int, ecke: Vector2, netze: Dictionary, dinge: Array
         var flaeche := _kanten(bahn, breit)
         (netze["wasser_rand"] as Netz).band(rand[0], rand[1], Palette.WIESE_TIEF.darkened(0.3))
         (netze["wasser"] as Netz).band(flaeche[0], flaeche[1], Color.WHITE)
+        for p in (bahn[0] as PackedVector2Array):
+            _wasserpunkte.append([p, 14.0])
     var rng := _saat(gx, gy, 2)
     if rng.randf() < 0.05:
         var p := ecke + Vector2(0.3 + rng.randf() * 0.4, 0.3 + rng.randf() * 0.4) * KACHEL
@@ -409,6 +448,7 @@ func _wasser_an(gx: int, gy: int, ecke: Vector2, netze: Dictionary, dinge: Array
         (netze["wasser_rand"] as Netz).flaeche(_blob(p, r + P * 1.6, welle),
             Palette.WIESE_TIEF.darkened(0.3))
         (netze["wasser"] as Netz).flaeche(_blob(p, r, welle), Color.WHITE)
+        _wasserpunkte.append([p, r * 0.7])
         # Schilf am Ufer.
         for i in 3:
             var w := PI * (0.7 + float(i) * 0.25)
@@ -420,57 +460,10 @@ func _wasser_an(gx: int, gy: int, ecke: Vector2, netze: Dictionary, dinge: Array
 func _sprite(name: String) -> Array:
     if _sprites.has(name):
         return _sprites[name]
-    var zeilen: PackedStringArray
-    var anker := 0
-    var kante := Landschaft.kante_laub()
-    var umriss := true
-    var teile := name.split(":")
-    var nr := int(teile[1]) if teile.size() > 1 else 0
-    match teile[0]:
-        "baum":
-            zeilen = Landschaft.baum(nr)
-            anker = Landschaft.baum_anker(nr)
-        "kiefer":
-            zeilen = Landschaft.kiefer(nr)
-            anker = Landschaft.kiefer_anker(nr)
-        "busch":
-            zeilen = Landschaft.busch(nr)
-            anker = Landschaft.busch_anker(nr)
-        "stein":
-            zeilen = Landschaft.stein(nr)
-            anker = Landschaft.stein_anker(nr)
-            kante = Landschaft.kante_stein()
-        "mauer":
-            zeilen = Landschaft.mauer()
-            anker = 13
-            kante = Landschaft.kante_stein()
-        "turm":
-            zeilen = Landschaft.turm()
-            anker = 9
-            kante = Landschaft.kante_stein()
-        "stumpf":
-            zeilen = Landschaft.STUMPF
-            anker = 3
-            kante = Landschaft.kante_holz()
-        "zaun":
-            zeilen = Landschaft.ZAUN
-            anker = 9
-            kante = Landschaft.kante_holz()
-        "gras":
-            zeilen = PackedStringArray(Landschaft.GRAS[nr])
-            anker = 2
-            umriss = false
-        "schilf":
-            zeilen = Landschaft.SCHILF
-            anker = 2
-            umriss = false
-        "kiesel":
-            zeilen = PackedStringArray(Landschaft.KIESEL[nr])
-            anker = 1
-            umriss = false
+    var d := Landschaft.bild_von(name)
     var schluessel := "land|" + name
-    var r := Pixel.bild(schluessel, zeilen, Landschaft.kleid(kante), anker, false, false, umriss)
-    var s := [r, Pixel.anker(schluessel, false, false, umriss)]
+    var r := Pixel.bild(schluessel, d[0], Landschaft.kleid(d[2]), d[1], false, false, d[3])
+    var s := [r, Pixel.anker(schluessel, false, false, d[3])]
     _sprites[name] = s
     return s
 
@@ -479,6 +472,13 @@ func _sprite(name: String) -> Array:
 ## **Der Schatten ist ein Sprite**, eine flache Ellipse nach rechts unten,
 ## vom Licht weg: Zeile fuer Zeile gezeichnet waren es bei dreihundert Dingen
 ## zweitausend Aufrufe je Neuzeichnen.
+##
+## **Hohe Dinge** (`Landschaft.ist_hoch`) legen nur ihren Schatten in den
+## Boden und sich selbst in `_hoch`, **Lebendes** (`ist_lebend`) nur in
+## `_lebend`: beides holt man mit `hohe_dinge()` und `lebendes()`.
+var _hoch: Array = []
+var _lebend: Array = []
+
 func _ding(dinge: Array, p: Vector2, name: String, schatten: float,
         modul := Color.WHITE) -> void:
     var s: Array = []
@@ -487,6 +487,13 @@ func _ding(dinge: Array, p: Vector2, name: String, schatten: float,
         var name_s := "land_schatten%d" % breite
         var r := Pixel.bild(name_s, _schatten_zeilen(breite), Pixel.grund(), breite / 2)
         s = [r, Pixel.anker(name_s), Vector2(schatten * 0.3, P * float(breite / 6))]
+    if Landschaft.ist_lebend(name):
+        _lebend.append([p, name])
+        return
+    if Landschaft.ist_hoch(name):
+        _hoch.append([p, name])
+        dinge.append([p, [], modul, s])
+        return
     dinge.append([p, _sprite(name), modul, s])
 
 

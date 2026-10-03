@@ -335,6 +335,68 @@ static func turm() -> PackedStringArray:
     return zeilen
 
 
+# --- Nach Namen -------------------------------------------------------------
+
+## **Was hoch steht**, verdeckt, was dahinter laeuft: diese Dinge zeichnet der
+## Figurenpuffer, nach y sortiert mit der Horde, und nicht der Boden.
+static func ist_hoch(name: String) -> bool:
+    var art := name.split(":")[0]
+    return art == "baum" or art == "kiefer" or art == "turm"
+
+
+## **Was sich bewegt** (Gras, Schilf): zeichnet ein eigener Knoten jedes Bild
+## neu, damit es sich im Wind wiegen kann. Der gemerkte Boden steht still.
+static func ist_lebend(name: String) -> bool:
+    var art := name.split(":")[0]
+    return art == "gras" or art == "schilf"
+
+
+## Zeilen, Ankerspalte, Kante und ob ein Umriss eingebrannt wird - je Name
+## wie `"baum:2"`. Eine Stelle fuer Boden, Figurenpuffer und lebenden Boden.
+static func bild_von(name: String) -> Array:
+    var teile := name.split(":")
+    var nr := int(teile[1]) if teile.size() > 1 else 0
+    match teile[0]:
+        "baum":
+            return [baum(nr), baum_anker(nr), kante_laub(), true]
+        "kiefer":
+            return [kiefer(nr), kiefer_anker(nr), kante_laub(), true]
+        "busch":
+            return [busch(nr), busch_anker(nr), kante_laub(), true]
+        "stein":
+            return [stein(nr), stein_anker(nr), kante_stein(), true]
+        "mauer":
+            return [mauer(), 13, kante_stein(), true]
+        "turm":
+            return [turm(), 9, kante_stein(), true]
+        "stumpf":
+            return [STUMPF, 3, kante_holz(), true]
+        "zaun":
+            return [ZAUN, 9, kante_holz(), true]
+        "gras":
+            return [PackedStringArray(GRAS[nr]), 2, kante_laub(), false]
+        "schilf":
+            return [SCHILF, 2, kante_laub(), false]
+        "kiesel":
+            return [PackedStringArray(KIESEL[nr]), 1, kante_stein(), false]
+    return [PackedStringArray(["."]), 0, kante_laub(), false]
+
+
+## **Im Wind**: das obere `anteil` des Bildes einen Bildpunkt nach rechts.
+## Rechts steht dafuer immer eine Spalte frei, damit beide Fassungen gleich
+## breit sind und der Anker bleibt.
+static func wiege(zeilen: PackedStringArray, ausschlag: bool,
+        anteil := 0.45) -> PackedStringArray:
+    var aus := PackedStringArray()
+    var grenze := int(float(zeilen.size()) * anteil)
+    for y in zeilen.size():
+        var z: String = zeilen[y] + "."
+        if ausschlag and y < grenze:
+            z = "." + z.substr(0, z.length() - 1)
+        aus.append(z)
+    return aus
+
+
 # --- Gemalt ----------------------------------------------------------------
 
 const STUMPF: PackedStringArray = [

@@ -126,6 +126,8 @@ var _saeule_farbe := Color.WHITE
 @onready var _kamera: Camera2D = $Bild/Boden/Ansicht/Kamera
 @onready var _kamera_fig: Camera2D = $Bild/Figuren/Ansicht/Kamera
 @onready var _feld: Node2D = $Bild/Boden/Ansicht/Feld
+@onready var _licht: CanvasModulate = $Bild/Boden/Ansicht/Licht
+@onready var _licht_fig: CanvasModulate = $Bild/Figuren/Ansicht/Licht
 @onready var _teile: Array[Node2D] = [$Bild/Figuren/Ansicht/Hinten,
     $Bild/Figuren/Ansicht/Loch, $Bild/Figuren/Ansicht/Vorn]
 
@@ -251,11 +253,30 @@ func _process(delta: float) -> void:
     # laesst jede Figur beim Gehen um einen Pixel flackern, und Boden und
     # Figuren liegen in zwei Puffern - beide muessen auf demselben Raster
     # stehen.
+    _licht.color = _tageslicht()
+    _licht_fig.color = _licht.color
     var auf_raster := Pixel.raster(_kamera_ort + beben) * Pixel.P
     _kamera.position = auf_raster
     _kamera_fig.position = auf_raster
     for t in _teile:
         t.queue_redraw()
+
+
+## **Das Licht wandert** ueber die zehn Minuten: Vormittag, warmer
+## Nachmittag, Abendrot, wenn der Warlord kommt. Schwach, damit keine Sorte
+## ihre Farbe verliert - die Waechter pruefen die ungetoenten Farben, und das
+## Abendrot nimmt Blau nur um ein Sechstel. Die Menues bleiben ungetoent.
+const LICHT_MITTAG := Color(1.0, 0.98, 0.93)
+## 0,84 statt 0,76 im Blau: das erste Abendrot faerbte den Sand orange.
+const LICHT_ABEND := Color(1.0, 0.91, 0.84)
+
+func _tageslicht() -> Color:
+    if lage != Lage.LAUF or _stand == null:
+        return Color.WHITE
+    var t := clampf(_stand.zeit / Andrang.WARLORD_ZEIT, 0.0, 1.0)
+    if t < 0.5:
+        return Color.WHITE.lerp(LICHT_MITTAG, t * 2.0)
+    return LICHT_MITTAG.lerp(LICHT_ABEND, (t - 0.5) * 2.0)
 
 
 ## Der Stick: relativ zum Aufsetzpunkt, nicht an einer festen Ecke. Auf einem
@@ -651,10 +672,30 @@ func _zeichne_hinten(ci: RID) -> void:
             Pixel.linie(ci, f.ort, f.ort + f.bahn * weite * voll,
                 Color(ZINNOBER.r, ZINNOBER.g, ZINNOBER.b, 0.45), 2)
 
+    # **Hohe Dinge stehen in derselben Sortierung** (Runde vier): ein Baum
+    # verdeckt, wer hinter ihm laeuft. Nur den Helden nicht - eine Krone, die
+    # ihn verdecken wuerde, steht hinter ihm. *Wo bin ich* geht vor Tiefe.
+    var stuecke: Array = []
+    for f in sichtbar:
+        stuecke.append([f.ort.y, f])
+    for h in _feld.hohe_dinge(_kamera_ort, _sicht + Vector2(60.0, 160.0)):
+        var ort: Vector2 = h[0]
+        if _im_bild(ort, 140.0):
+            stuecke.append([ort.y, h])
+    stuecke.sort_custom(func(a, b): return a[0] < b[0])
+
     # **Die Gefaehrten laufen in derselben Sortierung mit.** Ein Begleiter,
     # der immer oben liegt, steht vor Feinden, hinter denen er steht.
     _vor_held.clear()
-    for f in sichtbar:
+    for st in stuecke:
+        var ding: Variant = st[1]
+        if ding is Array:
+            if st[0] > _stand.ort.y and not _deckt_held(ding):
+                _vor_held.append(ding)
+            else:
+                _zeichne_hohes(ci, ding)
+            continue
+        var f: Gefecht.Feind = ding
         if f.ort.y > _stand.ort.y:
             _vor_held.append(f)
             continue
@@ -662,6 +703,45 @@ func _zeichne_hinten(ci: RID) -> void:
     for g in _stand.gefaehrten:
         if g.ort.y <= _stand.ort.y:
             _zeichne_gefaehrte(ci, g)
+
+
+## **Ein hohes Ding im Figurenpuffer**: ohne eingebrannten Umriss, den gibt
+## hier der Shader. Die Krone wiegt sich, wenn eine Windwelle durchgeht -
+## dieselbe Welle wie ueber dem Gras (`boden_leben.gd`).
+var _hohe_bilder := {}
+
+func _hohes_bild(name: String, ausschlag: bool) -> Array:
+    var k := name + ("|w" if ausschlag else "|r")
+    var v: Variant = _hohe_bilder.get(k)
+    if v == null:
+        var d := Landschaft.bild_von(name)
+        var schluessel := "hoch|" + k
+        var r := Pixel.bild(schluessel, Landschaft.wiege(d[0], ausschlag),
+            Landschaft.kleid(d[2]), d[1])
+        v = [r, Pixel.anker(schluessel)]
+        _hohe_bilder[k] = v
+        Pixel.bereit()
+    return v
+
+
+func _zeichne_hohes(ci: RID, h: Array) -> void:
+    var ort: Vector2 = h[0]
+    var name: String = h[1]
+    var welle := sin(_zeit * 2.1 - ort.x * 0.006 - ort.y * 0.004)
+    var turm := name.begins_with("turm")
+    _setze(ci, _hohes_bild(name, welle > 0.55 and not turm), ort)
+
+
+## Wuerde dieses hohe Ding den Helden verdecken? Grob ueber seine Breite und
+## Hoehe im Bild.
+func _deckt_held(h: Array) -> bool:
+    var ort: Vector2 = h[0]
+    var b := _hohes_bild(h[1], false)
+    var r: Rect2i = b[0]
+    var breit := float(r.size.x) * P * 0.5 + 8.0 * P
+    var hoch := float(r.size.y) * P
+    var d := _stand.ort - ort
+    return absf(d.x) < breit and d.y < 0.0 and d.y > -hoch - HELD_HOEHE * 0.2
 
 
 ## Fuer den Wolf: auf dem Ruecken statt gedreht - ein gedrehter Wolf steht
@@ -694,8 +774,11 @@ const MUENZE_BLINKT: PackedStringArray = [
 func _zeichne_vorn(ci: RID) -> void:
     _zeichne_held(ci)
 
-    for f in _vor_held:
-        _zeichne_feind(ci, f)
+    for ding in _vor_held:
+        if ding is Array:
+            _zeichne_hohes(ci, ding)
+        else:
+            _zeichne_feind(ci, ding)
     for g in _stand.gefaehrten:
         if g.ort.y > _stand.ort.y:
             _zeichne_gefaehrte(ci, g)

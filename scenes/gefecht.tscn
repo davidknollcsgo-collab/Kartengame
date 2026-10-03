@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/spiel/zug_lauf.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/spiel/feld.gd" id="2"]
@@ -6,6 +6,7 @@
 [ext_resource type="Script" path="res://scripts/spiel/welt.gd" id="4"]
 [ext_resource type="Shader" path="res://shaders/umriss.gdshader" id="5"]
 [ext_resource type="Shader" path="res://shaders/loch.gdshader" id="6"]
+[ext_resource type="Script" path="res://scripts/spiel/boden_leben.gd" id="7"]
 
 [sub_resource type="ShaderMaterial" id="umriss"]
 shader = ExtResource("5")
@@ -40,6 +41,11 @@ render_target_update_mode = 4
 [node name="Feld" type="Node2D" parent="Bild/Boden/Ansicht"]
 script = ExtResource("2")
 
+[node name="Leben" type="Node2D" parent="Bild/Boden/Ansicht"]
+script = ExtResource("7")
+
+[node name="Licht" type="CanvasModulate" parent="Bild/Boden/Ansicht"]
+
 [node name="Figuren" type="SubViewportContainer" parent="Bild"]
 texture_filter = 1
 material = SubResource("umriss")
@@ -59,6 +65,8 @@ size = Vector2i(240, 427)
 render_target_update_mode = 4
 
 [node name="Kamera" type="Camera2D" parent="Bild/Figuren/Ansicht"]
+
+[node name="Licht" type="CanvasModulate" parent="Bild/Figuren/Ansicht"]
 
 [node name="Hinten" type="Node2D" parent="Bild/Figuren/Ansicht"]
 script = ExtResource("4")
