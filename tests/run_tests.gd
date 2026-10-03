@@ -38,6 +38,7 @@ const TESTS: PackedStringArray = [
     "_test_umzingelung_kostet_mehr_als_eine_flanke",
     "_test_die_horde_steht_im_bild",
     "_test_feinde_stehen_nicht_aufeinander",
+    "_test_woelfe_bilden_keinen_teppich",
     "_test_jede_waffe_traegt_allein",
     "_test_keine_waffe_ist_die_beste",
     "_test_flegel_haengt_nicht_an_der_bildrate",
@@ -639,6 +640,8 @@ func _horde_proben() -> Dictionary:
     var stapel: Array[float] = []
     var ueberlappt: Array[float] = []
     var meiste := 0
+    var woelfe_meiste := 0
+    var rudel: Array[float] = []
     for saat in 6:
         var stufen := {}
         for b in Halle.NAMEN.size():
@@ -659,6 +662,12 @@ func _horde_proben() -> Dictionary:
             if s.zeit < naechste:
                 continue
             naechste += 30.0
+            var woelfe := 0
+            for f in s.feinde:
+                if f.lebt and f.art == Feinde.Art.WOLF:
+                    woelfe += 1
+            woelfe_meiste = maxi(woelfe_meiste, woelfe)
+            rudel.append(float(_groesstes_rudel(s)))
             # Das Sichtfeld des Entwurfs: 720 x 1280 um den Helden.
             var im_bild: Array[Gefecht.Feind] = []
             for f in s.feinde:
@@ -685,9 +694,39 @@ func _horde_proben() -> Dictionary:
     anteile.sort()
     stapel.sort()
     ueberlappt.sort()
+    rudel.sort()
     _horde = {"anteile": anteile, "stapel": stapel, "ueberlappt": ueberlappt,
-        "meiste": meiste}
+        "meiste": meiste, "woelfe_meiste": woelfe_meiste, "rudel": rudel}
     return _horde
+
+
+## Die groesste zusammenhaengende Gruppe von Woelfen im Bild: zwei gehoeren
+## zusammen, wenn sie naeher als zwei gezeichnete Breiten stehen.
+func _groesstes_rudel(s: Gefecht.Stand) -> int:
+    var orte: Array[Vector2] = []
+    for f in s.feinde:
+        var d := f.ort - s.ort
+        if f.lebt and f.art == Feinde.Art.WOLF and absf(d.x) < Gefecht.BILD_HALB_X \
+                and absf(d.y) < Gefecht.BILD_HALB_Y:
+            orte.append(f.ort)
+    var grenze := 2.0 * Feinde.abstand(Feinde.Art.WOLF)
+    var besucht := {}
+    var groesste := 0
+    for i in orte.size():
+        if besucht.has(i):
+            continue
+        besucht[i] = true
+        var offen := [i]
+        var n := 0
+        while not offen.is_empty():
+            var k: int = offen.pop_back()
+            n += 1
+            for j in orte.size():
+                if not besucht.has(j) and orte[k].distance_to(orte[j]) < grenze:
+                    besucht[j] = true
+                    offen.append(j)
+        groesste = maxi(groesste, n)
+    return groesste
 
 
 func _test_die_horde_steht_im_bild() -> bool:
@@ -754,6 +793,28 @@ func _test_feinde_stehen_nicht_aufeinander() -> bool:
     return _melde(p95 <= 0.04,
         "im 95. Perzentil liegen %.0f %% der Feinde zur Haelfte auf einem anderen"
         % (p95 * 100.0))
+
+
+func _test_woelfe_bilden_keinen_teppich() -> bool:
+    # **Ein Rudel, kein Teppich** (`Andrang.WOELFE_HOECHSTENS`). Der Wolf ist
+    # fast so schnell wie der Held; was nicht fiel, lief auf derselben Spur
+    # hinter ihm her. Gezaehlt (Daumen, Held unsterblich, acht Saaten, Burg 4,
+    # bis 560 s), groesste Gruppe im Bild:
+    #
+    #                       ohne Deckel   Deckel 30   Deckel 20
+    #     lebende Woelfe       182           30          20
+    #     Gruppe, Median         7            4           2
+    #     Gruppe, 90. Perz.     66           20           8
+    #     Gruppe, hoechste     144           28          20
+    var p := _horde_proben()
+    if not _melde(int(p["woelfe_meiste"]) <= Andrang.WOELFE_HOECHSTENS,
+            "es lebten %d Woelfe, Deckel %d" % [p["woelfe_meiste"],
+            Andrang.WOELFE_HOECHSTENS]):
+        return false
+    var rudel: Array[float] = p["rudel"]
+    var hoechste := rudel[rudel.size() - 1]
+    return _melde(hoechste <= float(Andrang.WOELFE_HOECHSTENS),
+        "ein Rudel im Bild hatte %d Woelfe" % int(hoechste))
 
 
 func _test_ein_laeufer_haelt_die_ersten_minuten() -> bool:

@@ -104,7 +104,23 @@ static func verfuegbar(zeit: float) -> PackedInt32Array:
 const NEULING_FENSTER := 30.0
 const NEULING_VORZUG := 2.2
 
-static func ziehe(zeit: float, rng: RandomNumberGenerator) -> int:
+## **Wie viele Woelfe hoechstens leben.** Der Wolf ist fast so schnell wie
+## der Held und haelt sich an seine Fersen; was nicht faellt, laeuft auf
+## derselben Spur hinter ihm her. Gezaehlt (Daumen, Held unsterblich, acht
+## Saaten, Burg 4): bis zu 182 lebende Woelfe, und die groesste
+## zusammenhaengende Gruppe im Bild hatte im 90. Perzentil 66 Woelfe, hoechstens
+## 144 - ein grauer Teppich statt eines Rudels. Mit 30 waren es 20 / 28, mit
+## 20 sind es 8 / 20.
+##
+## **Statt des Wolfs kommt ein Strolch**, nicht irgendeine Sorte. Der erste
+## Anlauf zog bei vollem Deckel neu aus den uebrigen Sorten, und die sind
+## zaeher als der Wolf (Pikenier 30 Leben, Ritter 85 gegen 8): gepaart ueber
+## acht Saaten (Burg 8, bis 480 s) erreichte der Schwertkaempfer 5 statt 6 mal
+## das Ende. Der Strolch ist die andere schwache, billige Sorte; so bleibt die
+## Horde so schwer, wie sie war, und wird nur bunter.
+const WOELFE_HOECHSTENS := 20
+
+static func ziehe(zeit: float, rng: RandomNumberGenerator, woelfe := 0) -> int:
     var moeglich := verfuegbar(zeit)
     if moeglich.is_empty():
         return Feinde.Art.STROLCH
@@ -117,8 +133,12 @@ static func ziehe(zeit: float, rng: RandomNumberGenerator) -> int:
         gewichte.append(g)
         summe += g
     var wurf := rng.randf() * summe
+    var art := moeglich[moeglich.size() - 1]
     for i in moeglich.size():
         wurf -= gewichte[i]
         if wurf <= 0.0:
-            return moeglich[i]
-    return moeglich[moeglich.size() - 1]
+            art = moeglich[i]
+            break
+    if art == Feinde.Art.WOLF and woelfe >= WOELFE_HOECHSTENS:
+        return Feinde.Art.STROLCH
+    return art

@@ -296,6 +296,61 @@ Boden war der letzte Vektor im Bild, weich neben scharfen Figuren.
   Minute 6 **4,1–4,7 ms**, Minute 9 **4,5–4,8 ms** (vorher 1,2 / 3,2 /
   3,2) — der Preis für Zahlen, Ausholen und Fallbilder.
 
+**Runde vier** (Oktober 2026, „weiter“; gewählt: Wolfsrudel kleiner, mehr
+Figurenbilder, Bäume vor Figuren, Menüs nachziehen).
+
+* **Ein Rudel, kein Teppich** (`Andrang.WOELFE_HOECHSTENS` 20). Es gab keine
+  Rudel-Logik: der Wolf ist fast so schnell wie der Held, und was nicht fiel,
+  lief auf derselben Spur hinter ihm her. **Erst gezählt** (Daumen, Held
+  unsterblich, acht Saaten, Burg 4): bis zu 182 lebende Wölfe, die größte
+  Gruppe im Bild im 90. Perzentil 66, höchstens 144. Mit Deckel 30: 20 / 28,
+  mit 20: **8 / 20**. Bewacht von `_test_woelfe_bilden_keinen_teppich`.
+  **Statt des Wolfs kommt ein Strolch**, nicht irgendeine Sorte: der erste
+  Anlauf zog neu aus den übrigen, und die sind zäher (Pikenier 30 Leben,
+  Ritter 85, Wolf 8) — gepaart (Burg 8, acht Saaten, bis 480 s) erreichte
+  der Schwertkämpfer 5 statt 6 mal das Ende. Mit dem Strolch: **27 von 32**
+  Läufen erreichen 480 s, ohne Deckel ebenfalls 27; je Saat 5 besser,
+  3 schlechter — Rauschen. Ein Deckel, der eine Sorte ersetzt, ersetzt sie
+  durch eine **gleich schwere**, sonst ist er eine heimliche Verteuerung.
+* **Schlagbilder je Sorte** (`Figuren.SCHLAG`): wer am Helden ausholt, hebt
+  Messer, Schwert oder Fahne, legt die Pike waagerecht, der Wolf springt mit
+  offenem Fang, der Armbruster legt beim Schuss an. Die Breite ohne Waffe
+  bleibt die der Sorte, der Wächter prüft auch diese Bilder.
+* **Der Warlord fällt eigens**: Blitz, 1,2 s Knien mit fallendem Schwert,
+  dann Liegen. **Und der Bericht wartet, bis er liegt** (`_nachspiel`) —
+  vorher endete der Lauf im Bild seines Falls, und niemand sah ihn fallen.
+  Das Gefecht steht so lange still: was noch lebt, schlägt nicht mehr.
+* **Bäume verdecken die Horde.** Baum, Kiefer und Turm stehen nicht im
+  Boden, sondern im Figurenpuffer, nach y sortiert mit den Feinden
+  (`feld.hohe_dinge()`, `zug_lauf._zeichne_hohes`); der Schatten bleibt im
+  Boden. **Den Helden verdeckt keine Krone** — eine, die ihn decken würde,
+  steht hinter ihm (`_deckt_held`). *Wo bin ich* geht vor Tiefe. Im
+  Figurenpuffer gibt der Shader die Kante, also ohne eingebrannten Umriss.
+* **Was sich bewegt, steht nicht im gemerkten Boden** (`boden_leben.gd`,
+  eigener Knoten im Bodenpuffer, jedes Bild neu): Gras und Schilf wiegen sich
+  mit einer Windwelle, die schräg übers Feld läuft und auch durch die Kronen
+  geht (`Landschaft.wiege`), Wasser glitzert aus Zeit und Ort, nie aus einem
+  Würfel. Der gemerkte Boden bleibt ein stilles Bild — darum ist er billig.
+* **Das Licht wandert** über die zehn Minuten (`CanvasModulate` in beiden
+  Unterbildern): Vormittag, warmer Nachmittag, Abendrot zum Warlord. Das erste
+  Abendrot (Blau × 0,76) färbte den Sand orange; jetzt × 0,84. Die Wächter
+  prüfen die ungetönten Farben, die Menüs bleiben ungetönt.
+* **Menüs bewegen sich**: Schirme fahren 0,18 s ein und nehmen erst danach
+  Eingaben an (sonst träfe man den Knopf, der unter dem Finger vorbeifährt);
+  Angebote kommen nacheinander, der Bericht zählt hoch, der Fund steigt aus
+  einer Lichtsäule auf; in der Burg Stufen als Punkte in Fünfergruppen und
+  ein glimmender Kostenknopf, im Beutel das Getragene in Heldenfarbe.
+  **Ein Schuss zeigt den Endzustand jeder Bewegung** (`zug_hud.ohne_zeit`):
+  er speichert gleich nach dem Vorlauf, und ein Aufstieg mit einfahrenden
+  Angeboten stünde dort leer.
+* **Gemessen** (`zeichne_teil`, Saat 7, nacheinander): Minute 1 **2,0 ms**,
+  Minute 6 **6,8 ms**, Minute 9 **6,2 ms** (vorher 1,5 / 4,1–4,7 / 4,5–4,8).
+  Bisektiert: Schlagbilder kosten nichts Messbares, die Bäume im
+  Figurenpuffer gut 1 ms (die Liste wird je Kachelbereich gemerkt,
+  `feld._gesammelt`), der Rest ist **eine andere Szene** — mit Wolfsdeckel
+  steht eine andere Horde im Bild. Wer vorher/nachher misst, prüft, ob
+  dasselbe Gefecht gezeichnet wird.
+
 ## Godot beschaffen
 
 Godot ist hier nicht vorinstalliert und `godotengine.org` ist durch die
@@ -339,7 +394,7 @@ CUTS. Wird ein lange roter Schritt grün,
 schaut man nach, was dahinter wartet.
 
 **Der Testlauf allein beweist nicht, dass das Spiel läuft.** Er lädt
-`zug_lauf.gd`, `zug_hud.gd` und `feld.gd` nie — ein `--script`-Lauf kennt
+`zug_lauf.gd`, `zug_hud.gd`, `feld.gd` und `boden_leben.gd` nie — ein `--script`-Lauf kennt
 keine Autoloads und keine Szene. Ein Parse-Fehler dort bleibt im Testlauf
 grün. Das ist in diesem Repository schon dreimal passiert; der Startlauf
 findet es in Sekunden.

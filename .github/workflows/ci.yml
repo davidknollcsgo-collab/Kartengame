@@ -63,7 +63,7 @@ jobs:
         run: godot --headless --path . --script tools/lizenzcheck.gd
 
       # **Der Testlauf allein beweist nicht, dass das Spiel läuft.** Er lädt
-      # `zug_lauf.gd`, `zug_hud.gd` und `feld.gd` nie
+      # `zug_lauf.gd`, `zug_hud.gd`, `feld.gd` und `boden_leben.gd` nie
       # - ein `--script`-Lauf kennt keine Autoloads und keine Szene. Ein
       # Parse-Fehler in einer dieser Dateien bleibt dort grün, und das Spiel
       # startet dann *scheinbar*. Genau das ist beim Neubau zweimal passiert,

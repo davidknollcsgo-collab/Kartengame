@@ -657,7 +657,7 @@ func _zeichne_hinten(ci: RID) -> void:
     for f in _stand.feinde:
         if _im_bild(f.ort, FEIND_HOEHE * 1.4):
             sichtbar.append(f)
-    sichtbar.sort_custom(func(a, b): return a.ort.y < b.ort.y)
+    # Sortiert wird weiter unten, zusammen mit den hohen Dingen - einmal.
 
     # **Die Ansage liegt am Boden, unter allen Figuren.** Ein Band in
     # Zinnober entlang der Bahn, das sich bis zum Sturm fuellt: so weit traegt

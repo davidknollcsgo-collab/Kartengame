@@ -59,6 +59,7 @@ selbst geschrieben:
 | Atlas, Rollenfarben, Rasterlinien, Ringe, Scheiben | `scripts/spiel/pixel.gd` |
 | Landschaft als Text und gerechnet: Bäume, Kiefern, Büsche, Steine, Mauer, Turm | `scripts/spiel/landschaft.gd` |
 | Der Boden: Muster für Sand, Gras, Erde, Wasser; Wiesen, Wege, Bach, Teich | `scripts/spiel/feld.gd` |
+| Was sich am Boden bewegt: Gras und Schilf im Wind, Glitzern auf Wasser | `scripts/spiel/boden_leben.gd` |
 | Waffenspuren, Funken, Druckring, Zeichenreihenfolge nach y | `scripts/spiel/zug_lauf.gd` |
 | Bedienbild, Tafeln, Knöpfe, Balken, Aufstiegskarten | `scripts/spiel/zug_hud.gd` |
 

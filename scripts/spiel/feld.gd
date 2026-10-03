@@ -259,13 +259,22 @@ func _kachel_an(gx: int, gy: int) -> Array:
 
 ## Eintraege einer Spalte (2 hoch, 3 lebend, 4 Wasser) aller Kacheln, die das
 ## Rechteck um `mitte` beruehren.
+## Gemerkt je Spalte und Kachelbereich: die Liste aendert sich erst, wenn
+## das Rechteck eine Kachelgrenze ueberschreitet, gefragt wird jedes Bild.
+var _gesammelt := {}
+
 func _sammle(spalte: int, mitte: Vector2, halb: Vector2) -> Array:
     var von := ((mitte - halb) / KACHEL).floor()
     var bis := ((mitte + halb) / KACHEL).floor()
+    var schluessel := [spalte, von, bis]
+    var alt: Variant = _gesammelt.get(spalte)
+    if alt != null and alt[0] == schluessel:
+        return alt[1]
     var aus: Array = []
     for gx in range(int(von.x), int(bis.x) + 1):
         for gy in range(int(von.y), int(bis.y) + 1):
             aus.append_array(_kachel_an(gx, gy)[spalte])
+    _gesammelt[spalte] = [schluessel, aus]
     return aus
 
 

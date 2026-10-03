@@ -463,11 +463,21 @@ static func _speise_nach(s: Stand, dt: float, rng: RandomNumberGenerator) -> voi
         # im Gedränge nicht sieht, ist keiner.
         return
     s._eintritt_rest -= dt * Andrang.rate(s.zeit)
+    if s._eintritt_rest > 0.0:
+        return
+    # Wie viele Woelfe leben - `Andrang.WOELFE_HOECHSTENS`.
+    var woelfe := 0
+    for f in s.feinde:
+        if f.lebt and f.art == Feinde.Art.WOLF:
+            woelfe += 1
     var sicherung := 0
     while s._eintritt_rest <= 0.0 and sicherung < 40 \
             and s.feinde.size() < Andrang.HOECHSTENS_LEBEND:
         s._eintritt_rest += 1.0
-        _setze_ein(s, Andrang.ziehe(s.zeit, rng), rng)
+        var art := Andrang.ziehe(s.zeit, rng, woelfe)
+        if art == Feinde.Art.WOLF:
+            woelfe += 1
+        _setze_ein(s, art, rng)
         sicherung += 1
     # **Voll ist voll.** Was über der Obergrenze nachkäme, wird verworfen und
     # nicht aufgestaut - sonst ergösse sich nach dem ersten Luftholen die
