@@ -105,8 +105,9 @@ const WAFFEN_ROLLEN := "mMnwWxo"
 func _test_figuren_passen_zur_simulation() -> bool:
     var bekannt := Pixel.kleid(Color.GRAY)
     var bilder: Array = []
+    # Bis `Figuren.SCHLAG`: auch wer ausholt, steht so breit wie die Sorte.
     for art in Feinde.Art.size():
-        for b in range(-1, 4):
+        for b in range(-1, Figuren.SCHLAG + 1):
             bilder.append([Feinde.name_von(art), Figuren.feind(art, b), art])
     for k in 4:
         for b in range(-1, 4):

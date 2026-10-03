@@ -68,6 +68,10 @@ const GEFALLEN_DAUER := 1.1
 const FALL_BLITZ := 0.09
 const FALL_KNIE := 0.22
 const FALL_BLINKT := 0.30
+## **Der Warlord faellt nicht wie einer von hundert**: er bleibt laenger
+## stehen, kniet, das Schwert faellt ihm aus der Hand, dann liegt er.
+const WARLORD_FALL := 2.6
+const WARLORD_KNIE := 1.2
 const GEFALLEN_HOECHSTENS := 40
 ## Staub: unter Gefallenen, hinter dem laufenden Helden, beim Aufsammeln.
 var _staub: Array = []
@@ -115,6 +119,8 @@ var _muenz_zeit := {}
 var _flieger: Array = []
 ## Die Lichtsaeule beim Aufstieg: 1 gerade, 0 vorbei.
 var _saeule := 0.0
+## Wie lange der Warlord schon liegt, bevor der Bericht kommt.
+var _nachspiel := 0.0
 var _saeule_farbe := Color.WHITE
 
 @onready var _kamera: Camera2D = $Bild/Boden/Ansicht/Kamera
@@ -159,6 +165,7 @@ func beginne(held: int) -> void:
     _held_leben_alt = -1.0
     _saeule = 0.0
     _stopp = 0.0
+    _nachspiel = 0.0
     _hiebe.clear()
     _gefallene.clear()
     _staub.clear()
@@ -185,7 +192,7 @@ func _process(delta: float) -> void:
     _schlag_alter += delta
     for g in _gefallene:
         g.alter += delta
-    _gefallene = _gefallene.filter(func(g): return g.alter < GEFALLEN_DAUER)
+    _gefallene = _gefallene.filter(func(g): return g.alter < g.dauer)
     for s in _staub:
         s.alter += delta
     _staub = _staub.filter(func(s): return s.alter < s.dauer)
@@ -218,7 +225,12 @@ func _process(delta: float) -> void:
         var eingabe := _eingabe()
         if eingabe.length_squared() > 0.0025 and not _stand.wartet_auf_wahl:
             _gezogen += delta
-        if _stopp > 0.0 and not _vorlauf:
+        if _stand.warlord_gefallen and _stand.lebt():
+            # **Der Sieg wartet, bis der Warlord liegt.** Der Lauf endete im
+            # selben Bild, in dem er fiel, und sein Fall war nie zu sehen.
+            # Das Gefecht steht dabei still: was noch lebt, schlaegt nicht mehr.
+            _nachspiel += delta
+        elif _stopp > 0.0 and not _vorlauf:
             _stopp -= delta
         else:
             _stopp = 0.0
@@ -227,7 +239,8 @@ func _process(delta: float) -> void:
             _sammle_schaden(delta)
         _kamera_ort = _kamera_ort.lerp(_stand.ort, clampf(delta * 7.0, 0.0, 1.0))
         _feld.setze_mitte(_kamera_ort)
-        if Gefecht.vorbei(_stand):
+        if Gefecht.vorbei(_stand) and (not _stand.warlord_gefallen
+                or not _stand.lebt() or _nachspiel >= WARLORD_FALL):
             _beende()
     # Das Beben schiebt beide Kameras, nicht die Zeichnung: Boden und Figuren
     # liegen in zwei Puffern und muessen gemeinsam wackeln.
@@ -309,9 +322,11 @@ func _werte_aus() -> void:
                 # bleibt dem Schaden am Spieler vorbehalten - darf alles rot
                 # spritzen, heisst Rot nichts mehr.
                 _spritz(f.ort, Palette.sorte(f.art), 4)
-                if _gefallene.size() < GEFALLEN_HOECHSTENS and _im_bild(f.ort, 60.0):
+                var ist_w := Feinde.ist_warlord(f.art)
+                if ist_w or (_gefallene.size() < GEFALLEN_HOECHSTENS and _im_bild(f.ort, 60.0)):
                     _gefallene.append({"ort": f.ort, "art": f.art,
                         "blick": f.blick, "alter": 0.0,
+                        "dauer": WARLORD_FALL if ist_w else GEFALLEN_DAUER,
                         "weg": (f.ort - _stand.ort).normalized(),
                         "h": FEIND_HOEHE * (f.radius / 17.0)})
                     _staub.append({"ort": f.ort, "alter": 0.0, "dauer": 0.5,
@@ -561,16 +576,31 @@ func _zeichne_hinten(ci: RID) -> void:
         var weg: Vector2 = g.weg
         var b: Array
         var ort: Vector2 = g.ort
-        if alter < FALL_BLITZ:
+        var dauer: float = g.dauer
+        var warlord := Feinde.ist_warlord(art)
+        var knie := WARLORD_KNIE if warlord else FALL_KNIE
+        if alter < FALL_BLITZ * (2.0 if warlord else 1.0):
             b = _feind_bild(art, -1, spiegel, true)
-            ort += weg * P * 2.0
-        elif alter < FALL_KNIE and art != Feinde.Art.WOLF:
+            ort += weg * P * (0.0 if warlord else 2.0)
+        elif warlord and alter < knie:
+            # Er kniet, und das Schwert faellt ihm aus der Hand: eine
+            # Rasterlinie, die sich von senkrecht zu flach am Boden legt.
+            b = _bild("sinkt%d" % art, Figuren.sinkt(Figuren.feind(art, -1), 8),
+                Pixel.kleid(Palette.sorte(art)), Figuren.anker(art), spiegel)
+            var u := clampf((alter - FALL_BLITZ * 2.0) / (knie - FALL_BLITZ * 2.0), 0.0, 1.0)
+            var seite := -1.0 if spiegel else 1.0
+            var griff: Vector2 = g.ort + Vector2(9.0 * P * seite, -6.0 * P)
+            var w := lerpf(-PI * 0.5, 0.15, u * u)
+            var spitze: Vector2 = griff + Vector2(cos(w) * seite, sin(w)) * 15.0 * P
+            Pixel.linie(ci, griff, spitze, Palette.STAHL, 2)
+            Pixel.linie(ci, griff, griff + (spitze - griff) * 0.85, Palette.STAHL_HELL, 1)
+        elif alter < knie and art != Feinde.Art.WOLF:
             b = _bild("sinkt%d" % art, Figuren.sinkt(Figuren.feind(art, -1),
                 4 if art != Feinde.Art.WARLORD else 8),
                 Pixel.kleid(Palette.sorte(art)), Figuren.anker(art), spiegel)
             ort += weg * P * 3.0
         else:
-            if GEFALLEN_DAUER - alter < FALL_BLINKT and fmod(alter, 0.1) < 0.05:
+            if dauer - alter < FALL_BLINKT and fmod(alter, 0.1) < 0.05:
                 continue
             if art == Feinde.Art.WOLF:
                 b = _bild("liegt%d" % art, _kopfueber(Figuren.feind(art, -1)),
@@ -579,7 +609,7 @@ func _zeichne_hinten(ci: RID) -> void:
                 b = _bild("liegt%d" % art, Figuren.liegend(Figuren.feind(art, -1)),
                     Pixel.kleid(Palette.sorte(art)), 10, spiegel)
             ort += weg * P * 3.0
-        var u: float = alter / GEFALLEN_DAUER
+        var u: float = alter / dauer
         var dunkel := lerpf(1.0, 0.6, u)
         _setze(ci, b, ort, Color(dunkel, dunkel, dunkel, 1.0))
     # **Sold glaenzt**: eine Pixelmuenze, die im Takt aufblinkt.
@@ -869,6 +899,8 @@ func _zeichne_feind(ci: RID, f: Gefecht.Feind) -> void:
         if takt < 0.2:
             var r := zu.normalized()
             fuss += r * P * 2.0
+            if takt < 0.12:
+                b = _feind_bild(f.art, Figuren.SCHLAG, f.blick < 0.0, f.zuckt > 0.0)
             if takt < 0.1:
                 Pixel.punkt(ci, f.ort + r * (f.radius + 6.0) + Vector2(0.0, -FEIND_HOEHE * 0.35),
                     Palette.WEISS, 2)
@@ -877,6 +909,7 @@ func _zeichne_feind(ci: RID, f: Gefecht.Feind) -> void:
     if rueck > 0.0:
         var r := zu.normalized()
         fuss -= r * P
+        b = _feind_bild(f.art, Figuren.SCHLAG, f.blick < 0.0, f.zuckt > 0.0)
         if rueck > 0.12:
             Pixel.punkt(ci, f.ort + r * 9.0 * P + Vector2(0.0, -12.0 * P), Palette.WEISS, 2)
     # Der Stuermer zieht Staubstreifen hinter sich her.

@@ -342,6 +342,153 @@ const WOLF: Array[PackedStringArray] = [
 ]
 const WOLF_ANKER := 6
 
+# --- Schlagbilder ------------------------------------------------------------
+#
+# **Wer zuschlaegt, sieht anders aus als wer geht.** Bis Runde vier ruckte ein
+# Feind am Helden nur einen Bildpunkt vor; jetzt hat jede Sorte ein Bild fuer
+# den Schlag (`feind(art, SCHLAG)`): der Strolch hebt das Messer, der
+# Pikenier legt die Pike waagerecht, der Ritter hebt das Schwert ueber den
+# Kopf, der Armbruster legt an, der Treiber schwenkt die Fahne, der Warlord
+# reisst den Zweihaender hoch, der Wolf springt mit offenem Fang.
+# Die Breite ohne Waffe bleibt die der Sorte (`_test_figuren_passen_zur_simulation`).
+
+## Bildnummer des Schlags in `feind()`; die Beine stehen dabei.
+const SCHLAG := 4
+
+const STROLCH_SCHLAG: PackedStringArray = [
+    "....cbbb..m.",
+    "...cbbbba.m.",
+    "..cbbbbbaas.",
+    "..cbSSssses.",
+    "..cbSssssss.",
+    "..ccbSsss...",
+    "...cbbbbb...",
+    "..cbbaaabb..",
+    ".cbbaaaabb..",
+    ".cbbaabbb...",
+    ".cbbbbbbb...",
+    "..lLlllll...",
+    "..cbbbbbbb..",
+]
+
+const SPIESSER_SCHLAG: PackedStringArray = [
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "...nMMMMn.......",
+    "..nMmmMMMMn.....",
+    "....SSsss.......",
+    "....Sssse.......",
+    ".....SSs........",
+    "...cbbbbbs......",
+    "..cbbaabbswwwwmm",
+    "..cbaaabbb......",
+    "..cbbbbbbb......",
+    "..lLlllllL......",
+    "..cbbbbbbb......",
+    "..ccbbbbbc......",
+]
+
+const ARMBRUSTER_SCHLAG: PackedStringArray = [
+    "...cccc......",
+    "..cdddddd...M",
+    "...SSsssWWWWM",
+    "...SSssss...M",
+    "....SSss.....",
+    "...cbbbbbs...",
+    "..cbaaabbb...",
+    "..cbaabbb....",
+    "..cbbaabbb...",
+    "..cbbbbbbb...",
+    "..lLllllll...",
+    "..cbbbbbbb...",
+    "..ccbbbbbc...",
+]
+
+const TREIBER_SCHLAG: PackedStringArray = [
+    ".........w.....",
+    ".........wbbb..",
+    ".........wbaxbb",
+    ".........wbxxxb",
+    ".........wbaxab",
+    ".........wbbbab",
+    ".........wcbbbc",
+    ".........wc..c.",
+    "...cbbb..w.....",
+    "..cbbbba.w.....",
+    "..cbSsse.w.....",
+    "..cbSsss.w.....",
+    "...cSss..w.....",
+    "..cbbbbbsw.....",
+    ".cbbaabbbw.....",
+    ".cbaabbbbw.....",
+    ".cbbbbbbbw.....",
+    ".clLllllLw.....",
+    ".cbbbbbbbw.....",
+    ".ccbbbbbbw.....",
+]
+
+const RITTER_SCHLAG: PackedStringArray = [
+    "m..nMMMn....",
+    "m.nMmmmMn...",
+    "M.nMmmmMn...",
+    "M.nMooooo...",
+    "nsnMMmMMn...",
+    ".s.nMMMn....",
+    ".sscbbbcnmMn",
+    "..cbbabbnbab",
+    "..cbbabbnbxb",
+    "..cbbbbbnxxx",
+    "..cbbbbbnbxb",
+    "..lLlllLnbxb",
+    "..cbbbbb.nbn",
+    "..ccbbbc..n.",
+]
+
+## Der Wolf im Sprung: gestreckt, Fang offen.
+const WOLF_SCHLAG: PackedStringArray = [
+    ".........c.c.",
+    "........cbcb.",
+    "c......cbbbbb",
+    ".caaaaabbbeby",
+    "..bbbbbbbbby.",
+    "..bbbbbbbbb.o",
+    "...yyyyyybyo.",
+    "..cc.....cc..",
+    ".cc.......cc.",
+    "c...........c",
+]
+
+## **Der Warlord reisst den Zweihaender hoch**: dasselbe Bild, das Schwert
+## aus der Hand nach oben ueber die Schulter gestellt statt neben dem Bein.
+static func _warlord_schlag() -> PackedStringArray:
+    var aus := PackedStringArray()
+    for y in WARLORD.size():
+        var z: String = WARLORD[y]
+        # Das alte Schwert neben dem Bein weg (Spalten 17 bis 21).
+        var n := z.substr(0, 17)
+        for x in range(17, z.length()):
+            n += "s" if z[x] == "s" else "."
+        aus.append(n)
+    # Klinge senkrecht ueber der Schulter, Parierstange, Haende.
+    var setze := func(x: int, y: int, rolle: String) -> void:
+        var z: String = aus[y]
+        aus[y] = z.substr(0, x) + rolle + z.substr(x + 1)
+    for y in range(0, 9):
+        setze.call(19, y, "m")
+        setze.call(20, y, "M")
+    setze.call(19, 0, ".")
+    for x in range(17, 22):
+        setze.call(x, 9, "n")
+    setze.call(19, 10, "W")
+    setze.call(19, 11, "s")
+    setze.call(18, 12, "s")
+    setze.call(17, 13, "s")
+    return aus
+
 
 # --- Zusammensetzen --------------------------------------------------------
 
@@ -490,8 +637,24 @@ static func schatten(breite: int) -> PackedStringArray:
     return aus
 
 
-## Das ganze Bild einer Sorte in einem Laufbild (`bild` 0..3, -1 steht).
+## Das ganze Bild einer Sorte in einem Laufbild (`bild` 0..3, -1 steht,
+## `SCHLAG` holt aus).
 static func feind(art: int, bild: int) -> PackedStringArray:
+    if bild == SCHLAG:
+        match art:
+            Feinde.Art.WOLF:
+                return WOLF_SCHLAG
+            Feinde.Art.SPIESSER:
+                return stapel(SPIESSER_SCHLAG, BEIN_STEH)
+            Feinde.Art.ARMBRUSTER:
+                return stapel(ARMBRUSTER_SCHLAG, BEIN_STEH)
+            Feinde.Art.TREIBER:
+                return stapel(TREIBER_SCHLAG, BEIN_STEH, 9)
+            Feinde.Art.RITTER:
+                return stapel(RITTER_SCHLAG, BEIN_STEH)
+            Feinde.Art.WARLORD:
+                return stapel(_warlord_schlag(), gross(BEIN_STEH))
+        return stapel(STROLCH_SCHLAG, BEIN_STEH)
     match art:
         Feinde.Art.WOLF:
             return WOLF[posmod(bild, 4)]
