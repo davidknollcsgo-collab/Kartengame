@@ -1373,6 +1373,8 @@ func _lies_schalter() -> void:
         if stufen_n > 0 and _stand != null:
             for z in Gunst.Zug.size():
                 _stand.zuege[z] = clampi(stufen_n, 1, Gunst.ZUG_HOECHSTSTUFE)
+    if schuss != "":
+        _hud.ohne_zeit = true
     if zeit > 0.0:
         _treibe_vor(zeit)
     if wahl and _stand != null and not _stand.wartet_auf_wahl:

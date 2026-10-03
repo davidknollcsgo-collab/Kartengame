@@ -46,6 +46,18 @@ var _sold_alt := 0
 var _sold_puls := 0.0
 var _stufe_alt := 1
 var _stufe_puls := 0.0
+## **Schirme fahren ein** (Runde vier): 0 gerade gewechselt, 1 steht.
+var _lage_alt := -1
+var _schirm := 1.0
+const SCHIRM_DAUER := 0.18
+## Seit wann ein Aufstieg offen ist, seit wann der Bericht steht.
+var _wahl_offen := false
+var _wahl_alter := 0.0
+var _ende_alter := 0.0
+## **Ein Schuss zeigt den Endzustand jeder Bewegung.** Er speichert ein Bild
+## gleich nach dem Vorlauf; ein Aufstieg, dessen Angebote erst einfahren,
+## stuende dort leer. Setzt `zug_lauf` beim Schalter `--schuss`.
+var ohne_zeit := false
 
 ## **Zwei Schriften, und jede hat ihre Aufgabe.** Bricolage, kraeftig, fuer
 ## das, was einen Schirm benennt - Titel, Namen, Knoepfe; Rajdhani fuer
@@ -84,6 +96,30 @@ func _process(d: float) -> void:
 func _folge(d: float) -> void:
     _sold_puls = maxf(0.0, _sold_puls - d * 3.0)
     _stufe_puls = maxf(0.0, _stufe_puls - d * 1.5)
+    var lage_jetzt: int = _lauf.lage if _lauf != null else -1
+    if lage_jetzt != _lage_alt:
+        _lage_alt = lage_jetzt
+        _schirm = 0.0
+        _ende_alter = 0.0
+    _schirm = minf(1.0, _schirm + d / SCHIRM_DAUER)
+    _ende_alter += d
+    if ohne_zeit:
+        _schirm = 1.0
+        _ende_alter = 99.0
+    # Von unten herein und aufgeblendet; auf das Pixelraster gelegt.
+    var e := 1.0 - pow(1.0 - _schirm, 3.0)
+    position.y = roundf((1.0 - e) * 36.0 / M) * M
+    modulate.a = e
+    var st_w: Gefecht.Stand = _lauf.stand() if _lauf != null else null
+    if st_w != null and st_w.wartet_auf_wahl and lage_jetzt == 1:
+        if not _wahl_offen:
+            _wahl_offen = true
+            _wahl_alter = 0.0
+        _wahl_alter += d
+        if ohne_zeit:
+            _wahl_alter = 99.0
+    else:
+        _wahl_offen = false
     if _lauf == null or _lauf.lage != 1:
         _spur = 1.0
         return
@@ -922,6 +958,13 @@ func _aufstieg(st: Gefecht.Stand) -> void:
     for i in zahl:
         var a = st.angebote[i]
         var zeile := Rect2(r.position.x, y, r.size.x, WAHL_ZEILE)
+        # **Die Angebote kommen nacheinander**, jedes mit einem Aufhellen.
+        # Antippen laesst sich erst, was steht.
+        var auf := _wahl_alter - 0.08 - float(i) * 0.09
+        if auf < 0.0:
+            y += WAHL_ZEILE
+            _trenner(r, y)
+            continue
         var bild := Vector2(r.position.x + 58.0, y + WAHL_ZEILE * 0.5)
         _symbol_feld(bild)
         if a.ist_waffe:
@@ -947,13 +990,21 @@ func _aufstieg(st: Gefecht.Stand) -> void:
             else:
                 _flaeche(feld.grow(-M), BLATT_TIEF)
         if a.neu:
-            _zeile("NEW", Vector2(r.end.x - 42.0 - float(hoechst - 1) * 24.0,
-                y + 70.0), 18, Palette.HELD.darkened(0.35), _kopf)
+            # Ein kleines Band in Heldenfarbe, keine lose Schrift.
+            var nx := r.end.x - 48.0 - float(hoechst - 1) * 24.0
+            var band := Rect2(((Vector2(nx, y + 50.0)) / M).round() * M, Vector2(60.0, 27.0))
+            _flaeche(band, Palette.HELD.darkened(0.25))
+            _flaeche(Rect2(band.position, Vector2(band.size.x, M)), Palette.HELD_GLANZ)
+            _flaeche(Rect2(band.position + Vector2(-M * 2.0, M * 2.0), Vector2(M * 2.0,
+                band.size.y - M * 4.0)), Palette.HELD.darkened(0.45))
+            _mitte("NEW", band, 17, HELL, _kopf)
         _zeile_eng(a.lehre(), Vector2(x, y + 94.0), 20,
             Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.98), r.end.x - x - 20.0)
         _felder.append({"id": "wahl%d" % i, "r": zeile, "aktiv": true})
         if _gedrueckt == "wahl%d" % i:
             _flaeche(zeile.grow(-M * 4.0), Color(RAHMEN.r, RAHMEN.g, RAHMEN.b, 0.12))
+        if auf < 0.16:
+            _flaeche(zeile.grow(-M * 4.0), Color(1.0, 1.0, 1.0, 0.6 * (1.0 - auf / 0.16)))
         y += WAHL_ZEILE
         _trenner(r, y)
     _symbol("BURG", Vector2(mitte, y + 112.0), true, 5.0, Color.WHITE, _held_kleid(),
@@ -989,11 +1040,17 @@ func _ende() -> void:
         TINTE if gewonnen else ZINNOBER, _kopf)
     _trenner(r, r.position.y + 100.0)
     if st != null:
+        # **Die Zahlen zaehlen hoch**, eine nach der anderen - man sieht, wie
+        # viel es war, statt es abzulesen.
+        var zaehl := func(wert: float, nr: int) -> float:
+            var u := clampf((_ende_alter - 0.15 - float(nr) * 0.12) / 0.55, 0.0, 1.0)
+            return wert * (1.0 - pow(1.0 - u, 3.0))
+        var zeit: float = zaehl.call(st.zeit, 0)
         var zeilen := [
-            ["lasted", "%d:%02d" % [int(st.zeit) / 60, int(st.zeit) % 60]],
-            ["slain", "%d" % st.erschlagen],
-            ["coin", "%d" % st.sold],
-            ["level", "%d" % st.stufe],
+            ["lasted", "%d:%02d" % [int(zeit) / 60, int(zeit) % 60]],
+            ["slain", "%d" % int(roundf(zaehl.call(float(st.erschlagen), 1)))],
+            ["coin", "%d" % int(roundf(zaehl.call(float(st.sold), 2)))],
+            ["level", "%d" % maxi(1, int(roundf(zaehl.call(float(st.stufe), 3))))],
         ]
         var y := r.position.y + 150.0
         var achse := r.position.x + r.size.x * 0.5
@@ -1012,8 +1069,20 @@ func _ende() -> void:
             var ft := "found  %s  %d" % [Ausruestung.name_von(fu), _lauf.fund_stufe()]
             var fw := _breite(ft, 26)
             var fx := r.position.x + (r.size.x - fw) * 0.5 + 22.0
-            _symbol(_symbol_stueck(fu), Vector2(fx - 30.0, y + 14.0), true, 2.0)
-            _zeile(ft, Vector2(fx, y + 24.0), 26, TINTE)
+            # **Der Fund steigt auf**, nachdem die Zahlen stehen: eine
+            # Lichtsaeule hinter dem Stueck, und es hebt sich hinein.
+            var u := clampf((_ende_alter - 0.9) / 0.5, 0.0, 1.0)
+            var mitte := Vector2(fx - 30.0, y + 14.0)
+            if u < 1.0:
+                var hoch := roundf(lerpf(10.0, 30.0, u) / M) * M
+                var saeule := Color(HELL.r, HELL.g, HELL.b, 0.8 * (1.0 - u))
+                _flaeche(Rect2(mitte + Vector2(-M * 3.0, -hoch * 2.0), Vector2(M * 6.0,
+                    hoch * 2.0 + M * 6.0)), saeule)
+            if u > 0.0:
+                var heb := roundf((1.0 - u) * 18.0 / M) * M
+                _symbol(_symbol_stueck(fu), mitte + Vector2(0.0, heb), true, 2.0)
+                _zeile(ft, Vector2(fx, y + 24.0), 26,
+                    Color(TINTE.r, TINTE.g, TINTE.b, u))
     # **Kein Angebot nach einer Niederlage.** Zwei Wege, nie mehr.
     var yk := r.end.y + 30.0
     _knopf("nochmal", Rect2(b * 0.14, yk, b * 0.72, 78.0), "AGAIN", true,
@@ -1073,10 +1142,28 @@ func _burg() -> void:
             Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.95), _zahl)
         _zeile_eng(Halle.beschreibung_von(bau), Vector2(x, y + 74.0), 20,
             Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.95), r.end.x - x - 24.0)
-        _balken(Rect2(x, y + 94.0, r.end.x - x - 204.0, 12.0),
-            float(stufe) / float(Halle.HOECHSTSTUFE), RAHMEN_HELL)
-        _knopf("bau%d" % bau, Rect2(r.end.x - 176.0, y + 80.0, 150.0, 48.0),
-            "MAX" if voll else "%d" % s.kosten(bau), s.kann_bauen(bau))
+        # **Stufen als Punkte in Fuenfergruppen**: man zaehlt sie, statt einen
+        # duennen Balken zu schaetzen.
+        var px := x
+        for k in Halle.HOECHSTSTUFE:
+            var punkt := Rect2(((Vector2(px, y + 92.0)) / M).round() * M, Vector2(M * 3.0, M * 5.0))
+            _flaeche(punkt, RAHMEN_HELL.darkened(0.15) if k < stufe
+                else Color(RAHMEN.r, RAHMEN.g, RAHMEN.b, 0.25))
+            if k < stufe:
+                _flaeche(Rect2(punkt.position, Vector2(M * 3.0, M)), RAHMEN_HELL.lightened(0.3))
+            px += M * 4.0 + (M * 2.0 if k % 5 == 4 else 0.0)
+        var knopf := Rect2(r.end.x - 176.0, y + 80.0, 150.0, 48.0)
+        var kann := s.kann_bauen(bau)
+        if voll:
+            _knopf("bau%d" % bau, knopf, "MAX", false)
+        else:
+            _knopf("bau%d" % bau, knopf, "%d" % s.kosten(bau), kann,
+                func(p): _symbol("MUENZE", p + Vector2(-6.0, 0.0), true, 2.0))
+        # Was man sich leisten kann, glimmt: ein Rand in Gold, der atmet.
+        if kann and not voll and _gedrueckt != "bau%d" % bau:
+            var atem := 0.30 + 0.25 * sin(float(Time.get_ticks_msec()) * 0.004 + float(bau))
+            var k := Rect2((knopf.position / M).round() * M, (knopf.size / M).round() * M)
+            draw_rect(k.grow(M * 1.5), Color(GOLD.r, GOLD.g, GOLD.b, atem), false, M)
         y += BURG_ZEILE
         _trenner(r, y)
     # **Ton und Beben lassen sich abschalten.** Die Datenschutzerklaerung
@@ -1122,13 +1209,33 @@ func _zeug() -> void:
             var z := Rect2(((Vector2(x, y + 12.0)) / M).round() * M,
                 (Vector2(zelle, ZEUG_ZEILE - 24.0) / M).round() * M)
             var traegt := stueck == getragen
-            _flaeche(z, RAHMEN_TIEF if (hat and traegt) else Color(RAHMEN.r, RAHMEN.g, RAHMEN.b, 0.55 if hat else 0.25))
+            # **Was man traegt, hat den Rahmen in der Farbe des Helden** - es
+            # ist seins. Was man nicht gefunden hat, ist ein Schatten mit
+            # Fragezeichen.
+            if hat and traegt:
+                _flaeche(Rect2(z.position + Vector2(M, M * 2.0), z.size),
+                    Color(TINTE.r, TINTE.g, TINTE.b, 0.3))
+            _flaeche(z, Palette.HELD.darkened(0.2) if (hat and traegt)
+                else Color(RAHMEN.r, RAHMEN.g, RAHMEN.b, 0.55 if hat else 0.25))
             _flaeche(z.grow(-M * (2.0 if traegt else 1.0)), BLATT_TIEF if hat else BLATT)
+            if hat and traegt:
+                _flaeche(Rect2(z.position + Vector2(M * 2.0, M * 2.0),
+                    Vector2(z.size.x - M * 4.0, M)), Palette.HELD_GLANZ)
+            if hat:
+                # Die Stufe als Punkte unten rechts.
+                for k in Ausruestung.HOECHSTSTUFE:
+                    var punkt := Rect2(((z.end - Vector2(16.0 + float(Ausruestung.HOECHSTSTUFE
+                        - 1 - k) * 12.0, 16.0)) / M).round() * M, Vector2.ONE * M * 2.0)
+                    _flaeche(punkt, Palette.HELD if k < stufe
+                        else Color(RAHMEN.r, RAHMEN.g, RAHMEN.b, 0.3))
             # Das Stueck als Bild. Ein nicht gefundenes steht als blasser
             # Schatten da: man weiss, dass es etwas gibt, aber nicht, was es kann.
             var bild := Vector2(z.position.x + 40.0, z.position.y + z.size.y * 0.5)
             _symbol(_symbol_stueck(stueck), bild, true, M,
                 Color.WHITE if hat else Color(0.55, 0.50, 0.45, 0.35))
+            if not hat:
+                _mitte("?", Rect2(bild - Vector2(20.0, 22.0), Vector2(40.0, 40.0)), 30,
+                    Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.7), _kopf)
             var tx := z.position.x + 78.0
             _zeile_eng(Ausruestung.name_von(stueck), Vector2(tx, z.position.y + 36.0), 20,
                 TINTE if hat else Color(SEPIA.r, SEPIA.g, SEPIA.b, 0.45),
@@ -1170,6 +1277,11 @@ func _gui_input(e: InputEvent) -> void:
         los = not e.pressed
         ort = e.position
     if not gedrueckt and not los:
+        return
+    # Ein Schirm, der noch einfaehrt, nimmt nichts an: sonst traefe man den
+    # Knopf, der gerade unter dem Finger vorbeifaehrt.
+    if _schirm < 1.0:
+        _gedrueckt = ""
         return
     # **Im Lauf gehoert der Finger dem Helden** - ausser wenn gewaehlt wird.
     var st: Gefecht.Stand = _lauf.stand()
