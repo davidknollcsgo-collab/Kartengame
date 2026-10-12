@@ -351,6 +351,32 @@ Figurenbilder, Bäume vor Figuren, Menüs nachziehen).
   steht eine andere Horde im Bild. Wer vorher/nachher misst, prüft, ob
   dasselbe Gefecht gezeichnet wird.
 
+**Runde fünf** (Oktober 2026, „mach einfach weiter“; nicht gewählt, sondern
+aus dem Schuss von Minute 6 genommen: das Rudel war nach dem Deckel kleiner,
+aber immer noch **eine graue Fläche**).
+
+* **Erst gemessen, dann gezeichnet.** Am Schuss (`--held 0 --stufen 6
+  --zeit 360 --saat 7`) standen die zwanzig Wölfe im Gefecht **30 bis 37
+  Punkte** auseinander, ein Gitter mit Reihen im Abstand von rund 30. Der
+  Wolf ist aber 13 × 10 Bildpunkte, mit `Pixel.P` 3,75 also **49 × 37
+  Punkte**: waagerecht deckt jeder ein Drittel des Nachbarn. Das ist
+  gewollt (`TRENN_ENGE` 0,85 — eine Menge darf sich überlappen), und
+  breiter trennen hieß schon einmal, dass das Rudel den Laufenden umstellt
+  (siehe `Feinde.ABSTAND`). **Also bleibt die Rechnung, und das Bild
+  trennt.**
+* **Drei Felle** (`Palette.FELL`, `Palette.fell(art, n)`): das Grau der
+  Sorte, ein dunkleres Schiefergrau, ein helleres, wärmeres. Gleich graue
+  Körper mit gleicher Kante verschmelzen; zwei Graus nebeneinander geben
+  dem vorderen einen Umriss. Der Wächter `_test_jede_sorte_hat_eine_eigene_farbe`
+  hält jedes Fell von jeder anderen Sorte und vom Helden fern, die Felle
+  voneinander, und `_test_keine_skin_ist_eine_tarnkappe` jedes Gewand von
+  jedem Fell. Der Fallende und der Liegende behalten ihr Fell.
+* **Jeder im eigenen Schritt.** Der Gangtakt hing an `ort.x`, und wer
+  gemeinsam lief, lief im Gleichschritt: zwanzig Wölfe hoben dieselbe Pfote.
+  Jetzt verschiebt eine feste Zahl je Feind (`zug_lauf._eigen`, aus der
+  Kennung gestreut, kein Wurf) den Takt — das gilt für alle Sorten, und die
+  Strolchsäule daneben wogt seitdem auch nicht mehr im Takt.
+
 ## Godot beschaffen
 
 Godot ist hier nicht vorinstalliert und `godotengine.org` ist durch die

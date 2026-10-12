@@ -346,7 +346,7 @@ func _werte_aus() -> void:
                 var ist_w := Feinde.ist_warlord(f.art)
                 if ist_w or (_gefallene.size() < GEFALLEN_HOECHSTENS and _im_bild(f.ort, 60.0)):
                     _gefallene.append({"ort": f.ort, "art": f.art,
-                        "blick": f.blick, "alter": 0.0,
+                        "blick": f.blick, "alter": 0.0, "fell": _eigen(f) % 3,
                         "dauer": WARLORD_FALL if ist_w else GEFALLEN_DAUER,
                         "weg": (f.ort - _stand.ort).normalized(),
                         "h": FEIND_HOEHE * (f.radius / 17.0)})
@@ -536,17 +536,27 @@ func _loch(ci: RID) -> void:
 ## Text - es sind dreihundert Abfragen je Bild.
 var _feind_bilder := {}
 
-func _feind_bild(art: int, bild: int, spiegel: bool, blitz: bool) -> Array:
-    var k := ((art * 8 + bild + 1) * 2 + int(spiegel)) * 2 + int(blitz)
+func _feind_bild(art: int, bild: int, spiegel: bool, blitz: bool, fell := 0) -> Array:
+    if art != Feinde.Art.WOLF:
+        fell = 0
+    var k := (((art * 8 + bild + 1) * 2 + int(spiegel)) * 2 + int(blitz)) * 4 + fell
     var v: Variant = _feind_bilder.get(k)
     if v == null:
-        var name := "feind%d_%d" % [art, bild]
+        var name := "feind%d_%d_%d" % [art, bild, fell]
         var r := Pixel.bild(name, Figuren.feind(art, bild),
-            Pixel.kleid(Palette.sorte(art)), Figuren.anker(art), spiegel, blitz)
+            Pixel.kleid(Palette.fell(art, fell)), Figuren.anker(art), spiegel, blitz)
         v = [r, Pixel.anker(name, spiegel, blitz)]
         _feind_bilder[k] = v
         Pixel.bereit()
     return v
+
+
+## **Eine feste Zahl je Feind**, fuer alles, was ihn im Bild von seinem
+## Nachbarn trennt: Fell, Schritttakt. Aus der Kennung gestreut, nicht
+## gewuerfelt - der Kern zieht nur aus dem rng, und ein Wurf hier gaebe jedem
+## Bild ein anderes Fell.
+static func _eigen(f: Object) -> int:
+    return absi(hash(f.get_instance_id()))
 
 
 ## Ein beliebiges Bild aus Zeilen, gemerkt unter `name`.
@@ -600,8 +610,9 @@ func _zeichne_hinten(ci: RID) -> void:
         var dauer: float = g.dauer
         var warlord := Feinde.ist_warlord(art)
         var knie := WARLORD_KNIE if warlord else FALL_KNIE
+        var fell: int = g.fell
         if alter < FALL_BLITZ * (2.0 if warlord else 1.0):
-            b = _feind_bild(art, -1, spiegel, true)
+            b = _feind_bild(art, -1, spiegel, true, fell)
             ort += weg * P * (0.0 if warlord else 2.0)
         elif warlord and alter < knie:
             # Er kniet, und das Schwert faellt ihm aus der Hand: eine
@@ -624,8 +635,8 @@ func _zeichne_hinten(ci: RID) -> void:
             if dauer - alter < FALL_BLINKT and fmod(alter, 0.1) < 0.05:
                 continue
             if art == Feinde.Art.WOLF:
-                b = _bild("liegt%d" % art, _kopfueber(Figuren.feind(art, -1)),
-                    Pixel.kleid(Palette.sorte(art)), Figuren.WOLF_ANKER, spiegel)
+                b = _bild("liegt%d_%d" % [art, fell], _kopfueber(Figuren.feind(art, -1)),
+                    Pixel.kleid(Palette.fell(art, fell)), Figuren.WOLF_ANKER, spiegel)
             else:
                 b = _bild("liegt%d" % art, Figuren.liegend(Figuren.feind(art, -1)),
                     Pixel.kleid(Palette.sorte(art)), 10, spiegel)
@@ -957,8 +968,13 @@ func _im_bild(ort: Vector2, rand: float) -> bool:
 
 func _zeichne_feind(ci: RID, f: Gefecht.Feind) -> void:
     var tempo := 12.0 if f.art == Feinde.Art.WOLF else 8.0
-    var bild := posmod(int(_zeit * tempo + f.ort.x * 0.013), 4)
-    var b := _feind_bild(f.art, bild, f.blick < 0.0, f.zuckt > 0.0)
+    # **Jeder im eigenen Schritt.** Der Takt hing am Ort, und wer gemeinsam
+    # lief, lief im Gleichschritt: ein Rudel hob alle Pfoten zugleich. Die
+    # feste Zahl des Feindes verschiebt seinen Takt um bis zu vier Bilder.
+    var eigen := _eigen(f)
+    var bild := posmod(int(_zeit * tempo + float(eigen % 1000) * 0.004), 4)
+    var fell := eigen % 3
+    var b := _feind_bild(f.art, bild, f.blick < 0.0, f.zuckt > 0.0, fell)
     var breite := 12 if f.art != Feinde.Art.WARLORD else 24
     if f.art == Feinde.Art.WOLF:
         breite = 14
@@ -983,7 +999,7 @@ func _zeichne_feind(ci: RID, f: Gefecht.Feind) -> void:
             var r := zu.normalized()
             fuss += r * P * 2.0
             if takt < 0.12:
-                b = _feind_bild(f.art, Figuren.SCHLAG, f.blick < 0.0, f.zuckt > 0.0)
+                b = _feind_bild(f.art, Figuren.SCHLAG, f.blick < 0.0, f.zuckt > 0.0, fell)
             if takt < 0.1:
                 Pixel.punkt(ci, f.ort + r * (f.radius + 6.0) + Vector2(0.0, -FEIND_HOEHE * 0.35),
                     Palette.WEISS, 2)
@@ -992,7 +1008,7 @@ func _zeichne_feind(ci: RID, f: Gefecht.Feind) -> void:
     if rueck > 0.0:
         var r := zu.normalized()
         fuss -= r * P
-        b = _feind_bild(f.art, Figuren.SCHLAG, f.blick < 0.0, f.zuckt > 0.0)
+        b = _feind_bild(f.art, Figuren.SCHLAG, f.blick < 0.0, f.zuckt > 0.0, fell)
         if rueck > 0.12:
             Pixel.punkt(ci, f.ort + r * 9.0 * P + Vector2(0.0, -12.0 * P), Palette.WEISS, 2)
     # Der Stuermer zieht Staubstreifen hinter sich her.

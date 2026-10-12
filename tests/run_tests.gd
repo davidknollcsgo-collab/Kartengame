@@ -339,6 +339,31 @@ func _test_jede_sorte_hat_eine_eigene_farbe() -> bool:
                 "%s liegt der Heldenfarbe zu nah (%.3f)"
                 % [Feinde.name_von(a), d]):
             return false
+    # **Jedes Fell ist ein Wolf** (`Palette.FELL`): unterscheidbar von jeder
+    # anderen Sorte und vom Helden, mit denselben Schranken. Ein Fell, das
+    # ins Lederbraun kippt, macht aus einem Wolf einen Strolch auf vier
+    # Beinen. Und die Felle untereinander muessen sich trennen, sonst sind
+    # sie kein Mittel gegen den Teppich.
+    for n in Palette.FELL.size():
+        var fell := Palette.fell(Feinde.Art.WOLF, n)
+        for a in Feinde.Art.size():
+            if a == Feinde.Art.WOLF:
+                continue
+            var d := Palette.abstand(fell, Palette.sorte(a))
+            if not _melde(d > schwelle,
+                    "Fell %d liegt %s zu nah (%.3f)" % [n, Feinde.name_von(a), d]):
+                return false
+        if not _melde(Palette.abstand(fell, Palette.HELD) > schwelle * 1.8,
+                "Fell %d liegt der Heldenfarbe zu nah" % n):
+            return false
+        for m in range(n + 1, Palette.FELL.size()):
+            var d := Palette.abstand(fell, Palette.FELL[m])
+            if not _melde(d > 0.04,
+                    "Fell %d und %d sind dasselbe Grau (%.3f)" % [n, m, d]):
+                return false
+    if not _melde(Palette.fell(Feinde.Art.WOLF, 0) == Palette.sorte(Feinde.Art.WOLF),
+            "das erste Fell ist nicht die Farbe der Sorte"):
+        return false
     return true
 
 
@@ -359,6 +384,12 @@ func _test_keine_skin_ist_eine_tarnkappe() -> bool:
                 if not _melde(d > 0.18,
                         "Skin %s liegt %s zu nah (%.3f)"
                         % [Skins.name_von(held, n), Feinde.name_von(a), d]):
+                    return false
+            for f in Palette.FELL.size():
+                var d := Palette.abstand(k, Palette.FELL[f])
+                if not _melde(d > 0.18,
+                        "Skin %s liegt Fell %d zu nah (%.3f)"
+                        % [Skins.name_von(held, n), f, d]):
                     return false
             # Und der Glanz ist heller als der Koerper - ein Glanz, der
             # dunkler ist, ist keiner.

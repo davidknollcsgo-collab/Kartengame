@@ -135,6 +135,19 @@ const SORTE: PackedColorArray = [
     Color(0.490, 0.110, 0.180),   # Warlord  - Dunkles Blutrot
 ]
 
+## **Ein Rudel ist kein Stempel.** Zwanzig Woelfe in einem Grau und einem
+## Takt flossen im Bild zu einer grauen Flaeche zusammen: der Koerper ist
+## 13 Bildpunkte lang, die Trennung haelt sie rund 33 Punkte auseinander,
+## und gleiche Kanten verschmelzen. Drei Felle - das kalte Grau der Sorte,
+## ein dunkleres, ein waermeres helles - geben jedem Wolf seinen Umriss
+## gegen den Nachbarn. Alle drei bleiben grau: ein Wolf ist an der Farbe
+## erkennbar, nicht an seiner Nummer (`_test_jede_sorte_hat_eine_eigene_farbe`).
+const FELL: PackedColorArray = [
+    Color(0.525, 0.553, 0.604),   # die Sorte selbst
+    Color(0.408, 0.427, 0.475),   # dunkler, Schiefer
+    Color(0.627, 0.620, 0.612),   # heller, ein Hauch waermer
+]
+
 ## Womit ein Getroffener kurz aufblitzt. **Hell, nicht blass**: der erste
 ## Anlauf senkte die Deckung, und ein Treffer, den man nur am Verblassen
 ## erkennt, sieht aus wie ein Zeichenfehler und nicht wie ein Schlag.
@@ -149,6 +162,14 @@ const ERFAHRUNG := Color(0.361, 0.706, 0.918)
 
 static func sorte(a: int) -> Color:
     return SORTE[clampi(a, 0, SORTE.size() - 1)]
+
+
+## Die Farbe eines einzelnen Feindes: beim Wolf eines der Felle, sonst die
+## Sorte. `n` ist eine feste Zahl des Feindes, kein Wurf.
+static func fell(a: int, n: int) -> Color:
+    if a != Feinde.Art.WOLF:
+        return sorte(a)
+    return FELL[posmod(n, FELL.size())]
 
 
 ## Wie weit zwei Farben auseinanderliegen - fuer den Waechter, der prueft,
